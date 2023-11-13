@@ -1,0 +1,26 @@
+{
+  "canisters": {
+    "vetkey_test_rust_backend": {
+      "candid": "src/vetkey_test_rust_backend/vetkey_test_rust_backend.did",
+      "package": "vetkey_test_rust_backend",
+      "type": "rust"
+    },
+    "vetkey_test_rust_frontend": {
+      "dependencies": [
+        "vetkey_test_rust_backend"
+      ],
+      "source": [
+        "src/vetkey_test_rust_frontend/assets"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
