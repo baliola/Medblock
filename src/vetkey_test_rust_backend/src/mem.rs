@@ -14,44 +14,40 @@ const MAX_METADATA_VALUE_SIZE_BYTES: u32 = 255;
 /// macro for cutting boiler plate for storable impls.
 /// can only be used for newtypes that its inner value type implements storable
 macro_rules! impl_storable {
-    ($($ident:ty);*) => {};
-}
+    ($($ident:ty: {
+        max_size: $max_size:expr,
+        is_fixed_size: $is_fixed_size:expr
+    };)*) => {
+        $(impl Storable for $ident {
+            fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+                self.0.to_bytes()
+            }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-struct MetadataKey(String);
+            fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+                Self(<_>::from_bytes(bytes))
+            }
 
-impl Storable for MetadataKey {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        // String already implements `Storable`.
-        self.0.to_bytes()
-    }
-
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(String::from_bytes(bytes))
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: MAX_METADATA_KEY_SIZE_BYTES,
-        is_fixed_size: false,
+            const BOUND: Bound = Bound::Bounded {
+                max_size: $max_size,
+                is_fixed_size: $is_fixed_size,
+            };
+        })*
     };
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+struct MetadataKey(String);
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 struct MetadataValue(String);
 
-impl Storable for MetadataValue {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        // String already implements `Storable`.
-        self.0.to_bytes()
-    }
-
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(String::from_bytes(bytes))
-    }
-
-    const BOUND: Bound = Bound::Bounded {
+impl_storable! {
+    MetadataKey: {
+        max_size: MAX_METADATA_KEY_SIZE_BYTES,
+        is_fixed_size: false
+    };
+    MetadataValue: {
         max_size: MAX_METADATA_VALUE_SIZE_BYTES,
-        is_fixed_size: false,
+        is_fixed_size: false
     };
 }
 
