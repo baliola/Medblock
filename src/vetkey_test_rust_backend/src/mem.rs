@@ -1,6 +1,6 @@
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::storable::Bound;
-use ic_stable_structures::{DefaultMemoryImpl, Storable};
+use ic_stable_structures::{BTreeMap, DefaultMemoryImpl, Storable};
 use paste::paste;
 use std::cell::RefCell;
 
@@ -35,10 +35,11 @@ macro_rules! impl_storable {
     };
 }
 
+impl_component!(Foo, Bar, Baz);
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-struct MetadataKey(String);
+pub struct MetadataKey(String);
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-struct MetadataValue(String);
+pub struct MetadataValue(String);
 
 impl_storable! {
     MetadataKey: {
@@ -56,7 +57,7 @@ macro_rules! impl_memory_id {
     (index $n:expr => ) => {};
 
     //recursion till none
-    (index $lit:expr => $ident:ident $(, $rest:ident),*) => {
+    (index $lit:expr => $ident:tt $(, $rest:tt)*) => {
         paste! {const[<$ident:upper _MEMORY_ID>]: MemoryId = MemoryId::new($lit);}
 
         paste! {pub fn [<get_ $ident:lower _memory>]() -> Memory {
@@ -67,7 +68,7 @@ macro_rules! impl_memory_id {
     };
 
     //bootstrap to first recursiong
-    ($($ident:ident),+) => {
+    ($($ident:tt),*) => {
         impl_memory_id!(index 0 => $($ident),*);
     };
 }
@@ -75,12 +76,14 @@ macro_rules! impl_memory_id {
 pub struct MemoryMetadata;
 
 impl MemoryMetadata {
-    impl_memory_id!(UPGRADES, STABLE_BTREE);
+    impl_memory_id!(UPGRADES, STABLE_BTREE, STABLE_METADATA);
 }
 
 thread_local! {
-    // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
-    // return a memory that can be used by stable structures.
+// The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
+// return a memory that can be used by stable structures.
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
-        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+    RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));    
+
+    pub static STABLE_METADATA_MAP: RefCell<BTreeMap<MetadataKey,MetadataValue,Memory>> = RefCell::new(BTreeMap::init(MemoryMetadata::get_stable_metadata_memory()));
 }
