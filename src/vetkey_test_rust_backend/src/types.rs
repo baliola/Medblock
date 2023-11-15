@@ -1,16 +1,28 @@
+use core::mem::size_of;
+
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{de::DeserializeOwned, Serialize};
 
-pub type MaxSize = u32;
-pub type IsFixedSize = bool;
+/// trait for types that have a bound, i.e. a maximum size
+/// and whether they are fixed size or not
+///
+/// this must be implemented for inner types of [Serializeable] as the storable trait requires it
+/// types to have a bounded information on them, but we can't flexibly implement it for all types
+/// that [Serializeable] wraps. so the bounded information must be implemented manually.
+pub trait Bounded {
+    const BOUND: Bound;
+}
+
+impl<Data: Storable + Serialize + DeserializeOwned> Bounded for Data {
+    const BOUND: Bound = <Data as Storable>::BOUND;
+}
 
 #[derive(Default)]
-pub struct Serializeable<const size: MaxSize, const fix_sized_data: IsFixedSize, Data>(pub Data)
+pub struct Serializeable<Data>(pub Data)
 where
     Data: Serialize + DeserializeOwned;
 
-impl<const size: MaxSize, const fix_sized_data: IsFixedSize, Data> std::ops::Deref
-    for Serializeable<size, fix_sized_data, Data>
+impl<Data> std::ops::Deref for Serializeable<Data>
 where
     Data: Serialize + DeserializeOwned,
 {
@@ -21,10 +33,9 @@ where
     }
 }
 
-impl<const size: MaxSize, const fix_sized_data: IsFixedSize, Data> Storable
-    for Serializeable<size, fix_sized_data, Data>
+impl<Data> Storable for Serializeable<Data>
 where
-    Data: Serialize + DeserializeOwned,
+    Data: Serialize + DeserializeOwned + Bounded,
 {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         let mut buffer = vec![];
@@ -42,8 +53,60 @@ where
         Self(data)
     }
 
-    const BOUND: Bound = Bound::Bounded {
-        max_size: size,
-        is_fixed_size: fix_sized_data,
-    };
+    const BOUND: Bound = <Data as Bounded>::BOUND;
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::Deserialize;
+
+    use super::*;
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+    pub struct DummyEmployee {
+        name: String,
+        age: u32,
+    }
+
+    impl Bounded for DummyEmployee {
+        const BOUND: Bound = Bound::Bounded {
+            max_size: size_of::<Self>() as u32,
+            is_fixed_size: true,
+        };
+    }
+
+    impl DummyEmployee {
+        pub fn new(name: String, age: u32) -> Self {
+            Self { name, age }
+        }
+    }
+
+    impl Default for DummyEmployee {
+        fn default() -> Self {
+            Self {
+                name: "default".to_string(),
+                age: 0,
+            }
+        }
+    }
+
+    #[test]
+    fn test_serializeable_struct() {
+        let employee = DummyEmployee::new("JohnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(), 30);
+        let serialized = Serializeable(employee.clone());
+        let serialized = serialized.to_bytes();
+        let deserialized = Serializeable::<DummyEmployee>::from_bytes(serialized.clone());
+
+        assert!(employee.eq(&deserialized))
+    }
+
+    #[test]
+    fn test_serializeable_string() {
+        let string = "JohnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
+        let serialized = Serializeable(string.clone());
+        let serialized = serialized.to_bytes();
+        let deserialized = Serializeable::<String>::from_bytes(serialized.clone());
+
+        assert!(string.eq(&*deserialized))
+    }
 }
