@@ -35,7 +35,6 @@ macro_rules! impl_storable {
     };
 }
 
-impl_component!(Foo, Bar, Baz);
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct MetadataKey(String);
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
