@@ -20,11 +20,11 @@ impl<Data: Storable + Serialize + DeserializeOwned> Bounded for Data {
 #[derive(Default)]
 pub struct Serializeable<Data>(pub Data)
 where
-    Data: Serialize + DeserializeOwned;
+    Data: Serialize + DeserializeOwned + Bounded;
 
 impl<Data> std::ops::Deref for Serializeable<Data>
 where
-    Data: Serialize + DeserializeOwned,
+    Data: Serialize + DeserializeOwned + Bounded,
 {
     type Target = Data;
 
@@ -108,5 +108,15 @@ mod tests {
         let deserialized = Serializeable::<String>::from_bytes(serialized.clone());
 
         assert!(string.eq(&*deserialized))
+    }
+
+    #[test]
+    fn test_serializeable_u32() {
+        let u32 = 123456789;
+        let serialized = Serializeable(u32);
+        let serialized = serialized.to_bytes();
+        let deserialized = Serializeable::<u32>::from_bytes(serialized.clone());
+
+        assert!(u32.eq(&*deserialized))
     }
 }
