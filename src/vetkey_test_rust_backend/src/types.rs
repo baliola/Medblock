@@ -13,16 +13,20 @@ pub trait Bounded {
     const BOUND: Bound;
 }
 
+// blanket impl for native types
 impl<Data: Storable + Serialize + DeserializeOwned> Bounded for Data {
     const BOUND: Bound = <Data as Storable>::BOUND;
 }
 
+/// wrapper types for types that exist in the stable memory of the canister
+/// 
+/// NOTE: data must implements [Bounded] trait (execpt for native types that's already supported)
 #[derive(Default)]
-pub struct Serializeable<Data>(pub Data)
+pub struct Stable<Data>(pub Data)
 where
     Data: Serialize + DeserializeOwned + Bounded;
 
-impl<Data> std::ops::Deref for Serializeable<Data>
+impl<Data> std::ops::Deref for Stable<Data>
 where
     Data: Serialize + DeserializeOwned + Bounded,
 {
@@ -33,7 +37,7 @@ where
     }
 }
 
-impl<Data> Storable for Serializeable<Data>
+impl<Data> Storable for Stable<Data>
 where
     Data: Serialize + DeserializeOwned + Bounded,
 {
@@ -93,9 +97,9 @@ mod tests {
     #[test]
     fn test_serializeable_struct() {
         let employee = DummyEmployee::new("JohnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(), 30);
-        let serialized = Serializeable(employee.clone());
+        let serialized = Stable(employee.clone());
         let serialized = serialized.to_bytes();
-        let deserialized = Serializeable::<DummyEmployee>::from_bytes(serialized.clone());
+        let deserialized = Stable::<DummyEmployee>::from_bytes(serialized.clone());
 
         assert!(employee.eq(&deserialized))
     }
@@ -103,9 +107,9 @@ mod tests {
     #[test]
     fn test_serializeable_string() {
         let string = "JohnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
-        let serialized = Serializeable(string.clone());
+        let serialized = Stable(string.clone());
         let serialized = serialized.to_bytes();
-        let deserialized = Serializeable::<String>::from_bytes(serialized.clone());
+        let deserialized = Stable::<String>::from_bytes(serialized.clone());
 
         assert!(string.eq(&*deserialized))
     }
@@ -113,9 +117,9 @@ mod tests {
     #[test]
     fn test_serializeable_u32() {
         let u32 = 123456789;
-        let serialized = Serializeable(u32);
+        let serialized = Stable(u32);
         let serialized = serialized.to_bytes();
-        let deserialized = Serializeable::<u32>::from_bytes(serialized.clone());
+        let deserialized = Stable::<u32>::from_bytes(serialized.clone());
 
         assert!(u32.eq(&*deserialized))
     }
