@@ -813,6 +813,7 @@ dependencies = [
  "ic-stable-structures",
  "paste",
  "serde",
+ "thiserror",
  "uuid",
 ]
 

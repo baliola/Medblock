@@ -9,6 +9,7 @@ use crate::{
     mem::Memory,
     wrapper::{Bounded, Stable},
 };
+//TODO : find a way to optimize memory usage, especially the key inside the metadata map of the emr
 
 /// auto implement [Bounded] for types that have same size as primitives types
 ///
@@ -24,7 +25,7 @@ macro_rules! native_bounded {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IcPrincipal(pub String);
+pub struct IcPrincipal(String);
 
 impl From<IcPrincipal> for Principal {
     fn from(value: IcPrincipal) -> Self {
@@ -36,16 +37,13 @@ impl TryFrom<String> for IcPrincipal {
     type Error = anyhow::Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match Principal::from_str(&value) {
-            Ok(_) => Ok(Self(value)),
-            Err(e) => Err(e.into()),
-        }
+        Ok((Principal::from_str(&value).map(|_| Self(value)))?)
     }
 }
 
-pub struct VerifiedEmrManagerSet(pub BTreeMap<Stable<IcPrincipal>, (), Memory>);
+pub struct VerifiedEmrManagerSet(BTreeMap<Stable<IcPrincipal>, (), Memory>);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct EmrId(pub Uuid);
 
 impl TryFrom<String> for EmrId {
@@ -59,9 +57,44 @@ impl TryFrom<String> for EmrId {
     }
 }
 
-pub type EmrMetadataKey = String;
-pub type EmrMetadataValue = String;
-pub type EmrStorageMap = BTreeMap<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue, Memory>;
+impl From<EmrId> for String {
+    fn from(value: EmrId) -> Self {
+        value.0.to_string()
+    }
+}
+
+pub type EmrMetadataKey = Stable<String>;
+// TODO : string for simplicity for now, should find a way to optimize this later.
+pub type EmrMetadataValue = Stable<String>;
+pub struct EmrStorageMap(BTreeMap<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue, Memory>);
+
+impl EmrStorageMap {
+    const STATIC_EMR_METADATA_KEY: &'static str = "issued_by";
+
+    pub fn insert_emr(
+        &mut self,
+        emr_id: Stable<EmrId>,
+        issued_by: Stable<IcPrincipal>,
+        metadata: Vec<(String, String)>,
+    ) {
+        self.issue(emr_id.clone(), issued_by);
+        self.populate_metadata(metadata, emr_id);
+    }
+
+    fn populate_metadata(&mut self, metadata: Vec<(String, String)>, emr_id: Stable<EmrId>) {
+        for (key, value) in metadata {
+            self.0.insert((emr_id.clone(), Stable(key)), Stable(value));
+        }
+    }
+
+    fn issue(&mut self, emr_id: Stable<EmrId>, issued_by: Stable<IcPrincipal>) {
+        self.0.insert(
+            (emr_id, Stable(Self::STATIC_EMR_METADATA_KEY.to_string())),
+            // clean this later
+            issued_by.0 .0.into(),
+        );
+    }
+}
 
 native_bounded! {
     IcPrincipal: String;
