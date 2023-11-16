@@ -5,23 +5,16 @@
 //! This example showcases how you can include stable structures in your projects. For simpler
 //! examples, checkout the other examples in the `examples` directory.
 mod mem;
+mod wrapper;
 mod types;
 use ic_cdk::{post_upgrade, pre_upgrade, query, update};
 use ic_stable_structures::{writer::Writer, Memory as _, StableBTreeMap};
-use mem::{Memory, MetadataKey, MetadataValue};
+use mem::{Memory};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
 const VETKD_SYSTEM_API_CANISTER_ID: &str = "s55qq-oqaaa-aaaaa-aaakq-cai";
 
-type EmrRecord = StableBTreeMap<MetadataKey, MetadataValue, Memory>;
-struct EmrMetadataMap(EmrRecord);
-
-impl AsRef<EmrRecord> for EmrMetadataMap {
-    fn as_ref(&self) -> &EmrRecord {
-        &self.0
-    }
-}
 // The state of the canister.
 #[derive(Serialize, Deserialize)]
 struct State {
