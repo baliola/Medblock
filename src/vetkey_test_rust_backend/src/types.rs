@@ -63,11 +63,6 @@ impl From<EmrId> for String {
     }
 }
 
-pub type EmrMetadataKey = Stable<String>;
-// TODO : string for simplicity for now, should find a way to optimize this later.
-pub type EmrMetadataValue = Stable<String>;
-pub struct EmrStorageMap(BTreeMap<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue, Memory>);
-
 /// High-level wrapper and presentation for emr
 /// this the type that should be returned as the return type of the canister public api
 #[derive(Clone, Serialize, PartialEq, Eq)]
@@ -133,12 +128,52 @@ impl Emr {
     }
 }
 
+pub struct IssuerToEmrMap(BTreeMap<(Stable<IcPrincipal>, Stable<EmrId>), (), Memory>);
+
+impl IssuerToEmrMap {
+    pub(self) fn issue(&mut self, from: Stable<IcPrincipal>, id: Stable<EmrId>) {
+        self.0.insert((from, id), ());
+    }
+
+    pub(self) fn get_all_issued_by(&self, from: Stable<IcPrincipal>) -> Vec<Stable<EmrId>> {
+        self.0
+            .range((from.clone(), Stable(EmrId(Uuid::nil()))))
+            .filter(|((issuer, _), _)| issuer == &from)
+            .map(|((_, id), _)| id.clone())
+            .collect()
+    }
+}
+
+pub type EmrMetadataKey = Stable<String>;
+// TODO : string for simplicity for now, should find a way to optimize this later.
+pub type EmrMetadataValue = Stable<String>;
+pub struct EmrStorageMap(BTreeMap<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue, Memory>);
+
 impl EmrStorageMap {
     const STATIC_EMR_METADATA_KEY: &'static str = "issued_by";
 
-    pub fn insert_emr(&mut self, emr: Emr) {
+    pub(self) fn insert_emr(&mut self, emr: Emr) {
         self.issue(emr.id.clone(), emr.issued_by);
         self.populate_metadata(emr.metadata, emr.id);
+    }
+
+    pub(self) fn find_all_with_ids(&self, ids: &[Stable<EmrId>]) -> Option<Vec<Emr>> {
+        let mut emrs = Vec::with_capacity(ids.len());
+
+        for id in ids {
+            let emr = self.find_by_id(id).unwrap();
+            emrs.push(emr);
+        }
+
+        Some(emrs)
+    }
+
+    pub(self) fn update_at_id() {
+        todo!()
+    }
+
+    pub(self) fn remove_at_id() {
+        todo!()
     }
 
     fn populate_metadata(
@@ -157,6 +192,34 @@ impl EmrStorageMap {
             // clean this later
             issued_by.0 .0.into(),
         );
+    }
+
+    fn find_by_id(&self, id: &Stable<EmrId>) -> Option<Emr> {
+        let Some(issued_by) = self
+            .0
+            .get(&(
+                id.clone(),
+                Stable(Self::STATIC_EMR_METADATA_KEY.to_string()),
+            ))
+            .clone()
+        else {
+            return None;
+        };
+
+        let issued_by = IcPrincipal(issued_by.0);
+
+        let metadata = self
+            .0
+            .iter()
+            .filter(|((emr_id, _), _)| emr_id == id)
+            .map(|((_, key), value)| (key.clone(), value.clone()))
+            .collect();
+
+        Some(Emr {
+            id: id.clone(),
+            issued_by: Stable(issued_by),
+            metadata,
+        })
     }
 }
 
