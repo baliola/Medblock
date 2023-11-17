@@ -198,8 +198,17 @@ impl EmrStorageMap {
         Some(emrs)
     }
 
-    pub(self) fn update_at_id() {
+    pub(self) fn update_at_id(
+        &mut self,
+        id: Stable<EmrId>,
+        k: EmrMetadataKey,
+        v: EmrMetadataValue,
+    ) {
         todo!()
+        // self.0
+        //     .iter_mut()
+        //     .find(|(key, _)| key.0 == k)
+        //     .map(|(_, value)| *value = Stable(v));
     }
 
     pub(self) fn remove_at_id() {
@@ -225,31 +234,25 @@ impl EmrStorageMap {
     }
 
     fn find_by_id(&self, id: &Stable<EmrId>) -> Option<Emr> {
-        let Some(issued_by) = self
-            .0
-            .get(&(
-                id.clone(),
-                Stable(Self::STATIC_EMR_METADATA_KEY.to_string()),
-            ))
-            .clone()
-        else {
-            return None;
-        };
-
-        let issued_by = Principal::from_str(issued_by.into_inner().as_str())
-            .expect("storage should only store valid principals");
-        let issued_by = Users(issued_by);
-
         let metadata = self
             .0
+            .range((id.to_owned(), Stable(String::default()))..)
+            .map(|((_, k), v)| (k.clone(), v.clone()))
+            .collect::<Vec<(EmrMetadataKey, EmrMetadataValue)>>();
+
+        let (_, issued_by) = metadata
             .iter()
-            .filter(|((emr_id, _), _)| emr_id == id)
-            .map(|((_, key), value)| (key.clone(), value.clone()))
-            .collect();
+            .find(|(k, _)| k.0 == Self::STATIC_EMR_METADATA_KEY)
+            .expect("stored metadata should have issued by metadata field");
+
+        let issued_by = Users(
+            Principal::from_str(issued_by.as_str()).expect("stored principal should've been valid!"),
+        )
+        .into();
 
         Some(Emr {
             id: id.clone(),
-            issued_by: Stable(issued_by),
+            issued_by,
             metadata,
         })
     }
