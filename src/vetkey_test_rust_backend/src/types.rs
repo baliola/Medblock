@@ -204,11 +204,10 @@ impl EmrStorageMap {
         k: EmrMetadataKey,
         v: EmrMetadataValue,
     ) {
-        todo!()
-        // self.0
-        //     .iter_mut()
-        //     .find(|(key, _)| key.0 == k)
-        //     .map(|(_, value)| *value = Stable(v));
+        let _ = self.0
+            .range((id, Stable(String::default()))..)
+            .filter(|((_, _k), _)| _k.eq(&k))
+            .map(move |((_, _), mut _v)| _v = v.clone());
     }
 
     pub(self) fn remove_at_id() {
@@ -246,7 +245,8 @@ impl EmrStorageMap {
             .expect("stored metadata should have issued by metadata field");
 
         let issued_by = Users(
-            Principal::from_str(issued_by.as_str()).expect("stored principal should've been valid!"),
+            Principal::from_str(issued_by.as_str())
+                .expect("stored principal should've been valid!"),
         )
         .into();
 
