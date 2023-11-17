@@ -11,10 +11,9 @@ use crate::{
 };
 //TODO : find a way to optimize memory usage, especially the key inside the metadata map of the emr
 
-/// auto implement [Bounded] for types that have same size as primitives types
-///
-/// useful for implementing [Bounded] for newtypes.
-macro_rules! native_bounded {
+
+/// cutting boiler plate for implementing bounded traits on types
+macro_rules! bounded {
     (@CONSTRUCT ) => {};
 
 
@@ -57,7 +56,7 @@ macro_rules! native_bounded {
 
 }
 
-native_bounded! {
+bounded! {
     IcPrincipal: {
         max_size: size_of::<Principal>() as u32,
         is_fixed: true,
