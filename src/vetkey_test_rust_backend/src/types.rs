@@ -204,14 +204,20 @@ impl EmrStorageMap {
         k: EmrMetadataKey,
         v: EmrMetadataValue,
     ) {
-        let _ = self.0
+        let _ = self
+            .0
             .range((id, Stable(String::default()))..)
             .filter(|((_, _k), _)| _k.eq(&k))
             .map(move |((_, _), mut _v)| _v = v.clone());
     }
 
-    pub(self) fn remove_at_id() {
-        todo!()
+    /// remove metadata by key. return the value if found
+    pub(self) fn remove_at_id(
+        &mut self,
+        id: Stable<EmrId>,
+        k: EmrMetadataKey,
+    ) -> Option<Stable<String>> {
+        self.0.remove(&(id, k))
     }
 
     fn populate_metadata(
