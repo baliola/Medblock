@@ -1,4 +1,4 @@
-use std::{mem::size_of, str::FromStr};
+use std::{mem::size_of, ops::RangeBounds, str::FromStr};
 
 use candid::Principal;
 use ic_stable_structures::{storable::Bound, BTreeMap, Storable};
@@ -15,33 +15,72 @@ use crate::{
 ///
 /// useful for implementing [Bounded] for newtypes.
 macro_rules! native_bounded {
-    ($($ident:ty: $ty:ty;)*) => {
-        $(
+    (@CONSTRUCT ) => {};
+
+
+    (@CONSTRUCT $ident:tt:Unbounded; $($rest:tt)*) => {
+        impl Bounded for $ident {
+            const BOUND: Bound = Bound::Unbounded;
+        }
+
+        native_bounded!(@CONSTRUCT $($rest)*);
+    };
+
+
+    (@CONSTRUCT $ident:ident: $ty:ty; $($rest:tt)*) => {
             impl Bounded for $ident {
                 const BOUND: Bound = <$ty as Storable>::BOUND;
             }
-        )*
+
+            native_bounded!(@CONSTRUCT $($rest)*);
     };
+
+    (@CONSTRUCT $ident:ty:{
+        max_size: $max:expr,
+        is_fixed: $is_fixed:expr,
+    }; $($rest:tt)*)=>{
+        impl Bounded for $ident {
+            const BOUND: Bound = Bound::Bounded{
+                max_size: $max,
+                is_fixed_size: $is_fixed,
+
+            };
+        }
+
+        native_bounded!(@CONSTRUCT $($rest)*);
+
+    };
+
+    ($($ident:tt: $any_expr:tt;)*) => {
+        native_bounded!(@CONSTRUCT $($ident: $any_expr;)*);
+    };
+
 }
 
+native_bounded! {
+    IcPrincipal: {
+        max_size: size_of::<Principal>() as u32,
+        is_fixed: true,
+    };
+    EmrId: u16;
+}
+
+/// wrapper types for stable [BtreeMap]
+pub type Map<K, V>
+where
+    K: Storable + Ord + Clone,
+    V: Storable,
+= BTreeMap<K, V, Memory>;
+
+/// wrapper types for stable [BtreeMap] as set
+pub type Set<T>
+where
+    T: Storable + Ord + Clone,
+= BTreeMap<T, (), Memory>;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IcPrincipal(String);
+pub struct IcPrincipal(Principal);
 
-impl From<IcPrincipal> for Principal {
-    fn from(value: IcPrincipal) -> Self {
-        Principal::from_str(&value.0).expect("should be a valid principal")
-    }
-}
-
-impl TryFrom<String> for IcPrincipal {
-    type Error = anyhow::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok((Principal::from_str(&value).map(|_| Self(value)))?)
-    }
-}
-
-pub struct VerifiedEmrManagerSet(BTreeMap<Stable<IcPrincipal>, (), Memory>);
+pub struct VerifiedEmrManagerSet(Set<Stable<IcPrincipal>>);
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct EmrId(pub Uuid);
@@ -128,7 +167,7 @@ impl Emr {
     }
 }
 
-pub struct IssuerToEmrMap(BTreeMap<(Stable<IcPrincipal>, Stable<EmrId>), (), Memory>);
+pub struct IssuerToEmrMap(Set<(Stable<IcPrincipal>, Stable<EmrId>)>);
 
 impl IssuerToEmrMap {
     pub(self) fn issue(&mut self, from: Stable<IcPrincipal>, id: Stable<EmrId>) {
@@ -137,7 +176,7 @@ impl IssuerToEmrMap {
 
     pub(self) fn get_all_issued_by(&self, from: Stable<IcPrincipal>) -> Vec<Stable<EmrId>> {
         self.0
-            .range((from.clone(), Stable(EmrId(Uuid::nil()))))
+            .range(((from.clone()), Stable(EmrId(Uuid::nil()))))
             .filter(|((issuer, _), _)| issuer == &from)
             .map(|((_, id), _)| id.clone())
             .collect()
@@ -147,7 +186,7 @@ impl IssuerToEmrMap {
 pub type EmrMetadataKey = Stable<String>;
 // TODO : string for simplicity for now, should find a way to optimize this later.
 pub type EmrMetadataValue = Stable<String>;
-pub struct EmrStorageMap(BTreeMap<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue, Memory>);
+pub struct EmrStorageMap(Map<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue>);
 
 impl EmrStorageMap {
     const STATIC_EMR_METADATA_KEY: &'static str = "issued_by";
@@ -221,9 +260,4 @@ impl EmrStorageMap {
             metadata,
         })
     }
-}
-
-native_bounded! {
-    IcPrincipal: String;
-    EmrId: u16;
 }
