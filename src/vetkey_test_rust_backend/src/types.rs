@@ -1,4 +1,4 @@
-use std::{mem::size_of, ops::RangeBounds, str::FromStr};
+use std::{mem::size_of, str::FromStr};
 
 use candid::Principal;
 use ic_stable_structures::{storable::Bound, BTreeMap, Storable};
@@ -11,7 +11,6 @@ use crate::{
 };
 //TODO : find a way to optimize memory usage, especially the key inside the metadata map of the emr
 
-
 /// cutting boiler plate for implementing bounded traits on types
 macro_rules! bounded {
     (@CONSTRUCT ) => {};
@@ -22,7 +21,7 @@ macro_rules! bounded {
             const BOUND: Bound = Bound::Unbounded;
         }
 
-        native_bounded!(@CONSTRUCT $($rest)*);
+        bounded!(@CONSTRUCT $($rest)*);
     };
 
 
@@ -31,7 +30,7 @@ macro_rules! bounded {
                 const BOUND: Bound = <$ty as Storable>::BOUND;
             }
 
-            native_bounded!(@CONSTRUCT $($rest)*);
+            bounded!(@CONSTRUCT $($rest)*);
     };
 
     (@CONSTRUCT $ident:ty:{
@@ -46,18 +45,18 @@ macro_rules! bounded {
             };
         }
 
-        native_bounded!(@CONSTRUCT $($rest)*);
+        bounded!(@CONSTRUCT $($rest)*);
 
     };
 
     ($($ident:tt: $any_expr:tt;)*) => {
-        native_bounded!(@CONSTRUCT $($ident: $any_expr;)*);
+        bounded!(@CONSTRUCT $($ident: $any_expr;)*);
     };
 
 }
 
 bounded! {
-    IcPrincipal: {
+    Users: {
         max_size: size_of::<Principal>() as u32,
         is_fixed: true,
     };
@@ -65,21 +64,14 @@ bounded! {
 }
 
 /// wrapper types for stable [BtreeMap]
-pub type Map<K, V>
-where
-    K: Storable + Ord + Clone,
-    V: Storable,
-= BTreeMap<K, V, Memory>;
+pub type Map<K, V> = BTreeMap<K, V, Memory>;
 
 /// wrapper types for stable [BtreeMap] as set
-pub type Set<T>
-where
-    T: Storable + Ord + Clone,
-= BTreeMap<T, (), Memory>;
+pub type Set<V> = BTreeMap<V, (), Memory>;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IcPrincipal(Principal);
+pub struct Users(Principal);
 
-pub struct VerifiedEmrManagerSet(Set<Stable<IcPrincipal>>);
+pub struct VerifiedEmrManagerSet(Set<Stable<Users>>);
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct EmrId(pub Uuid);
@@ -106,7 +98,7 @@ impl From<EmrId> for String {
 #[derive(Clone, Serialize, PartialEq, Eq)]
 pub struct Emr {
     id: Stable<EmrId>,
-    issued_by: Stable<IcPrincipal>,
+    issued_by: Stable<Users>,
     metadata: Vec<(EmrMetadataKey, EmrMetadataValue)>,
 }
 
@@ -115,7 +107,7 @@ impl Emr {
         EmrId(Uuid::new_v4())
     }
 
-    pub fn new(issued_by: IcPrincipal, metadata: Vec<(String, String)>) -> Self {
+    pub fn new(issued_by: Users, metadata: Vec<(String, String)>) -> Self {
         Self {
             id: Self::random_id().into(),
             issued_by: Stable(issued_by),
@@ -130,7 +122,7 @@ impl Emr {
     pub fn find(&self, k: &str) -> Option<&str> {
         self.metadata
             .iter()
-            .find(|(_k, v)| _k.0.eq(k))
+            .find(|(_k, _v)| _k.0.eq(k))
             .map(|(_k, v)| v.as_str())
     }
 
@@ -166,16 +158,16 @@ impl Emr {
     }
 }
 
-pub struct IssuerToEmrMap(Set<(Stable<IcPrincipal>, Stable<EmrId>)>);
+pub struct IssuerToEmrMap(Set<(Stable<Users>, Stable<EmrId>)>);
 
 impl IssuerToEmrMap {
-    pub(self) fn issue(&mut self, from: Stable<IcPrincipal>, id: Stable<EmrId>) {
+    pub(self) fn issue(&mut self, from: Stable<Users>, id: Stable<EmrId>) {
         self.0.insert((from, id), ());
     }
 
-    pub(self) fn get_all_issued_by(&self, from: Stable<IcPrincipal>) -> Vec<Stable<EmrId>> {
+    pub(self) fn get_all_issued_by(&self, from: Stable<Users>) -> Vec<Stable<EmrId>> {
         self.0
-            .range(((from.clone()), Stable(EmrId(Uuid::nil()))))
+            .range(((from.clone()), Stable(EmrId(Uuid::nil())))..)
             .filter(|((issuer, _), _)| issuer == &from)
             .map(|((_, id), _)| id.clone())
             .collect()
@@ -224,11 +216,11 @@ impl EmrStorageMap {
         }
     }
 
-    fn issue(&mut self, emr_id: Stable<EmrId>, issued_by: Stable<IcPrincipal>) {
+    fn issue(&mut self, emr_id: Stable<EmrId>, issued_by: Stable<Users>) {
         self.0.insert(
             (emr_id, Stable(Self::STATIC_EMR_METADATA_KEY.to_string())),
             // clean this later
-            issued_by.0 .0.into(),
+            issued_by.into_inner().0.to_string().into(),
         );
     }
 
@@ -244,7 +236,9 @@ impl EmrStorageMap {
             return None;
         };
 
-        let issued_by = IcPrincipal(issued_by.0);
+        let issued_by = Principal::from_str(issued_by.into_inner().as_str())
+            .expect("storage should only store valid principals");
+        let issued_by = Users(issued_by);
 
         let metadata = self
             .0

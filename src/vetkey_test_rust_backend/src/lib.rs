@@ -7,8 +7,8 @@
 mod mem;
 mod wrapper;
 mod types;
-use ic_cdk::{post_upgrade, pre_upgrade, query, update};
-use ic_stable_structures::{writer::Writer, Memory as _, StableBTreeMap};
+
+use ic_stable_structures::{StableBTreeMap};
 use mem::{Memory};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;

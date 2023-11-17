@@ -1,6 +1,6 @@
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::storable::Bound;
-use ic_stable_structures::{BTreeMap, DefaultMemoryImpl, Storable};
+
+use ic_stable_structures::{DefaultMemoryImpl};
 use paste::paste;
 use std::cell::RefCell;
 

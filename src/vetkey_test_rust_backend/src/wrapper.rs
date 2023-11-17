@@ -1,14 +1,14 @@
-use core::mem::size_of;
+
 
 use ic_stable_structures::{storable::Bound, Storable};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// trait for types that have a bound, i.e. a maximum size
 /// and whether they are fixed size or not
 ///
-/// this must be implemented for inner types of [Serializeable] as the storable trait requires it
+/// this must be implemented for inner types of [Stable] as the storable trait requires it
 /// types to have a bounded information on them, but we can't flexibly implement it for all types
-/// that [Serializeable] wraps. so the bounded information must be implemented manually.
+/// that [Stable] wraps. so the bounded information must be implemented manually.
 pub trait Bounded {
     const BOUND: Bound;
 }
@@ -81,6 +81,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::mem::size_of;
+
     use serde::Deserialize;
 
     use super::*;
