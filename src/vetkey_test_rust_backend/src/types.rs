@@ -158,6 +158,65 @@ impl Emr {
     }
 }
 
+pub struct Unidentified;
+pub struct Identified(Stable<EmrId>);
+
+pub struct UnkownIssuer;
+pub struct KnownIssuer(Stable<Users>);
+
+pub struct Empty;
+
+pub struct EmrBuilder<Unidentified, UnkownIssuer, Empty> {
+    id: Unidentified,
+    issued_by: UnkownIssuer,
+    metadata: Empty,
+}
+
+impl EmrBuilder<Unidentified, UnkownIssuer, Empty> {
+    pub fn new() -> Self {
+        Self {
+            id: Unidentified,
+            issued_by: UnkownIssuer,
+            metadata: Empty,
+        }
+    }
+}
+
+impl EmrBuilder<Unidentified, UnkownIssuer, Empty> {
+    pub fn id(self, id: EmrId) -> EmrBuilder<Identified, UnkownIssuer, Empty> {
+        EmrBuilder {
+            id: Identified(id.into()),
+            issued_by: self.issued_by,
+            metadata: self.metadata,
+        }
+    }
+}
+
+impl EmrBuilder<Identified, UnkownIssuer, Empty> {
+    pub fn issued_by(self, issued_by: Users) -> EmrBuilder<Identified, KnownIssuer, Empty> {
+        EmrBuilder {
+            id: self.id,
+            issued_by: KnownIssuer(issued_by.into()),
+            metadata: self.metadata,
+        }
+    }
+}
+
+impl EmrBuilder<Identified, KnownIssuer, Empty> {
+    pub fn metadata(self, metadata: Vec<(String, String)>) -> Emr {
+        let metadata = metadata
+            .into_iter()
+            .map(|(k, v)| (Stable(k), Stable(v)))
+            .collect();
+
+        Emr {
+            id: self.id.0,
+            issued_by: self.issued_by.0,
+            metadata,
+        }
+    }
+}
+
 pub struct IssuerToEmrMap(Set<(Stable<Users>, Stable<EmrId>)>);
 
 impl IssuerToEmrMap {
