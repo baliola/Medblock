@@ -7,6 +7,7 @@
 mod mem;
 mod wrapper;
 mod types;
+mod encryption;
 
 use ic_stable_structures::{StableBTreeMap};
 use mem::{Memory};

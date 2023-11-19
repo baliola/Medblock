@@ -808,6 +808,7 @@ dependencies = [
  "anyhow",
  "candid",
  "ciborium",
+ "hex",
  "ic-cdk",
  "ic-cdk-timers",
  "ic-stable-structures",
