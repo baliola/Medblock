@@ -71,6 +71,16 @@ pub type Set<V> = BTreeMap<V, (), Memory>;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Users(Principal);
 
+impl Users {
+    pub fn to_principal(self) -> Principal {
+        self.0
+    }
+
+    pub fn current_user() -> Self {
+        Self(ic_cdk::caller())
+    }
+}
+
 impl From<Principal> for Users {
     fn from(value: Principal) -> Self {
         Self(value)
