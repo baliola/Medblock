@@ -1,4 +1,4 @@
-
+use std::ops::DerefMut;
 
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{de::DeserializeOwned, Serialize};
@@ -26,9 +26,47 @@ pub struct Stable<Data>(pub Data)
 where
     Data: Serialize + DeserializeOwned + Bounded;
 
+impl<Data> DerefMut for Stable<Data>
+where
+    Data: Serialize + DeserializeOwned + Bounded,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<Data> AsRef<Data> for Stable<Data>
+where
+    Data: Serialize + DeserializeOwned + Bounded,
+{
+    fn as_ref(&self) -> &Data {
+        &self.0
+    }
+}
+
+impl<Data> AsMut<Data> for Stable<Data>
+where
+    Data: Serialize + DeserializeOwned + Bounded,
+{
+    fn as_mut(&mut self) -> &mut Data {
+        &mut self.0
+    }
+}
+
+impl<Data> std::ops::Deref for Stable<Data>
+where
+    Data: Serialize + DeserializeOwned + Bounded,
+{
+    type Target = Data;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl<Data> Stable<Data>
 where
-    Data: Serialize + DeserializeOwned + Bounded
+    Data: Serialize + DeserializeOwned + Bounded,
 {
     /// unwrap the inner data (consumes the wrapper)
     pub fn into_inner(self) -> Data {
@@ -42,17 +80,6 @@ where
 {
     fn from(value: Data) -> Self {
         Self(value)
-    }
-}
-
-impl<Data> std::ops::Deref for Stable<Data>
-where
-    Data: Serialize + DeserializeOwned + Bounded,
-{
-    type Target = Data;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 

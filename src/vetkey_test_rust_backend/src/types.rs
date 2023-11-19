@@ -1,4 +1,4 @@
-use std::{mem::size_of, str::FromStr};
+use std::{mem::size_of, ops::DerefMut, str::FromStr};
 
 use candid::Principal;
 use ic_stable_structures::{storable::Bound, BTreeMap, Storable};
@@ -63,6 +63,39 @@ bounded! {
     EmrId: u16;
 }
 
+macro_rules! auto_deref {
+
+    (@CONSTRUCT ) => {};
+
+    (@CONSTRUCT $ident:tt: $target:ty; $($rest:tt)*) => {
+            impl std::ops::Deref for $ident {
+                type Target = $target;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl DerefMut for $ident {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.0
+                }
+            }
+
+            auto_deref!(@CONSTRUCT $($rest)*);
+        };
+
+    ($($ident:tt: $target:tt;)*) => {
+        auto_deref!(@CONSTRUCT $($ident: $target;)*);
+    };
+}
+
+
+auto_deref! {
+    Users: Principal;
+    EmrId: Uuid;
+}
+
 /// wrapper types for stable [BtreeMap]
 pub type Map<K, V> = BTreeMap<K, V, Memory>;
 
@@ -92,7 +125,7 @@ pub struct VerifiedEmrManagerSet(Set<Stable<Users>>);
 impl VerifiedEmrManagerSet {
     pub fn is_verified(&self, user: &Users) -> bool {
         //TODO : remove this unnescarssy clone
-        
+
         self.0.contains_key(&user.clone().into())
     }
 }
@@ -183,7 +216,6 @@ impl Emr {
 }
 
 pub struct IssuerToEmrMap(Set<(Stable<Users>, Stable<EmrId>)>);
-pub struct UserToEmrMap(Set<(Stable<Users>, Stable<EmrId>)>);
 
 impl IssuerToEmrMap {
     pub(self) fn issue(&mut self, from: Stable<Users>, id: Stable<EmrId>) {

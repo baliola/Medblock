@@ -8,13 +8,12 @@ mod mem;
 mod wrapper;
 mod types;
 mod encryption;
+pub mod index;
 
 use ic_stable_structures::{StableBTreeMap};
 use mem::{Memory};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-
-const VETKD_SYSTEM_API_CANISTER_ID: &str = "s55qq-oqaaa-aaaaa-aaakq-cai";
 
 // The state of the canister.
 #[derive(Serialize, Deserialize)]
@@ -29,10 +28,11 @@ struct State {
     #[serde(skip, default = "init_stable_data")]
     stable_data: StableBTreeMap<u128, u128, Memory>,
 }
-
 thread_local! {
     static STATE: RefCell<State> = RefCell::new(State::default());
 }
+
+
 
 fn init_stable_data() -> StableBTreeMap<u128, u128, Memory> {
     StableBTreeMap::init(crate::mem::MemoryMetadata::get_stable_btree_memory())
