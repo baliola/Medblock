@@ -91,7 +91,9 @@ pub struct VerifiedEmrManagerSet(Set<Stable<Users>>);
 
 impl VerifiedEmrManagerSet {
     pub fn is_verified(&self, user: &Users) -> bool {
-        self.0.contains_key(user)
+        //TODO : remove this unnescarssy clone
+        
+        self.0.contains_key(&user.clone().into())
     }
 }
 
