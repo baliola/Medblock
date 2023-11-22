@@ -9,6 +9,7 @@ mod wrapper;
 mod types;
 mod encryption;
 pub mod index;
+mod macros;
 
 use ic_stable_structures::{StableBTreeMap};
 use mem::{Memory};
