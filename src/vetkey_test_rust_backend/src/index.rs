@@ -33,7 +33,7 @@ impl TryFrom<String> for NIK {
             return Err(NikError::InvalidLength);
         }
 
-        let mut buffer = [0_u8; 16];
+        let mut buffer = [0_u8; 32];
 
         value.chars().enumerate().try_for_each(|(i, c)| {
             let digit = c.to_digit(10).ok_or(NikError::InvalidFormat)?;
