@@ -12,13 +12,14 @@ use crate::{
 //TODO : find a way to optimize memory usage, especially the key inside the metadata map of the emr
 
 /// cutting boiler plate for implementing bounded traits on types
+#[macro_export]
 macro_rules! bounded {
     (@CONSTRUCT ) => {};
 
 
     (@CONSTRUCT $ident:tt:Unbounded; $($rest:tt)*) => {
-        impl Bounded for $ident {
-            const BOUND: Bound = Bound::Unbounded;
+        impl crate::wrapper::Bounded for $ident {
+            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
         }
 
         bounded!(@CONSTRUCT $($rest)*);
@@ -26,8 +27,8 @@ macro_rules! bounded {
 
 
     (@CONSTRUCT $ident:ident: $ty:ty; $($rest:tt)*) => {
-            impl Bounded for $ident {
-                const BOUND: Bound = <$ty as Storable>::BOUND;
+            impl crate::wrapper::Bounded for $ident {
+                const BOUND: ic_stable_structures::storable::Bound = <$ty as ic_stable_structures::Storable>::BOUND;
             }
 
             bounded!(@CONSTRUCT $($rest)*);
@@ -37,8 +38,8 @@ macro_rules! bounded {
         max_size: $max:expr,
         is_fixed: $is_fixed:expr,
     }; $($rest:tt)*)=>{
-        impl Bounded for $ident {
-            const BOUND: Bound = Bound::Bounded{
+        impl crate::wrapper::Bounded for $ident {
+            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded{
                 max_size: $max,
                 is_fixed_size: $is_fixed,
 
@@ -63,11 +64,12 @@ bounded! {
     EmrId: u16;
 }
 
+#[macro_export]
 macro_rules! auto_deref {
 
     (@CONSTRUCT ) => {};
 
-    (@CONSTRUCT $ident:tt: $target:ty; $($rest:tt)*) => {
+    (@CONSTRUCT $ident:ty: $target:ty; $($rest:tt)*) => {
             impl std::ops::Deref for $ident {
                 type Target = $target;
 
@@ -76,7 +78,7 @@ macro_rules! auto_deref {
                 }
             }
 
-            impl DerefMut for $ident {
+            impl std::ops::DerefMut for $ident {
                 fn deref_mut(&mut self) -> &mut Self::Target {
                     &mut self.0
                 }
@@ -85,11 +87,10 @@ macro_rules! auto_deref {
             auto_deref!(@CONSTRUCT $($rest)*);
         };
 
-    ($($ident:tt: $target:tt;)*) => {
+    ($($ident:ty: $target:ty;)*) => {
         auto_deref!(@CONSTRUCT $($ident: $target;)*);
     };
 }
-
 
 auto_deref! {
     Users: Principal;
