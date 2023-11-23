@@ -1,4 +1,3 @@
-
 /// cutting boiler plate for implementing bounded traits on types
 #[macro_export]
 macro_rules! bounded {
@@ -43,7 +42,13 @@ macro_rules! bounded {
     };
 
 }
-
+#[macro_export]
+macro_rules! kib {
+    ($size:expr) => {
+        $size * 1024
+    };
+    () => {};
+}
 
 #[macro_export]
 macro_rules! auto_deref {

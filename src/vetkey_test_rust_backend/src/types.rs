@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    auto_deref, bounded,
     mem::Memory,
-    wrapper::{Bounded, Stable}, bounded, auto_deref,
+    wrapper::{Bounded, Stable}, kib,
 };
 //TODO : find a way to optimize memory usage, especially the key inside the metadata map of the emr
 
@@ -18,7 +19,6 @@ bounded! {
     };
     EmrId: u16;
 }
-
 
 auto_deref! {
     Users: Principal;
@@ -161,6 +161,8 @@ impl IssuerToEmrMap {
 }
 
 pub type EmrMetadataKey = Stable<String>;
+
+const CIPHERTEXT_MAX_LEN_BYTES: usize = kib!(5);
 // TODO : string for simplicity for now, should find a way to optimize this later.
 pub type EmrMetadataValue = Stable<String>;
 pub struct EmrStorageMap(Map<(Stable<EmrId>, EmrMetadataKey), EmrMetadataValue>);
