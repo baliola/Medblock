@@ -10,6 +10,7 @@ mod types;
 mod encryption;
 pub mod index;
 mod macros;
+mod access_control;
 
 use ic_stable_structures::{StableBTreeMap};
 use mem::{Memory};

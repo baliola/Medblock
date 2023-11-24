@@ -5,7 +5,7 @@ use ic_stable_structures::Storable;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    auto_deref, bounded,
+    deref, bounded,
     types::{Map, Set, Users, EmrId},
     wrapper::{Bounded, Stable},
 };
@@ -53,7 +53,7 @@ impl NikBlindIndex {
 }
 pub struct OwnerMap(Map<Stable<Users>, Stable<NIK>>);
 
-auto_deref! {
+deref! {
     OwnerMap: Map<Stable<Users>, Stable<NIK>>;
     NIK: [u8; 16];
 }

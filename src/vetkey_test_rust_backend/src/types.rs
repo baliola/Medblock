@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    auto_deref, bounded,
+    deref, bounded,
     mem::Memory,
     wrapper::{Bounded, Stable}, kib,
 };
@@ -20,7 +20,7 @@ bounded! {
     EmrId: u16;
 }
 
-auto_deref! {
+deref! {
     Users: Principal;
     EmrId: Uuid;
 }
