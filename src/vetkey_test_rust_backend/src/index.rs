@@ -55,7 +55,7 @@ pub struct OwnerMap(Map<Stable<Users>, Stable<NIK>>);
 
 deref! {
     OwnerMap: Map<Stable<Users>, Stable<NIK>>;
-    NIK: [u8; 16];
+    NIK: [u8; 32];
 }
 
 bounded! {
