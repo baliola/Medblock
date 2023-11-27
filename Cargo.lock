@@ -444,6 +444,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "medblock"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candid",
+ "ciborium",
+ "hex",
+ "ic-cdk",
+ "ic-cdk-timers",
+ "ic-stable-structures",
+ "paste",
+ "serde",
+ "thiserror",
+ "tiny-keccak",
+ "uuid",
+]
+
+[[package]]
 name = "memchr"
 version = "2.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -815,24 +833,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vetkey_test_rust_backend"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "candid",
- "ciborium",
- "hex",
- "ic-cdk",
- "ic-cdk-timers",
- "ic-stable-structures",
- "paste",
- "serde",
- "thiserror",
- "tiny-keccak",
- "uuid",
-]
 
 [[package]]
 name = "wasi"

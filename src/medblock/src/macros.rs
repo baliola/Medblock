@@ -44,7 +44,7 @@ macro_rules! bounded {
 }
 #[macro_export]
 macro_rules! kib {
-    ($size:lit) => {
+    ($size:expr) => {
         $size * 1024
     };
     () => {};
@@ -70,17 +70,17 @@ macro_rules! deref {
                 }
             }
 
-            auto_deref!(@CONSTRUCT $($rest)*);
+            deref!(@CONSTRUCT $($rest)*);
         };
 
     // handle single case
     ($ident:ty: $target:ty) => {
-        auto_deref!(@CONSTRUCT $ident: $target;);
+        deref!(@CONSTRUCT $ident: $target;);
     };
 
     // handle multiple cases
     ($($ident:ty: $target:ty;)*) => {
-        auto_deref!(@CONSTRUCT $($ident: $target;)*);
+        deref!(@CONSTRUCT $($ident: $target;)*);
     };
 
 }

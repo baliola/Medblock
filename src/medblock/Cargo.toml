@@ -1,5 +1,5 @@
 [package]
-name = "vetkey_test_rust_backend"
+name = "medblock"
 version = "0.1.0"
 edition = "2021"
 
