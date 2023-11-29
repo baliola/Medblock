@@ -1,47 +1,4 @@
-/// cutting boiler plate for implementing bounded traits on types
-#[macro_export]
-macro_rules! bounded {
-    (@CONSTRUCT ) => {};
 
-
-    (@CONSTRUCT $ident:tt:Unbounded; $($rest:tt)*) => {
-        impl crate::wrapper::Bounded for $ident {
-            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
-        }
-
-        bounded!(@CONSTRUCT $($rest)*);
-    };
-
-
-    (@CONSTRUCT $ident:ident: $ty:ty; $($rest:tt)*) => {
-            impl crate::wrapper::Bounded for $ident {
-                const BOUND: ic_stable_structures::storable::Bound = <$ty as ic_stable_structures::Storable>::BOUND;
-            }
-
-            bounded!(@CONSTRUCT $($rest)*);
-    };
-
-    (@CONSTRUCT $ident:ty:{
-        max_size: $max:expr,
-        is_fixed: $is_fixed:expr,
-    }; $($rest:tt)*)=>{
-        impl crate::wrapper::Bounded for $ident {
-            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded{
-                max_size: $max,
-                is_fixed_size: $is_fixed,
-
-            };
-        }
-
-        bounded!(@CONSTRUCT $($rest)*);
-
-    };
-
-    ($($ident:tt: $any_expr:tt;)*) => {
-        bounded!(@CONSTRUCT $($ident: $any_expr;)*);
-    };
-
-}
 #[macro_export]
 macro_rules! kib {
     ($size:expr) => {
