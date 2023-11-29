@@ -9,19 +9,19 @@ macro_rules! kib {
 /// auto deref macro.
 /// meant to be used for newtypes.
 /// to access `self` use `_self` in the expression.
-/// 
+///
 /// the syntax is `<IDENT>: <TARGET> $(|<SELF>| => <EXPR>)` for single line implementation like below
 /// ```
 /// deref!(Foo: Bar |_self| => &Bar::from(&_self.0));
-/// 
-/// 
-/// ``` 
+///
+///
+/// ```
 /// or
 /// `deref!(<IDENT>: <TARGET>;)` for direct implementation like below
 /// ```
 /// deref!(Foo: Bar;);
 /// ```
-/// 
+///
 /// can also be combined like below
 /// ```
 /// deref!{
@@ -31,10 +31,12 @@ macro_rules! kib {
 /// ```
 #[macro_export]
 macro_rules! deref {
+    (@CONSTRUCT) => {};
 
-    (@CONSTRUCT ) => {};
-
-    (@CONSTRUCT $ident:ty: $target:ty; $($rest:tt)*) => {
+    (
+        @CONSTRUCT $ident:ty: $target:ty;
+        $($rest:tt)*
+    ) => {
             impl std::ops::Deref for $ident {
                 type Target = $target;
 
@@ -43,9 +45,12 @@ macro_rules! deref {
                 }
             }
             deref!(@CONSTRUCT $($rest)*);
-        };
+    };
 
-    (@CONSTRUCT $ident:tt: $target:tt $self:ident $expr:expr; $($rest:tt)*) => {
+    (
+        @CONSTRUCT $ident:tt: $target:tt $self:ident $expr:expr;
+        $($rest:tt)*
+    ) => {
             impl std::ops::Deref for $ident {
                 type Target = $target;
 
@@ -55,10 +60,10 @@ macro_rules! deref {
                 }
             }
             deref!(@CONSTRUCT $($rest)*);
-        };
+    };
 
     // handle single case
-    ($ident:tt: $target:tt $(|$self:ident| => $expr:expr)?) => {
+    ($ident:tt: $target:tt $(| $self:ident | => $expr:expr)?) => {
         deref!(@CONSTRUCT $ident: $target $($self)? $($expr)?;);
     };
 

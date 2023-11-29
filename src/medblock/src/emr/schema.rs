@@ -1,4 +1,3 @@
-use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashSet,
     derive::{ AsFixedSizeBytes, StableType },

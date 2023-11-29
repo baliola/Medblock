@@ -1,0 +1,17 @@
+# rustfmt configuration file
+
+# Set the maximum line length for code formatting
+max_width = 100
+
+# Use 4 spaces for indentation
+tab_spaces = 4
+
+# Use the default set of formatting rules
+# You can customize these rules based on your preferences
+# For more information, refer to the rustfmt documentation
+# https://github.com/rust-lang/rustfmt
+remove_nested_parens = true
+use_field_init_shorthand = true
+reorder_modules = true
+reorder_imports = true
+newline_style = "Unix"

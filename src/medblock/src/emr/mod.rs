@@ -1,6 +1,5 @@
 mod schema;
 
-use candid::{CandidType, Deserialize};
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},

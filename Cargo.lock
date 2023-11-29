@@ -759,7 +759,6 @@ name = "medblock"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "candid 0.9.11",
  "ciborium",
  "hex",
  "ic-cdk 0.11.3",
