@@ -8,6 +8,12 @@ macro_rules! kib {
 
 /// auto deref macro.
 /// to access `self` use `_self` in the expression.
+/// 
+/// # Example
+/// 
+/// ```
+/// deref!(ID: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
+/// ```
 #[macro_export]
 macro_rules! deref {
 

@@ -10,10 +10,13 @@ use uuid::Uuid;
 
 use crate::{deref, types::{ID, Timestamp, EmrMetadataKey}};
 
+
+/// version aware emr
 #[non_exhaustive]
 pub enum Emr {
     V001(V001),
 }
+
 
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 pub struct V001 {
