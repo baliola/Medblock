@@ -1,13 +1,17 @@
-use candid::CandidType;
-use ic_stable_memory::{collections::SHashSet, derive::{AsFixedSizeBytes, StableType}, StableType};
+use candid::{ CandidType, Principal };
+use ic_stable_memory::{
+    collections::SHashSet,
+    derive::{ AsFixedSizeBytes, StableType },
+    StableType,
+};
 
+use crate::types::{ Id, Timestamp, EmrRecordsKey };
 
-// #[derive(
-//     CandidType, StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug,
-// )]
-// pub struct Schema {
-//     schema_id: ID,
-//     created_at: Timestamp,
-//     updated_at: Timestamp,
-//     keys: SHashSet<EmrMetadataKey>,
-// }
+#[derive(StableType, AsFixedSizeBytes, Debug)]
+pub struct EmrSchema {
+    owned_by: Principal,
+    schema_id: Id,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    keys: SHashSet<EmrRecordsKey>,
+}

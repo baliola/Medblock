@@ -7,12 +7,27 @@ macro_rules! kib {
 }
 
 /// auto deref macro.
+/// meant to be used for newtypes.
 /// to access `self` use `_self` in the expression.
 /// 
-/// # Example
-/// 
+/// the syntax is `<IDENT>: <TARGET> $(|<SELF>| => <EXPR>)` for single line implementation like below
 /// ```
-/// deref!(ID: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
+/// deref!(Foo: Bar |_self| => &Bar::from(&_self.0));
+/// 
+/// 
+/// ``` 
+/// or
+/// `deref!(<IDENT>: <TARGET>;)` for direct implementation like below
+/// ```
+/// deref!(Foo: Bar;);
+/// ```
+/// 
+/// can also be combined like below
+/// ```
+/// deref!{
+///   Foo: Bar;
+///   Baz: Qux |_self| => &Qux::from(&_self.0);
+///    ...}
 /// ```
 #[macro_export]
 macro_rules! deref {

@@ -17,32 +17,32 @@ pub struct Timestamp(u64);
 #[derive(
     CandidType, StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug,
 )]
-pub struct EmrMetadataKey([u8; 100]);
-deref!(EmrMetadataKey: [u8; 100]);
+pub struct EmrRecordsKey([u8; 100]);
+deref!(EmrRecordsKey: [u8; 100]);
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
 #[derive(
     CandidType, StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug,
 )]
-pub struct ID([u8; 16]);
+pub struct Id([u8; 16]);
 
-impl ID {
+impl Id {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl Default for ID {
+impl Default for Id {
     fn default() -> Self {
         uuid::Uuid::new_v4().into()
     }
 }
 
-impl From<Uuid> for ID {
+impl From<Uuid> for Id {
     fn from(value: Uuid) -> Self {
         Self(value.into_bytes())
     }
 }
 
-deref!(ID: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
+deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
 

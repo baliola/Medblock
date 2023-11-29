@@ -8,7 +8,7 @@ use ic_stable_memory::{
 };
 use uuid::Uuid;
 
-use crate::{deref, types::{ID, Timestamp, EmrMetadataKey}};
+use crate::{deref, types::{Id, Timestamp, EmrRecordsKey}};
 
 
 /// version aware emr
@@ -20,8 +20,8 @@ pub enum Emr {
 
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 pub struct V001 {
-    emr_id: ID,
+    emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
-    records: SHashMap<EmrMetadataKey, SBox<String>>,
+    records: SHashMap<EmrRecordsKey, SBox<String>>,
 }
