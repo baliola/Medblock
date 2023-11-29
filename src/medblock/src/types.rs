@@ -34,7 +34,7 @@ impl ID {
 
 impl Default for ID {
     fn default() -> Self {
-        uuid::Uuid::new_v4().into_bytes().into()
+        uuid::Uuid::new_v4().into()
     }
 }
 

@@ -8,7 +8,7 @@ use ic_stable_memory::{
 };
 use uuid::Uuid;
 
-use crate::deref;
+use crate::{deref, types::{ID, Timestamp, EmrMetadataKey}};
 
 #[non_exhaustive]
 pub enum Emr {
