@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! kib {
     ($size:expr) => {
@@ -7,6 +6,8 @@ macro_rules! kib {
     () => {};
 }
 
+/// auto deref macro.
+/// to access `self` use `_self` in the expression.
 #[macro_export]
 macro_rules! deref {
 
@@ -20,24 +21,28 @@ macro_rules! deref {
                     &self.0
                 }
             }
+            deref!(@CONSTRUCT $($rest)*);
+        };
 
-            impl std::ops::DerefMut for $ident {
-                fn deref_mut(&mut self) -> &mut Self::Target {
-                    &mut self.0
+    (@CONSTRUCT $ident:tt: $target:tt $self:ident $expr:expr; $($rest:tt)*) => {
+            impl std::ops::Deref for $ident {
+                type Target = $target;
+
+                fn deref(&self) -> &Self::Target {
+                    let $self =self;
+                    $expr
                 }
             }
-
             deref!(@CONSTRUCT $($rest)*);
         };
 
     // handle single case
-    ($ident:ty: $target:ty) => {
-        deref!(@CONSTRUCT $ident: $target;);
+    ($ident:tt: $target:tt $(|$self:ident| => $expr:expr)?) => {
+        deref!(@CONSTRUCT $ident: $target $($self)? $($expr)?;);
     };
 
     // handle multiple cases
-    ($($ident:ty: $target:ty;)*) => {
+    ($($ident:tt: $target:tt;)*) => {
         deref!(@CONSTRUCT $($ident: $target;)*);
     };
-
 }
