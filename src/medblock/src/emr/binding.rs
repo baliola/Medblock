@@ -1,4 +1,4 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::{SBTreeMap, SVec},
     derive::{AsFixedSizeBytes, StableType},
@@ -7,23 +7,30 @@ use ic_stable_memory::{
 
 use crate::{deref, types::Id};
 
-/// track emr issued for a particular user by storing it's emr id in this map.
+type Owner = Principal;
+type NIK = BindingKey;
+/// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
+/// used to claim emrs ownership. because principal that map to a particular BindingKey effectively owns 
+/// all the emrs that it's BindingKey map to.
+pub struct OwnerMap(SBTreeMap<Owner, BindingKey >);
+
+/// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
 /// we use hashed (keccak256) NIK as key and emr id as value.
 ///
 /// we don't use the principal directly because we want users to be able to change it's internet identity
 /// and still be able to own and access their emr.
 ///
 /// NIK SHOULD be hashed offchain before being used as key.
-pub struct BindingMap(SBTreeMap<BindingKey, SVec<EmrId>>);
-deref!(BindingMap: SBTreeMap<BindingKey, SVec<EmrId>>);
+pub struct EmrBindingMap(SBTreeMap<BindingKey, SVec<EmrId>>);
+deref!(EmrBindingMap: SBTreeMap<BindingKey, SVec<EmrId>>);
 
-impl BindingMap {
+impl EmrBindingMap {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl Default for BindingMap {
+impl Default for EmrBindingMap {
     fn default() -> Self {
         Self(SBTreeMap::new())
     }
