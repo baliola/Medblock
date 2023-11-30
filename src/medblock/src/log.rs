@@ -1,21 +1,28 @@
+use crate::{types::{Id, Timestamp}, deref};
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
-    collections::SLog,
-    StableType,
-    AsFixedSizeBytes,
-    derive::{ AsFixedSizeBytes, StableType },
+    collections::SLog as Log,
+    derive::{AsFixedSizeBytes, StableType},
+    AsFixedSizeBytes, StableType,
 };
 use serde::Deserialize;
 
-use crate::types::Id;
-
-pub struct Log<T>(SLog<T>) where T: StableType + AsFixedSizeBytes;
-
 #[derive(CandidType, StableType, AsFixedSizeBytes, Debug, Deserialize)]
 pub struct Entry {
-    timestamp: u64,
+    timestamp: Timestamp,
     emr_id: Id,
     provider: Principal,
 }
 
-pub type EntryLog = Log<Entry>;
+impl Entry {
+    pub fn new(emr_id: Id, provider: Principal) -> Self {
+        Self {
+            timestamp: Timestamp::new(),
+            emr_id,
+            provider,
+        }
+    }
+}
+
+pub struct EntryLog(Log<Entry>);
+deref!(EntryLog: Log<Entry>);

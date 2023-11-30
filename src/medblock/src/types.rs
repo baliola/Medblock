@@ -22,10 +22,12 @@ use uuid::Uuid;
     Clone,
     Debug,
     Copy,
+    Deserialize,
 )]
 pub struct Timestamp(u64);
 
 impl Timestamp {
+    /// returns the current time in nanoseconds
     pub fn new() -> Self {
         Self::default()
     }

@@ -71,4 +71,8 @@ macro_rules! deref {
     ($($ident:tt: $target:tt;)*) => {
         deref!(@CONSTRUCT $($ident: $target;)*);
     };
+    
+    ($ident:tt: $target:ty) => {
+        deref!(@CONSTRUCT $ident: $target;);
+    };
 }
