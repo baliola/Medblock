@@ -1,9 +1,5 @@
 use candid::CandidType;
-use ic_stable_memory::{
-    collections::SHashMap,
-    derive::{AsFixedSizeBytes, StableType},
-    SBox,
-};
+use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
 
 use crate::deref;
 use serde::Deserialize;

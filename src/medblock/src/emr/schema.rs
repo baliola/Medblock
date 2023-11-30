@@ -2,7 +2,6 @@ use candid::Principal;
 use ic_stable_memory::{
     collections::SHashSet,
     derive::{ AsFixedSizeBytes, StableType },
-    StableType,
 };
 
 use crate::types::{ Id, Timestamp, EmrRecordsKey };

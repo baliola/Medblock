@@ -3,7 +3,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SLog as Log,
     derive::{AsFixedSizeBytes, StableType},
-    AsFixedSizeBytes, StableType,
+    AsFixedSizeBytes,
 };
 use serde::Deserialize;
 

@@ -5,9 +5,8 @@ use ic_stable_memory::{
     derive::{AsFixedSizeBytes, StableType},
     SBox,
 };
-use uuid::Uuid;
 
-use crate::{deref, types::{Id, Timestamp, EmrRecordsKey}};
+use crate::types::{Id, Timestamp, EmrRecordsKey};
 
 
 /// version aware emr
