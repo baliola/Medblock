@@ -1,26 +1,46 @@
-use crate::{types::{Id, Timestamp}, deref};
+use crate::{
+    deref,
+    types::{Id, Timestamp},
+};
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SLog as Log,
-    derive::{AsFixedSizeBytes, StableType},
-    AsFixedSizeBytes,
+    derive::{AsFixedSizeBytes, CandidAsDynSizeBytes, StableType},
+    AsFixedSizeBytes, SBox,
 };
 use serde::Deserialize;
 
-#[derive(CandidType, StableType, AsFixedSizeBytes, Debug, Deserialize)]
-pub struct Entry {
-    timestamp: Timestamp,
+#[derive(StableType, CandidType, Debug, Deserialize, AsFixedSizeBytes)]
+pub struct RecordsV001 {
     emr_id: Id,
     provider: Principal,
 }
 
-impl Entry {
+impl RecordsV001 {
     pub fn new(emr_id: Id, provider: Principal) -> Self {
-        Self {
+        Self { emr_id, provider }
+    }
+}
+
+#[derive(StableType, CandidType, Debug, CandidAsDynSizeBytes, Deserialize)]
+pub enum EntryRecords {
+    V001(RecordsV001),
+}
+
+#[derive(CandidType, StableType, Debug, Deserialize, AsFixedSizeBytes)]
+pub struct Entry {
+    entry_id: Id,
+    timestamp: Timestamp,
+    records: SBox<EntryRecords>,
+}
+
+impl Entry {
+    pub fn new(entry: EntryRecords) -> Result<Self, EntryRecords> {
+        Ok(Self {
+            entry_id: Id::new(),
             timestamp: Timestamp::new(),
-            emr_id,
-            provider,
-        }
+            records: SBox::new(entry)?,
+        })
     }
 }
 
