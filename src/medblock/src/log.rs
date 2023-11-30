@@ -27,7 +27,7 @@ pub enum EntryRecords {
     V001(RecordsV001),
 }
 
-#[derive(CandidType, StableType, Debug, Deserialize, AsFixedSizeBytes)]
+#[derive(CandidType, StableType, Debug, AsFixedSizeBytes)]
 pub struct Entry {
     entry_id: Id,
     timestamp: Timestamp,
