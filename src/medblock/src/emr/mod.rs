@@ -1,4 +1,4 @@
-mod schema;
+pub mod binding;
 
 use ic_stable_memory::{
     collections::SHashMap,
