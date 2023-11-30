@@ -1,3 +1,4 @@
+use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SLog,
     StableType,
