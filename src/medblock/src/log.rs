@@ -26,3 +26,9 @@ impl Entry {
 
 pub struct EntryLog(Log<Entry>);
 deref!(EntryLog: Log<Entry>);
+
+impl Default for EntryLog {
+    fn default() -> Self {
+        Self(Log::new())
+    }
+}
