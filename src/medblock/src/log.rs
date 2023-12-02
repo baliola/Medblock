@@ -23,6 +23,7 @@ impl RecordsV001 {
 }
 
 #[derive(StableType, CandidType, Debug, CandidAsDynSizeBytes, Deserialize)]
+#[non_exhaustive]
 pub enum EntryRecords {
     V001(RecordsV001),
 }

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use candid::CandidType;
 use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
 
@@ -38,31 +40,10 @@ impl Default for Timestamp {
 #[derive(
     StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
 )]
-pub struct EmrRecordsKey([u8; MAX_KEY_LEN_BYTES]);
-
+pub struct EmrRecordsKey([u8; EMR_RECORDS_MAX_LEN_BYTES]);
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
-const MAX_KEY_LEN_BYTES: usize = 32;
-
-impl<'de> serde::Deserialize<'de> for EmrRecordsKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?.into_bytes();
-
-        if s.len() > MAX_KEY_LEN_BYTES {
-            return Err(serde::de::Error::custom(
-                "key must not exceed 100 ascii characters",
-            ));
-        }
-        // TODO: unnecessary copy
-        let mut key = [0u8; MAX_KEY_LEN_BYTES];
-        key[..s.len()].copy_from_slice(&s);
-
-        Ok(Self(key))
-    }
-}
-deref!(EmrRecordsKey: [u8; MAX_KEY_LEN_BYTES]);
+const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
+deref!(EmrRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES]);
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
 #[derive(
@@ -94,15 +75,49 @@ impl Into<Uuid> for Id {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for Id {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let uuid = Uuid::parse_str(&s).map_err(serde::de::Error::custom)?;
-        Ok(Self::from(uuid))
+deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
+
+mod deserialize {
+    use super::*;
+
+    impl<'de> serde::Deserialize<'de> for Id {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            let uuid = Uuid::parse_str(&s).map_err(serde::de::Error::custom)?;
+            Ok(Self::from(uuid))
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for EmrRecordsKey {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            if !deserializer.is_human_readable() {
+                return Err(serde::de::Error::custom("key must be a ascii string"));
+            }
+
+            let mut s = String::deserialize(deserializer)?;
+
+            if !s.is_ascii() {
+                return Err(serde::de::Error::custom("key must be ascii"));
+            }
+
+            s.make_ascii_lowercase();
+
+            if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
+                return Err(serde::de::Error::custom(
+                    "key must not exceed 100 ascii characters",
+                ));
+            }
+            // TODO: unnecessary copy
+            let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
+            key[..s.len()].copy_from_slice(s.as_bytes());
+
+            Ok(Self(key))
+        }
     }
 }
-
-deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));

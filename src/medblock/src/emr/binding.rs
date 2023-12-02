@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
-    collections::{SBTreeMap, SVec},
+    collections::{SBTreeMap, SBTreeSet, SVec},
     derive::{AsFixedSizeBytes, StableType},
     AsFixedSizeBytes, StableType,
 };
@@ -10,10 +10,11 @@ use crate::{deref, types::Id};
 type Owner = Principal;
 type NIK = BindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
-/// used to claim emrs ownership. because principal that map to a particular BindingKey effectively owns 
+/// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
-pub struct OwnerMap(SBTreeMap<Owner, BindingKey >);
+pub struct OwnerMap(SBTreeMap<Owner, NIK>);
 
+type EmrCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
 /// we use hashed (keccak256) NIK as key and emr id as value.
 ///
@@ -21,8 +22,8 @@ pub struct OwnerMap(SBTreeMap<Owner, BindingKey >);
 /// and still be able to own and access their emr.
 ///
 /// NIK SHOULD be hashed offchain before being used as key.
-pub struct EmrBindingMap(SBTreeMap<BindingKey, SVec<EmrId>>);
-deref!(EmrBindingMap: SBTreeMap<BindingKey, SVec<EmrId>>);
+pub struct EmrBindingMap(SBTreeMap<BindingKey, EmrCollection>);
+deref!(EmrBindingMap: SBTreeMap<BindingKey, EmrCollection>);
 
 impl EmrBindingMap {
     pub fn new() -> Self {
@@ -47,21 +48,25 @@ const KEY_LEN: usize = 32;
 pub struct BindingKey([u8; KEY_LEN]);
 deref!(BindingKey: [u8; KEY_LEN]);
 
-impl<'de> serde::Deserialize<'de> for BindingKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?.into_bytes();
+mod deserialize {
+    use super::*;
+    
+    impl<'de> serde::Deserialize<'de> for BindingKey {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?.into_bytes();
 
-        if s.len() != KEY_LEN {
-            return Err(serde::de::Error::custom("invalid nik hash length"));
+            if s.len() != KEY_LEN {
+                return Err(serde::de::Error::custom("invalid nik hash length"));
+            }
+
+            // TODO: unnecessary copy
+            let mut key = [0u8; KEY_LEN];
+            key[..s.len()].copy_from_slice(&s);
+
+            Ok(Self(key))
         }
-
-        // TODO: unnecessary copy
-        let mut key = [0u8; KEY_LEN];
-        key[..s.len()].copy_from_slice(&s);
-
-        Ok(Self(key))
     }
 }
