@@ -7,6 +7,15 @@ use crate::deref;
 use serde::Deserialize;
 use uuid::Uuid;
 
+/// ONLY impelment this trait for types that can't be serialized directly to candid.
+/// this will primarily be used for dynamic types such as Hashmap.
+pub trait CanisterResponse: serde::Serialize {
+    fn as_response(&self) -> String {
+        serde_json::to_string(self)
+            .expect("data structures that implement serialize should be serializable to json")
+    }
+}
+
 /// timestamp in nanoseconds
 #[derive(
     CandidType,
@@ -36,6 +45,15 @@ impl Default for Timestamp {
         Self(ic_cdk::api::time())
     }
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum EmrKeyError {
+    #[error("key must be a ascii string")]
+    ContainsInvalidChars,
+
+    #[error("key exceeded max emr records max length")]
+    TooLong,
+}
 /// emr metadata key must not exceed 100 ascii characters
 #[derive(
     StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
@@ -44,6 +62,38 @@ pub struct EmrRecordsKey([u8; EMR_RECORDS_MAX_LEN_BYTES]);
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
 const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
 deref!(EmrRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES]);
+
+impl EmrRecordsKey {
+    pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
+        Self::from_str(s.as_ref())
+    }
+}
+
+impl FromStr for EmrRecordsKey {
+    type Err = EmrKeyError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if !s.is_ascii() {
+            return Err(EmrKeyError::ContainsInvalidChars);
+        }
+
+        if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
+            return Err(EmrKeyError::TooLong);
+        }
+
+        // TODO: duplicate code as serialization implementation
+        let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
+        key[..s.len()].copy_from_slice(s.as_bytes());
+
+        Ok(Self(key))
+    }
+}
+
+impl EmrRecordsKey {
+    pub fn to_ascii_str(&self) -> &str {
+        std::str::from_utf8(&self.0).expect("key must be ascii")
+    }
+}
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
 #[derive(

@@ -8,7 +8,10 @@ use ic_stable_memory::{
 };
 use serde::Deserialize;
 
-use crate::types::{EmrRecordsKey, Id, Timestamp};
+use crate::{
+    deref,
+    types::{EmrRecordsKey, Id, Timestamp},
+};
 /// version aware emr
 #[derive(StableType, CandidType, Debug, CandidAsDynSizeBytes, Deserialize)]
 #[non_exhaustive]
@@ -18,16 +21,19 @@ pub enum Emr {
 
 #[derive(StableType, CandidAsDynSizeBytes, Debug, CandidType)]
 pub struct Records(SHashMap<EmrRecordsKey, SBox<String>>);
+deref!(Records: SHashMap<EmrRecordsKey, SBox<String>>);
 
 #[derive(StableType, AsFixedSizeBytes, Debug, CandidType, Deserialize)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
-    records: SBox<Records>,
+    records: Records,
 }
 
 mod deserialize {
+    use std::collections::HashMap;
+    use serde::ser::SerializeMap;
     use super::*;
 
     pub struct RecordVisitor;
@@ -51,6 +57,18 @@ mod deserialize {
             }
 
             Ok(Records(records))
+        }
+    }
+
+    impl<'de> serde::Serialize<'de> for Records {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut map: <S as Serializer>::SerializeMap = serializer.serialize_map(Some(self.len()))?;
+            for (key, value) in self.iter() {
+                map.serialize_entry(key, value)
+            }
         }
     }
 
