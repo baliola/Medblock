@@ -9,14 +9,12 @@ use uuid::Uuid;
 
 /// ONLY impelment this trait for types that can't be serialized directly to candid.
 /// this will primarily be used for dynamic types such as Hashmap.
-pub trait CanisterResponse: serde::Serialize {
-    fn as_response(&self) -> String {
-        serde_json::to_string(self)
+pub trait CanisterResponse<T: Serialize> {
+    fn encode(&self) -> String {
+        serde_json::to_string(&self.encode_json())
             .expect("data structures that implement serialize should be serializable to json")
     }
-}
-pub trait ToSerialize<T: serde::Serialize> {
-    fn to_serialize(&self) -> T;
+    fn encode_json(&self) -> T;
 }
 
 /// timestamp in nanoseconds

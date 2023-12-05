@@ -8,11 +8,11 @@ use ic_stable_memory::{
     derive::{AsFixedSizeBytes, CandidAsDynSizeBytes, StableType},
     SBox,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     deref,
-    types::{CanisterResponse, EmrRecordsKey, Id, Timestamp, ToSerialize},
+    types::{CanisterResponse, EmrRecordsKey, Id, Timestamp},
 };
 
 /// version aware emr
@@ -20,6 +20,14 @@ use crate::{
 #[non_exhaustive]
 pub enum Emr {
     V001(V001),
+}
+
+impl CanisterResponse<Representer> for Emr {
+    fn encode_json(&self) -> Representer {
+        match self {
+            Self::V001(v) => Representer::V001(V001Presenter::from_ref(&v)),
+        }
+    }
 }
 
 #[derive(StableType, Debug, AsFixedSizeBytes)]
@@ -34,12 +42,14 @@ pub struct V001 {
     records: Records,
 }
 
-impl ToSerialize<V001Presenter> for V001 {
-    fn to_serialize(&self) -> V001Presenter {
-        V001Presenter::from_ref(self)
-    }
+#[derive(serde::Serialize)]
+#[non_exhaustive]
+#[serde(tag = "version")]
+pub enum Representer {
+    V001(V001Presenter),
 }
 
+// TODO : optimize this later using lifetimes and such
 #[derive(serde::Serialize, Debug)]
 pub struct V001Presenter {
     emr_id: Id,
