@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 use crate::{
     deref,
-    types::{CanisterResponse, EmrRecordsKey, Id, Timestamp},
+    types::{CanisterResponse, EmrRecordsKey, Id, Timestamp, ToSerialize},
 };
 
 /// version aware emr
@@ -34,9 +34,31 @@ pub struct V001 {
     records: Records,
 }
 
+impl ToSerialize<V001Presenter> for V001 {
+    fn to_serialize(&self) -> V001Presenter {
+        V001Presenter::from_ref(self)
+    }
+}
+
+#[derive(serde::Serialize, Debug)]
 pub struct V001Presenter {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: HashMap<EmrRecordsKey, String>,
+}
+
+impl V001Presenter {
+    fn from_ref(value: &V001) -> Self {
+        V001Presenter {
+            emr_id: value.emr_id.clone(),
+            created_at: value.created_at.clone(),
+            updated_at: value.updated_at.clone(),
+            records: value
+                .records
+                .iter()
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect(),
+        }
+    }
 }

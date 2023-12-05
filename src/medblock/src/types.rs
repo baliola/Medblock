@@ -16,7 +16,7 @@ pub trait CanisterResponse: serde::Serialize {
     }
 }
 pub trait ToSerialize<T: serde::Serialize> {
-    fn to_serialize(self) -> T;
+    fn to_serialize(&self) -> T;
 }
 
 /// timestamp in nanoseconds
