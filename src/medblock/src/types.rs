@@ -4,7 +4,7 @@ use candid::CandidType;
 use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
 
 use crate::deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// ONLY impelment this trait for types that can't be serialized directly to candid.
@@ -14,6 +14,9 @@ pub trait CanisterResponse: serde::Serialize {
         serde_json::to_string(self)
             .expect("data structures that implement serialize should be serializable to json")
     }
+}
+pub trait ToSerialize<T: serde::Serialize> {
+    fn to_serialize(self) -> T;
 }
 
 /// timestamp in nanoseconds
@@ -30,6 +33,7 @@ pub trait CanisterResponse: serde::Serialize {
     Debug,
     Copy,
     Deserialize,
+    Serialize,
 )]
 pub struct Timestamp(u64);
 
@@ -130,14 +134,12 @@ deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
 mod deserialize {
     use super::*;
 
-    impl<'de> serde::Deserialize<'de> for Id {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    impl<'de> Serialize for EmrRecordsKey {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
-            D: serde::Deserializer<'de>,
+            S: serde::Serializer,
         {
-            let s = String::deserialize(deserializer)?;
-            let uuid = Uuid::parse_str(&s).map_err(serde::de::Error::custom)?;
-            Ok(Self::from(uuid))
+            serializer.serialize_str(self.to_ascii_str())
         }
     }
 
@@ -168,6 +170,24 @@ mod deserialize {
             key[..s.len()].copy_from_slice(s.as_bytes());
 
             Ok(Self(key))
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for Id {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            Uuid::deserialize(deserializer).map(|uuid| uuid.into())
+        }
+    }
+
+    impl<'de> serde::Serialize for Id {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            Uuid::from_bytes_ref(&self.0).serialize(serializer)
         }
     }
 }
