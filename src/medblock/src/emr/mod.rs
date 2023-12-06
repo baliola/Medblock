@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// version aware emr
-#[derive(StableType, AsFixedSizeBytes)]
+#[derive(StableType, AsFixedSizeBytes, Debug)]
 #[non_exhaustive]
 pub enum Emr {
     V001(V001),
@@ -42,7 +42,7 @@ pub struct V001 {
     records: Records,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 #[non_exhaustive]
 #[serde(tag = "version")]
 pub enum Representer {
@@ -70,5 +70,65 @@ impl V001Presenter {
                 .map(|(k, v)| (k.to_owned(), v.to_owned()))
                 .collect(),
         }
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn instruction_count() {
+        ic_stable_memory::stable_memory_init();
+
+        let mut records = Records(SHashMap::new());
+
+        records
+            .0
+            .insert(
+                EmrRecordsKey::new("key").unwrap(),
+                SBox::new(String::from("value")).unwrap(),
+            )
+            .unwrap();
+        records
+            .0
+            .insert(
+                EmrRecordsKey::new("key2").unwrap(),
+                SBox::new(String::from("value2")).unwrap(),
+            )
+            .unwrap();
+        records
+            .0
+            .insert(
+                EmrRecordsKey::new("key3").unwrap(),
+                SBox::new(String::from("value3")).unwrap(),
+            )
+            .unwrap();
+
+        let emr_id = Id::new();
+        let dummy_timestamp = Timestamp(0);
+        let mut emr = Emr::V001(V001 {
+            emr_id: emr_id.clone(),
+            created_at: dummy_timestamp,
+            updated_at: dummy_timestamp,
+            records,
+        });
+
+        let encoded = emr.encode_json();
+        let encoded = serde_json::to_value(&encoded).unwrap();
+
+        assert_eq!(
+            encoded,
+            serde_json::json!({
+                "version": "V001",
+                "emr_id": emr_id,
+                "created_at": dummy_timestamp,
+                "updated_at": dummy_timestamp,
+                "records": {
+                    "key": "value",
+                    "key2": "value2",
+                    "key3": "value3",
+                }
+            })
+        )
     }
 }

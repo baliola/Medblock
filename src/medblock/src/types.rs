@@ -33,7 +33,7 @@ pub trait CanisterResponse<T: Serialize> {
     Deserialize,
     Serialize,
 )]
-pub struct Timestamp(u64);
+pub struct Timestamp(pub(crate) u64);
 
 impl Timestamp {
     /// returns the current time in nanoseconds
@@ -60,10 +60,14 @@ pub enum EmrKeyError {
 #[derive(
     StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
 )]
-pub struct EmrRecordsKey([u8; EMR_RECORDS_MAX_LEN_BYTES]);
+pub struct EmrRecordsKey {
+    key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
+    /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
+    len: u8,
+}
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
 const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
-deref!(EmrRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES]);
+deref!(EmrRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
 
 impl EmrRecordsKey {
     pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
@@ -79,7 +83,9 @@ impl FromStr for EmrRecordsKey {
             return Err(EmrKeyError::ContainsInvalidChars);
         }
 
-        if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
+        let len = s.len();
+
+        if len > EMR_RECORDS_MAX_LEN_BYTES {
             return Err(EmrKeyError::TooLong);
         }
 
@@ -87,13 +93,15 @@ impl FromStr for EmrRecordsKey {
         let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
         key[..s.len()].copy_from_slice(s.as_bytes());
 
-        Ok(Self(key))
+        Ok(Self { key, len: len as u8 })
     }
 }
 
 impl EmrRecordsKey {
     pub fn to_ascii_str(&self) -> &str {
-        std::str::from_utf8(&self.0).expect("key must be ascii")
+        // discard invalid bytes
+        let buffer_ref = &self.key[..self.len as usize];
+        std::str::from_utf8(buffer_ref).expect("key must be ascii")
     }
 }
 
@@ -137,6 +145,7 @@ mod deserialize {
         where
             S: serde::Serializer,
         {
+            let s = self.to_ascii_str();
             serializer.serialize_str(self.to_ascii_str())
         }
     }
@@ -167,7 +176,10 @@ mod deserialize {
             let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
-            Ok(Self(key))
+            Ok(Self {
+                key,
+                len: s.len() as u8,
+            })
         }
     }
 
