@@ -55,27 +55,29 @@ pub enum EmrKeyError {
 
     #[error("key exceeded max emr records max length")]
     TooLong,
+
 }
-/// emr metadata key must not exceed 100 ascii characters
+
+/// arbitry ascii encoded string with max length of 32 bytes
 #[derive(
     StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
 )]
-pub struct EmrRecordsKey {
+pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
     len: u8,
 }
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
 const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
-deref!(EmrRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
+deref!(AsciiRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
 
-impl EmrRecordsKey {
+impl AsciiRecordsKey {
     pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
         Self::from_str(s.as_ref())
     }
 }
 
-impl FromStr for EmrRecordsKey {
+impl FromStr for AsciiRecordsKey {
     type Err = EmrKeyError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -97,7 +99,7 @@ impl FromStr for EmrRecordsKey {
     }
 }
 
-impl EmrRecordsKey {
+impl AsciiRecordsKey {
     pub fn to_ascii_str(&self) -> &str {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
@@ -140,7 +142,7 @@ deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
 mod deserialize {
     use super::*;
 
-    impl<'de> Serialize for EmrRecordsKey {
+    impl<'de> Serialize for AsciiRecordsKey {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: serde::Serializer,
@@ -149,7 +151,7 @@ mod deserialize {
         }
     }
 
-    impl<'de> serde::Deserialize<'de> for EmrRecordsKey {
+    impl<'de> serde::Deserialize<'de> for AsciiRecordsKey {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: serde::Deserializer<'de>,

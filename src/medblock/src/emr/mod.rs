@@ -1,4 +1,5 @@
 pub mod binding;
+mod providers;
 
 use std::{collections::HashMap, marker::PhantomData};
 
@@ -12,18 +13,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     deref,
-    types::{CanisterResponse, EmrRecordsKey, Id, Timestamp},
+    types::{CanisterResponse, AsciiRecordsKey, Id, Timestamp},
 };
 
 use self::binding::{EmrBindingMap, OwnerMap};
 
+#[derive(Default)]
 pub struct Registry {
     owners: OwnerMap,
     owner_emrs: EmrBindingMap,
     core_emrs: EmrCollection,
 }
 
-pub struct EmrCollection(ic_stable_memory::collections::SBTreeSet<Emr>);
+impl Registry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Default)]
+pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<Id, Emr>);
+deref!(EmrCollection: ic_stable_memory::collections::SBTreeMap<Id,Emr>);
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 #[non_exhaustive]
@@ -70,8 +80,8 @@ impl CanisterResponse<SerializeableEmrResponse> for Emr {
 }
 
 #[derive(StableType, Debug, AsFixedSizeBytes)]
-pub struct Records(SHashMap<EmrRecordsKey, SBox<String>>);
-deref!(Records: SHashMap<EmrRecordsKey, SBox<String>>);
+pub struct Records(SHashMap<AsciiRecordsKey, SBox<String>>);
+deref!(Records: SHashMap<AsciiRecordsKey, SBox<String>>);
 
 #[derive(AsFixedSizeBytes, StableType, Debug)]
 pub struct V001 {
@@ -94,7 +104,7 @@ pub struct V001SerializeableEmrResponse {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
-    records: HashMap<EmrRecordsKey, String>,
+    records: HashMap<AsciiRecordsKey, String>,
 }
 
 impl V001SerializeableEmrResponse {
@@ -124,21 +134,21 @@ mod tests {
         records
             .0
             .insert(
-                EmrRecordsKey::new("key").unwrap(),
+                AsciiRecordsKey::new("key").unwrap(),
                 SBox::new(String::from("value")).unwrap(),
             )
             .unwrap();
         records
             .0
             .insert(
-                EmrRecordsKey::new("key2").unwrap(),
+                AsciiRecordsKey::new("key2").unwrap(),
                 SBox::new(String::from("value2")).unwrap(),
             )
             .unwrap();
         records
             .0
             .insert(
-                EmrRecordsKey::new("key3").unwrap(),
+                AsciiRecordsKey::new("key3").unwrap(),
                 SBox::new(String::from("value3")).unwrap(),
             )
             .unwrap();

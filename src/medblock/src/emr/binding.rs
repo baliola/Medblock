@@ -8,33 +8,29 @@ use ic_stable_memory::{
 use crate::{deref, types::Id};
 
 type Owner = Principal;
-type NIK = BindingKey;
+type NIK = InternalBindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
+#[derive(Default)]
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
 deref!(OwnerMap: SBTreeMap<Owner, NIK>);
 
-type EmrCollection = SBTreeSet<EmrId>;
+pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
 /// we use hashed (keccak256) NIK as key and emr id as value.
 ///
 /// we don't use the principal directly because we want users to be able to change it's internet identity
 /// and still be able to own and access their emr.
 ///
-/// NIK SHOULD be hashed offchain before being used as key.
-pub struct EmrBindingMap(SBTreeMap<BindingKey, EmrCollection>);
-deref!(EmrBindingMap: SBTreeMap<BindingKey, EmrCollection>);
+/// NIK MUST be hashed offchain before being used as key.
+#[derive(Default)]
+pub struct EmrBindingMap(SBTreeMap<InternalBindingKey, EmrIdCollection>);
+deref!(EmrBindingMap: SBTreeMap<InternalBindingKey, EmrIdCollection>);
 
 impl EmrBindingMap {
     pub fn new() -> Self {
         Self::default()
-    }
-}
-
-impl Default for EmrBindingMap {
-    fn default() -> Self {
-        Self(SBTreeMap::new())
     }
 }
 
@@ -46,13 +42,13 @@ const KEY_LEN: usize = 32;
 #[derive(
     StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
 )]
-pub struct BindingKey([u8; KEY_LEN]);
-deref!(BindingKey: [u8; KEY_LEN]);
+pub struct InternalBindingKey([u8; KEY_LEN]);
+deref!(InternalBindingKey: [u8; KEY_LEN]);
 
 mod deserialize {
     use super::*;
     
-    impl<'de> serde::Deserialize<'de> for BindingKey {
+    impl<'de> serde::Deserialize<'de> for InternalBindingKey {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: serde::Deserializer<'de>,
