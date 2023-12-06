@@ -145,7 +145,6 @@ mod deserialize {
         where
             S: serde::Serializer,
         {
-            let s = self.to_ascii_str();
             serializer.serialize_str(self.to_ascii_str())
         }
     }
@@ -169,7 +168,7 @@ mod deserialize {
 
             if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
                 return Err(serde::de::Error::custom(
-                    "key must not exceed 100 ascii characters",
+                    "key must not exceed 32 ascii characters",
                 ));
             }
             // TODO: unnecessary copy

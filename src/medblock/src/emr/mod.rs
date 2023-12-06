@@ -22,10 +22,12 @@ pub enum Emr {
     V001(V001),
 }
 
-impl CanisterResponse<Representer> for Emr {
-    fn encode_json(&self) -> Representer {
+impl CanisterResponse<SerializeableEmrResponse> for Emr {
+    fn encode_json(&self) -> SerializeableEmrResponse {
         match self {
-            Self::V001(v) => Representer::V001(V001Presenter::from_ref(&v)),
+            Self::V001(v) => {
+                SerializeableEmrResponse::V001(V001SerializeableEmrResponse::from_ref(&v))
+            }
         }
     }
 }
@@ -45,22 +47,22 @@ pub struct V001 {
 #[derive(serde::Serialize, Debug)]
 #[non_exhaustive]
 #[serde(tag = "version")]
-pub enum Representer {
-    V001(V001Presenter),
+pub enum SerializeableEmrResponse {
+    V001(V001SerializeableEmrResponse),
 }
 
 // TODO : optimize this later using lifetimes and such
 #[derive(serde::Serialize, Debug)]
-pub struct V001Presenter {
+pub struct V001SerializeableEmrResponse {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: HashMap<EmrRecordsKey, String>,
 }
 
-impl V001Presenter {
+impl V001SerializeableEmrResponse {
     fn from_ref(value: &V001) -> Self {
-        V001Presenter {
+        V001SerializeableEmrResponse {
             emr_id: value.emr_id.clone(),
             created_at: value.created_at.clone(),
             updated_at: value.updated_at.clone(),
