@@ -13,6 +13,7 @@ type NIK = BindingKey;
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
+deref!(OwnerMap: SBTreeMap<Owner, NIK>);
 
 type EmrCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.

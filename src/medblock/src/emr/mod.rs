@@ -15,11 +15,48 @@ use crate::{
     types::{CanisterResponse, EmrRecordsKey, Id, Timestamp},
 };
 
+use self::binding::{EmrBindingMap, OwnerMap};
+
+pub struct Registry {
+    owners: OwnerMap,
+    owner_emrs: EmrBindingMap,
+    core_emrs: EmrCollection,
+}
+
+pub struct EmrCollection(ic_stable_memory::collections::SBTreeSet<Emr>);
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 #[non_exhaustive]
 pub enum Emr {
     V001(V001),
+}
+
+impl std::cmp::Eq for Emr {}
+
+impl std::cmp::PartialEq for Emr {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Emr {
+    pub fn id(&self) -> &Id {
+        match self {
+            Self::V001(v) => &v.emr_id,
+        }
+    }
+}
+
+impl std::cmp::Ord for Emr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id().cmp(other.id())
+    }
+}
+
+impl std::cmp::PartialOrd for Emr {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.id().partial_cmp(other.id())
+    }
 }
 
 impl CanisterResponse<SerializeableEmrResponse> for Emr {
