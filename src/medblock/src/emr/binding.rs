@@ -1,8 +1,7 @@
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
-    collections::{SBTreeMap, SBTreeSet, SVec},
+    collections::{SBTreeMap, SBTreeSet},
     derive::{AsFixedSizeBytes, StableType},
-    AsFixedSizeBytes, StableType,
 };
 
 use crate::{deref, types::Id};

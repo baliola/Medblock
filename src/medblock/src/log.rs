@@ -6,7 +6,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SLog as Log,
     derive::{AsFixedSizeBytes, CandidAsDynSizeBytes, StableType},
-    AsFixedSizeBytes, SBox,
+    SBox,
 };
 use serde::Deserialize;
 

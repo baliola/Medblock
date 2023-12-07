@@ -1,19 +1,17 @@
 pub mod binding;
 mod providers;
 
-use std::{collections::HashMap, marker::PhantomData};
+use std::collections::HashMap;
 
-use candid::CandidType;
 use ic_stable_memory::{
     collections::SHashMap,
-    derive::{AsFixedSizeBytes, CandidAsDynSizeBytes, StableType},
+    derive::{AsFixedSizeBytes, StableType},
     SBox,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     deref,
-    types::{CanisterResponse, AsciiRecordsKey, Id, Timestamp},
+    types::{AsciiRecordsKey, CanisterResponse, Id, Timestamp},
 };
 
 use self::binding::{EmrBindingMap, OwnerMap};
@@ -73,7 +71,7 @@ impl CanisterResponse<SerializeableEmrResponse> for Emr {
     fn encode_json(&self) -> SerializeableEmrResponse {
         match self {
             Self::V001(v) => {
-                SerializeableEmrResponse::V001(V001SerializeableEmrResponse::from_ref(&v))
+                SerializeableEmrResponse::V001(V001SerializeableEmrResponse::from_ref(v))
             }
         }
     }
@@ -111,8 +109,8 @@ impl V001SerializeableEmrResponse {
     fn from_ref(value: &V001) -> Self {
         V001SerializeableEmrResponse {
             emr_id: value.emr_id.clone(),
-            created_at: value.created_at.clone(),
-            updated_at: value.updated_at.clone(),
+            created_at: value.created_at,
+            updated_at: value.updated_at,
             records: value
                 .records
                 .iter()
@@ -123,6 +121,7 @@ impl V001SerializeableEmrResponse {
 }
 
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
@@ -155,7 +154,7 @@ mod tests {
 
         let emr_id = Id::new();
         let dummy_timestamp = Timestamp(0);
-        let mut emr = Emr::V001(V001 {
+        let emr = Emr::V001(V001 {
             emr_id: emr_id.clone(),
             created_at: dummy_timestamp,
             updated_at: dummy_timestamp,
@@ -163,7 +162,7 @@ mod tests {
         });
 
         let encoded = emr.encode_json();
-        let encoded = serde_json::to_value(&encoded).unwrap();
+        let encoded = serde_json::to_value(encoded).unwrap();
 
         assert_eq!(
             encoded,

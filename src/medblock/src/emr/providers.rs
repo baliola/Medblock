@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
-    collections::{SBTreeMap, SBTreeSet},
+    collections::{SBTreeMap},
     derive::{AsFixedSizeBytes, StableType},
     SBox,
 };
@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::{
     deref,
-    types::{AsciiRecordsKey, Id, Timestamp},
+    types::{Id, Timestamp},
 };
 
 use super::binding::EmrIdCollection;
@@ -71,13 +71,13 @@ impl std::cmp::Eq for Provider {}
 
 impl std::cmp::PartialOrd for Provider {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.internal_id().partial_cmp(&other.internal_id())
+        self.internal_id().partial_cmp(other.internal_id())
     }
 }
 
 impl std::cmp::Ord for Provider {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.internal_id().cmp(&other.internal_id())
+        self.internal_id().cmp(other.internal_id())
     }
 }
 

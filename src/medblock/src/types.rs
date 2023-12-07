@@ -131,13 +131,13 @@ impl From<Uuid> for Id {
     }
 }
 
-impl Into<Uuid> for Id {
-    fn into(self) -> Uuid {
-        Uuid::from_bytes(self.0)
+impl From<Id> for Uuid {
+    fn from(val: Id) -> Self {
+        Uuid::from_bytes(val.0)
     }
 }
 
-deref!(Id: Uuid |_self| => &Uuid::from_bytes_ref(&_self.0));
+deref!(Id: Uuid |_self| => Uuid::from_bytes_ref(&_self.0));
 
 mod deserialize {
     use super::*;
