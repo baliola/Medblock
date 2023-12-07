@@ -87,27 +87,29 @@ pub trait EssentialProviderAttributes {
     fn internal_id(&self) -> &InternalProviderId;
 }
 
+// START ------------------------------ PROVIDER V1 ------------------------------ START
+
 /// Healthcare provider representaion which have and internal
 /// canister identifier that is used to identify the provider. that means, whichever principal
 /// that is associated with this provider internal id is the principal that can issue emr for this provider.
 /// this also makes it possible to change the underlying principal without costly update.
 #[derive(StableType, AsFixedSizeBytes, CandidType, Debug)]
 pub struct ProviderV001 {
+    /// provider activation status, this is used to track if the provider is still active
+    /// can either be verified or suspended
+    activation_status: Status,
+
+    /// encrypted display name for health provider
+    display_name: SBox<String>,
+
     /// internal identifier for this provider
     /// we separate this from the principal because we want to be able to change the principal
     /// incase the health provider lost or somehow can't access their underlying internet identity
     internal_id: InternalProviderId,
 
-    /// encrypted display name for health provider
-    display_name: SBox<String>,
-
     /// provider associated principal, the principal that get set here effectively
     /// issues all the emr that this provider internal id issues.
     owner_principal: Principal,
-
-    /// provider activation status, this is used to track if the provider is still active
-    /// can either be verified or suspended
-    activation_status: Status,
 
     // TODO: discuss this. are we gonna make the billing automaticly onchain?
     // active_until:
@@ -125,3 +127,5 @@ impl EssentialProviderAttributes for ProviderV001 {
         &self.internal_id
     }
 }
+
+// END ------------------------------ PROVIDER V1 ------------------------------ END

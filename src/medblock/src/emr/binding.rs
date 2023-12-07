@@ -7,6 +7,40 @@ use ic_stable_memory::{
 
 use crate::{deref, types::Id};
 
+type EmrId = Id;
+const KEY_LEN: usize = 32;
+
+/// SHA3-256 hash of NIK, used as key for [BindingMap].
+/// we can't check for hash validity, so we assume it's valid by checking it's length.
+#[derive(
+    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
+)]
+pub struct InternalBindingKey([u8; KEY_LEN]);
+deref!(InternalBindingKey: [u8; KEY_LEN]);
+
+mod deserialize {
+    use super::*;
+
+    impl<'de> serde::Deserialize<'de> for InternalBindingKey {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?.into_bytes();
+
+            if s.len() != KEY_LEN {
+                return Err(serde::de::Error::custom("invalid nik hash length"));
+            }
+
+            // TODO: unnecessary copy
+            let mut key = [0u8; KEY_LEN];
+            key[..s.len()].copy_from_slice(&s);
+
+            Ok(Self(key))
+        }
+    }
+}
+
 type Owner = Principal;
 type NIK = InternalBindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
@@ -31,39 +65,5 @@ deref!(EmrBindingMap: SBTreeMap<InternalBindingKey, EmrIdCollection>);
 impl EmrBindingMap {
     pub fn new() -> Self {
         Self::default()
-    }
-}
-
-type EmrId = Id;
-const KEY_LEN: usize = 32;
-
-/// SHA3-256 hash of NIK, used as key for [BindingMap].
-/// we can't check for hash validity, so we assume it's valid by checking it's length.
-#[derive(
-    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
-)]
-pub struct InternalBindingKey([u8; KEY_LEN]);
-deref!(InternalBindingKey: [u8; KEY_LEN]);
-
-mod deserialize {
-    use super::*;
-    
-    impl<'de> serde::Deserialize<'de> for InternalBindingKey {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            let s = String::deserialize(deserializer)?.into_bytes();
-
-            if s.len() != KEY_LEN {
-                return Err(serde::de::Error::custom("invalid nik hash length"));
-            }
-
-            // TODO: unnecessary copy
-            let mut key = [0u8; KEY_LEN];
-            key[..s.len()].copy_from_slice(&s);
-
-            Ok(Self(key))
-        }
     }
 }
