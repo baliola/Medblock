@@ -768,7 +768,7 @@ dependencies = [
  "candid 0.8.4",
  "ciborium",
  "hex",
- "ic-cdk 0.11.3",
+ "ic-cdk 0.7.4",
  "ic-cdk-timers",
  "ic-stable-memory",
  "paste",
