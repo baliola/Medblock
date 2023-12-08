@@ -2,6 +2,9 @@ use candid::CandidType;
 use candid::Principal;
 use serde::Deserialize;
 
+// all the code inside vetkd abstraction block is subject to change following later audits results
+
+// START ------------------------------ VETKD ABSTRACTION ------------------------------ START
 type CanisterId = Principal;
 
 #[derive(CandidType, Deserialize, Clone)]
@@ -72,7 +75,19 @@ struct VetKDEncryptedKeyRequest {
 }
 
 impl VetKDEncryptedKeyRequest {
-    fn new(public_key_derivation_path: Vec<Vec<u8>>, derivation_id: Vec<u8>, key_id: VetKDKeyId, encryption_public_key: Vec<u8>) -> Self { Self { public_key_derivation_path, derivation_id, key_id, encryption_public_key } }
+    fn new(
+        public_key_derivation_path: Vec<Vec<u8>>,
+        derivation_id: Vec<u8>,
+        key_id: VetKDKeyId,
+        encryption_public_key: Vec<u8>,
+    ) -> Self {
+        Self {
+            public_key_derivation_path,
+            derivation_id,
+            key_id,
+            encryption_public_key,
+        }
+    }
 }
 
 #[derive(CandidType, Deserialize)]
@@ -105,12 +120,11 @@ impl VetKdSystemApi {
     }
 
     async fn vetkd_public_key() -> HexEncodedPublicKey {
-        let request = VetKDEncryptedKeyRequest::
-        let request = VetKDPublicKeyRequest {
-            canister_id: None,
-            derivation_path: vec![Self::STATIC_DERIVATION_PATH.to_vec()],
-            key_id: Self::static_key_id(),
-        };
+        let request = VetKDPublicKeyRequest::new(
+            None,
+            vec![Self::STATIC_DERIVATION_PATH.to_vec()],
+            Self::static_key_id(),
+        );
 
         let (response,): (VetKDPublicKeyReply,) = ic_cdk::api::call::call(
             Self::id(),
@@ -126,12 +140,12 @@ impl VetKdSystemApi {
     async fn vetkd_encrypted_key(transport_key_public_key: Vec<u8>) -> HexEncodedSecretKey {
         let derivation_id = ic_cdk::caller().as_slice().to_vec();
 
-        let request = VetKDEncryptedKeyRequest {
+        let request = VetKDEncryptedKeyRequest::new(
+            vec![Self::STATIC_DERIVATION_PATH.to_vec()],
             derivation_id,
-            public_key_derivation_path: vec![Self::STATIC_DERIVATION_PATH.to_vec()],
-            key_id: Self::static_key_id(),
-            encryption_public_key: transport_key_public_key,
-        };
+            Self::static_key_id(),
+            transport_key_public_key,
+        );
 
         let (response,): (VetKDEncryptedKeyReply,) = ic_cdk::api::call::call(
             Self::id(),
@@ -145,16 +159,27 @@ impl VetKdSystemApi {
     }
 }
 
+// END ------------------------------ VETKD ABSTRACTION ------------------------------ END
+
+// START ------------------------------ MODULE PUBLIC API ------------------------------ START
+
+/// EMR data encryption API. implementation are not secure and thus, not stable. subject to change following later audits results.
 pub struct EncryptionApi;
 
 impl EncryptionApi {
+    // we aiming to expose this kind of api to canister public api 
+
+    /// retrieve verification key for decrypting EMR symmetric encryption key
     pub async fn symmetric_key_verification_key() -> HexEncodedPublicKey {
         VetKdSystemApi::vetkd_public_key().await
     }
 
+    /// retrieve encryption key that will be used to encrypt and decrypt EMR with specified transport key
     pub async fn encrypted_symmetric_key_for_caller(
         transport_key_public_key: Vec<u8>,
     ) -> HexEncodedSecretKey {
         VetKdSystemApi::vetkd_encrypted_key(transport_key_public_key).await
     }
 }
+
+// END ------------------------------ MODULE PUBLIC API ------------------------------ END
