@@ -10,35 +10,74 @@ enum VetKDCurve {
     Bls12_381,
 }
 
+impl Default for VetKDCurve {
+    fn default() -> Self {
+        Self::Bls12_381
+    }
+}
+
 #[derive(CandidType, Deserialize, Clone)]
 struct VetKDKeyId {
-    pub curve: VetKDCurve,
-    pub name: String,
+    curve: VetKDCurve,
+    name: String,
+}
+
+impl VetKDKeyId {
+    fn new(name: String) -> Self {
+        Self {
+            curve: VetKDCurve::default(),
+            name,
+        }
+    }
 }
 
 #[derive(CandidType, Deserialize)]
 struct VetKDPublicKeyRequest {
-    pub canister_id: Option<CanisterId>,
-    pub derivation_path: Vec<Vec<u8>>,
-    pub key_id: VetKDKeyId,
+    canister_id: Option<CanisterId>,
+    derivation_path: Vec<Vec<u8>>,
+    key_id: VetKDKeyId,
+}
+
+impl VetKDPublicKeyRequest {
+    fn new(
+        canister_id: Option<CanisterId>,
+        derivation_path: Vec<Vec<u8>>,
+        key_id: VetKDKeyId,
+    ) -> Self {
+        Self {
+            canister_id,
+            derivation_path,
+            key_id,
+        }
+    }
 }
 
 #[derive(CandidType, Deserialize)]
 struct VetKDPublicKeyReply {
-    pub public_key: Vec<u8>,
+    public_key: Vec<u8>,
+}
+
+impl VetKDPublicKeyReply {
+    fn new(public_key: Vec<u8>) -> Self {
+        Self { public_key }
+    }
 }
 
 #[derive(CandidType, Deserialize)]
 struct VetKDEncryptedKeyRequest {
-    pub public_key_derivation_path: Vec<Vec<u8>>,
-    pub derivation_id: Vec<u8>,
-    pub key_id: VetKDKeyId,
-    pub encryption_public_key: Vec<u8>,
+    public_key_derivation_path: Vec<Vec<u8>>,
+    derivation_id: Vec<u8>,
+    key_id: VetKDKeyId,
+    encryption_public_key: Vec<u8>,
+}
+
+impl VetKDEncryptedKeyRequest {
+    fn new(public_key_derivation_path: Vec<Vec<u8>>, derivation_id: Vec<u8>, key_id: VetKDKeyId, encryption_public_key: Vec<u8>) -> Self { Self { public_key_derivation_path, derivation_id, key_id, encryption_public_key } }
 }
 
 #[derive(CandidType, Deserialize)]
 struct VetKDEncryptedKeyReply {
-    pub encrypted_key: Vec<u8>,
+    encrypted_key: Vec<u8>,
 }
 
 struct VetKdSystemApi;
@@ -51,12 +90,10 @@ impl VetKdSystemApi {
     const VETKD_PUBLIC_KEY_METHOD_SIGNATURE: &'static str = "vetkd_public_key";
     const VETKD_SECRET_KEY_METHOD_SIGNATURE: &'static str = "vetkd_encrypted_key";
     const STATIC_DERIVATION_PATH: &'static [u8] = b"symmetric_key";
+    const STATIC_KEY_ID: &'static str = "symmetric_key";
 
     fn static_key_id() -> VetKDKeyId {
-        VetKDKeyId {
-            curve: VetKDCurve::Bls12_381,
-            name: String::from("test_key_1"),
-        }
+        VetKDKeyId::new(String::from(Self::STATIC_KEY_ID))
     }
 
     fn id() -> Principal {
@@ -68,6 +105,7 @@ impl VetKdSystemApi {
     }
 
     async fn vetkd_public_key() -> HexEncodedPublicKey {
+        let request = VetKDEncryptedKeyRequest::
         let request = VetKDPublicKeyRequest {
             canister_id: None,
             derivation_path: vec![Self::STATIC_DERIVATION_PATH.to_vec()],
