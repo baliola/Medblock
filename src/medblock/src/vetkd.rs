@@ -2,37 +2,34 @@ use candid::CandidType;
 use candid::Principal;
 use serde::Deserialize;
 
-use crate::types::Users;
-use crate::types::VerifiedEmrManagerSet;
-
-pub type CanisterId = Principal;
+type CanisterId = Principal;
 
 #[derive(CandidType, Deserialize, Clone)]
-pub enum VetKDCurve {
+enum VetKDCurve {
     #[serde(rename = "bls12_381")]
     Bls12_381,
 }
 
 #[derive(CandidType, Deserialize, Clone)]
-pub struct VetKDKeyId {
+struct VetKDKeyId {
     pub curve: VetKDCurve,
     pub name: String,
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct VetKDPublicKeyRequest {
+struct VetKDPublicKeyRequest {
     pub canister_id: Option<CanisterId>,
     pub derivation_path: Vec<Vec<u8>>,
     pub key_id: VetKDKeyId,
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct VetKDPublicKeyReply {
+struct VetKDPublicKeyReply {
     pub public_key: Vec<u8>,
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct VetKDEncryptedKeyRequest {
+struct VetKDEncryptedKeyRequest {
     pub public_key_derivation_path: Vec<Vec<u8>>,
     pub derivation_id: Vec<u8>,
     pub key_id: VetKDKeyId,
@@ -40,7 +37,7 @@ pub struct VetKDEncryptedKeyRequest {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct VetKDEncryptedKeyReply {
+struct VetKDEncryptedKeyReply {
     pub encrypted_key: Vec<u8>,
 }
 
@@ -89,7 +86,7 @@ impl VetKdSystemApi {
     }
 
     async fn vetkd_encrypted_key(transport_key_public_key: Vec<u8>) -> HexEncodedSecretKey {
-        let derivation_id = Users::current_user().to_principal().as_slice().to_vec();
+        let derivation_id = ic_cdk::caller().as_slice().to_vec();
 
         let request = VetKDEncryptedKeyRequest {
             derivation_id,
@@ -113,28 +110,13 @@ impl VetKdSystemApi {
 pub struct EncryptionApi;
 
 impl EncryptionApi {
-    fn ensure_verified(registry: &VerifiedEmrManagerSet) -> Users {
-        let user = Users::current_user();
-
-        if !registry.is_verified(&user) {
-            ic_cdk::trap("caller is not verified");
-        }
-
-        user
-    }
-
-    pub async fn symmetric_key_verification_key(
-        verified_user_registry: &VerifiedEmrManagerSet,
-    ) -> HexEncodedPublicKey {
-        let user = Self::ensure_verified(verified_user_registry);
+    pub async fn symmetric_key_verification_key() -> HexEncodedPublicKey {
         VetKdSystemApi::vetkd_public_key().await
     }
 
     pub async fn encrypted_symmetric_key_for_caller(
         transport_key_public_key: Vec<u8>,
-        verified_user_registry: &VerifiedEmrManagerSet,
     ) -> HexEncodedSecretKey {
-        Self::ensure_verified(verified_user_registry);
         VetKdSystemApi::vetkd_encrypted_key(transport_key_public_key).await
     }
 }
