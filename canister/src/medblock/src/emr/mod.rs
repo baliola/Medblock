@@ -7,7 +7,7 @@ use candid::CandidType;
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},
-    SBox,
+    AsDynSizeBytes, SBox, StableType,
 };
 
 use crate::{
@@ -68,6 +68,10 @@ impl std::cmp::PartialOrd for Emr {
     }
 }
 
+/// Error when allocating something to stable memory due to stable memory exhaustion
+#[derive(Debug)]
+pub struct OutOfMemory;
+
 /// wrapper types for emr records, essentially just a [SBox] around [String].
 /// required because we need to implement function to serialize this to [serde_json::Value] for [Records] type
 #[derive(StableType, Debug, AsFixedSizeBytes)]
@@ -75,14 +79,28 @@ pub struct EmrRecordsValue(SBox<String>);
 deref!(EmrRecordsValue: SBox<String>);
 
 impl EmrRecordsValue {
-    fn value_from_ref(&self) -> serde_json::Value {
+    pub fn value_from_ref(&self) -> serde_json::Value {
         self.0.as_str().into()
+    }
+
+    /// create new [EmrRecordsValue] from [String], returns [OutOfMemory] if stable memory is exhausted
+    pub fn new(value: impl Into<String>) -> Result<EmrRecordsValue, OutOfMemory> {
+        let value = value.into();
+        let value = SBox::new(value).map_err(|_| OutOfMemory)?;
+
+        Ok(Self(value))
     }
 }
 
-#[derive(StableType, Debug, AsFixedSizeBytes)]
+#[derive(StableType, Debug, AsFixedSizeBytes, Default)]
 pub struct Records(SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 deref!(Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
+
+impl Records {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 impl CandidType for Records {
     fn _ty() -> candid::types::Type {
@@ -112,4 +130,27 @@ pub struct V001 {
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
+}
+
+mod test {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_serialize_records() {
+        let mut records = Records::default();
+        records.insert(
+            AsciiRecordsKey::new("test".to_string()).unwrap(),
+            EmrRecordsValue::new("test").unwrap(),
+        );
+
+        let v: serde_json::Value = records
+            .0
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
+            .collect();
+
+        let s = v.to_string();
+        println!("{}", s);
+    }
 }
