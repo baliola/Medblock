@@ -94,7 +94,7 @@ impl EmrRecordsValue {
 
 #[derive(StableType, Debug, AsFixedSizeBytes, Default)]
 pub struct Records(SHashMap<AsciiRecordsKey, EmrRecordsValue>);
-deref!(Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
+deref!(mut Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 
 impl Records {
     pub fn new() -> Self {
