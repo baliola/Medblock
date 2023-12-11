@@ -68,8 +68,11 @@ impl std::cmp::PartialOrd for Emr {
     }
 }
 
+/// wrapper types for emr records, essentially just a [SBox] around [String].
+/// required because we need to implement function to serialize this to [serde_json::Value] for [Records] type
 #[derive(StableType, Debug, AsFixedSizeBytes)]
 pub struct EmrRecordsValue(SBox<String>);
+deref!(EmrRecordsValue: SBox<String>);
 
 impl EmrRecordsValue {
     fn value_from_ref(&self) -> serde_json::Value {
@@ -86,6 +89,9 @@ impl CandidType for Records {
         candid::types::Type::Text
     }
 
+    // TODO:  this copies ALOT of data
+    // because we iterate and serializing the data to serde json Value type while copying
+    // and then after that we copy again to serialize the Value type to String so that it can be properly serialized as candid type
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
     where
         S: candid::types::Serializer,
