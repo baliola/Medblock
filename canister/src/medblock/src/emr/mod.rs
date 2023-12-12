@@ -100,6 +100,13 @@ impl Records {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn to_value(&self) -> serde_json::Value {
+        self.0
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
+            .collect()
+    }
 }
 
 impl CandidType for Records {
@@ -114,12 +121,7 @@ impl CandidType for Records {
     where
         S: candid::types::Serializer,
     {
-        let v: serde_json::Value = self
-            .0
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
-            .collect();
-
+        let v = self.to_value();
         String::idl_serialize(&v.to_string(), serializer)
     }
 }
@@ -138,19 +140,34 @@ mod test {
 
     #[test]
     fn test_serialize_records() {
+        ic_stable_memory::stable_memory_init();
+
+        let initial_allocated = ic_stable_memory::get_allocated_size();
+
         let mut records = Records::default();
         records.insert(
             AsciiRecordsKey::new("test".to_string()).unwrap(),
             EmrRecordsValue::new("test").unwrap(),
         );
 
-        let v: serde_json::Value = records
+        let mut records2 = Records::default();
+        records2.insert(
+            AsciiRecordsKey::new("test".to_string()).unwrap(),
+            EmrRecordsValue::new("test").unwrap(),
+        );
+
+        let v: serde_json::Value = records2
             .0
             .iter()
             .map(|(k, v)| (k.to_string(), v.value_from_ref()))
             .collect();
 
         let s = v.to_string();
-        println!("{}", s);
+
+        let after_allocated = ic_stable_memory::get_allocated_size();
+        let total_allocated = after_allocated - initial_allocated;
+
+        println!("total allocated: {} bytes", total_allocated);
+        println!("data {s}");
     }
 }
