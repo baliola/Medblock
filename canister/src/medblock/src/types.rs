@@ -55,7 +55,6 @@ pub enum EmrKeyError {
 
     #[error("key exceeded max emr records max length")]
     TooLong,
-
 }
 
 /// arbitry ascii encoded string with max length of 32 bytes
@@ -95,7 +94,16 @@ impl FromStr for AsciiRecordsKey {
         let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
         key[..s.len()].copy_from_slice(s.as_bytes());
 
-        Ok(Self { key, len: len as u8 })
+        Ok(Self {
+            key,
+            len: len as u8,
+        })
+    }
+}
+
+impl ToString for AsciiRecordsKey {
+    fn to_string(&self) -> String {
+        self.to_ascii_str().to_string()
     }
 }
 

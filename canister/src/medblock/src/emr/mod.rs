@@ -3,10 +3,11 @@ mod providers;
 
 use std::collections::HashMap;
 
+use candid::CandidType;
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},
-    SBox,
+    AsDynSizeBytes, SBox, StableType,
 };
 
 use crate::{
@@ -67,19 +68,63 @@ impl std::cmp::PartialOrd for Emr {
     }
 }
 
-impl CanisterResponse<SerializeableEmrResponse> for Emr {
-    fn encode_json(&self) -> SerializeableEmrResponse {
-        match self {
-            Self::V001(v) => {
-                SerializeableEmrResponse::V001(V001SerializeableEmrResponse::from_ref(v))
-            }
-        }
+/// Error when allocating something to stable memory due to stable memory exhaustion
+#[derive(Debug)]
+pub struct OutOfMemory;
+
+/// wrapper types for emr records, essentially just a [SBox] around [String].
+/// required because we need to implement function to serialize this to [serde_json::Value] for [Records] type
+#[derive(StableType, Debug, AsFixedSizeBytes)]
+pub struct EmrRecordsValue(SBox<String>);
+deref!(EmrRecordsValue: SBox<String>);
+
+impl EmrRecordsValue {
+    pub fn value_from_ref(&self) -> serde_json::Value {
+        self.0.as_str().into()
+    }
+
+    /// create new [EmrRecordsValue] from [String], returns [OutOfMemory] if stable memory is exhausted
+    pub fn new(value: impl Into<String>) -> Result<EmrRecordsValue, OutOfMemory> {
+        let value = value.into();
+        let value = SBox::new(value).map_err(|_| OutOfMemory)?;
+
+        Ok(Self(value))
     }
 }
 
-#[derive(StableType, Debug, AsFixedSizeBytes)]
-pub struct Records(SHashMap<AsciiRecordsKey, SBox<String>>);
-deref!(Records: SHashMap<AsciiRecordsKey, SBox<String>>);
+#[derive(StableType, Debug, AsFixedSizeBytes, Default)]
+pub struct Records(SHashMap<AsciiRecordsKey, EmrRecordsValue>);
+deref!(mut Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
+
+impl Records {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn to_value(&self) -> serde_json::Value {
+        self.0
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
+            .collect()
+    }
+}
+
+impl CandidType for Records {
+    fn _ty() -> candid::types::Type {
+        candid::types::Type::Text
+    }
+
+    // TODO:  this copies ALOT of data
+    // because we iterate and serializing the data to serde json Value type while copying
+    // and then after that we copy again to serialize the Value type to String so that it can be properly serialized as candid type
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: candid::types::Serializer,
+    {
+        let v = self.to_value();
+        String::idl_serialize(&v.to_string(), serializer)
+    }
+}
 
 #[derive(AsFixedSizeBytes, StableType, Debug)]
 pub struct V001 {
@@ -89,94 +134,40 @@ pub struct V001 {
     records: Records,
 }
 
-#[derive(serde::Serialize, Debug)]
-#[non_exhaustive]
-#[serde(tag = "version")]
-pub enum SerializeableEmrResponse {
-    V001(V001SerializeableEmrResponse),
-}
-
-// TODO : optimize this later using lifetimes and such
-#[derive(serde::Serialize, Debug)]
-pub struct V001SerializeableEmrResponse {
-    emr_id: Id,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-    records: HashMap<AsciiRecordsKey, String>,
-}
-
-impl V001SerializeableEmrResponse {
-    fn from_ref(value: &V001) -> Self {
-        V001SerializeableEmrResponse {
-            emr_id: value.emr_id.clone(),
-            created_at: value.created_at,
-            updated_at: value.updated_at,
-            records: value
-                .records
-                .iter()
-                .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                .collect(),
-        }
-    }
-}
-
-mod tests {
+mod test {
     #[allow(unused_imports)]
     use super::*;
 
     #[test]
-    fn instruction_count() {
+    fn test_serialize_records() {
         ic_stable_memory::stable_memory_init();
 
-        let mut records = Records(SHashMap::new());
+        let initial_allocated = ic_stable_memory::get_allocated_size();
 
-        records
+        let mut records = Records::default();
+        records.insert(
+            AsciiRecordsKey::new("test".to_string()).unwrap(),
+            EmrRecordsValue::new("test").unwrap(),
+        );
+
+        let mut records2 = Records::default();
+        records2.insert(
+            AsciiRecordsKey::new("test".to_string()).unwrap(),
+            EmrRecordsValue::new("test").unwrap(),
+        );
+
+        let v: serde_json::Value = records2
             .0
-            .insert(
-                AsciiRecordsKey::new("key").unwrap(),
-                SBox::new(String::from("value")).unwrap(),
-            )
-            .unwrap();
-        records
-            .0
-            .insert(
-                AsciiRecordsKey::new("key2").unwrap(),
-                SBox::new(String::from("value2")).unwrap(),
-            )
-            .unwrap();
-        records
-            .0
-            .insert(
-                AsciiRecordsKey::new("key3").unwrap(),
-                SBox::new(String::from("value3")).unwrap(),
-            )
-            .unwrap();
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
+            .collect();
 
-        let emr_id = Id::new();
-        let dummy_timestamp = Timestamp(0);
-        let emr = Emr::V001(V001 {
-            emr_id: emr_id.clone(),
-            created_at: dummy_timestamp,
-            updated_at: dummy_timestamp,
-            records,
-        });
+        let s = v.to_string();
 
-        let encoded = emr.encode_json();
-        let encoded = serde_json::to_value(encoded).unwrap();
+        let after_allocated = ic_stable_memory::get_allocated_size();
+        let total_allocated = after_allocated - initial_allocated;
 
-        assert_eq!(
-            encoded,
-            serde_json::json!({
-                "version": "V001",
-                "emr_id": emr_id,
-                "created_at": dummy_timestamp,
-                "updated_at": dummy_timestamp,
-                "records": {
-                    "key": "value",
-                    "key2": "value2",
-                    "key3": "value3",
-                }
-            })
-        )
+        println!("total allocated: {} bytes", total_allocated);
+        println!("data {s}");
     }
 }
