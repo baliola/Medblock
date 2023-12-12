@@ -93,3 +93,69 @@ macro_rules! deref {
         deref!(@CONSTRUCT MUTABLE $ident: $target;);
     };
 }
+
+/// macro to measure stable memory allocation.
+/// make sure to return the stable memory object if you're passing a code block like below
+/// ```
+/// measure_alloc!("records": {
+///       let mut records = Records::default();
+///       
+///       records.insert(
+///           AsciiRecordsKey::new("test".to_string()).unwrap(),
+///           EmrRecordsValue::new("test").unwrap(),
+///       );
+///       
+///       // return the stable memory object
+///       records
+/// });
+///
+/// ```
+/// or if the type implement [Default] you can pass the type directly like this
+/// ```
+/// measure_alloc!(Foo);
+/// ```
+/// will panics for now to print the allocated size.
+#[macro_export]
+macro_rules! measure_alloc {
+    ($ty:ty) => {
+        paste::paste! {
+            #[cfg(test)]
+            mod [<__measure_alloc_ $ty:lower>] {
+                use super::*;
+
+                #[test]
+                fn measure_alloc(){
+                    ic_stable_memory::stable_memory_init();
+
+                    $ty::default();
+
+                    let allocated = ic_stable_memory::get_allocated_size();
+                    panic!("total allocated for types  {} : {} bytes", stringify!($ty) ,allocated);
+
+                }
+            }
+        }
+    };
+
+    ($id:literal: $block:block) => {
+        paste::paste! {
+            #[cfg(test)]
+            mod [<__measure_alloc_ $id:lower>] {
+                use super::*;
+
+                #[test]
+                fn measure_alloc(){
+                    ic_stable_memory::stable_memory_init();
+
+                    let b = $block;
+
+                    let allocated = ic_stable_memory::get_allocated_size();
+                    println!("total allocated for id {} types: {} megabytes", stringify!($id), allocated / 1024 / 1024);
+                    println!("total allocated for id {} types: {} kilobytes", stringify!($id), allocated / 1024);
+                    println!("total allocated for id {} types: {} bytes", stringify!($id), allocated);
+                    panic!("allocation test success");
+                }
+            }
+        }
+    };
+}

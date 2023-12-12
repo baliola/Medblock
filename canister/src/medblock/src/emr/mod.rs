@@ -11,7 +11,7 @@ use ic_stable_memory::{
 };
 
 use crate::{
-    deref,
+    deref, measure_alloc,
     types::{AsciiRecordsKey, CanisterResponse, Id, Timestamp},
 };
 
@@ -30,9 +30,33 @@ impl Registry {
     }
 }
 
+type EmrId = Id;
 #[derive(Default)]
-pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<Id, Emr>);
-deref!(EmrCollection: ic_stable_memory::collections::SBTreeMap<Id,Emr>);
+pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
+deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
+measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
+    let mut emr_collection = EmrCollection::default();
+    
+    for i in 0..10_000 {
+        let mut emr = V001::default();
+        
+        for i in 0..10 {
+            emr.records.insert(
+                AsciiRecordsKey::new(format!("test{}", i)).unwrap(),
+                EmrRecordsValue::new(format!("test{}", i)).unwrap(),
+            );
+        }
+
+        emr_collection.insert(
+            Id::new(),
+            Emr::V001(V001::default()),
+        );
+    }
+
+
+
+    emr_collection
+});
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 #[non_exhaustive]
@@ -96,6 +120,17 @@ impl EmrRecordsValue {
 pub struct Records(SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 deref!(mut Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 
+measure_alloc!("records": {
+       let mut records = Records::default();
+
+       records.insert(
+           AsciiRecordsKey::new("test".to_string()).unwrap(),
+           EmrRecordsValue::new("test").unwrap(),
+       );
+
+       records
+});
+
 impl Records {
     pub fn new() -> Self {
         Self::default()
@@ -126,48 +161,28 @@ impl CandidType for Records {
     }
 }
 
-#[derive(AsFixedSizeBytes, StableType, Debug)]
+#[derive(AsFixedSizeBytes, StableType, Debug, Default)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
 }
+measure_alloc!("emr_with_10_records":{
+    let mut emr = V001::default();
 
-mod test {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[test]
-    fn test_serialize_records() {
-        ic_stable_memory::stable_memory_init();
-
-        let initial_allocated = ic_stable_memory::get_allocated_size();
-
-        let mut records = Records::default();
-        records.insert(
-            AsciiRecordsKey::new("test".to_string()).unwrap(),
-            EmrRecordsValue::new("test").unwrap(),
+    for i in 0..10 {
+        emr.records.insert(
+            AsciiRecordsKey::new(format!("test{}", i)).unwrap(),
+            EmrRecordsValue::new(format!("test{}", i)).unwrap(),
         );
+    }
 
-        let mut records2 = Records::default();
-        records2.insert(
-            AsciiRecordsKey::new("test".to_string()).unwrap(),
-            EmrRecordsValue::new("test").unwrap(),
-        );
+    emr
+});
 
-        let v: serde_json::Value = records2
-            .0
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
-            .collect();
-
-        let s = v.to_string();
-
-        let after_allocated = ic_stable_memory::get_allocated_size();
-        let total_allocated = after_allocated - initial_allocated;
-
-        println!("total allocated: {} bytes", total_allocated);
-        println!("data {s}");
+impl V001 {
+    pub fn new() -> Self {
+        Self::default()
     }
 }

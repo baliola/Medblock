@@ -3,7 +3,7 @@ use std::str::FromStr;
 use candid::CandidType;
 use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
 
-use crate::deref;
+use crate::{deref, measure_alloc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -44,7 +44,18 @@ impl Timestamp {
 
 impl Default for Timestamp {
     fn default() -> Self {
-        Self(ic_cdk::api::time())
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let time = chrono::Utc::now().timestamp_nanos_opt().unwrap();
+            let time = u64::try_from(time).unwrap();
+            Self(time)
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let time = ic_cdk::api::time();
+            Self(time)
+        }
     }
 }
 
@@ -116,10 +127,22 @@ impl AsciiRecordsKey {
 }
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
-#[derive(
-    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
-)]
+#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct Id([u8; 16]);
+
+impl CandidType for Id {
+    fn _ty() -> candid::types::Type {
+        candid::types::Type::Text
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: candid::types::Serializer,
+    {
+        // TODO : to_string() invloves copy
+        serializer.serialize_text(self.to_string().as_str())
+    }
+}
 
 impl Id {
     pub fn new() -> Self {
@@ -129,7 +152,8 @@ impl Id {
 
 impl Default for Id {
     fn default() -> Self {
-        uuid::Uuid::new_v4().into()
+        // TODO : check that this works, as we dont know if it would actually fetch system time in canister execution environment
+        uuid::Uuid::now_v7().into()
     }
 }
 
