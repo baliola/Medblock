@@ -98,7 +98,7 @@ deref!(mut Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 
 measure_alloc!("records": {
        let mut records = Records::default();
-       
+
        records.insert(
            AsciiRecordsKey::new("test".to_string()).unwrap(),
            EmrRecordsValue::new("test").unwrap(),
@@ -137,10 +137,24 @@ impl CandidType for Records {
     }
 }
 
-#[derive(AsFixedSizeBytes, StableType, Debug)]
+#[derive(AsFixedSizeBytes, StableType, Debug, Default)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
+}
+measure_alloc!("emr_with_1_records":{
+    let mut emr = V001::default();
+    emr.records.insert(
+        AsciiRecordsKey::new("test".to_string()).unwrap(),
+        EmrRecordsValue::new("test").unwrap(),
+    );
+    emr
+});
+
+impl V001 {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }

@@ -131,7 +131,7 @@ macro_rules! measure_alloc {
                     $ty::default();
 
                     let allocated = ic_stable_memory::get_allocated_size();
-                    println!("total allocated for types  {} : {} bytes", stringify!($ty) ,allocated);
+                    panic!("total allocated for types  {} : {} bytes", stringify!($ty) ,allocated);
 
                 }
             }

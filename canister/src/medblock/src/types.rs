@@ -44,7 +44,18 @@ impl Timestamp {
 
 impl Default for Timestamp {
     fn default() -> Self {
-        Self(ic_cdk::api::time())
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let time = chrono::Utc::now().timestamp_nanos_opt().unwrap();
+            let time = u64::try_from(time).unwrap();
+            Self(time)
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let time = ic_cdk::api::time();
+            Self(time)
+        }
     }
 }
 
