@@ -127,10 +127,22 @@ impl AsciiRecordsKey {
 }
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
-#[derive(
-    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
-)]
+#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct Id([u8; 16]);
+
+impl CandidType for Id {
+    fn _ty() -> candid::types::Type {
+        candid::types::Type::Text
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: candid::types::Serializer,
+    {
+        // TODO : to_string() invloves copy
+        serializer.serialize_text(self.to_string().as_str())
+    }
+}
 
 impl Id {
     pub fn new() -> Self {
@@ -140,7 +152,8 @@ impl Id {
 
 impl Default for Id {
     fn default() -> Self {
-        uuid::Uuid::new_v4().into()
+        // TODO : check that this works, as we dont know if it would actually fetch system time in canister execution environment
+        uuid::Uuid::now_v7().into()
     }
 }
 
