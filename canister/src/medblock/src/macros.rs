@@ -94,7 +94,6 @@ macro_rules! deref {
     };
 }
 
-
 /// macro to measure stable memory allocation.
 /// make sure to return the stable memory object if you're passing a code block like below
 /// ```
@@ -110,12 +109,12 @@ macro_rules! deref {
 ///       records
 /// });
 ///
-/// ``` 
+/// ```
 /// or if the type implement [Default] you can pass the type directly like this
 /// ```
 /// measure_alloc!(Foo);
 /// ```
-/// will panics for now to print the allocated size. 
+/// will panics for now to print the allocated size.
 #[macro_export]
 macro_rules! measure_alloc {
     ($ty:ty) => {
@@ -151,8 +150,10 @@ macro_rules! measure_alloc {
                     let b = $block;
 
                     let allocated = ic_stable_memory::get_allocated_size();
-                    panic!("total allocated for id {} types: {} bytes", stringify!($id), allocated);
-
+                    println!("total allocated for id {} types: {} megabytes", stringify!($id), allocated / 1024 / 1024);
+                    println!("total allocated for id {} types: {} kilobytes", stringify!($id), allocated / 1024);
+                    println!("total allocated for id {} types: {} bytes", stringify!($id), allocated);
+                    panic!("allocation test success");
                 }
             }
         }

@@ -30,9 +30,33 @@ impl Registry {
     }
 }
 
+type EmrId = Id;
 #[derive(Default)]
-pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<Id, Emr>);
-deref!(EmrCollection: ic_stable_memory::collections::SBTreeMap<Id,Emr>);
+pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
+deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
+measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
+    let mut emr_collection = EmrCollection::default();
+    
+    for i in 0..10_000 {
+        let mut emr = V001::default();
+        
+        for i in 0..10 {
+            emr.records.insert(
+                AsciiRecordsKey::new(format!("test{}", i)).unwrap(),
+                EmrRecordsValue::new(format!("test{}", i)).unwrap(),
+            );
+        }
+
+        emr_collection.insert(
+            Id::new(),
+            Emr::V001(V001::default()),
+        );
+    }
+
+
+
+    emr_collection
+});
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 #[non_exhaustive]
@@ -144,12 +168,16 @@ pub struct V001 {
     updated_at: Timestamp,
     records: Records,
 }
-measure_alloc!("emr_with_1_records":{
+measure_alloc!("emr_with_10_records":{
     let mut emr = V001::default();
-    emr.records.insert(
-        AsciiRecordsKey::new("test".to_string()).unwrap(),
-        EmrRecordsValue::new("test").unwrap(),
-    );
+
+    for i in 0..10 {
+        emr.records.insert(
+            AsciiRecordsKey::new(format!("test{}", i)).unwrap(),
+            EmrRecordsValue::new(format!("test{}", i)).unwrap(),
+        );
+    }
+
     emr
 });
 
