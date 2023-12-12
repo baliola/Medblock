@@ -11,7 +11,7 @@ use ic_stable_memory::{
 };
 
 use crate::{
-    deref,
+    deref, measure_alloc,
     types::{AsciiRecordsKey, CanisterResponse, Id, Timestamp},
 };
 
@@ -96,6 +96,17 @@ impl EmrRecordsValue {
 pub struct Records(SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 deref!(mut Records: SHashMap<AsciiRecordsKey, EmrRecordsValue>);
 
+measure_alloc!("records": {
+       let mut records = Records::default();
+       
+       records.insert(
+           AsciiRecordsKey::new("test".to_string()).unwrap(),
+           EmrRecordsValue::new("test").unwrap(),
+       );
+
+       records
+});
+
 impl Records {
     pub fn new() -> Self {
         Self::default()
@@ -132,42 +143,4 @@ pub struct V001 {
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
-}
-
-mod test {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[test]
-    fn test_serialize_records() {
-        ic_stable_memory::stable_memory_init();
-
-        let initial_allocated = ic_stable_memory::get_allocated_size();
-
-        let mut records = Records::default();
-        records.insert(
-            AsciiRecordsKey::new("test".to_string()).unwrap(),
-            EmrRecordsValue::new("test").unwrap(),
-        );
-
-        let mut records2 = Records::default();
-        records2.insert(
-            AsciiRecordsKey::new("test".to_string()).unwrap(),
-            EmrRecordsValue::new("test").unwrap(),
-        );
-
-        let v: serde_json::Value = records2
-            .0
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.value_from_ref()))
-            .collect();
-
-        let s = v.to_string();
-
-        let after_allocated = ic_stable_memory::get_allocated_size();
-        let total_allocated = after_allocated - initial_allocated;
-
-        println!("total allocated: {} bytes", total_allocated);
-        println!("data {s}");
-    }
 }
