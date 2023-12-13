@@ -2,6 +2,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SBTreeMap,
     derive::{AsFixedSizeBytes, StableType},
+    primitive::s_ref::SRef,
     SBox,
 };
 use serde::Deserialize;
@@ -38,18 +39,19 @@ impl Status {
     }
 }
 
-pub struct ProviderRegistry{
+pub struct ProviderRegistry {
     providers: Providers,
     providers_bindings: ProvidersBindings,
     issued: Issued,
 }
 
 impl ProviderRegistry {
-    pub fn is_issued_by(&self, provider: &InternalProviderId, emr_id: &Id) -> bool {
-        self.issued
-            .get(provider)
-            .map(|emr_ids| emr_ids.contains(emr_id))
-            .unwrap_or(false)
+    pub fn is_issued_by(&self, provider: &Principal, emr_id: &Id) -> bool {
+        let Some(id) = self.providers_bindings.get_internal_id(provider) else {
+            return false;
+        };
+
+        self.issued.is_issued_by(&id, emr_id)
     }
 }
 
@@ -57,10 +59,25 @@ pub type InternalProviderId = Id;
 pub type ProviderPrincipal = Principal;
 /// Issued emr map. used to track emr issued by a particular provider.
 pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
+
+impl Issued {
+    pub fn is_issued_by(&self, provider: &InternalProviderId, emr_id: &Id) -> bool {
+        self.contains_key(provider)
+    }
+}
 deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
 
 pub struct ProvidersBindings(SBTreeMap<ProviderPrincipal, InternalProviderId>);
 deref!(ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
+
+impl ProvidersBindings {
+    pub fn get_internal_id(
+        &self,
+        principal: &ProviderPrincipal,
+    ) -> Option<SRef<'_, InternalProviderId>> {
+        self.get(principal)
+    }
+}
 
 /// Healthcare provider map. used to track healthcare providers.
 pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
