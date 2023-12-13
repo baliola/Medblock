@@ -58,14 +58,25 @@ mod deserialize {
     }
 }
 
-type Owner = Principal;
-type NIK = InternalBindingKey;
+pub type Owner = Principal;
+pub type NIK = InternalBindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
 #[derive(Default)]
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
-deref!(OwnerMap: SBTreeMap<Owner, NIK>);
+
+impl OwnerMap {
+    pub fn get_nik(&self, owner: &Owner) -> Option<&NIK> {
+        self.0.get(owner)
+    }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
 
 pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
@@ -76,11 +87,19 @@ pub type EmrIdCollection = SBTreeSet<EmrId>;
 ///
 /// NIK MUST be hashed offchain before being used as key.
 #[derive(Default)]
-pub struct EmrBindingMap(SBTreeMap<InternalBindingKey, EmrIdCollection>);
-deref!(EmrBindingMap: SBTreeMap<InternalBindingKey, EmrIdCollection>);
+pub struct EmrBindingMap(SBTreeMap<NIK, EmrIdCollection>);
+
+deref!(mut EmrBindingMap: SBTreeMap<NIK, EmrIdCollection>);
 
 impl EmrBindingMap {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn is_owner_of(&self, nik: &NIK, emr_id: &EmrId) -> bool {
+        self.0
+            .get(nik)
+            .map(|emr_ids| emr_ids.contains(emr_id))
+            .unwrap_or(false)
     }
 }
