@@ -11,10 +11,15 @@ const KEY_LEN: usize = 32;
 
 /// SHA3-256 hash of NIK, used as key for [BindingMap].
 /// we can't check for hash validity, so we assume it's valid by checking it's length.
-#[derive(
-    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
-)]
+#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct InternalBindingKey([u8; KEY_LEN]);
+
+impl InternalBindingKey {
+    pub fn as_str(&self) -> &str {
+        std::str::from_utf8(&self.0).expect("key must be ascii")
+    }
+}
+
 deref!(InternalBindingKey: [u8; KEY_LEN]);
 
 mod deserialize {
@@ -36,6 +41,19 @@ mod deserialize {
             key[..s.len()].copy_from_slice(&s);
 
             Ok(Self(key))
+        }
+    }
+
+    impl CandidType for InternalBindingKey {
+        fn _ty() -> candid::types::Type {
+            candid::types::Type::Text
+        }
+
+        fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+        where
+            S: candid::types::Serializer,
+        {
+            serializer.serialize_text(self.as_str())
         }
     }
 }

@@ -12,7 +12,7 @@ use ic_stable_memory::{
 
 use crate::{
     deref, measure_alloc,
-    types::{AsciiRecordsKey, CanisterResponse, Id, Timestamp},
+    types::{AsciiRecordsKey, Id, Timestamp},
 };
 
 use self::binding::{EmrBindingMap, OwnerMap};
