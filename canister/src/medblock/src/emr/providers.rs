@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
-    collections::{SBTreeMap},
+    collections::SBTreeMap,
     derive::{AsFixedSizeBytes, StableType},
     SBox,
 };
@@ -38,11 +38,29 @@ impl Status {
     }
 }
 
-pub type InternalProviderId = Id;
+pub struct ProviderRegistry{
+    providers: Providers,
+    providers_bindings: ProvidersBindings,
+    issued: Issued,
+}
 
+impl ProviderRegistry {
+    pub fn is_issued_by(&self, provider: &InternalProviderId, emr_id: &Id) -> bool {
+        self.issued
+            .get(provider)
+            .map(|emr_ids| emr_ids.contains(emr_id))
+            .unwrap_or(false)
+    }
+}
+
+pub type InternalProviderId = Id;
+pub type ProviderPrincipal = Principal;
 /// Issued emr map. used to track emr issued by a particular provider.
 pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
 deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
+
+pub struct ProvidersBindings(SBTreeMap<ProviderPrincipal, InternalProviderId>);
+deref!(ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
 
 /// Healthcare provider map. used to track healthcare providers.
 pub struct Providers(SBTreeMap<InternalProviderId, Provider>);

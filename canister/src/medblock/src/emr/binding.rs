@@ -2,6 +2,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::{SBTreeMap, SBTreeSet},
     derive::{AsFixedSizeBytes, StableType},
+    primitive::s_ref::SRef,
 };
 
 use crate::{deref, types::Id};
@@ -67,7 +68,7 @@ pub type NIK = InternalBindingKey;
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
 
 impl OwnerMap {
-    pub fn get_nik(&self, owner: &Owner) -> Option<&NIK> {
+    pub fn get_nik(&self, owner: &Owner) -> Option<SRef<'_, NIK>> {
         self.0.get(owner)
     }
 
