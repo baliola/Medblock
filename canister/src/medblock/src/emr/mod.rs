@@ -3,7 +3,7 @@ mod providers;
 
 use std::collections::HashMap;
 
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},
@@ -12,21 +12,29 @@ use ic_stable_memory::{
 
 use crate::{
     deref, measure_alloc,
-    types::{AsciiRecordsKey, CanisterResponse, Id, Timestamp},
+    types::{AsciiRecordsKey, Id, Timestamp},
 };
 
-use self::binding::{EmrBindingMap, OwnerMap};
+use self::{binding::{EmrBindingMap, OwnerMap}, providers::Providers};
 
 #[derive(Default)]
-pub struct Registry {
+pub struct EmrRegistry {
     owners: OwnerMap,
     owner_emrs: EmrBindingMap,
     core_emrs: EmrCollection,
 }
 
-impl Registry {
+impl EmrRegistry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn is_owner_of_emr(&self, owner: &Principal, emr_id: &Id) -> bool {
+        let Some(nik) = self.owners.get_nik(owner) else {
+            return false;
+        };
+
+        self.owner_emrs.is_owner_of(&nik, emr_id)
     }
 }
 
@@ -36,10 +44,10 @@ pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
 deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
 measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     let mut emr_collection = EmrCollection::default();
-    
+
     for i in 0..10_000 {
         let mut emr = V001::default();
-        
+
         for i in 0..10 {
             emr.records.insert(
                 AsciiRecordsKey::new(format!("test{}", i)).unwrap(),

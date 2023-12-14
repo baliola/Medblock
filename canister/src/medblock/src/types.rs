@@ -7,16 +7,6 @@ use crate::{deref, measure_alloc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// ONLY impelment this trait for types that can't be serialized directly to candid.
-/// this will primarily be used for dynamic types such as Hashmap.
-pub trait CanisterResponse<T: Serialize> {
-    fn encode(&self) -> String {
-        serde_json::to_string(&self.encode_json())
-            .expect("data structures that implement serialize should be serializable to json")
-    }
-    fn encode_json(&self) -> T;
-}
-
 /// timestamp in nanoseconds
 #[derive(
     CandidType,
