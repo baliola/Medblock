@@ -12,7 +12,7 @@ use crate::{
     types::{Id, Timestamp},
 };
 
-use super::binding::EmrIdCollection;
+use super::{binding::EmrIdCollection, OutOfMemory};
 
 #[derive(StableType, AsFixedSizeBytes, Deserialize, CandidType, Debug)]
 pub enum Status {
@@ -38,6 +38,7 @@ impl Status {
     }
 }
 
+#[derive(Default)]
 pub struct ProviderRegistry {
     providers: Providers,
     providers_bindings: ProvidersBindings,
@@ -52,11 +53,30 @@ impl ProviderRegistry {
 
         self.issued.is_issued_by(&id, emr_id)
     }
+
+    pub fn register_new_provider(
+        &mut self,
+        provider_principal: ProviderPrincipal,
+        display_name: String,
+    ) -> Result<(), OutOfMemory> {
+        // create a new provider, note that this might change version depending on the version of the emr used.
+        let provider = ProviderV001::new(display_name, provider_principal.clone())?;
+
+        // bind the principal to the internal id
+        self.providers_bindings
+            .bind(provider_principal, provider.internal_id().clone())?;
+
+        // add the provider to the provider map
+        self.providers.add_provider(provider.into())?;
+
+        Ok(())
+    }
 }
 
 pub type InternalProviderId = Id;
 pub type ProviderPrincipal = Principal;
 /// Issued emr map. used to track emr issued by a particular provider.
+#[derive(Default)]
 pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
 deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
 
@@ -66,8 +86,23 @@ impl Issued {
     }
 }
 
+/// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
+/// this is used to track healthcare providers using their principal. this is needed because we want to be able to change the principal without costly update. we can just update the principal here.
+#[derive(Default)]
 pub struct ProvidersBindings(SBTreeMap<ProviderPrincipal, InternalProviderId>);
-deref!(ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
+deref!(mut ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
+
+impl ProvidersBindings {
+    pub fn bind(
+        &mut self,
+        principal: ProviderPrincipal,
+        internal_id: InternalProviderId,
+    ) -> Result<(), OutOfMemory> {
+        self.insert(principal, internal_id)
+            .map_err(|_| OutOfMemory)
+            .map(|_| ())
+    }
+}
 
 impl ProvidersBindings {
     pub fn get_internal_id(
@@ -78,9 +113,19 @@ impl ProvidersBindings {
     }
 }
 
-/// Healthcare provider map. used to track healthcare providers.
+/// Healthcare provider map. used to track healthcare providers using [InternalProviderId] as key. resolves to version aware [Provider].
+#[derive(Default)]
 pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
-deref!(Providers: SBTreeMap<InternalProviderId, Provider>);
+
+impl Providers {
+    pub fn add_provider(&mut self, provider: Provider) -> Result<(), OutOfMemory> {
+        self.insert(provider.internal_id().clone(), provider)
+            .map_err(|_| OutOfMemory)
+            .map(|_| ())
+    }
+}
+
+deref!(mut Providers: SBTreeMap<InternalProviderId, Provider>);
 
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 pub enum Provider {
@@ -154,6 +199,25 @@ pub struct ProviderV001 {
     updated_at: Timestamp,
     // TODO : discuss this as to what data is gonna be collected
     // provider_details:
+}
+
+impl ProviderV001 {
+    pub fn new(encrypted_display_name: String, initial_principal: Principal) -> Result<Self, OutOfMemory> {
+        Ok(ProviderV001 {
+            activation_status: Status::Verified,
+            display_name: SBox::new(encrypted_display_name)?,
+            internal_id: InternalProviderId::default(),
+            owner_principal: initial_principal,
+            registered_at: Timestamp::default(),
+            updated_at: Timestamp::default(),
+        })
+    }
+}
+
+impl From<ProviderV001> for Provider {
+    fn from(provider: ProviderV001) -> Self {
+        Provider::V001(provider)
+    }
 }
 
 impl EssentialProviderAttributes for ProviderV001 {

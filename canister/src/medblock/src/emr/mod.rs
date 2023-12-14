@@ -1,5 +1,5 @@
 pub mod binding;
-mod providers;
+pub mod providers;
 
 use std::collections::HashMap;
 
@@ -7,7 +7,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},
-    AsDynSizeBytes, SBox, StableType,
+    AsDynSizeBytes, AsFixedSizeBytes, SBox, StableType,
 };
 
 use crate::{
@@ -15,7 +15,10 @@ use crate::{
     types::{AsciiRecordsKey, Id, Timestamp},
 };
 
-use self::{binding::{EmrBindingMap, OwnerMap}, providers::Providers};
+use self::{
+    binding::{EmrBindingMap, OwnerMap},
+    providers::Providers,
+};
 
 #[derive(Default)]
 pub struct EmrRegistry {
@@ -103,6 +106,21 @@ impl std::cmp::PartialOrd for Emr {
 /// Error when allocating something to stable memory due to stable memory exhaustion
 #[derive(Debug)]
 pub struct OutOfMemory;
+
+impl<T> From<T> for OutOfMemory
+where
+    T: StableType,
+{
+    fn from(_: T) -> Self {
+        Self
+    }
+}
+
+impl std::fmt::Display for OutOfMemory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "stable memory exhausted")
+    }
+}
 
 /// wrapper types for emr records, essentially just a [SBox] around [String].
 /// required because we need to implement function to serialize this to [serde_json::Value] for [Records] type
