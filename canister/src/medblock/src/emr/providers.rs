@@ -38,6 +38,7 @@ impl Status {
     }
 }
 
+#[derive(Default)]
 pub struct ProviderRegistry {
     providers: Providers,
     providers_bindings: ProvidersBindings,
@@ -57,6 +58,7 @@ impl ProviderRegistry {
 pub type InternalProviderId = Id;
 pub type ProviderPrincipal = Principal;
 /// Issued emr map. used to track emr issued by a particular provider.
+#[derive(Default)]
 pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
 deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
 
@@ -66,6 +68,7 @@ impl Issued {
     }
 }
 
+#[derive(Default)]
 pub struct ProvidersBindings(SBTreeMap<ProviderPrincipal, InternalProviderId>);
 deref!(ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
 
@@ -79,6 +82,7 @@ impl ProvidersBindings {
 }
 
 /// Healthcare provider map. used to track healthcare providers.
+#[derive(Default)]
 pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
 deref!(Providers: SBTreeMap<InternalProviderId, Provider>);
 

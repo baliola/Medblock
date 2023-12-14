@@ -1,5 +1,5 @@
 pub mod binding;
-mod providers;
+pub mod providers;
 
 use std::collections::HashMap;
 
