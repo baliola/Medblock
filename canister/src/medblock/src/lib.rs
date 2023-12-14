@@ -8,6 +8,7 @@ mod encryption;
 mod log;
 mod macros;
 mod types;
+mod config;
 
 #[derive(Default)]
 pub struct State {
