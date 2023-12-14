@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use candid::Principal;
 use config::CanisterConfig;
 use emr::{providers::ProviderRegistry, EmrRegistry};
 use ic_stable_memory::collections::SLog;
@@ -16,7 +17,6 @@ pub struct State {
     emr_registry: EmrRegistry,
     provider_registry: ProviderRegistry,
     config: CanisterConfig,
-    
     // TODO : incorporate logs
     // log: Log,
 }
@@ -25,11 +25,40 @@ thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::default();
 }
 
+fn only_canister_owner() -> Result<(), String> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        let caller = ic_cdk::caller();
+
+        if !state.config.is_canister_owner(&caller) {
+            return Err("only canister owner can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
 #[ic_cdk::init]
 fn init() {
     ic_stable_memory::stable_memory_init();
 
     STATE.with(|state| {
         *state.borrow_mut() = Some(State::default());
+    });
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+// TODO : move arguments to a candid struct
+fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let mut state = state.as_mut().unwrap();
+
+        state
+            .provider_registry
+            .register_new_provider(new_provider, encryted_display_name)
+            .unwrap()
     });
 }
