@@ -62,3 +62,15 @@ fn register_new_provider(new_provider: Principal, encryted_display_name: String)
             .unwrap()
     });
 }
+
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+// TODO : move arguments to a candid struct
+fn suspend_provider(provider: Principal) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let mut state = state.as_mut().unwrap();
+
+        state.provider_registry.suspend_provider(provider).unwrap()
+    });
+}

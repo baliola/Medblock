@@ -71,6 +71,27 @@ impl ProviderRegistry {
 
         Ok(())
     }
+
+    pub fn suspend_provider(
+        &mut self,
+        provider_principal: ProviderPrincipal,
+    ) -> Result<(), String> {
+        let Some(internal_id) = self.providers_bindings.get_internal_id(&provider_principal) else {
+            return Err("provider not found".to_string());
+        };
+
+        let Some(mut provider) = self.providers.get_mut(&internal_id) else {
+            return Err("provider not found".to_string());
+        };
+
+        match *provider {
+            Provider::V001(ref mut provider) => {
+                provider.activation_status = Status::Suspended;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub type InternalProviderId = Id;
@@ -202,7 +223,10 @@ pub struct ProviderV001 {
 }
 
 impl ProviderV001 {
-    pub fn new(encrypted_display_name: String, initial_principal: Principal) -> Result<Self, OutOfMemory> {
+    pub fn new(
+        encrypted_display_name: String,
+        initial_principal: Principal,
+    ) -> Result<Self, OutOfMemory> {
         Ok(ProviderV001 {
             activation_status: Status::Verified,
             display_name: SBox::new(encrypted_display_name)?,
