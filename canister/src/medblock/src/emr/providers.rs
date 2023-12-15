@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SBTreeMap,
@@ -184,6 +186,42 @@ impl std::cmp::Ord for Provider {
 pub trait EssentialProviderAttributes {
     fn internal_id(&self) -> &InternalProviderId;
 }
+
+// START ------------------------------ SESSION ------------------------------ START
+
+/// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+#[derive(StableType, AsFixedSizeBytes, CandidType, Debug, Default, Clone, Copy)]
+pub struct Session(u64);
+
+// blanket impl for session
+impl<T> From<T> for Session
+where
+    T: Into<u64>,
+{
+    fn from(session: T) -> Self {
+        Self(session.into())
+    }
+}
+
+impl Session {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn increment_session(&mut self) {
+        self.0.add(1);
+    }
+
+    pub fn reset_session(&mut self) {
+        self.0 = 0;
+    }
+
+    pub fn session(&self) -> u64 {
+        self.0
+    }
+}
+
+// END ------------------------------ SESSION ------------------------------ END
 
 // START ------------------------------ PROVIDER V1 ------------------------------ START
 
