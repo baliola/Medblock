@@ -14,7 +14,7 @@ use crate::{
     types::{Id, Timestamp},
 };
 
-use super::{binding::EmrIdCollection, OutOfMemory};
+use super::{patient::EmrIdCollection, OutOfMemory};
 
 #[derive(StableType, AsFixedSizeBytes, Deserialize, CandidType, Debug)]
 pub enum Status {

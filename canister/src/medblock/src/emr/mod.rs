@@ -1,4 +1,4 @@
-pub mod binding;
+pub mod patient;
 pub mod providers;
 
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use crate::{
 };
 
 use self::{
-    binding::{EmrBindingMap, OwnerMap},
+    patient::{EmrBindingMap, OwnerMap},
     providers::Providers,
 };
 
