@@ -136,7 +136,7 @@ impl EmrRecordsValue {
     /// create new [EmrRecordsValue] from [String], returns [OutOfMemory] if stable memory is exhausted
     pub fn new(value: impl Into<String>) -> Result<EmrRecordsValue, OutOfMemory> {
         let value = value.into();
-        let value = SBox::new(value).map_err(|_| OutOfMemory)?;
+        let value = SBox::new(value)?;
 
         Ok(Self(value))
     }
