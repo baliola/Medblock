@@ -75,6 +75,10 @@ impl OwnerMap {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn is_valid_owner(&self, owner: &Owner) -> bool {
+        self.0.contains_key(owner)
+    }
 }
 
 deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
