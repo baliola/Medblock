@@ -58,7 +58,7 @@ fn only_provider() -> Result<(), String> {
 }
 
 // guard function
-fn only_patients()-> Result<(), String> {
+fn only_patients() -> Result<(), String> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
@@ -71,6 +71,11 @@ fn only_patients()-> Result<(), String> {
 
         Ok(())
     })
+}
+
+// guard function
+fn only_patients_or_provider() -> Result<(), String> {
+    only_patients().or_else(|_| only_provider())
 }
 
 #[ic_cdk::init]
@@ -96,7 +101,6 @@ fn register_new_provider(new_provider: Principal, encryted_display_name: String)
     });
 }
 
-
 #[ic_cdk::update(guard = "only_canister_owner")]
 // TODO : move arguments to a candid struct
 fn suspend_provider(provider: Principal) {
@@ -107,6 +111,5 @@ fn suspend_provider(provider: Principal) {
         state.provider_registry.suspend_provider(provider).unwrap()
     });
 }
-
 
 ic_cdk::export::candid::export_service!();
