@@ -56,6 +56,10 @@ impl ProviderRegistry {
         self.issued.is_issued_by(&id, emr_id)
     }
 
+    pub fn is_valid_provider(&self, provider: &Principal) -> bool {
+        self.providers_bindings.contains_key(provider)
+    }
+
     pub fn register_new_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
