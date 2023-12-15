@@ -57,6 +57,22 @@ fn only_provider() -> Result<(), String> {
     })
 }
 
+// guard function
+fn only_patients()-> Result<(), String> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        let caller = ic_cdk::caller();
+
+        if !state.emr_registry.is_valid_patient(&caller) {
+            return Err("only patient can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
 #[ic_cdk::init]
 fn init() {
     ic_stable_memory::stable_memory_init();
