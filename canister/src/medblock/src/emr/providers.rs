@@ -75,13 +75,13 @@ impl ProviderRegistry {
     pub fn suspend_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
-    ) -> Result<(), String> {
+    ) -> Result<(), &'static str> {
         let Some(internal_id) = self.providers_bindings.get_internal_id(&provider_principal) else {
-            return Err("provider not found".to_string());
+            return Err("provider not found");
         };
 
         let Some(mut provider) = self.providers.get_mut(&internal_id) else {
-            return Err("provider not found".to_string());
+            return Err("provider not found");
         };
 
         match *provider {
