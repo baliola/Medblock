@@ -161,6 +161,20 @@ impl EssentialProviderAttributes for Provider {
     }
 }
 
+impl Billable for Provider {
+    fn session(&self) -> Session {
+        match self {
+            Provider::V001(provider) => provider.session(),
+        }
+    }
+
+    fn session_mut(&mut self) -> &mut Session {
+        match self {
+            Provider::V001(provider) => provider.session_mut(),
+        }
+    }
+}
+
 impl std::cmp::PartialEq for Provider {
     fn eq(&self, other: &Self) -> bool {
         self.internal_id().eq(other.internal_id())
@@ -186,7 +200,6 @@ pub trait EssentialProviderAttributes {
     /// used to automatically derive [PartialEq], [PartialOrd], [Ord] and [Eq] for [Provider] enum members at enum level.
     fn internal_id(&self) -> &InternalProviderId;
 }
-
 
 /// Billable trait, this trait must be implemented for all [Provider] enum members.
 pub trait Billable {
