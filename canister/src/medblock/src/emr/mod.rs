@@ -7,6 +7,7 @@ use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{AsFixedSizeBytes, StableType},
+    primitive::s_ref::SRef,
     AsDynSizeBytes, AsFixedSizeBytes, SBox, StableType,
 };
 
@@ -43,11 +44,21 @@ impl EmrRegistry {
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
         self.owners.is_valid_owner(owner)
     }
+
+    pub fn get_emr(&self, emr_id: &Id) -> Option<SRef<'_, Emr>> {
+        self.core_emrs.get_emr(emr_id)
+    }
 }
 
 type EmrId = Id;
 #[derive(Default)]
 pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
+
+impl EmrCollection {
+    pub fn get_emr(&self, emr_id: &EmrId) -> Option<SRef<'_, Emr>> {
+        self.0.get(emr_id)
+    }
+}
 deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
 measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     let mut emr_collection = EmrCollection::default();
