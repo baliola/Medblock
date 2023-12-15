@@ -39,6 +39,10 @@ impl EmrRegistry {
 
         self.owner_emrs.is_owner_of(&nik, emr_id)
     }
+
+    pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
+        self.owners.is_valid_owner(owner)
+    }
 }
 
 type EmrId = Id;

@@ -48,6 +48,8 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
+    /// so even if the provider principal is changed, this function will still return true if the provider is the one that issued the emr.
     pub fn is_issued_by(&self, provider: &Principal, emr_id: &Id) -> bool {
         let Some(id) = self.providers_bindings.get_internal_id(provider) else {
             return false;
@@ -56,6 +58,13 @@ impl ProviderRegistry {
         self.issued.is_issued_by(&id, emr_id)
     }
 
+
+    /// check a given principal is valid and registered as provider
+    pub fn is_valid_provider(&self, provider: &Principal) -> bool {
+        self.providers_bindings.contains_key(provider)
+    }
+
+    /// register a new provider, this function will create a new provider and bind the principal to the internal id.
     pub fn register_new_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
@@ -74,6 +83,8 @@ impl ProviderRegistry {
         Ok(())
     }
 
+    /// suspend a provider, this function will change the provider activation status to suspended.
+    /// suspended provider can't issue emr.
     pub fn suspend_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
