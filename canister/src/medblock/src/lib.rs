@@ -74,3 +74,6 @@ fn suspend_provider(provider: Principal) {
         state.provider_registry.suspend_provider(provider).unwrap()
     });
 }
+
+
+ic_cdk::export::candid::export_service!();
