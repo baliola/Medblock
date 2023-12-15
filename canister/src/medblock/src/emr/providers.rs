@@ -119,9 +119,7 @@ impl ProvidersBindings {
         principal: ProviderPrincipal,
         internal_id: InternalProviderId,
     ) -> Result<(), OutOfMemory> {
-        self.insert(principal, internal_id)
-            .map_err(|_| OutOfMemory)
-            .map(|_| ())
+        Ok(self.insert(principal, internal_id).map(|_| ())?)
     }
 }
 
@@ -140,9 +138,9 @@ pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> Result<(), OutOfMemory> {
-        self.insert(provider.internal_id().clone(), provider)
-            .map_err(|_| OutOfMemory)
-            .map(|_| ())
+        Ok(self
+            .insert(provider.internal_id().clone(), provider)
+            .map(|_| ())?)
     }
 }
 
