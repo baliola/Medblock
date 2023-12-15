@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use candid::{CandidType, Principal};
 use ic_stable_memory::{
     collections::SBTreeMap,
@@ -159,6 +161,20 @@ impl EssentialProviderAttributes for Provider {
     }
 }
 
+impl Billable for Provider {
+    fn session(&self) -> Session {
+        match self {
+            Provider::V001(provider) => provider.session(),
+        }
+    }
+
+    fn session_mut(&mut self) -> &mut Session {
+        match self {
+            Provider::V001(provider) => provider.session_mut(),
+        }
+    }
+}
+
 impl std::cmp::PartialEq for Provider {
     fn eq(&self, other: &Self) -> bool {
         self.internal_id().eq(other.internal_id())
@@ -180,10 +196,64 @@ impl std::cmp::Ord for Provider {
 }
 
 /// Essential provider attributes, this trait must be implemented for all [Provider] enum members.
-/// also used to automatically derive [PartialEq], [PartialOrd], [Ord] and [Eq] for [Provider] enum members.
 pub trait EssentialProviderAttributes {
+    /// used to automatically derive [PartialEq], [PartialOrd], [Ord] and [Eq] for [Provider] enum members at enum level.
     fn internal_id(&self) -> &InternalProviderId;
 }
+
+/// Billable trait, this trait must be implemented for all [Provider] enum members.
+pub trait Billable {
+    /// returns immutable session for this provider
+    fn session(&self) -> Session;
+
+    /// returns mutable session for this provider
+    fn session_mut(&mut self) -> &mut Session;
+
+    /// increment the session for this provider, call this when issuing emr
+    fn increment_session(&mut self) {
+        self.session_mut().increment_session();
+    }
+}
+
+// START ------------------------------ SESSION ------------------------------ START
+
+/// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+#[derive(StableType, AsFixedSizeBytes, CandidType, Debug, Default, Clone, Copy)]
+pub struct Session(u64);
+
+// blanket impl for session
+impl<T> From<T> for Session
+where
+    T: Into<u64>,
+{
+    fn from(session: T) -> Self {
+        Self(session.into())
+    }
+}
+
+impl Session {
+    /// create a new session
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// increment the session
+    pub fn increment_session(&mut self) {
+        self.0.add(1);
+    }
+
+    /// reset the session, call this when the provider had settled their bill
+    pub fn reset_session(&mut self) {
+        self.0 = 0;
+    }
+
+    /// return inner session
+    pub fn session(&self) -> u64 {
+        self.0
+    }
+}
+
+// END ------------------------------ SESSION ------------------------------ END
 
 // START ------------------------------ PROVIDER V1 ------------------------------ START
 
@@ -209,6 +279,9 @@ pub struct ProviderV001 {
     /// issues all the emr that this provider internal id issues.
     owner_principal: Principal,
 
+    /// provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+    session: Session,
+
     // TODO: discuss this. are we gonna make the billing automaticly onchain?
     // active_until:
     /// time when this provider was registered in nanosecond
@@ -219,6 +292,15 @@ pub struct ProviderV001 {
     // TODO : discuss this as to what data is gonna be collected
     // provider_details:
 }
+impl Billable for ProviderV001 {
+    fn session(&self) -> Session {
+        self.session
+    }
+
+    fn session_mut(&mut self) -> &mut Session {
+        &mut self.session
+    }
+}
 
 impl ProviderV001 {
     pub fn new(
@@ -226,6 +308,7 @@ impl ProviderV001 {
         initial_principal: Principal,
     ) -> Result<Self, OutOfMemory> {
         Ok(ProviderV001 {
+            session: Session::new(),
             activation_status: Status::Verified,
             display_name: SBox::new(encrypted_display_name)?,
             internal_id: InternalProviderId::default(),

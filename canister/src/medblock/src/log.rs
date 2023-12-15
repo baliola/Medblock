@@ -9,7 +9,7 @@ use ic_stable_memory::{
     SBox,
 };
 use serde::Deserialize;
-
+// TODO : rearrange this to session logs
 #[derive(StableType, CandidType, Debug, Deserialize, AsFixedSizeBytes)]
 pub struct RecordsV001 {
     emr_id: Id,
@@ -53,3 +53,4 @@ impl Default for EntryLog {
         Self(Log::new())
     }
 }
+
