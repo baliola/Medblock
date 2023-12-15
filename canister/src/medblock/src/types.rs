@@ -120,6 +120,7 @@ impl AsciiRecordsKey {
 #[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct Id([u8; 16]);
 
+
 impl CandidType for Id {
     fn _ty() -> candid::types::Type {
         candid::types::Type::Text
