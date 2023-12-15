@@ -25,6 +25,7 @@ thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::default();
 }
 
+// guard function
 fn only_canister_owner() -> Result<(), String> {
     STATE.with(|state| {
         let state = state.borrow();
@@ -34,6 +35,22 @@ fn only_canister_owner() -> Result<(), String> {
 
         if !state.config.is_canister_owner(&caller) {
             return Err("only canister owner can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
+// guard function
+fn only_provider() -> Result<(), String> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        let caller = ic_cdk::caller();
+
+        if !state.provider_registry.is_valid_provider(&caller) {
+            return Err("only provider can call this method".to_string());
         }
 
         Ok(())
