@@ -84,7 +84,7 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     emr_collection
 });
 /// version aware emr
-#[derive(StableType, AsFixedSizeBytes, Debug)]
+#[derive(StableType, AsFixedSizeBytes, Debug, CandidType)]
 #[non_exhaustive]
 pub enum Emr {
     V001(V001),
@@ -172,6 +172,21 @@ measure_alloc!("records": {
        records
 });
 
+impl Clone for Records {
+    fn clone(&self) -> Self {
+        let mut records = Records::default();
+
+        // TODO : fix this, we're using stable memory as our main memory, but there is some case
+        // such as cloning a emr copy that would result in stable memory allocation while we want to use the heap for that  as we didn't store any data after
+        // the response has been serialized and sent. it's like using hard disk as a ram, but you want the volatility of ram.
+        for (k, v) in self.0.iter() {
+            records.insert(k.clone(), v.clone());
+        }
+
+        records
+    }
+}
+
 impl Records {
     pub fn new() -> Self {
         Self::default()
@@ -202,7 +217,7 @@ impl CandidType for Records {
     }
 }
 
-#[derive(AsFixedSizeBytes, StableType, Debug, Default)]
+#[derive(AsFixedSizeBytes, StableType, Debug, Default, CandidType, Clone)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,

@@ -112,4 +112,15 @@ fn suspend_provider(provider: Principal) {
     });
 }
 
+#[ic_cdk::query(guard = "only_patients_or_provider")]
+// TODO : move arguments to a candid struct
+fn read_emr_by_id(emr_id: types::Id) -> Option<emr::Emr> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        state.emr_registry.get_emr(&emr_id)
+    })
+}
+
 ic_cdk::export::candid::export_service!();
