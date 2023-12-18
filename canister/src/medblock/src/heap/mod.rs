@@ -1,6 +1,7 @@
 use ic_stable_memory::StableType;
 
 mod boxed;
+pub mod map;
 
 pub struct Heap<T>(T)
 where
