@@ -174,16 +174,12 @@ measure_alloc!("records": {
 
 impl Clone for Records {
     fn clone(&self) -> Self {
-        let mut records = Records::default();
+        todo!();
 
         // TODO : fix this, we're using stable memory as our main memory, but there is some case
         // such as cloning a emr copy that would result in stable memory allocation while we want to use the heap for that  as we didn't store any data after
         // the response has been serialized and sent. it's like using hard disk as a ram, but you want the volatility of ram.
-        for (k, v) in self.0.iter() {
-            records.insert(k.clone(), v.clone());
-        }
 
-        records
     }
 }
 

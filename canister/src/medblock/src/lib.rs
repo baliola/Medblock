@@ -11,6 +11,7 @@ mod encryption;
 mod log;
 mod macros;
 mod types;
+mod heap;
 
 #[derive(Default)]
 pub struct State {
@@ -119,7 +120,9 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::Emr> {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        state.emr_registry.get_emr(&emr_id)
+        // state.emr_registry.get_emr(&emr_id)
+
+        todo!()
     })
 }
 
