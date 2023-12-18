@@ -1,13 +1,13 @@
-use ic_stable_memory::{AsDynSizeBytes, SBox, StableType};
+use ic_stable_memory::{ AsDynSizeBytes, SBox, StableType };
 
 use crate::deref;
 
-use super::{HeapCloneMut, HeapMarker};
+use super::{ HeapCloneMut, HeapMarker };
 
 #[derive(Clone, Debug, Default)]
 pub struct HBox<T>(Box<T>);
 
-impl<T> std::ops::Deref for HBox<T>{
+impl<T> std::ops::Deref for HBox<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -26,42 +26,27 @@ impl<T> From<Box<T>> for HBox<T> {
     }
 }
 
-impl<T> From<SBox<T>> for HBox<T>
-where
-    T: AsDynSizeBytes + StableType,
-{
+impl<T> From<SBox<T>> for HBox<T> where T: AsDynSizeBytes + StableType {
     fn from(value: SBox<T>) -> Self {
         Self(value.into_inner().into())
     }
 }
 
-impl<T> HeapMarker for HBox<T> {}
-
-impl<T> HeapCloneMut for HBox<T>
-where
-    T: HeapMarker + Clone,
-{
+impl<T> HeapCloneMut for HBox<T> where T: HeapMarker + Clone {
     type Target = Self;
 
-    fn clone_heap_mut(&mut self) -> Self::Target
-    where
-        Self: Sized,
-    {
+    fn clone_heap_mut(&mut self) -> Self::Target where Self: Sized {
         self.clone()
     }
 }
 
-impl<T> HeapCloneMut for SBox<T>
-where
-    T: AsDynSizeBytes + StableType + Clone,
-{
+impl<T> HeapCloneMut for SBox<T> where T: AsDynSizeBytes + StableType + Clone {
     type Target = HBox<T>;
 
-    fn clone_heap_mut(&mut self) -> Self::Target
-    where
-        Self: Sized,
-    {
+    fn clone_heap_mut(&mut self) -> Self::Target where Self: Sized {
         // TODO : find if placing unwrap here is safe
         self.with(|x| HBox::from(x.clone())).unwrap()
     }
 }
+
+impl<T> HeapMarker for HBox<T> {}
