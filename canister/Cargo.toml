@@ -2,3 +2,11 @@
 members = [
     "src/medblock",
 ]
+
+[workspace.dependencies]
+ic-cdk = "0.7.3"
+candid = "0.8.4"
+ic-cdk-timers = "0.5.1" # Feel free to remove this dependency if you don't need timers
+ic-stable-memory = "0.4"
+paste = "1.0.14"
+serde = "1.0.193"

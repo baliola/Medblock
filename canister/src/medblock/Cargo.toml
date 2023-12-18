@@ -12,12 +12,12 @@ crate-type = ["cdylib"]
 anyhow = "1.0.75"
 ciborium = "0.2.1"
 hex = "0.4.3"
-ic-cdk = "0.7.3"
-candid = "0.8.4"
-ic-cdk-timers = "0.5.1" # Feel free to remove this dependency if you don't need timers
-ic-stable-memory = "0.4"
-paste = "1.0.14"
-serde = "1.0.193"
+ic-cdk = { workspace = true }
+candid = { workspace = true }
+ic-cdk-timers = { workspace = true } # Feel free to remove this dependency if you don't need timers
+ic-stable-memory = { workspace = true }
+paste = { workspace = true }
+serde = { workspace = true }
 thiserror = "1.0.50"
 uuid = { version = "1.6.1", features = ["fast-rng", "serde", "js", "v7", "v4"] }
 serde_json = { version = "1.0.108", features = ["alloc"], default-features = false }
