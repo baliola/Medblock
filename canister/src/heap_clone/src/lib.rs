@@ -1,14 +1,12 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub trait HeapClone {
+    type Target;
+
+    fn clone(&self) -> Self::Target;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// for boxed types
+pub trait HeapCloneMut {
+    type Target;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    fn clone_heap_mut(&mut self) -> Self::Target;
 }
