@@ -1,0 +1,17 @@
+[package]
+name = "heap_clone"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ic-cdk = { workspace = true }
+candid = { workspace = true }
+ic-cdk-timers = { workspace = true } # Feel free to remove this dependency if you don't need timers
+ic-stable-memory = { workspace = true }
+paste = { workspace = true }
+serde = { workspace = true }
+syn = { version = "2.0.41", features = ["full"] }
+quote = "1.0.33"
+proc-macro2 = "1.0.70"

@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "src/medblock",
+    "src/heap_clone",
+    "src/heap_clone_derive",
 ]
 
 [workspace.dependencies]
