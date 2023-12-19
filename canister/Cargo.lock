@@ -533,33 +533,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
 
 [[package]]
-name = "heap_clone"
-version = "0.1.0"
-dependencies = [
- "candid 0.8.4",
- "ic-cdk 0.7.4",
- "ic-cdk-timers",
- "ic-stable-memory",
- "paste",
- "serde",
-]
-
-[[package]]
-name = "heap_clone_derive"
-version = "0.1.0"
-dependencies = [
- "candid 0.8.4",
- "ic-cdk 0.7.4",
- "ic-cdk-timers",
- "ic-stable-memory",
- "paste",
- "proc-macro2",
- "quote",
- "serde",
- "syn 2.0.41",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

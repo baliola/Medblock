@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use candid::Principal;
 use config::CanisterConfig;
-use emr::{providers::ProviderRegistry, EmrRegistry};
+use emr::{ providers::ProviderRegistry, EmrRegistry, ToResponse, EmrDisplay, FromStableRef };
 use ic_stable_memory::collections::SLog;
 
 mod config;
@@ -11,7 +11,6 @@ mod encryption;
 mod log;
 mod macros;
 mod types;
-mod heap;
 
 #[derive(Default)]
 pub struct State {
@@ -95,10 +94,7 @@ fn register_new_provider(new_provider: Principal, encryted_display_name: String)
         let mut state = state.borrow_mut();
         let mut state = state.as_mut().unwrap();
 
-        state
-            .provider_registry
-            .register_new_provider(new_provider, encryted_display_name)
-            .unwrap()
+        state.provider_registry.register_new_provider(new_provider, encryted_display_name).unwrap()
     });
 }
 
@@ -115,14 +111,14 @@ fn suspend_provider(provider: Principal) {
 
 #[ic_cdk::query(guard = "only_patients_or_provider")]
 // TODO : move arguments to a candid struct
-fn read_emr_by_id(emr_id: types::Id) -> Option<emr::Emr> {
+fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        // state.emr_registry.get_emr(&emr_id)
+        let emr = state.emr_registry.get_emr(&emr_id).unwrap();
 
-        todo!()
+        Some(EmrDisplay::from_stable_ref(&*emr))
     })
 }
 
