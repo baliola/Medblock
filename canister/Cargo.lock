@@ -541,10 +541,7 @@ dependencies = [
  "ic-cdk-timers",
  "ic-stable-memory",
  "paste",
- "proc-macro2",
- "quote",
  "serde",
- "syn 2.0.41",
 ]
 
 [[package]]
@@ -556,7 +553,10 @@ dependencies = [
  "ic-cdk-timers",
  "ic-stable-memory",
  "paste",
+ "proc-macro2",
+ "quote",
  "serde",
+ "syn 2.0.41",
 ]
 
 [[package]]
