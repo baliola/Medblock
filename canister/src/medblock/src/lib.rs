@@ -2,8 +2,8 @@ use std::cell::RefCell;
 
 use candid::Principal;
 use config::CanisterConfig;
-use emr::{ providers::ProviderRegistry, EmrRegistry, ToResponse, EmrDisplay, FromStableRef };
-use ic_stable_memory::collections::SLog;
+use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef };
+
 
 mod config;
 mod emr;
@@ -92,7 +92,7 @@ fn init() {
 fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let mut state = state.as_mut().unwrap();
+        let state = state.as_mut().unwrap();
 
         state.provider_registry.register_new_provider(new_provider, encryted_display_name).unwrap()
     });
@@ -103,7 +103,7 @@ fn register_new_provider(new_provider: Principal, encryted_display_name: String)
 fn suspend_provider(provider: Principal) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let mut state = state.as_mut().unwrap();
+        let state = state.as_mut().unwrap();
 
         state.provider_registry.suspend_provider(provider).unwrap()
     });

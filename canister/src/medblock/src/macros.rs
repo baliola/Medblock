@@ -147,7 +147,7 @@ macro_rules! measure_alloc {
                 fn measure_alloc(){
                     ic_stable_memory::stable_memory_init();
 
-                    let b = $block;
+                    let _b = $block;
 
                     let allocated = ic_stable_memory::get_allocated_size();
                     println!("total allocated for id {} types: {} megabytes", stringify!($id), allocated / 1024 / 1024);

@@ -71,7 +71,7 @@ impl ProviderRegistry {
         display_name: String,
     ) -> Result<(), OutOfMemory> {
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = ProviderV001::new(display_name, provider_principal.clone())?;
+        let provider = ProviderV001::new(display_name, provider_principal)?;
 
         // bind the principal to the internal id
         self.providers_bindings
@@ -115,7 +115,7 @@ pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
 deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
 
 impl Issued {
-    pub fn is_issued_by(&self, provider: &InternalProviderId, emr_id: &Id) -> bool {
+    pub fn is_issued_by(&self, provider: &InternalProviderId, _emr_id: &Id) -> bool {
         self.contains_key(provider)
     }
 }

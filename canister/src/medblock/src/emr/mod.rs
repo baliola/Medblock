@@ -1,14 +1,13 @@
 pub mod patient;
 pub mod providers;
 
-use std::collections::HashMap;
+
 
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
-    AsDynSizeBytes,
     AsFixedSizeBytes,
     SBox,
     StableType,
@@ -33,7 +32,7 @@ pub trait ToResponse<T: ResonpseMarker> {
 
 use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::{ patient::{ EmrBindingMap, OwnerMap }, providers::Providers };
+use self::{ patient::{ EmrBindingMap, OwnerMap } };
 
 #[derive(Default)]
 pub struct EmrRegistry {
@@ -77,7 +76,7 @@ deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
 measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     let mut emr_collection = EmrCollection::default();
 
-    for i in 0..10_000 {
+    for _i in 0..10_000 {
         let mut emr = V001::default();
 
         for i in 0..10 {
@@ -192,7 +191,7 @@ measure_alloc!("records": {
        let mut records = Records::default();
 
        records.insert(
-           AsciiRecordsKey::new("test".to_string()).unwrap(),
+           AsciiRecordsKey::new("test").unwrap(),
            EmrRecordsValue::new("test").unwrap(),
        );
 
@@ -289,8 +288,8 @@ impl FromStableRef for DisplayV001 {
     fn from_stable_ref(sref: &V001) -> Self {
         Self {
             emr_id: sref.emr_id.clone(),
-            created_at: sref.created_at.clone(),
-            updated_at: sref.updated_at.clone(),
+            created_at: sref.created_at,
+            updated_at: sref.updated_at,
             records: RecrodsDisplay::from_stable_ref(&sref.records),
         }
     }

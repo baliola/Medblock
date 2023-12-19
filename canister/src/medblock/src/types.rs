@@ -3,7 +3,7 @@ use std::str::FromStr;
 use candid::CandidType;
 use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
 
-use crate::{deref, measure_alloc};
+use crate::{deref};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
