@@ -100,6 +100,28 @@ impl ProviderRegistry {
 
         Ok(())
     }
+
+    /// get issued emr by a provider, this function will return a vector of emr id issued by a provider.
+    ///
+    /// `provider`: the provider principal
+    ///
+    /// `anchor`: the anchor, this is used to paginate the result. the result will be returned starting from the anchor.
+    /// so for example if the anchor is 0, the result will be returned starting from the first emr issued by the provider.
+    /// and if the anchor is 10, the result will be returned starting from the 10th emr issued by the provider.
+    ///
+    /// `max`: the maximum number of emr to be returned.
+    pub fn get_issued(
+        &self,
+        provider: &ProviderPrincipal,
+        anchor: u64,
+        max: u8
+    ) -> Result<Vec<Id>, &'static str> {
+        let internal_id = self.providers_bindings
+            .get_internal_id(&provider)
+            .ok_or("provider not found")?;
+
+        self.issued.get_issued(&*internal_id, anchor, max).ok_or("no emr collection found")
+    }
 }
 
 pub type InternalProviderId = Id;
@@ -116,11 +138,11 @@ impl Issued {
 
     pub fn get_issued(
         &self,
-        provider: InternalProviderId,
+        provider: &InternalProviderId,
         anchor: u64,
         max: u8
     ) -> Option<Vec<EmrId>> {
-        let Some(emr_id_collection) = self.get(&provider) else {
+        let Some(emr_id_collection) = self.get(provider) else {
             return None;
         };
 

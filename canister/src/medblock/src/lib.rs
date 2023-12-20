@@ -25,13 +25,22 @@ thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::default();
 }
 
+fn verified_caller() -> Result<Principal, String> {
+    let caller = ic_cdk::caller();
+
+    if caller.ne(&ic_cdk::export::Principal::anonymous()) {
+        return Err(String::from("anonymous caller is not allowed"));
+    }
+    Ok(caller)
+}
+
 // guard function
 fn only_canister_owner() -> Result<(), String> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        let caller = ic_cdk::caller();
+        let caller = verified_caller()?;
 
         if !state.config.is_canister_owner(&caller) {
             return Err("only canister owner can call this method".to_string());
@@ -47,7 +56,7 @@ fn only_provider() -> Result<(), String> {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        let caller = ic_cdk::caller();
+        let caller = verified_caller()?;
 
         if !state.provider_registry.is_valid_provider(&caller) {
             return Err("only provider can call this method".to_string());
@@ -63,7 +72,7 @@ fn only_patients() -> Result<(), String> {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        let caller = ic_cdk::caller();
+        let caller = verified_caller()?;
 
         if !state.emr_registry.is_valid_patient(&caller) {
             return Err("only patient can call this method".to_string());
@@ -122,14 +131,16 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     })
 }
 
-#[ic_cdk::query(guard = "only_patients_or_provider")]
+#[ic_cdk::query(guard = "only_provider")]
 // TODO : move arguments to a candid struct
-fn emr_list(provider: Principal) -> Vec<Id> {
+fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        state.emr_registry.emr_list(&provider)
+        let provider = verified_caller().unwrap();
+
+        state.provider_registry.get_issued(&provider, anchor, max).unwrap()
     })
 }
 
