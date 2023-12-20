@@ -1,8 +1,6 @@
 pub mod patient;
 pub mod providers;
 
-
-
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashMap,

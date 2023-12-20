@@ -1,20 +1,17 @@
 use std::ops::Add;
 
-use candid::{CandidType, Principal};
+use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SBTreeMap,
-    derive::{AsFixedSizeBytes, StableType},
+    derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
     SBox,
 };
 use serde::Deserialize;
 
-use crate::{
-    deref,
-    types::{Id, Timestamp},
-};
+use crate::{ deref, types::{ Id, Timestamp } };
 
-use super::{patient::EmrIdCollection, OutOfMemory};
+use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
 
 #[derive(StableType, AsFixedSizeBytes, Deserialize, CandidType, Debug)]
 pub enum Status {
@@ -58,7 +55,6 @@ impl ProviderRegistry {
         self.issued.is_issued_by(&id, emr_id)
     }
 
-
     /// check a given principal is valid and registered as provider
     pub fn is_valid_provider(&self, provider: &Principal) -> bool {
         self.providers_bindings.contains_key(provider)
@@ -68,14 +64,13 @@ impl ProviderRegistry {
     pub fn register_new_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
-        display_name: String,
+        display_name: String
     ) -> Result<(), OutOfMemory> {
         // create a new provider, note that this might change version depending on the version of the emr used.
         let provider = ProviderV001::new(display_name, provider_principal)?;
 
         // bind the principal to the internal id
-        self.providers_bindings
-            .bind(provider_principal, provider.internal_id().clone())?;
+        self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
 
         // add the provider to the provider map
         self.providers.add_provider(provider.into())?;
@@ -87,7 +82,7 @@ impl ProviderRegistry {
     /// suspended provider can't issue emr.
     pub fn suspend_provider(
         &mut self,
-        provider_principal: ProviderPrincipal,
+        provider_principal: ProviderPrincipal
     ) -> Result<(), &'static str> {
         let Some(internal_id) = self.providers_bindings.get_internal_id(&provider_principal) else {
             return Err("provider not found");
@@ -118,6 +113,25 @@ impl Issued {
     pub fn is_issued_by(&self, provider: &InternalProviderId, _emr_id: &Id) -> bool {
         self.contains_key(provider)
     }
+
+    pub fn get_issued(
+        &self,
+        provider: InternalProviderId,
+        anchor: u64,
+        max: u8
+    ) -> Option<Vec<EmrId>> {
+        let Some(emr_id_collection) = self.get(&provider) else {
+            return None;
+        };
+
+        let emrs = emr_id_collection
+            .iter()
+            .skip(anchor as usize)
+            .map(|e| e.to_owned())
+            .collect::<Vec<_>>();
+
+        Some(emrs)
+    }
 }
 
 /// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
@@ -130,7 +144,7 @@ impl ProvidersBindings {
     pub fn bind(
         &mut self,
         principal: ProviderPrincipal,
-        internal_id: InternalProviderId,
+        internal_id: InternalProviderId
     ) -> Result<(), OutOfMemory> {
         Ok(self.insert(principal, internal_id).map(|_| ())?)
     }
@@ -139,7 +153,7 @@ impl ProvidersBindings {
 impl ProvidersBindings {
     pub fn get_internal_id(
         &self,
-        principal: &ProviderPrincipal,
+        principal: &ProviderPrincipal
     ) -> Option<SRef<'_, InternalProviderId>> {
         self.get(principal)
     }
@@ -151,9 +165,7 @@ pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> Result<(), OutOfMemory> {
-        Ok(self
-            .insert(provider.internal_id().clone(), provider)
-            .map(|_| ())?)
+        Ok(self.insert(provider.internal_id().clone(), provider).map(|_| ())?)
     }
 }
 
@@ -233,10 +245,7 @@ pub trait Billable {
 pub struct Session(u64);
 
 // blanket impl for session
-impl<T> From<T> for Session
-where
-    T: Into<u64>,
-{
+impl<T> From<T> for Session where T: Into<u64> {
     fn from(session: T) -> Self {
         Self(session.into())
     }
@@ -316,7 +325,7 @@ impl Billable for ProviderV001 {
 impl ProviderV001 {
     pub fn new(
         encrypted_display_name: String,
-        initial_principal: Principal,
+        initial_principal: Principal
     ) -> Result<Self, OutOfMemory> {
         Ok(ProviderV001 {
             session: Session::new(),

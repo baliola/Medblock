@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use candid::Principal;
 use config::CanisterConfig;
 use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef };
-
+use types::Id;
 
 mod config;
 mod emr;
@@ -119,6 +119,17 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
         let emr = state.emr_registry.get_emr(&emr_id).unwrap();
 
         Some(EmrDisplay::from_stable_ref(&*emr))
+    })
+}
+
+#[ic_cdk::query(guard = "only_patients_or_provider")]
+// TODO : move arguments to a candid struct
+fn emr_list(provider: Principal) -> Vec<Id> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        state.emr_registry.emr_list(&provider)
     })
 }
 

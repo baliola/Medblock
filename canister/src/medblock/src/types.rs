@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use candid::CandidType;
-use ic_stable_memory::derive::{AsFixedSizeBytes, StableType};
+use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
 
-use crate::{deref};
-use serde::{Deserialize, Serialize};
+use crate::{ deref };
+use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
 /// timestamp in nanoseconds
@@ -21,7 +21,7 @@ use uuid::Uuid;
     Debug,
     Copy,
     Deserialize,
-    Serialize,
+    Serialize
 )]
 pub struct Timestamp(pub(crate) u64);
 
@@ -60,7 +60,16 @@ pub enum EmrKeyError {
 
 /// arbitry ascii encoded string with max length of 32 bytes
 #[derive(
-    StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, CandidType,
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    CandidType
 )]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
@@ -120,15 +129,13 @@ impl AsciiRecordsKey {
 #[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct Id([u8; 16]);
 
-
 impl CandidType for Id {
     fn _ty() -> candid::types::Type {
         candid::types::Type::Text
     }
 
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
-    where
-        S: candid::types::Serializer,
+        where S: candid::types::Serializer
     {
         // TODO : to_string() invloves copy
         serializer.serialize_text(self.to_string().as_str())
@@ -166,18 +173,14 @@ mod deserialize {
     use super::*;
 
     impl<'de> Serialize for AsciiRecordsKey {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
             serializer.serialize_str(self.to_ascii_str())
         }
     }
 
     impl<'de> serde::Deserialize<'de> for AsciiRecordsKey {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
+            where D: serde::Deserializer<'de>
         {
             if !deserializer.is_human_readable() {
                 return Err(serde::de::Error::custom("key must be a ascii string"));
@@ -192,9 +195,7 @@ mod deserialize {
             s.make_ascii_lowercase();
 
             if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
-                return Err(serde::de::Error::custom(
-                    "key must not exceed 32 ascii characters",
-                ));
+                return Err(serde::de::Error::custom("key must not exceed 32 ascii characters"));
             }
             // TODO: unnecessary copy
             let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
@@ -209,18 +210,14 @@ mod deserialize {
 
     impl<'de> serde::Deserialize<'de> for Id {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
+            where D: serde::Deserializer<'de>
         {
             Uuid::deserialize(deserializer).map(|uuid| uuid.into())
         }
     }
 
     impl<'de> serde::Serialize for Id {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
             Uuid::from_bytes_ref(&self.0).serialize(serializer)
         }
     }
