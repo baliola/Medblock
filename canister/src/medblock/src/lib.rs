@@ -144,4 +144,4 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     })
 }
 
-ic_cdk::export::candid::export_service!();
+// ic_cdk::export::candid::export_service!();

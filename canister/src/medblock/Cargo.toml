@@ -19,8 +19,10 @@ ic-stable-memory = { workspace = true }
 paste = { workspace = true }
 serde = { workspace = true }
 thiserror = "1.0.50"
-uuid = { version = "1.6.1", features = ["fast-rng", "serde", "js", "v7", "v4"] }
-serde_json = { version = "1.0.108", features = ["alloc"], default-features = false }
+uuid = { version = "1.6.1", default-features = false, features = ["serde"] }
+serde_json = { version = "1.0.108", features = [
+    "alloc",
+], default-features = false }
 
 [dev-dependencies]
 tiny-keccak = { version = "2.0.2", features = ["sha3"] }
