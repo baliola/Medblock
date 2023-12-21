@@ -1,5 +1,5 @@
 use candid::CandidType;
-use candid::Principal;
+use ic_cdk::export::Principal;
 use serde::Deserialize;
 
 // all the code inside vetkd abstraction block is subject to change following later audits results
@@ -45,7 +45,7 @@ impl VetKDPublicKeyRequest {
     fn new(
         canister_id: Option<CanisterId>,
         derivation_path: Vec<Vec<u8>>,
-        key_id: VetKDKeyId,
+        key_id: VetKDKeyId
     ) -> Self {
         Self {
             canister_id,
@@ -79,7 +79,7 @@ impl VetKDEncryptedKeyRequest {
         public_key_derivation_path: Vec<Vec<u8>>,
         derivation_id: Vec<u8>,
         key_id: VetKDKeyId,
-        encryption_public_key: Vec<u8>,
+        encryption_public_key: Vec<u8>
     ) -> Self {
         Self {
             public_key_derivation_path,
@@ -123,16 +123,12 @@ impl VetKdSystemApi {
         let request = VetKDPublicKeyRequest::new(
             None,
             vec![Self::STATIC_DERIVATION_PATH.to_vec()],
-            Self::static_key_id(),
+            Self::static_key_id()
         );
 
-        let (response,): (VetKDPublicKeyReply,) = ic_cdk::api::call::call(
-            Self::id(),
-            Self::VETKD_PUBLIC_KEY_METHOD_SIGNATURE,
-            (request,),
-        )
-        .await
-        .expect("call to vetkd_public_key failed");
+        let (response,): (VetKDPublicKeyReply,) = ic_cdk::api::call
+            ::call(Self::id(), Self::VETKD_PUBLIC_KEY_METHOD_SIGNATURE, (request,)).await
+            .expect("call to vetkd_public_key failed");
 
         Self::encode_to_string(response.public_key)
     }
@@ -144,16 +140,12 @@ impl VetKdSystemApi {
             vec![Self::STATIC_DERIVATION_PATH.to_vec()],
             derivation_id,
             Self::static_key_id(),
-            transport_key_public_key,
+            transport_key_public_key
         );
 
-        let (response,): (VetKDEncryptedKeyReply,) = ic_cdk::api::call::call(
-            Self::id(),
-            Self::VETKD_SECRET_KEY_METHOD_SIGNATURE,
-            (request,),
-        )
-        .await
-        .expect("call to vetkd_encrypted_key failed");
+        let (response,): (VetKDEncryptedKeyReply,) = ic_cdk::api::call
+            ::call(Self::id(), Self::VETKD_SECRET_KEY_METHOD_SIGNATURE, (request,)).await
+            .expect("call to vetkd_encrypted_key failed");
 
         Self::encode_to_string(response.encrypted_key)
     }
@@ -167,7 +159,7 @@ impl VetKdSystemApi {
 pub struct EncryptionApi;
 
 impl EncryptionApi {
-    // we aiming to expose this kind of api to canister public api 
+    // we aiming to expose this kind of api to canister public api
 
     /// retrieve verification key for decrypting EMR symmetric encryption key
     pub async fn symmetric_key_verification_key() -> HexEncodedPublicKey {
@@ -176,7 +168,7 @@ impl EncryptionApi {
 
     /// retrieve encryption key that will be used to encrypt and decrypt EMR with specified transport key
     pub async fn encrypted_symmetric_key_for_caller(
-        transport_key_public_key: Vec<u8>,
+        transport_key_public_key: Vec<u8>
     ) -> HexEncodedSecretKey {
         VetKdSystemApi::vetkd_encrypted_key(transport_key_public_key).await
     }

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use candid::Principal;
+use ic_cdk::export::Principal;
 use config::CanisterConfig;
 use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef };
 use types::Id;
@@ -11,6 +11,7 @@ mod encryption;
 mod log;
 mod macros;
 mod types;
+mod random;
 
 #[derive(Default)]
 pub struct State {
@@ -144,4 +145,27 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     })
 }
 
-// ic_cdk::export::candid::export_service!();
+#[ic_cdk::query(name = "__get_candid_interface_tmp_hack")]
+fn export_candid() -> String {
+    ic_cdk::export::candid::export_service!();
+    __export_service()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn save_candid() {
+        use std::env;
+        use std::fs::write;
+        use std::path::PathBuf;
+
+        let dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let dir = dir.parent().unwrap().parent().unwrap().join("src").join("medblock");
+
+        let candid = super::export_candid();
+        println!("{:?}", candid);
+        write(dir.join("medblock.did"), super::export_candid()).expect("Write failed.");
+    }
+}
