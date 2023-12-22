@@ -98,6 +98,7 @@ fn init() {
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
+#[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
 fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
     STATE.with(|state| {
@@ -109,6 +110,7 @@ fn register_new_provider(new_provider: Principal, encryted_display_name: String)
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
+#[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
 fn suspend_provider(provider: Principal) {
     STATE.with(|state| {
@@ -120,6 +122,7 @@ fn suspend_provider(provider: Principal) {
 }
 
 #[ic_cdk::query(guard = "only_patients_or_provider")]
+#[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
 fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     STATE.with(|state| {
@@ -133,6 +136,7 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
 }
 
 #[ic_cdk::query(guard = "only_provider")]
+#[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
 fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     STATE.with(|state| {
