@@ -1,3 +1,13 @@
+type DisplayV001 = record {
+  updated_at : nat64;
+  records : text;
+  created_at : nat64;
+  emr_id : text;
+};
+type EmrDisplay = variant { V001 : DisplayV001 };
 service : {
-    "greet": (text) -> (text) query;
+  emr_list_provider : (nat64, nat8) -> (vec text) query;
+  read_emr_by_id : (text) -> (opt EmrDisplay) query;
+  register_new_provider : (principal, text) -> ();
+  suspend_provider : (principal) -> ();
 }
