@@ -7,6 +7,8 @@ use ic_stable_memory::{
 
 use crate::{ deref, types::Id };
 
+use super::OutOfMemory;
+
 type EmrId = Id;
 const KEY_LEN: usize = 32;
 
@@ -70,8 +72,11 @@ impl OwnerMap {
         self.0.remove(owner);
     }
 
-    pub fn bind(&mut self, owner: Owner, nik: NIK) {
-        self.0.insert(owner, nik);
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Result<(), OutOfMemory> {
+        self.0
+            .insert(owner, nik)
+            .map_err(OutOfMemory::from)
+            .map(|_| ())
     }
 
     pub fn get_nik(&self, owner: &Owner) -> Option<SRef<'_, NIK>> {
