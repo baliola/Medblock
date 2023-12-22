@@ -151,6 +151,7 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
 
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
 fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -164,6 +165,7 @@ fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
 
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
 fn rebind_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -177,6 +179,7 @@ fn rebind_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
 
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
 fn revoke_patient_access(owner: Principal) -> Result<(), String> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
