@@ -1,11 +1,11 @@
-use candid::{CandidType, Principal};
+use candid::{ CandidType, Principal };
 use ic_stable_memory::{
-    collections::{SBTreeMap, SBTreeSet},
-    derive::{AsFixedSizeBytes, StableType},
+    collections::{ SBTreeMap, SBTreeSet },
+    derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
 
-use crate::{deref, types::Id};
+use crate::{ deref, types::Id };
 
 type EmrId = Id;
 const KEY_LEN: usize = 32;
@@ -28,8 +28,7 @@ mod deserialize {
 
     impl<'de> serde::Deserialize<'de> for InternalBindingKey {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
+            where D: serde::Deserializer<'de>
         {
             let s = String::deserialize(deserializer)?.into_bytes();
 
@@ -51,8 +50,7 @@ mod deserialize {
         }
 
         fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
-        where
-            S: candid::types::Serializer,
+            where S: candid::types::Serializer
         {
             serializer.serialize_text(self.as_str())
         }
@@ -68,6 +66,14 @@ pub type NIK = InternalBindingKey;
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
 
 impl OwnerMap {
+    pub fn revoke(&mut self, owner: &Owner) {
+        self.0.remove(owner);
+    }
+
+    pub fn bind(&mut self, owner: Owner, nik: NIK) {
+        self.0.insert(owner, nik);
+    }
+
     pub fn get_nik(&self, owner: &Owner) -> Option<SRef<'_, NIK>> {
         self.0.get(owner)
     }
