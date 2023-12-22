@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
-use ic_cdk::export::Principal;
+use candid::Principal;
 use config::CanisterConfig;
-use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef };
+use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef, patient::NIK };
 use types::Id;
 
 mod config;
@@ -146,6 +146,45 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
         let provider = verified_caller().unwrap();
 
         state.provider_registry.get_issued(&provider, anchor, max).unwrap()
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.register_patient(owner, hashed_nik).unwrap();
+
+        Ok(())
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+fn rebind_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.rebind_patient(owner, hashed_nik).unwrap();
+
+        Ok(())
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+fn revoke_patient_access(owner: Principal) -> Result<(), String> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.revoke_patient_access(&owner);
+
+        Ok(())
     })
 }
 
