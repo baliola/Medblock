@@ -1,11 +1,8 @@
-use crate::{
-    deref,
-    types::{Id, Timestamp},
-};
-use candid::{CandidType, Principal};
+use crate::{ deref, types::{ Id, Timestamp } };
+use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SLog as Log,
-    derive::{AsFixedSizeBytes, CandidAsDynSizeBytes, StableType},
+    derive::{ AsFixedSizeBytes, CandidAsDynSizeBytes, StableType },
     SBox,
 };
 use serde::Deserialize;
@@ -38,7 +35,7 @@ pub struct Entry {
 impl Entry {
     pub fn new(entry: EntryRecords) -> Result<Self, EntryRecords> {
         Ok(Self {
-            entry_id: Id::new(),
+            entry_id: Id::new_with_default_randomness(),
             timestamp: Timestamp::new(),
             records: SBox::new(entry)?,
         })
@@ -53,4 +50,3 @@ impl Default for EntryLog {
         Self(Log::new())
     }
 }
-

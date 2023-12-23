@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use candid::Principal;
 use config::CanisterConfig;
 use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef, patient::NIK };
+use random::CanisterRandomSource;
 use types::Id;
 
 mod config;
@@ -24,6 +25,7 @@ pub struct State {
 
 thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::default();
+    pub static RNG_SOURCE: RefCell<Option<CanisterRandomSource>> = RefCell::default();
 }
 
 fn verified_caller() -> Result<Principal, String> {
@@ -97,6 +99,10 @@ fn init() {
 
     STATE.with(|state| {
         *state.borrow_mut() = Some(State::default());
+    });
+
+    RNG_SOURCE.with(|rng| {
+        *rng.borrow_mut() = Some(CanisterRandomSource::new());
     });
 }
 
