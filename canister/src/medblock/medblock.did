@@ -9,9 +9,9 @@ type Result = variant { Ok; Err : text };
 service : {
   emr_list_provider : (nat64, nat8) -> (vec text) query;
   read_emr_by_id : (text) -> (opt EmrDisplay) query;
-  rebind_patient : (principal, text) -> (Result);
+  rebind_patient : (principal, text) -> ();
   register_new_provider : (principal, text) -> ();
   register_patient : (principal, text) -> (Result);
-  revoke_patient_access : (principal) -> (Result);
+  revoke_patient_access : (principal) -> ();
   suspend_provider : (principal) -> ();
 }

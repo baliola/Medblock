@@ -157,7 +157,6 @@ impl Default for Id {
         let now = std::time::Duration::from_nanos(Timestamp::new().inner());
         let seconds = now.as_secs();
         let nanos = now.subsec_nanos();
-
         let timestamp = uuid::Timestamp::from_unix(uuid::NoContext, seconds, nanos);
         // TODO : check that this works, as we dont know if it would actually fetch system time in canister execution environment
         uuid::Uuid::new_v7(timestamp).into()
