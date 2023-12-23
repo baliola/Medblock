@@ -13,7 +13,6 @@ pub struct CanisterRandomSource {
 type Reason = String;
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CallError(RejectionCode, Reason);
-deref!(CallError: RejectionCode);
 
 impl From<(RejectionCode, String)> for CallError {
     fn from((code, reason): (RejectionCode, String)) -> Self {
@@ -23,7 +22,7 @@ impl From<(RejectionCode, String)> for CallError {
 
 impl Display for CallError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "Error while calling canister with code : {:?} and reason : {} ", self.0, self.1)
     }
 }
 
@@ -32,13 +31,17 @@ impl CanisterRandomSource {
         Self::default()
     }
 
-    pub async fn refill_rng_source(&self) -> Result<(), CallError> {
-        let mut rng = self.rng.borrow_mut();
+    pub async fn refill_from_ic(&self) -> Result<(), CallError> {
         let (source,) = ic_cdk::api::management_canister::main
             ::raw_rand().await
             .map_err(CallError::from)?;
 
-        Ok(rng.extend(source))
+        Ok(self.refill_from_raw(source))
+    }
+
+    pub fn refill_from_raw(&self, source: impl IntoIterator<Item = u8>) {
+        let mut rng = self.rng.borrow_mut();
+        rng.extend(source);
     }
 
     /// try to get random bytes from the rng source with specified length, if the rng source is not enough, returns None
@@ -60,7 +63,7 @@ impl CanisterRandomSource {
 
         // insufficient entropy
         if rng.len() < N {
-            self.refill_rng_source().await?;
+            self.refill_from_ic().await?;
         }
 
         Ok(Self::drain_source(rng.as_mut()))
@@ -88,8 +91,7 @@ mod tests {
     fn test_random_bytes() {
         let mock_rng = vec![1_u8].repeat(30);
         let random = CanisterRandomSource::new();
-
-        *random.rng.borrow_mut() = mock_rng;
+        random.refill_from_raw(mock_rng);
 
         let bytes = random.try_get_random_bytes::<32>(32);
 
@@ -101,7 +103,7 @@ mod tests {
         let mock_rng = vec![1_u8].repeat(32);
         let random = CanisterRandomSource::new();
 
-        *random.rng.borrow_mut() = mock_rng;
+        random.refill_from_raw(mock_rng);
 
         let bytes = random.try_get_random_bytes::<32>(32);
 
