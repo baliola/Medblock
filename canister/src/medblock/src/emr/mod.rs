@@ -175,6 +175,8 @@ impl<T> From<T> for OutOfMemory where T: StableType {
     }
 }
 
+impl std::error::Error for OutOfMemory {}
+
 impl std::fmt::Display for OutOfMemory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "stable memory exhausted")
@@ -273,12 +275,23 @@ impl CandidType for RecrodsDisplay {
     }
 }
 
-#[derive(AsFixedSizeBytes, StableType, Debug, Default, Clone)]
+#[derive(AsFixedSizeBytes, StableType, Debug, Clone)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
+}
+
+impl V001 {
+    pub fn new(id: Id, records: Records) -> Self {
+        Self {
+            emr_id: id,
+            created_at: Timestamp::new(),
+            updated_at: Timestamp::new(),
+            records,
+        }
+    }
 }
 
 measure_alloc!("emr_with_10_records":{
@@ -293,12 +306,6 @@ measure_alloc!("emr_with_10_records":{
 
     emr
 });
-
-impl V001 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
 
 impl FromStableRef for DisplayV001 {
     type From = V001;

@@ -3,7 +3,7 @@ use std::{ str::FromStr, borrow::{ BorrowMut, Borrow } };
 use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
 
-use crate::{ deref, random::CanisterRandomSource, RNG_SOURCE };
+use crate::{ deref, random::CanisterRandomSource };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -150,33 +150,21 @@ impl CandidType for Id {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum IdError {
-    #[error("serious error has occured! timestamp is invalid")]
-    InvalidTimestamp,
-
-    #[error("rng source error : {0}")] SourceError(crate::random::CallError),
-}
-
 /// max random bytes array len used to generate v7 uuid
-const UUID_MAX_SOURCE_LEN: usize = 10;
+pub const UUID_MAX_SOURCE_LEN: usize = 10;
 
 impl Id {
     // TODO : move rng to a trait
-    pub async fn new(rng: &CanisterRandomSource) -> Result<Self, IdError> {
+    pub fn new(random_bytes: &[u8; UUID_MAX_SOURCE_LEN]) -> Self {
         let timestamp = Timestamp::new().as_duration();
-        let timestamp = u64
-            ::try_from(timestamp.as_millis())
-            .map_err(|_| IdError::InvalidTimestamp)?;
 
-        let rng_source = rng
-            .get_random_bytes::<UUID_MAX_SOURCE_LEN>().await
-            .map_err(|e| IdError::SourceError(e))?;
+        // safe to unwrap because timestamp is alyways less than u64::MAX
+        let timestamp = u64::try_from(timestamp.as_millis()).unwrap();
 
-        let uuid = uuid::Builder::from_unix_timestamp_millis(timestamp, &rng_source);
+        let uuid = uuid::Builder::from_unix_timestamp_millis(timestamp, random_bytes);
         let uuid = uuid.as_uuid().to_owned();
 
-        Ok(uuid.into())
+        uuid.into()
     }
 }
 

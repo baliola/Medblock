@@ -9,7 +9,7 @@ use ic_stable_memory::{
 };
 use serde::Deserialize;
 
-use crate::{ deref, types::{ Id, Timestamp } };
+use crate::{ deref, types::{ Id, Timestamp }, random::CanisterRandomSource };
 
 use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
 
@@ -64,10 +64,11 @@ impl ProviderRegistry {
     pub fn register_new_provider(
         &mut self,
         provider_principal: ProviderPrincipal,
-        display_name: String
+        display_name: String,
+        id: Id
     ) -> Result<(), OutOfMemory> {
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = ProviderV001::new(display_name, provider_principal)?;
+        let provider = ProviderV001::new(display_name, provider_principal, id)?;
 
         // bind the principal to the internal id
         self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
@@ -347,13 +348,14 @@ impl Billable for ProviderV001 {
 impl ProviderV001 {
     pub fn new(
         encrypted_display_name: String,
-        initial_principal: Principal
+        initial_principal: Principal,
+        id: Id
     ) -> Result<Self, OutOfMemory> {
         Ok(ProviderV001 {
             session: Session::new(),
             activation_status: Status::Verified,
-            display_name: SBox::new(encrypted_display_name)?,
-            internal_id: InternalProviderId::default(),
+            display_name: SBox::new(encrypted_display_name).map_err(OutOfMemory::from)?,
+            internal_id: id,
             owner_principal: initial_principal,
             registered_at: Timestamp::default(),
             updated_at: Timestamp::default(),

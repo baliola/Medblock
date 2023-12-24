@@ -33,9 +33,9 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new(entry: EntryRecords) -> Result<Self, EntryRecords> {
+    pub fn new(entry: EntryRecords, id: Id) -> Result<Self, EntryRecords> {
         Ok(Self {
-            entry_id: Id::new_with_default_randomness(),
+            entry_id: id,
             timestamp: Timestamp::new(),
             records: SBox::new(entry)?,
         })
