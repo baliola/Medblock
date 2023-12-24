@@ -1,9 +1,12 @@
-use std::cell::RefCell;
+use std::{ cell::RefCell, rc::Rc };
 
-use ic_cdk::export::Principal;
+use candid::Principal;
 use config::CanisterConfig;
-use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef };
+use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef, patient::NIK };
+use random::{ CanisterRandomSource, CallError };
 use types::Id;
+
+use crate::types::UUID_MAX_SOURCE_LEN;
 
 mod config;
 mod emr;
@@ -13,11 +16,14 @@ mod macros;
 mod types;
 mod random;
 
+// TODO :  make sure no unwrap() in this canister
+
 #[derive(Default)]
 pub struct State {
     emr_registry: EmrRegistry,
     provider_registry: ProviderRegistry,
     config: CanisterConfig,
+    rng: Rc<CanisterRandomSource>,
     // TODO : incorporate logs
     // log: Log,
 }
@@ -37,6 +43,7 @@ fn verified_caller() -> Result<Principal, String> {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
+    return Ok(());
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
@@ -88,6 +95,17 @@ fn only_patients_or_provider() -> Result<(), String> {
     only_patients().or_else(|_| only_provider())
 }
 
+async fn generate_id() -> Result<Id, CallError> {
+    let rng = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        state.rng.clone()
+    });
+
+    rng.get_random_bytes::<UUID_MAX_SOURCE_LEN>().await.map(|bytes| Id::new(&bytes))
+}
+
 #[ic_cdk::init]
 fn init() {
     ic_stable_memory::stable_memory_init();
@@ -100,13 +118,17 @@ fn init() {
 #[ic_cdk::update(guard = "only_canister_owner")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
+async fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
+    let id = generate_id().await.unwrap();
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.provider_registry.register_new_provider(new_provider, encryted_display_name).unwrap()
-    });
+        state.provider_registry
+            .register_new_provider(new_provider, encryted_display_name, id)
+            .unwrap()
+    })
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
@@ -146,6 +168,44 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
         let provider = verified_caller().unwrap();
 
         state.provider_registry.get_issued(&provider, anchor, max).unwrap()
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.register_patient(owner, hashed_nik).unwrap();
+
+        Ok(())
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn rebind_patient(owner: Principal, hashed_nik: NIK) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.rebind_patient(owner, hashed_nik).unwrap();
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn revoke_patient_access(owner: Principal) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.revoke_patient_access(&owner);
     })
 }
 

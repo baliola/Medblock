@@ -1,9 +1,9 @@
-use std::str::FromStr;
+use std::{ str::FromStr, borrow::{ BorrowMut, Borrow } };
 
 use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
 
-use crate::{ deref };
+use crate::{ deref, random::CanisterRandomSource };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -33,6 +33,10 @@ impl Timestamp {
 
     pub fn inner(&self) -> u64 {
         self.0
+    }
+
+    pub fn as_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.0)
     }
 }
 
@@ -146,27 +150,33 @@ impl CandidType for Id {
     }
 }
 
+/// max random bytes array len used to generate v7 uuid
+pub const UUID_MAX_SOURCE_LEN: usize = 10;
+
 impl Id {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
+    // TODO : move rng to a trait
+    pub fn new(random_bytes: &[u8; UUID_MAX_SOURCE_LEN]) -> Self {
+        let timestamp = Timestamp::new().as_duration();
 
-impl Default for Id {
-    fn default() -> Self {
-        let now = std::time::Duration::from_nanos(Timestamp::new().inner());
-        let seconds = now.as_secs();
-        let nanos = now.subsec_nanos();
+        // safe to unwrap because timestamp is alyways less than u64::MAX
+        let timestamp = u64::try_from(timestamp.as_millis()).unwrap();
 
-        let timestamp = uuid::Timestamp::from_unix(uuid::NoContext, seconds, nanos);
-        // TODO : check that this works, as we dont know if it would actually fetch system time in canister execution environment
-        uuid::Uuid::new_v7(timestamp).into()
+        let uuid = uuid::Builder::from_unix_timestamp_millis(timestamp, random_bytes);
+        let uuid = uuid.as_uuid().to_owned();
+
+        uuid.into()
     }
 }
 
 impl From<Uuid> for Id {
     fn from(value: Uuid) -> Self {
         Self(value.into_bytes())
+    }
+}
+
+impl From<&Uuid> for Id {
+    fn from(value: &Uuid) -> Self {
+        Self(value.as_bytes().clone())
     }
 }
 

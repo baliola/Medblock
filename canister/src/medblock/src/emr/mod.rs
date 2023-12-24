@@ -30,7 +30,7 @@ pub trait ToResponse<T: ResonpseMarker> {
 
 use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::{ patient::{ EmrBindingMap, OwnerMap } };
+use self::{ patient::{ EmrBindingMap, OwnerMap, NIK } };
 
 #[derive(Default)]
 pub struct EmrRegistry {
@@ -42,6 +42,26 @@ pub struct EmrRegistry {
 impl EmrRegistry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
+    pub fn register_patient(
+        &mut self,
+        owner: Principal,
+        hashed_nik: NIK
+    ) -> Result<(), OutOfMemory> {
+        self.owners.bind(owner, hashed_nik)
+    }
+
+    /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted
+    pub fn rebind_patient(&mut self, owner: Principal, hashed_nik: NIK) -> Result<(), OutOfMemory> {
+        self.owners.bind(owner, hashed_nik)
+    }
+
+    /// revoke patient access, if this method is called then the patient will no longer be able to access their emr. it will remove the [NIK]
+    /// from the owner map so attempting to access NIK owner will fail.
+    pub fn revoke_patient_access(&mut self, owner: &Principal) {
+        self.owners.revoke(owner)
     }
 
     pub fn is_owner_of_emr(&self, owner: &Principal, emr_id: &Id) -> bool {
@@ -155,6 +175,8 @@ impl<T> From<T> for OutOfMemory where T: StableType {
     }
 }
 
+impl std::error::Error for OutOfMemory {}
+
 impl std::fmt::Display for OutOfMemory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "stable memory exhausted")
@@ -253,12 +275,23 @@ impl CandidType for RecrodsDisplay {
     }
 }
 
-#[derive(AsFixedSizeBytes, StableType, Debug, Default, Clone)]
+#[derive(AsFixedSizeBytes, StableType, Debug, Clone)]
 pub struct V001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
     records: Records,
+}
+
+impl V001 {
+    pub fn new(id: Id, records: Records) -> Self {
+        Self {
+            emr_id: id,
+            created_at: Timestamp::new(),
+            updated_at: Timestamp::new(),
+            records,
+        }
+    }
 }
 
 measure_alloc!("emr_with_10_records":{
@@ -273,12 +306,6 @@ measure_alloc!("emr_with_10_records":{
 
     emr
 });
-
-impl V001 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
 
 impl FromStableRef for DisplayV001 {
     type From = V001;
