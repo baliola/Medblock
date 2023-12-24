@@ -31,17 +31,16 @@ impl CanisterRandomSource {
         Self::default()
     }
 
-    pub async fn refill_from_ic(&self) -> Result<(), CallError> {
+    pub async fn refill_from_ic(buf: &mut Vec<u8>) -> Result<(), CallError> {
         let (source,) = ic_cdk::api::management_canister::main
             ::raw_rand().await
             .map_err(CallError::from)?;
 
-        Ok(self.refill_from_raw(source))
+        Ok(Self::refill_from_raw(buf, source))
     }
 
-    pub fn refill_from_raw(&self, source: impl IntoIterator<Item = u8>) {
-        let mut rng = self.rng.borrow_mut();
-        rng.extend(source);
+    pub fn refill_from_raw(buf: &mut Vec<u8>, raw: impl IntoIterator<Item = u8>) {
+        buf.extend(raw);
     }
 
     /// try to get random bytes from the rng source with specified length, if the rng source is not enough, returns None
@@ -63,7 +62,7 @@ impl CanisterRandomSource {
 
         // insufficient entropy
         if rng.len() < N {
-            self.refill_from_ic().await?;
+            Self::refill_from_ic(rng.as_mut()).await?;
         }
 
         Ok(Self::drain_source(rng.as_mut()))

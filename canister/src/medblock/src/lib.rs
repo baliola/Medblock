@@ -60,7 +60,6 @@ fn only_canister_owner() -> Result<(), String> {
 
 // guard function
 fn only_provider() -> Result<(), String> {
-    return Ok(());
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
@@ -77,7 +76,6 @@ fn only_provider() -> Result<(), String> {
 
 // guard function
 fn only_patients() -> Result<(), String> {
-    return Ok(());
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
