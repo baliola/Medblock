@@ -10,6 +10,7 @@ use ic_stable_memory::{
     SBox,
     StableType,
 };
+use serde::Deserialize;
 
 /// marker for types that can be serialized as response, it basically have 2 requirements
 /// and that is candid type and cloneable. this works because while stable memory type may implement
@@ -30,7 +31,7 @@ pub trait ToResponse<T: ResonpseMarker> {
 
 use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::{ patient::{ EmrBindingMap, OwnerMap, NIK } };
+use self::{ patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey } };
 
 #[derive(Default)]
 pub struct EmrRegistry {
@@ -42,6 +43,19 @@ pub struct EmrRegistry {
 impl EmrRegistry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn register_emr(
+        &mut self,
+        emr: Emr,
+        user_id: InternalBindingKey
+    ) -> Result<(), OutOfMemory> {
+        let emr_id = emr.id().clone();
+
+        self.core_emrs.new_emr(emr)?;
+        self.owner_emrs.issue_for(&user_id, emr_id);
+
+        Ok(())
     }
 
     /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
@@ -88,6 +102,14 @@ pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
 impl EmrCollection {
     pub fn get_emr(&self, emr_id: &EmrId) -> Option<SRef<'_, Emr>> {
         self.0.get(emr_id)
+    }
+
+    pub fn new_emr(&mut self, emr: Emr) -> Result<EmrId, OutOfMemory> {
+        let emr_id = emr.id().clone();
+
+        self.0.insert(emr_id.clone(), emr)?;
+
+        Ok(emr_id)
     }
 }
 deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
@@ -366,7 +388,7 @@ impl FromStableRef for DisplayV001 {
         }
     }
 }
-#[derive(Debug, CandidType, Clone)]
+#[derive(Debug, CandidType, Clone, Deserialize)]
 pub struct DisplayV001 {
     emr_id: Id,
     created_at: Timestamp,

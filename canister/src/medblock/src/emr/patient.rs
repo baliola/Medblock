@@ -118,4 +118,18 @@ impl EmrBindingMap {
             .map(|emr_ids| emr_ids.contains(emr_id))
             .unwrap_or(false)
     }
+
+    pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
+        if !self.0.contains_key(nik) {
+            let issue_map = EmrIdCollection::new();
+            self.0.insert(nik.clone(), issue_map);
+        }
+
+        let mut issue_map = self.0.get_mut(nik).unwrap();
+
+        issue_map
+            .insert(emr_id)
+            .map_err(OutOfMemory::from)
+            .map(|_| ())
+    }
 }
