@@ -118,7 +118,10 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     let mut emr_collection = EmrCollection::default();
 
     for _i in 0..10_000 {
-        let mut emr = V001::default();
+        let id = uuid::Uuid::new_v4();
+        let id = Id::from(id);
+
+        let mut emr = V001::new(id.clone(), Records::default());
 
         for i in 0..10 {
             emr.records.insert(
@@ -128,8 +131,8 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
         }
 
         emr_collection.insert(
-            Id::new(),
-            Emr::V001(V001::default()),
+            id,
+            Emr::V001(emr),
         );
     }
 
@@ -364,8 +367,19 @@ impl TryFrom<DisplayV001> for V001 {
     }
 }
 
+impl From<V001> for Emr {
+    fn from(value: V001) -> Self {
+        Self::V001(value)
+    }
+}
+
 measure_alloc!("emr_with_10_records":{
-    let mut emr = V001::default();
+    let id = uuid::Uuid::new_v4();
+    let id = Id::from(id);
+
+    let mut emr = V001::new(id.clone(), Records::default());
+
+
 
     for i in 0..10 {
         emr.records.insert(
@@ -395,4 +409,10 @@ pub struct DisplayV001 {
     created_at: Timestamp,
     updated_at: Timestamp,
     records: RecrodsDisplay,
+}
+
+impl DisplayV001 {
+    pub fn new(emr_id: Id, records: RecrodsDisplay) -> Self {
+        Self { emr_id, created_at: Timestamp::new(), updated_at: Timestamp::new(), records }
+    }
 }

@@ -8,6 +8,8 @@ use emr::{
     EmrDisplay,
     FromStableRef,
     patient::NIK,
+    RecrodsDisplay,
+    Records,
 };
 use random::{ CanisterRandomSource, CallError };
 use types::Id;
@@ -164,13 +166,17 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
 }
 
 #[ic_cdk::update(guard = "only_provider")]
-// #[candid::candid_method(update)]
-fn create_emr_for_user(owner: NIK, emr: emr::EmrDisplay) {
+#[candid::candid_method(update)]
+async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
+    let records = Records::try_from(emr_records).unwrap();
+    let id = generate_id().await.unwrap();
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        let emr = emr::Emr::try_from(emr).unwrap();
+        // change the emr version if upgrade happens
+        let emr = emr::V001::new(id, records).into();
 
         state.emr_registry.register_emr(emr, owner).unwrap();
 
