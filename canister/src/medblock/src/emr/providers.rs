@@ -4,7 +4,7 @@ use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SBTreeMap,
     derive::{ AsFixedSizeBytes, StableType },
-    primitive::s_ref::SRef,
+    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
     SBox,
 };
 use serde::Deserialize;
@@ -53,6 +53,17 @@ impl ProviderRegistry {
         };
 
         self.issued.is_issued_by(&id, emr_id)
+    }
+
+    pub fn get_provider_mut(
+        &mut self,
+        provider: &Principal
+    ) -> Result<SRefMut<'_, Provider>, &str> {
+        let Some(id) = self.providers_bindings.get_internal_id(provider) else {
+            return Err("provider not found");
+        };
+
+        self.providers.get_mut(&id).ok_or("provider not found")
     }
 
     /// check a given principal is valid and registered as provider

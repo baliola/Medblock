@@ -45,6 +45,7 @@ impl EmrRegistry {
         Self::default()
     }
 
+    /// register new emr to the system, returns [OutOfMemory] if stable memory is exhausted
     pub fn register_emr(
         &mut self,
         emr: Emr,
