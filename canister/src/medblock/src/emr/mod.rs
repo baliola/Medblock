@@ -180,7 +180,7 @@ impl std::cmp::PartialOrd for Emr {
     }
 }
 
-#[derive(Clone, CandidType)]
+#[derive(Clone, CandidType, Deserialize)]
 pub enum EmrDisplay {
     V001(DisplayV001),
 }

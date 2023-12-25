@@ -157,6 +157,19 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     })
 }
 
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+fn create_emr_for_user(owner: NIK, emr: emr::EmrDisplay) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        let emr = emr::Emr::try_from(emr).unwrap();
+
+        state.emr_registry.register_emr(emr, owner).unwrap();
+    })
+}
+
 #[ic_cdk::query(guard = "only_provider")]
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
