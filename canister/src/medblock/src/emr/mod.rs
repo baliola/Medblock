@@ -120,6 +120,16 @@ pub enum Emr {
     V001(V001),
 }
 
+impl TryFrom<EmrDisplay> for Emr {
+    type Error = String;
+
+    fn try_from(value: EmrDisplay) -> Result<Self, Self::Error> {
+        match value {
+            EmrDisplay::V001(v) => Ok(Self::V001(V001::try_from(v)?)),
+        }
+    }
+}
+
 impl std::cmp::Eq for Emr {}
 
 impl std::cmp::PartialEq for Emr {
@@ -241,7 +251,29 @@ impl Records {
     }
 }
 
-#[derive(Clone, Debug)]
+impl TryFrom<RecrodsDisplay> for Records {
+    type Error = String;
+
+    fn try_from(value: RecrodsDisplay) -> Result<Self, Self::Error> {
+        let value = value.0;
+
+        let mut records = Records::default();
+
+        for (k, v) in value.as_object().unwrap() {
+            records
+                .insert(
+                    AsciiRecordsKey::new(k).map_err(|e| e.to_string())?,
+                    EmrRecordsValue::new(v.as_str().unwrap()).map_err(|e| e.to_string())?
+                )
+                .map_err(OutOfMemory::from)
+                .map_err(|e| e.to_string())?;
+        }
+
+        Ok(records)
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct RecrodsDisplay(serde_json::Value);
 
 impl ToString for RecrodsDisplay {
@@ -291,6 +323,21 @@ impl V001 {
             updated_at: Timestamp::new(),
             records,
         }
+    }
+}
+
+impl TryFrom<DisplayV001> for V001 {
+    type Error = String;
+
+    fn try_from(value: DisplayV001) -> Result<Self, Self::Error> {
+        let records = Records::try_from(value.records)?;
+
+        Ok(Self {
+            emr_id: value.emr_id,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+            records,
+        })
     }
 }
 
