@@ -57,7 +57,7 @@ impl Default for Timestamp {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, CandidType)]
 pub enum EmrKeyError {
     #[error("key must be a ascii string")]
     ContainsInvalidChars,

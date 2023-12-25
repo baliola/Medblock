@@ -2,7 +2,13 @@ use std::{ cell::RefCell, rc::Rc };
 
 use candid::Principal;
 use config::CanisterConfig;
-use emr::{ providers::ProviderRegistry, EmrRegistry, EmrDisplay, FromStableRef, patient::NIK };
+use emr::{
+    providers::{ ProviderRegistry, Billable },
+    EmrRegistry,
+    EmrDisplay,
+    FromStableRef,
+    patient::NIK,
+};
 use random::{ CanisterRandomSource, CallError };
 use types::Id;
 
@@ -154,6 +160,25 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
         let emr = state.emr_registry.get_emr(&emr_id).unwrap();
 
         Some(EmrDisplay::from_stable_ref(&*emr))
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+// #[candid::candid_method(update)]
+fn create_emr_for_user(owner: NIK, emr: emr::EmrDisplay) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        let emr = emr::Emr::try_from(emr).unwrap();
+
+        state.emr_registry.register_emr(emr, owner).unwrap();
+
+        let caller = verified_caller().unwrap();
+
+        // increment session
+        let mut provider = state.provider_registry.get_provider_mut(&caller).unwrap();
+        provider.increment_session();
     })
 }
 

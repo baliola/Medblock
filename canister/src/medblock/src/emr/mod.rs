@@ -10,6 +10,7 @@ use ic_stable_memory::{
     SBox,
     StableType,
 };
+use serde::Deserialize;
 
 /// marker for types that can be serialized as response, it basically have 2 requirements
 /// and that is candid type and cloneable. this works because while stable memory type may implement
@@ -30,7 +31,7 @@ pub trait ToResponse<T: ResonpseMarker> {
 
 use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::{ patient::{ EmrBindingMap, OwnerMap, NIK } };
+use self::{ patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey } };
 
 #[derive(Default)]
 pub struct EmrRegistry {
@@ -42,6 +43,20 @@ pub struct EmrRegistry {
 impl EmrRegistry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// register new emr to the system, returns [OutOfMemory] if stable memory is exhausted
+    pub fn register_emr(
+        &mut self,
+        emr: Emr,
+        user_id: InternalBindingKey
+    ) -> Result<(), OutOfMemory> {
+        let emr_id = emr.id().clone();
+
+        self.core_emrs.new_emr(emr)?;
+        self.owner_emrs.issue_for(&user_id, emr_id);
+
+        Ok(())
     }
 
     /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
@@ -89,6 +104,14 @@ impl EmrCollection {
     pub fn get_emr(&self, emr_id: &EmrId) -> Option<SRef<'_, Emr>> {
         self.0.get(emr_id)
     }
+
+    pub fn new_emr(&mut self, emr: Emr) -> Result<EmrId, OutOfMemory> {
+        let emr_id = emr.id().clone();
+
+        self.0.insert(emr_id.clone(), emr)?;
+
+        Ok(emr_id)
+    }
 }
 deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
 measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
@@ -120,6 +143,16 @@ pub enum Emr {
     V001(V001),
 }
 
+impl TryFrom<EmrDisplay> for Emr {
+    type Error = String;
+
+    fn try_from(value: EmrDisplay) -> Result<Self, Self::Error> {
+        match value {
+            EmrDisplay::V001(v) => Ok(Self::V001(V001::try_from(v)?)),
+        }
+    }
+}
+
 impl std::cmp::Eq for Emr {}
 
 impl std::cmp::PartialEq for Emr {
@@ -148,7 +181,7 @@ impl std::cmp::PartialOrd for Emr {
     }
 }
 
-#[derive(Clone, CandidType)]
+#[derive(Clone, CandidType, Deserialize)]
 pub enum EmrDisplay {
     V001(DisplayV001),
 }
@@ -241,7 +274,29 @@ impl Records {
     }
 }
 
-#[derive(Clone, Debug)]
+impl TryFrom<RecrodsDisplay> for Records {
+    type Error = String;
+
+    fn try_from(value: RecrodsDisplay) -> Result<Self, Self::Error> {
+        let value = value.0;
+
+        let mut records = Records::default();
+
+        for (k, v) in value.as_object().unwrap() {
+            records
+                .insert(
+                    AsciiRecordsKey::new(k).map_err(|e| e.to_string())?,
+                    EmrRecordsValue::new(v.as_str().unwrap()).map_err(|e| e.to_string())?
+                )
+                .map_err(OutOfMemory::from)
+                .map_err(|e| e.to_string())?;
+        }
+
+        Ok(records)
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct RecrodsDisplay(serde_json::Value);
 
 impl ToString for RecrodsDisplay {
@@ -294,6 +349,21 @@ impl V001 {
     }
 }
 
+impl TryFrom<DisplayV001> for V001 {
+    type Error = String;
+
+    fn try_from(value: DisplayV001) -> Result<Self, Self::Error> {
+        let records = Records::try_from(value.records)?;
+
+        Ok(Self {
+            emr_id: value.emr_id,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+            records,
+        })
+    }
+}
+
 measure_alloc!("emr_with_10_records":{
     let mut emr = V001::default();
 
@@ -319,7 +389,7 @@ impl FromStableRef for DisplayV001 {
         }
     }
 }
-#[derive(Debug, CandidType, Clone)]
+#[derive(Debug, CandidType, Clone, Deserialize)]
 pub struct DisplayV001 {
     emr_id: Id,
     created_at: Timestamp,
