@@ -12,7 +12,7 @@ use emr::{
     Records,
 };
 use random::{ CanisterRandomSource, CallError };
-use types::Id;
+use types::{ Id, AsciiRecordsKey };
 
 use crate::types::UUID_MAX_SOURCE_LEN;
 
@@ -169,8 +169,10 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     })
 }
 
+// TODO : return the emr id
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
 async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
     ic_cdk::eprintln!("create_emr_for_user: {}", emr_records.0);
 
@@ -190,6 +192,32 @@ async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
 
         // increment session
         state.provider_registry.issue_emr(&caller, emr_id);
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        let caller = verified_caller().unwrap();
+        // closure fo readability
+        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &emr_id);
+
+        // check if the caller is the issuer,
+        // if not, trap
+        if !is_issued_by() {
+            ic_cdk::trap("only issuer can update emr");
+        }
+
+        // batch update the emr
+        key_val
+            .into_iter()
+            .map(|(key, value)| { state.emr_registry.update_emr(&emr_id, key, value).unwrap() })
+            .collect::<Vec<_>>();
     })
 }
 

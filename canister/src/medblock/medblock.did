@@ -15,4 +15,5 @@ service : {
   register_patient : (principal, text) -> (Result);
   revoke_patient_access : (principal) -> ();
   suspend_provider : (principal) -> ();
+  update_emr : (text, vec record { text; text }) -> ();
 }

@@ -101,11 +101,11 @@ impl EmrRegistry {
 
         let value = value.into();
 
-        let update = emr.update_record(key, value)?;
+        let update = emr.update_record(key.clone(), value)?;
 
         match update {
             true => { Ok(()) }
-            false => unreachable!("emr must be found"),
+            false => Err(format!("record with key {} not found", key)),
         }
     }
 
