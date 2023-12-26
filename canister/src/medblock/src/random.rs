@@ -44,11 +44,11 @@ impl CanisterRandomSource {
     }
 
     /// try to get random bytes from the rng source with specified length, if the rng source is not enough, returns None
-    pub fn try_get_random_bytes<const N: usize>(&self, len: usize) -> Option<[u8; N]> {
+    pub fn try_get_random_bytes<const N: usize>(&self) -> Option<[u8; N]> {
         let mut rng = self.rng.borrow_mut();
 
         // insufficient entropy
-        if rng.len() < len {
+        if rng.len() < N {
             return None;
         }
 
@@ -83,29 +83,17 @@ impl CanisterRandomSource {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]
-    fn test_random_bytes() {
-        let mock_rng = vec![1_u8].repeat(30);
-        let random = CanisterRandomSource::new();
-        random.refill_from_raw(mock_rng);
+    fn test_get_random() {
+        let mut rng = CanisterRandomSource::new();
 
-        let bytes = random.try_get_random_bytes::<32>(32);
+        rng.rng.borrow_mut().extend(vec![1_u8].repeat(32));
 
-        assert!(bytes.is_none());
-    }
+        let bytes = rng.try_get_random_bytes::<32>().unwrap();
 
-    #[test]
-    fn test_random_bytes_2() {
-        let mock_rng = vec![1_u8].repeat(32);
-        let random = CanisterRandomSource::new();
-
-        random.refill_from_raw(mock_rng);
-
-        let bytes = random.try_get_random_bytes::<32>(32);
-
-        assert!(bytes.is_some());
+        assert_eq!(bytes.len(), 32);
     }
 }

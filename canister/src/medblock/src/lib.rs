@@ -3,14 +3,16 @@ use std::{ cell::RefCell, rc::Rc };
 use candid::Principal;
 use config::CanisterConfig;
 use emr::{
-    providers::{ ProviderRegistry, Billable },
+    providers::ProviderRegistry,
     EmrRegistry,
     EmrDisplay,
     FromStableRef,
     patient::NIK,
+    RecrodsDisplay,
+    Records,
 };
 use random::{ CanisterRandomSource, CallError };
-use types::Id;
+use types::{ Id, AsciiRecordsKey };
 
 use crate::types::UUID_MAX_SOURCE_LEN;
 
@@ -40,6 +42,8 @@ thread_local! {
 
 fn verified_caller() -> Result<Principal, String> {
     let caller = ic_cdk::caller();
+
+    ic_cdk::eprintln!("caller : {}", caller);
 
     if caller.ne(&ic_cdk::export::Principal::anonymous()) {
         return Err(String::from("anonymous caller is not allowed"));
@@ -153,6 +157,8 @@ fn suspend_provider(provider: Principal) {
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
 fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
+    // TODO : make a mechanism to control who provider has access to the emr,
+    // currently, as long as you are the provider and has the emr id, you can read without user permission.
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
@@ -163,22 +169,55 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
     })
 }
 
+// TODO : return the emr id
 #[ic_cdk::update(guard = "only_provider")]
-// #[candid::candid_method(update)]
-fn create_emr_for_user(owner: NIK, emr: emr::EmrDisplay) {
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
+    ic_cdk::eprintln!("create_emr_for_user: {}", emr_records.0);
+
+    let records = Records::try_from(emr_records).unwrap();
+    let id = generate_id().await.unwrap();
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        let emr = emr::Emr::try_from(emr).unwrap();
+        // change the emr version if upgrade happens
+        let emr = emr::V001::new(id, records).into();
 
-        state.emr_registry.register_emr(emr, owner).unwrap();
+        let emr_id = state.emr_registry.register_emr(emr, owner).unwrap();
 
         let caller = verified_caller().unwrap();
 
         // increment session
-        let mut provider = state.provider_registry.get_provider_mut(&caller).unwrap();
-        provider.increment_session();
+        state.provider_registry.issue_emr(&caller, emr_id);
+    })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        let caller = verified_caller().unwrap();
+        // closure fo readability
+        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &emr_id);
+
+        // check if the caller is the issuer,
+        // if not, trap
+        if !is_issued_by() {
+            ic_cdk::trap("only issuer can update emr");
+        }
+
+        // batch update the emr
+        key_val
+            .into_iter()
+            .map(|(key, value)| { state.emr_registry.update_emr(&emr_id, key, value).unwrap() })
+            .collect::<Vec<_>>();
     })
 }
 

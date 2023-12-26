@@ -7,6 +7,7 @@ type DisplayV001 = record {
 type EmrDisplay = variant { V001 : DisplayV001 };
 type Result = variant { Ok; Err : text };
 service : {
+  create_emr_for_user : (text, text) -> ();
   emr_list_provider : (nat64, nat8) -> (vec text) query;
   read_emr_by_id : (text) -> (opt EmrDisplay) query;
   rebind_patient : (principal, text) -> ();
@@ -14,4 +15,5 @@ service : {
   register_patient : (principal, text) -> (Result);
   revoke_patient_access : (principal) -> ();
   suspend_provider : (principal) -> ();
+  update_emr : (text, vec record { text; text }) -> ();
 }

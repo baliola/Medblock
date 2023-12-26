@@ -67,18 +67,7 @@ pub enum EmrKeyError {
 }
 
 /// arbitry ascii encoded string with max length of 32 bytes
-#[derive(
-    StableType,
-    AsFixedSizeBytes,
-    Hash,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Clone,
-    Debug,
-    CandidType
-)]
+#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
@@ -118,10 +107,9 @@ impl FromStr for AsciiRecordsKey {
         })
     }
 }
-
-impl ToString for AsciiRecordsKey {
-    fn to_string(&self) -> String {
-        self.to_ascii_str().to_string()
+impl std::fmt::Display for AsciiRecordsKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_ascii_str().fmt(f)
     }
 }
 
@@ -191,9 +179,15 @@ deref!(Id: Uuid |_self| => Uuid::from_bytes_ref(&_self.0));
 mod deserialize {
     use super::*;
 
-    impl<'de> Serialize for AsciiRecordsKey {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
-            serializer.serialize_str(self.to_ascii_str())
+    impl CandidType for AsciiRecordsKey {
+        fn _ty() -> candid::types::Type {
+            candid::types::Type::Text
+        }
+
+        fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+            where S: candid::types::Serializer
+        {
+            serializer.serialize_text(self.to_ascii_str())
         }
     }
 
@@ -201,10 +195,6 @@ mod deserialize {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
-            if !deserializer.is_human_readable() {
-                return Err(serde::de::Error::custom("key must be a ascii string"));
-            }
-
             let mut s = String::deserialize(deserializer)?;
 
             if !s.is_ascii() {
@@ -231,7 +221,12 @@ mod deserialize {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
-            Uuid::deserialize(deserializer).map(|uuid| uuid.into())
+            let str = String::deserialize(deserializer)?;
+            Ok(
+                Uuid::parse_str(&str)
+                    .map_err(serde::de::Error::custom)
+                    .map(|uuid| uuid.into())?
+            )
         }
     }
 

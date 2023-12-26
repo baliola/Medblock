@@ -5,12 +5,14 @@ use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{ AsFixedSizeBytes, StableType },
-    primitive::s_ref::SRef,
+    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
     AsFixedSizeBytes,
     SBox,
     StableType,
+    AsDynSizeBytes,
 };
 use serde::Deserialize;
+use serde_json::Value;
 
 /// marker for types that can be serialized as response, it basically have 2 requirements
 /// and that is candid type and cloneable. this works because while stable memory type may implement
@@ -50,13 +52,13 @@ impl EmrRegistry {
         &mut self,
         emr: Emr,
         user_id: InternalBindingKey
-    ) -> Result<(), OutOfMemory> {
+    ) -> Result<EmrId, OutOfMemory> {
         let emr_id = emr.id().clone();
 
         self.core_emrs.new_emr(emr)?;
-        self.owner_emrs.issue_for(&user_id, emr_id);
+        self.owner_emrs.issue_for(&user_id, emr_id.clone());
 
-        Ok(())
+        Ok(emr_id)
     }
 
     /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
@@ -87,6 +89,26 @@ impl EmrRegistry {
         self.owner_emrs.is_owner_of(&nik, emr_id)
     }
 
+    pub fn update_emr(
+        &mut self,
+        emr_id: &Id,
+        key: AsciiRecordsKey,
+        value: impl Into<EmrRecordsValue>
+    ) -> Result<(), String> {
+        let Some(mut emr) = self.core_emrs.get_emr_mut(&emr_id) else {
+            return Err("emr not found".to_string());
+        };
+
+        let value = value.into();
+
+        let update = emr.update_record(key.clone(), value)?;
+
+        match update {
+            true => { Ok(()) }
+            false => Err(format!("record with key {} not found", key)),
+        }
+    }
+
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
         self.owners.is_valid_owner(owner)
     }
@@ -105,6 +127,10 @@ impl EmrCollection {
         self.0.get(emr_id)
     }
 
+    pub fn get_emr_mut(&mut self, emr_id: &EmrId) -> Option<SRefMut<'_, Emr>> {
+        self.0.get_mut(emr_id)
+    }
+
     pub fn new_emr(&mut self, emr: Emr) -> Result<EmrId, OutOfMemory> {
         let emr_id = emr.id().clone();
 
@@ -118,7 +144,10 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
     let mut emr_collection = EmrCollection::default();
 
     for _i in 0..10_000 {
-        let mut emr = V001::default();
+        let id = uuid::Uuid::new_v4();
+        let id = Id::from(id);
+
+        let mut emr = V001::new(id.clone(), Records::default());
 
         for i in 0..10 {
             emr.records.insert(
@@ -128,8 +157,8 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
         }
 
         emr_collection.insert(
-            Id::new(),
-            Emr::V001(V001::default()),
+            id,
+            Emr::V001(emr),
         );
     }
 
@@ -137,10 +166,60 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
 
     emr_collection
 });
+
+/// trait for modofying emr,
+/// must be implemented all version of emr, including it's enum container
+pub trait ModifyEmr {
+    /// add new record to emr, returns [OutOfMemory] if stable memory is exhausted
+    fn add_emr_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory>;
+
+    /// remove record from emr, returns true if the record is removed, false if the record is not found
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool;
+
+    /// update record value, returns [OutOfMemory] if stable memory is exhausted, returns true if the record is updated, false if the record is not foundß
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory>;
+}
+
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 pub enum Emr {
     V001(V001),
+}
+
+impl ModifyEmr for Emr {
+    fn add_emr_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        match self {
+            Self::V001(v) => v.add_emr_record(key, value),
+        }
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        match self {
+            Self::V001(v) => v.remove_record(key),
+        }
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        match self {
+            Self::V001(v) => v.update_record(key, value),
+        }
+    }
 }
 
 impl TryFrom<EmrDisplay> for Emr {
@@ -202,6 +281,12 @@ impl FromStableRef for EmrDisplay {
 #[derive(Debug)]
 pub struct OutOfMemory;
 
+impl From<OutOfMemory> for String {
+    fn from(_: OutOfMemory) -> Self {
+        OutOfMemory.to_string()
+    }
+}
+
 impl<T> From<T> for OutOfMemory where T: StableType {
     fn from(_: T) -> Self {
         Self
@@ -221,6 +306,12 @@ impl std::fmt::Display for OutOfMemory {
 #[derive(StableType, Debug, AsFixedSizeBytes)]
 pub struct EmrRecordsValue(SBox<String>);
 deref!(EmrRecordsValue: SBox<String>);
+
+impl<T: Into<String>> From<T> for EmrRecordsValue {
+    fn from(value: T) -> Self {
+        Self(SBox::new(value.into()).unwrap())
+    }
+}
 
 impl EmrRecordsValue {
     pub fn value_from_ref(&self) -> serde_json::Value {
@@ -261,6 +352,38 @@ impl Clone for Records {
     }
 }
 
+impl ModifyEmr for Records {
+    fn add_emr_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        self.insert(key, value)?;
+
+        Ok(())
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        self.remove(key).is_some()
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        if !self.contains_key(&key) {
+            // no records with given keys, return false
+            return Ok(false);
+        }
+
+        self.insert(key, value)?;
+
+        // record updated, return true
+        Ok(true)
+    }
+}
+
 impl Records {
     pub fn new() -> Self {
         Self::default()
@@ -278,11 +401,16 @@ impl TryFrom<RecrodsDisplay> for Records {
     type Error = String;
 
     fn try_from(value: RecrodsDisplay) -> Result<Self, Self::Error> {
-        let value = value.0;
+        let value = value.into_object();
 
+        ic_cdk::eprintln!("{}", value.is_string());
         let mut records = Records::default();
 
-        for (k, v) in value.as_object().unwrap() {
+        let Some(value) = value.as_object() else {
+            return Err("invalid records".to_string());
+        };
+
+        for (k, v) in value {
             records
                 .insert(
                     AsciiRecordsKey::new(k).map_err(|e| e.to_string())?,
@@ -296,8 +424,17 @@ impl TryFrom<RecrodsDisplay> for Records {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
-pub struct RecrodsDisplay(serde_json::Value);
+#[derive(Clone, Debug)]
+pub struct RecrodsDisplay(pub(crate) serde_json::Value);
+
+impl RecrodsDisplay {
+    // needed because due to candid type the value is always serialized as string instead of object,
+    // even if the value is a valid json object
+    pub fn into_object(self) -> serde_json::Value {
+        // safe to unwrap as we know that the value is a valid json object
+        serde_json::from_str(self.0.as_str().unwrap()).unwrap()
+    }
+}
 
 impl ToString for RecrodsDisplay {
     fn to_string(&self) -> String {
@@ -312,6 +449,18 @@ impl FromStableRef for RecrodsDisplay {
 
     fn from_stable_ref(sref: &Records) -> Self {
         Self(sref.to_value())
+    }
+}
+
+// we need tis custom serde impls, as using the default derive macro would result it being sucessfully
+// deserialized into value but with string type instead of object, which is not what we want.
+// this ensures that the data is a valid json object
+impl<'de> serde::Deserialize<'de> for RecrodsDisplay {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
+        let s = String::deserialize(deserializer)?;
+        let value: Value = serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
+
+        Ok(Self(value))
     }
 }
 
@@ -349,6 +498,28 @@ impl V001 {
     }
 }
 
+impl ModifyEmr for V001 {
+    fn add_emr_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        self.records.add_emr_record(key, value)
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        self.records.remove_record(key)
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        self.records.update_record(key, value)
+    }
+}
+
 impl TryFrom<DisplayV001> for V001 {
     type Error = String;
 
@@ -364,8 +535,19 @@ impl TryFrom<DisplayV001> for V001 {
     }
 }
 
+impl From<V001> for Emr {
+    fn from(value: V001) -> Self {
+        Self::V001(value)
+    }
+}
+
 measure_alloc!("emr_with_10_records":{
-    let mut emr = V001::default();
+    let id = uuid::Uuid::new_v4();
+    let id = Id::from(id);
+
+    let mut emr = V001::new(id.clone(), Records::default());
+
+
 
     for i in 0..10 {
         emr.records.insert(
@@ -395,4 +577,10 @@ pub struct DisplayV001 {
     created_at: Timestamp,
     updated_at: Timestamp,
     records: RecrodsDisplay,
+}
+
+impl DisplayV001 {
+    pub fn new(emr_id: Id, records: RecrodsDisplay) -> Self {
+        Self { emr_id, created_at: Timestamp::new(), updated_at: Timestamp::new(), records }
+    }
 }

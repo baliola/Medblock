@@ -55,6 +55,21 @@ impl ProviderRegistry {
         self.issued.is_issued_by(&id, emr_id)
     }
 
+    pub fn issue_emr(&mut self, provider: &Principal, emr_id: Id) -> Result<(), &'static str> {
+        let Some(id) = self.providers_bindings.get_internal_id(provider) else {
+            return Err("provider not found");
+        };
+
+        let Some(mut provider) = self.providers.get_mut(&id) else {
+            return Err("provider not found");
+        };
+
+        provider.increment_session();
+
+        self.issued.issue_emr(&id, emr_id)?;
+        Ok(())
+    }
+
     pub fn get_provider_mut(
         &mut self,
         provider: &Principal
@@ -141,11 +156,25 @@ pub type ProviderPrincipal = Principal;
 /// Issued emr map. used to track emr issued by a particular provider.
 #[derive(Default)]
 pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
-deref!(Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
+deref!(mut Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
 
 impl Issued {
     pub fn is_issued_by(&self, provider: &InternalProviderId, _emr_id: &Id) -> bool {
         self.contains_key(provider)
+    }
+
+    pub fn issue_emr(
+        &mut self,
+        provider: &InternalProviderId,
+        emr_id: Id
+    ) -> Result<(), &'static str> {
+        if !self.contains_key(provider) {
+            self.insert(provider.clone(), EmrIdCollection::default());
+        }
+
+        self.get_mut(provider).unwrap().insert(emr_id);
+
+        Ok(())
     }
 
     pub fn get_issued(
