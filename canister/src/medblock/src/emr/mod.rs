@@ -433,6 +433,28 @@ impl V001 {
     }
 }
 
+impl ModifyEmr for V001 {
+    fn add_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        self.records.add_record(key, value)
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        self.records.remove_record(key)
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        self.records.update_record(key, value)
+    }
+}
+
 impl TryFrom<DisplayV001> for V001 {
     type Error = String;
 
