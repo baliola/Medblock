@@ -141,6 +141,28 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
 
     emr_collection
 });
+
+/// trait for modofying emr,
+/// must be implemented all version of emr, including it's enum container
+pub trait ModifyEmr {
+    /// add new record to emr, returns [OutOfMemory] if stable memory is exhausted
+    fn add_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory>;
+
+    /// remove record from emr, returns true if the record is removed, false if the record is not found
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool;
+
+    /// update record value, returns [OutOfMemory] if stable memory is exhausted, returns true if the record is updated, false if the record is not foundß
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory>;
+}
+
 /// version aware emr
 #[derive(StableType, AsFixedSizeBytes, Debug)]
 pub enum Emr {
@@ -262,6 +284,38 @@ impl Clone for Records {
         // TODO : fix this, we're using stable memory as our main memory, but there is some case
         // such as cloning a emr copy that would result in stable memory allocation while we want to use the heap for that  as we didn't store any data after
         // the response has been serialized and sent. it's like using hard disk as a ram, but you want the volatility of ram.
+    }
+}
+
+impl ModifyEmr for Records {
+    fn add_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        self.insert(key, value)?;
+
+        Ok(())
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        self.remove(key).is_some()
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        if !self.contains_key(&key) {
+            // no records with given keys, return false
+            return Ok(false);
+        }
+
+        self.insert(key, value)?;
+
+        // record updated, return true
+        Ok(true)
     }
 }
 
