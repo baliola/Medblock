@@ -169,6 +169,34 @@ pub enum Emr {
     V001(V001),
 }
 
+impl ModifyEmr for Emr {
+    fn add_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<(), OutOfMemory> {
+        match self {
+            Self::V001(v) => v.add_record(key, value),
+        }
+    }
+
+    fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
+        match self {
+            Self::V001(v) => v.remove_record(key),
+        }
+    }
+
+    fn update_record(
+        &mut self,
+        key: AsciiRecordsKey,
+        value: EmrRecordsValue
+    ) -> Result<bool, OutOfMemory> {
+        match self {
+            Self::V001(v) => v.update_record(key, value),
+        }
+    }
+}
+
 impl TryFrom<EmrDisplay> for Emr {
     type Error = String;
 
