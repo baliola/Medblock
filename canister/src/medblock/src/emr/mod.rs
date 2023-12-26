@@ -5,10 +5,11 @@ use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{ AsFixedSizeBytes, StableType },
-    primitive::s_ref::SRef,
+    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
     AsFixedSizeBytes,
     SBox,
     StableType,
+    AsDynSizeBytes,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -88,6 +89,26 @@ impl EmrRegistry {
         self.owner_emrs.is_owner_of(&nik, emr_id)
     }
 
+    pub fn update_emr(
+        &mut self,
+        emr_id: &Id,
+        key: AsciiRecordsKey,
+        value: impl Into<EmrRecordsValue>
+    ) -> Result<(), String> {
+        let Some(mut emr) = self.core_emrs.get_emr_mut(&emr_id) else {
+            return Err("emr not found".to_string());
+        };
+
+        let value = value.into();
+
+        let update = emr.update_record(key, value)?;
+
+        match update {
+            true => { Ok(()) }
+            false => unreachable!("emr must be found"),
+        }
+    }
+
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
         self.owners.is_valid_owner(owner)
     }
@@ -104,6 +125,10 @@ pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
 impl EmrCollection {
     pub fn get_emr(&self, emr_id: &EmrId) -> Option<SRef<'_, Emr>> {
         self.0.get(emr_id)
+    }
+
+    pub fn get_emr_mut(&mut self, emr_id: &EmrId) -> Option<SRefMut<'_, Emr>> {
+        self.0.get_mut(emr_id)
     }
 
     pub fn new_emr(&mut self, emr: Emr) -> Result<EmrId, OutOfMemory> {
@@ -146,7 +171,7 @@ measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
 /// must be implemented all version of emr, including it's enum container
 pub trait ModifyEmr {
     /// add new record to emr, returns [OutOfMemory] if stable memory is exhausted
-    fn add_record(
+    fn add_emr_record(
         &mut self,
         key: AsciiRecordsKey,
         value: EmrRecordsValue
@@ -170,13 +195,13 @@ pub enum Emr {
 }
 
 impl ModifyEmr for Emr {
-    fn add_record(
+    fn add_emr_record(
         &mut self,
         key: AsciiRecordsKey,
         value: EmrRecordsValue
     ) -> Result<(), OutOfMemory> {
         match self {
-            Self::V001(v) => v.add_record(key, value),
+            Self::V001(v) => v.add_emr_record(key, value),
         }
     }
 
@@ -256,6 +281,12 @@ impl FromStableRef for EmrDisplay {
 #[derive(Debug)]
 pub struct OutOfMemory;
 
+impl From<OutOfMemory> for String {
+    fn from(_: OutOfMemory) -> Self {
+        OutOfMemory.to_string()
+    }
+}
+
 impl<T> From<T> for OutOfMemory where T: StableType {
     fn from(_: T) -> Self {
         Self
@@ -275,6 +306,12 @@ impl std::fmt::Display for OutOfMemory {
 #[derive(StableType, Debug, AsFixedSizeBytes)]
 pub struct EmrRecordsValue(SBox<String>);
 deref!(EmrRecordsValue: SBox<String>);
+
+impl<T: Into<String>> From<T> for EmrRecordsValue {
+    fn from(value: T) -> Self {
+        Self(SBox::new(value.into()).unwrap())
+    }
+}
 
 impl EmrRecordsValue {
     pub fn value_from_ref(&self) -> serde_json::Value {
@@ -316,7 +353,7 @@ impl Clone for Records {
 }
 
 impl ModifyEmr for Records {
-    fn add_record(
+    fn add_emr_record(
         &mut self,
         key: AsciiRecordsKey,
         value: EmrRecordsValue
@@ -462,12 +499,12 @@ impl V001 {
 }
 
 impl ModifyEmr for V001 {
-    fn add_record(
+    fn add_emr_record(
         &mut self,
         key: AsciiRecordsKey,
         value: EmrRecordsValue
     ) -> Result<(), OutOfMemory> {
-        self.records.add_record(key, value)
+        self.records.add_emr_record(key, value)
     }
 
     fn remove_record(&mut self, key: &AsciiRecordsKey) -> bool {
