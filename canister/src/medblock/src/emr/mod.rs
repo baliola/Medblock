@@ -11,6 +11,7 @@ use ic_stable_memory::{
     StableType,
 };
 use serde::Deserialize;
+use serde_json::Value;
 
 /// marker for types that can be serialized as response, it basically have 2 requirements
 /// and that is candid type and cloneable. this works because while stable memory type may implement
@@ -50,13 +51,13 @@ impl EmrRegistry {
         &mut self,
         emr: Emr,
         user_id: InternalBindingKey
-    ) -> Result<(), OutOfMemory> {
+    ) -> Result<EmrId, OutOfMemory> {
         let emr_id = emr.id().clone();
 
         self.core_emrs.new_emr(emr)?;
-        self.owner_emrs.issue_for(&user_id, emr_id);
+        self.owner_emrs.issue_for(&user_id, emr_id.clone());
 
-        Ok(())
+        Ok(emr_id)
     }
 
     /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
@@ -281,11 +282,16 @@ impl TryFrom<RecrodsDisplay> for Records {
     type Error = String;
 
     fn try_from(value: RecrodsDisplay) -> Result<Self, Self::Error> {
-        let value = value.0;
+        let value = value.into_object();
 
+        ic_cdk::eprintln!("{}", value.is_string());
         let mut records = Records::default();
 
-        for (k, v) in value.as_object().unwrap() {
+        let Some(value) = value.as_object() else {
+            return Err("invalid records".to_string());
+        };
+
+        for (k, v) in value {
             records
                 .insert(
                     AsciiRecordsKey::new(k).map_err(|e| e.to_string())?,
@@ -299,8 +305,17 @@ impl TryFrom<RecrodsDisplay> for Records {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
-pub struct RecrodsDisplay(serde_json::Value);
+#[derive(Clone, Debug)]
+pub struct RecrodsDisplay(pub(crate) serde_json::Value);
+
+impl RecrodsDisplay {
+    // needed because due to candid type the value is always serialized as string instead of object,
+    // even if the value is a valid json object
+    pub fn into_object(self) -> serde_json::Value {
+        // safe to unwrap as we know that the value is a valid json object
+        serde_json::from_str(self.0.as_str().unwrap()).unwrap()
+    }
+}
 
 impl ToString for RecrodsDisplay {
     fn to_string(&self) -> String {
@@ -315,6 +330,18 @@ impl FromStableRef for RecrodsDisplay {
 
     fn from_stable_ref(sref: &Records) -> Self {
         Self(sref.to_value())
+    }
+}
+
+// we need tis custom serde impls, as using the default derive macro would result it being sucessfully
+// deserialized into value but with string type instead of object, which is not what we want.
+// this ensures that the data is a valid json object
+impl<'de> serde::Deserialize<'de> for RecrodsDisplay {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
+        let s = String::deserialize(deserializer)?;
+        let value: Value = serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
+
+        Ok(Self(value))
     }
 }
 

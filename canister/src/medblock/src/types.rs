@@ -231,7 +231,12 @@ mod deserialize {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
-            Uuid::deserialize(deserializer).map(|uuid| uuid.into())
+            let str = String::deserialize(deserializer)?;
+            Ok(
+                Uuid::parse_str(&str)
+                    .map_err(serde::de::Error::custom)
+                    .map(|uuid| uuid.into())?
+            )
         }
     }
 

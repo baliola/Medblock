@@ -3,7 +3,7 @@ use std::{ cell::RefCell, rc::Rc };
 use candid::Principal;
 use config::CanisterConfig;
 use emr::{
-    providers::{ ProviderRegistry, Billable },
+    providers::ProviderRegistry,
     EmrRegistry,
     EmrDisplay,
     FromStableRef,
@@ -42,6 +42,8 @@ thread_local! {
 
 fn verified_caller() -> Result<Principal, String> {
     let caller = ic_cdk::caller();
+
+    ic_cdk::eprintln!("caller : {}", caller);
 
     if caller.ne(&ic_cdk::export::Principal::anonymous()) {
         return Err(String::from("anonymous caller is not allowed"));
@@ -168,6 +170,8 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
+    ic_cdk::eprintln!("create_emr_for_user: {}", emr_records.0);
+
     let records = Records::try_from(emr_records).unwrap();
     let id = generate_id().await.unwrap();
 
@@ -178,13 +182,12 @@ async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
         // change the emr version if upgrade happens
         let emr = emr::V001::new(id, records).into();
 
-        state.emr_registry.register_emr(emr, owner).unwrap();
+        let emr_id = state.emr_registry.register_emr(emr, owner).unwrap();
 
         let caller = verified_caller().unwrap();
 
         // increment session
-        let mut provider = state.provider_registry.get_provider_mut(&caller).unwrap();
-        provider.increment_session();
+        state.provider_registry.issue_emr(&caller, emr_id);
     })
 }
 

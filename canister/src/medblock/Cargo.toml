@@ -28,7 +28,6 @@ serde_json = { version = "1.0.108", features = [
 ], default-features = false }
 getrandom = { version = "0.2", features = ["custom"] }
 
-
 [dev-dependencies]
 tiny-keccak = { version = "2.0.2", features = ["sha3"] }
 uuid = { version = "1.6.1", default-features = false, features = [
