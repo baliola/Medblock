@@ -51,6 +51,25 @@ fn verified_caller() -> Result<Principal, String> {
     Ok(caller)
 }
 
+fn only_issued_or_owner(emr_id: types::Id) -> Result<(), String> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        let caller = verified_caller()?;
+
+        // closure for readability
+        let is_owner = || state.emr_registry.is_owner_of_emr(&caller, &emr_id);
+        let is_issuer = || state.provider_registry.is_issued_by(&caller, &emr_id);
+
+        if !is_owner() && !is_issuer() {
+            return Err("only owner or issuer can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
 // guard function
 fn only_canister_owner() -> Result<(), String> {
     return Ok(());
