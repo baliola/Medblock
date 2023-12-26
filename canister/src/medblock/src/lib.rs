@@ -157,6 +157,8 @@ fn suspend_provider(provider: Principal) {
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
 fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
+    // TODO : make a mechanism to control who provider has access to the emr,
+    // currently, as long as you are the provider and has the emr id, you can read without user permission.
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
