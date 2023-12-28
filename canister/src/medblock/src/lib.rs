@@ -223,6 +223,7 @@ fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
 
 #[ic_cdk::query(guard = "only_provider")]
 #[candid::candid_method(query)]
+// TODO : fix anchor
 // TODO : move arguments to a candid struct
 fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     STATE.with(|state| {
