@@ -109,14 +109,12 @@ impl EmrRegistry {
         }
     }
 
-    pub fn patient_emr_list(&self, patient: &patient::Owner) {
+    pub fn patient_emr_list(&self, patient: &patient::Owner)  -> Option<Vec<Id>>{
      let Some(internal_id) = self.owners.get_nik(patient) else {
-         return Err(String::from("patient not found"));
-     };    
+        return  None;
+    };    
 
-    //  let list = self.owner_emrs.
-     
-
+     self.owner_emrs.emr_list(&internal_id) 
     }
 
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
