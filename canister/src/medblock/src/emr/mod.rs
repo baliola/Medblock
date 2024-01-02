@@ -109,6 +109,7 @@ impl EmrRegistry {
         }
     }
 
+    /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
     pub fn patient_emr_list(&self, patient: &patient::Owner)  -> Option<Vec<Id>>{
      let Some(internal_id) = self.owners.get_nik(patient) else {
         return  None;
