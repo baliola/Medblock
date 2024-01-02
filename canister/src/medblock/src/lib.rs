@@ -236,6 +236,10 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
     })
 }
 
+fn emr_list_patient() {
+    todo!()
+}
+
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct

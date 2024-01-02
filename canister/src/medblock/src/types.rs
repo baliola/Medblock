@@ -142,7 +142,6 @@ impl CandidType for Id {
 pub const UUID_MAX_SOURCE_LEN: usize = 10;
 
 impl Id {
-    // TODO : move rng to a trait
     pub fn new(random_bytes: &[u8; UUID_MAX_SOURCE_LEN]) -> Self {
         let timestamp = Timestamp::new().as_duration();
 

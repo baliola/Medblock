@@ -120,6 +120,14 @@ impl EmrBindingMap {
             .unwrap_or(false)
     }
 
+    pub fn emr_list(&self, nik: &NIK) -> Option<Vec<EmrId>> {
+        let Some(list) = self.get(nik) else {
+            return None;
+        };
+
+        Some(list.iter().map(|id| id.clone()).collect())
+    }
+
     pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
         if !self.0.contains_key(nik) {
             let issue_map = EmrIdCollection::new();

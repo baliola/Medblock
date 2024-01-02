@@ -109,6 +109,16 @@ impl EmrRegistry {
         }
     }
 
+    pub fn patient_emr_list(&self, patient: &patient::Owner) {
+     let Some(internal_id) = self.owners.get_nik(patient) else {
+         return Err(String::from("patient not found"));
+     };    
+
+    //  let list = self.owner_emrs.
+     
+
+    }
+
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
         self.owners.is_valid_owner(owner)
     }
