@@ -8,6 +8,7 @@ type EmrDisplay = variant { V001 : DisplayV001 };
 type Result = variant { Ok; Err : text };
 service : {
   create_emr_for_user : (text, text) -> ();
+  emr_list_patient : () -> (opt vec text) query;
   emr_list_provider : (nat64, nat8) -> (vec text) query;
   read_emr_by_id : (text) -> (opt EmrDisplay) query;
   rebind_patient : (principal, text) -> ();
