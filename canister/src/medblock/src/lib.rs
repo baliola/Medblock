@@ -85,7 +85,7 @@ fn only_provider() -> Result<(), String> {
 }
 
 // guard function
-fn only_patients() -> Result<(), String> {
+fn only_patient() -> Result<(), String> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
@@ -102,7 +102,7 @@ fn only_patients() -> Result<(), String> {
 
 // guard function
 fn only_patients_or_provider() -> Result<(), String> {
-    only_patients().or_else(|_| only_provider())
+    only_patient().or_else(|_| only_provider())
 }
 
 async fn generate_id() -> Result<Id, CallError> {
@@ -233,6 +233,20 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
         let provider = verified_caller().unwrap();
 
         state.provider_registry.get_issued(&provider, anchor, max).unwrap()
+    })
+}
+
+
+#[ic_cdk::query(guard = "only_patient")]
+#[candid::candid_method(query)]
+fn emr_list_patient() -> Option<Vec<Id>> {
+    STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+
+        let user = verified_caller().unwrap();
+
+        state.emr_registry.get_patient_emr_list(&user)
     })
 }
 
