@@ -153,6 +153,9 @@ fn suspend_provider(provider: Principal) {
     });
 }
 
+// TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol 
+// to authorize certain party to read a certain emr id. current implementation only check if the caller is a user or a provider, it does not
+// check if the user/provider has the authority to read other provider or user emr. this result in a user or provider, can techincally read other emr if they know the emr id.
 #[ic_cdk::query(guard = "only_patients_or_provider")]
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
