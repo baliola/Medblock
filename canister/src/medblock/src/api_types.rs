@@ -14,6 +14,17 @@ pub struct SuspendProviderRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct UnSuspendProviderRequest {
+    pub provider: Principal,
+}
+
+
+#[derive(CandidType, Deserialize)]
+pub struct IsProviderSuspendRequest {
+    pub provider: Principal,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
     pub emr_id: internal_types::Id,
 }

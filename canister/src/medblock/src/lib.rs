@@ -154,6 +154,31 @@ fn suspend_provider(req: SuspendProviderRequest) {
     });
 }
 
+#[ic_cdk::update(guard = "only_canister_owner")]
+#[candid::candid_method(update)]
+// TODO : move arguments to a candid struct
+fn unsuspend_provider(req: UnSuspendProviderRequest) {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.provider_registry.unsuspend_provider(&req.provider).unwrap()
+    });
+}
+
+
+
+#[ic_cdk::query]
+#[candid::candid_method(query)]
+fn is_provider_suspended(req: IsProviderSuspendRequest) -> bool {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.provider_registry.is_provider_suspended(&req.provider).unwrap()
+    })
+}
+
 // TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol
 // to authorize certain party to read a certain emr id. current implementation only check if the caller is a user or a provider, it does not
 // check if the user/provider has the authority to read other provider or user emr. this result in a user or provider, can techincally read other emr if they know the emr id.

@@ -7,6 +7,7 @@ type DisplayV001 = record {
 };
 type EmrDisplay = variant { V001 : DisplayV001 };
 type EmrListProviderRequest = record { max : nat8; anchor : nat64 };
+type IsValidPatientRequest = record { "principal" : principal };
 type ReadEmrByIdRequest = record { emr_id : text };
 type RebindPatientRequest = record { owner : principal; hashed_nik : text };
 type RegisterProviderRequest = record {
@@ -24,11 +25,15 @@ service : {
   create_emr_for_user : (CreateEmrForUserRequest) -> ();
   emr_list_patient : () -> (opt vec text) query;
   emr_list_provider : (EmrListProviderRequest) -> (vec text) query;
+  is_provider_suspended : (SuspendProviderRequest) -> (bool) query;
+  is_valid_patient : (IsValidPatientRequest) -> (bool) query;
+  is_valid_provider : (IsValidPatientRequest) -> (bool) query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (opt EmrDisplay) query;
   rebind_patient : (RebindPatientRequest) -> ();
   register_new_provider : (RegisterProviderRequest) -> ();
   register_patient : (RebindPatientRequest) -> (Result);
   revoke_patient_access : (RevokePatientAccessRequest) -> ();
   suspend_provider : (SuspendProviderRequest) -> ();
+  unsuspend_provider : (SuspendProviderRequest) -> ();
   update_emr : (UpdateEmrRequest) -> ();
 }
