@@ -16,6 +16,7 @@ use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
 #[derive(StableType, AsFixedSizeBytes, Deserialize, CandidType, Debug)]
 pub enum Status {
     Verified,
+
     Suspended,
 }
 
@@ -106,7 +107,7 @@ impl ProviderRegistry {
     }
 
     /// suspend a provider, this function will change the provider activation status to suspended.
-    /// suspended provider can't issue emr.
+    /// suspended provider can't do things such as issuing, and reading emr
     pub fn suspend_provider(
         &mut self,
         provider_principal: ProviderPrincipal
@@ -126,6 +127,43 @@ impl ProviderRegistry {
         }
 
         Ok(())
+    }
+
+    /// unsuspend a provider
+    pub fn unsuspend_provider(&mut self, provider: &Principal) -> Result<(), &'static str> {
+        let Some(internal_id) = self.providers_bindings.get_internal_id(&provider) else {
+            return Err("provider not found");
+        };
+
+        let Some(mut provider) = self.providers.get_mut(&internal_id) else {
+            return Err("provider not found");
+        };
+
+        match *provider {
+            Provider::V001(ref mut provider) => {
+                // no op if status is suspended
+                if provider.activation_status.is_verified() {
+                    provider.activation_status = Status::Suspended;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// check if a provider is suspended
+    pub fn is_provider_suspended(&self, provider: &Principal) -> Result<bool, &'static str> {
+        let Some(internal_id) = self.providers_bindings.get_internal_id(&provider) else {
+            return Err("provider not found");
+        };
+
+        let Some(provider) = self.providers.get(&internal_id) else {
+            return Err("provider not found");
+        };
+
+        match *provider {
+            Provider::V001(ref provider) => { Ok(provider.activation_status.is_suspended()) }
+        }
     }
 
     /// get issued emr by a provider, this function will return a vector of emr id issued by a provider.
