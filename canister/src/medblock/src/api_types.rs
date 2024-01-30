@@ -54,7 +54,6 @@ pub struct RebindPatientRequest {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct UnbindPatientRequest {
+pub struct RevokePatientAccessRequest {
     pub owner: Principal,
-    pub hashed_nik: NIK,
 }

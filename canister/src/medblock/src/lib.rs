@@ -282,12 +282,12 @@ fn rebind_patient(req: RebindPatientRequest) {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn revoke_patient_access(owner: Principal) {
+fn revoke_patient_access(req: RevokePatientAccessRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.emr_registry.revoke_patient_access(&owner);
+        state.emr_registry.revoke_patient_access(&req.owner);
     })
 }
 
