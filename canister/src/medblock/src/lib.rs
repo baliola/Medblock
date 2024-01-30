@@ -145,12 +145,12 @@ async fn register_new_provider(req: RegisterProviderRequest) {
 #[ic_cdk::update(guard = "only_canister_owner")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn suspend_provider(provider: Principal) {
+fn suspend_provider(req: SuspendProviderRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.provider_registry.suspend_provider(provider).unwrap()
+        state.provider_registry.suspend_provider(req.provider).unwrap()
     });
 }
 
@@ -160,14 +160,14 @@ fn suspend_provider(provider: Principal) {
 #[ic_cdk::query(guard = "only_patients_or_provider")]
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
-fn read_emr_by_id(emr_id: internal_types::Id) -> Option<emr::EmrDisplay> {
+fn read_emr_by_id(req: ReadEmrByIdRequest) -> Option<emr::EmrDisplay> {
     // TODO : make a mechanism to control who provider has access to the emr,
     // currently, as long as you are the provider and has the emr id, you can read without user permission.
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        let emr = state.emr_registry.get_emr(&emr_id).unwrap();
+        let emr = state.emr_registry.get_emr(&req.emr_id).unwrap();
 
         Some(EmrDisplay::from_stable_ref(&*emr))
     })
@@ -177,10 +177,10 @@ fn read_emr_by_id(emr_id: internal_types::Id) -> Option<emr::EmrDisplay> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
-    ic_cdk::eprintln!("create_emr_for_user: {}", emr_records.0);
+async fn create_emr_for_user(req: CreateEmrForUserRequest) {
+    ic_cdk::eprintln!("create_emr_for_user: {}", req.emr_records.0);
 
-    let records = Records::try_from(emr_records).unwrap();
+    let records = Records::try_from(req.emr_records).unwrap();
     let id = generate_id().await.unwrap();
 
     STATE.with(|state| {
@@ -190,7 +190,7 @@ async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
         // change the emr version if upgrade happens
         let emr = emr::V001::new(id, records).into();
 
-        let emr_id = state.emr_registry.register_emr(emr, owner).unwrap();
+        let emr_id = state.emr_registry.register_emr(emr, req.owner).unwrap();
 
         let caller = verified_caller().unwrap();
 

@@ -1,6 +1,6 @@
 use candid::{ CandidType, Deserialize, Principal };
 
-use crate::{ emr::patient::NIK, internal_types::{ self, AsciiRecordsKey } };
+use crate::{ emr::{patient::NIK, RecrodsDisplay}, internal_types::{ self, AsciiRecordsKey } };
 
 #[derive(CandidType, Deserialize)]
 pub struct RegisterProviderRequest {
@@ -16,6 +16,12 @@ pub struct SuspendProviderRequest {
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
     pub emr_id: internal_types::Id,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateEmrForUserRequest {
+    pub owner: NIK,
+    pub emr_records: RecrodsDisplay,
 }
 
 #[derive(CandidType, Deserialize)]
