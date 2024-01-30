@@ -229,14 +229,14 @@ fn update_emr(req: UpdateEmrRequest) {
 #[candid::candid_method(query)]
 // TODO : fix anchor
 // TODO : move arguments to a candid struct
-fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
+fn emr_list_provider(req: EmrListProviderRequest) -> Vec<Id> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
         let provider = verified_caller().unwrap();
 
-        state.provider_registry.get_issued(&provider, anchor, max).unwrap()
+        state.provider_registry.get_issued(&provider, req.anchor, req.max).unwrap()
     })
 }
 

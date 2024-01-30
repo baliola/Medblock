@@ -31,6 +31,12 @@ pub struct UpdateEmrRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct EmrListProviderRequest {
+    pub anchor: u64,
+    pub max: u8,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct DeleteEmrRequest {
     pub emr_id: internal_types::Id,
 }
