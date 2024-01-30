@@ -261,6 +261,10 @@ fn register_patient(req: RegisterPatientRequest) -> Result<(), String> {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
+        if state.emr_registry.is_valid_patient(&req.owner) {
+            return Err(String::from("this principal is already registered as patient"))
+        }
+
         state.emr_registry.register_patient(req.owner, req.hashed_nik).unwrap();
 
         Ok(())
