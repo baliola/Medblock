@@ -262,7 +262,7 @@ fn register_patient(req: RegisterPatientRequest) -> Result<(), String> {
         let state = state.as_mut().unwrap();
 
         if state.emr_registry.is_valid_patient(&req.owner) {
-            return Err(String::from("this principal is already registered as patient"))
+            return Err(String::from("this principal is already registered as patient"));
         }
 
         state.emr_registry.register_patient(req.owner, req.hashed_nik).unwrap();
@@ -292,6 +292,28 @@ fn revoke_patient_access(req: RevokePatientAccessRequest) {
         let state = state.as_mut().unwrap();
 
         state.emr_registry.revoke_patient_access(&req.owner);
+    })
+}
+
+#[ic_cdk::query]
+#[candid::candid_method(query)]
+fn is_valid_patient(req: IsValidPatientRequest) -> bool {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.emr_registry.is_valid_patient(&req.principal)
+    })
+}
+
+#[ic_cdk::query]
+#[candid::candid_method(query)]
+fn is_valid_provider(req: IsValidProviderRequest) -> bool {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+
+        state.provider_registry.is_valid_provider(&req.principal)
     })
 }
 
