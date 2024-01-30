@@ -8,7 +8,7 @@ use emr::{
     EmrDisplay,
     FromStableRef,
     patient::NIK,
-    RecrodsDisplay,
+    RecordsDisplay,
     Records,
 };
 use random::{ CanisterRandomSource, CallError };
@@ -154,7 +154,7 @@ fn suspend_provider(req: SuspendProviderRequest) {
     });
 }
 
-// TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol 
+// TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol
 // to authorize certain party to read a certain emr id. current implementation only check if the caller is a user or a provider, it does not
 // check if the user/provider has the authority to read other provider or user emr. this result in a user or provider, can techincally read other emr if they know the emr id.
 #[ic_cdk::query(guard = "only_patients_or_provider")]
@@ -202,14 +202,14 @@ async fn create_emr_for_user(req: CreateEmrForUserRequest) {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
+fn update_emr(req: UpdateEmrRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
         let caller = verified_caller().unwrap();
         // closure fo readability
-        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &emr_id);
+        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &req.emr_id);
 
         // check if the caller is the issuer,
         // if not, trap
@@ -218,9 +218,9 @@ fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
         }
 
         // batch update the emr
-        key_val
+        req.updated_emr_data
             .into_iter()
-            .map(|(key, value)| { state.emr_registry.update_emr(&emr_id, key, value).unwrap() })
+            .map(|(key, value)| { state.emr_registry.update_emr(&req.emr_id, key, value).unwrap() })
             .collect::<Vec<_>>();
     })
 }
@@ -239,7 +239,6 @@ fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
         state.provider_registry.get_issued(&provider, anchor, max).unwrap()
     })
 }
-
 
 #[ic_cdk::query(guard = "only_patient")]
 #[candid::candid_method(query)]
