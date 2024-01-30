@@ -81,6 +81,10 @@ fn only_provider() -> Result<(), String> {
             return Err("only provider can call this method".to_string());
         }
 
+        if state.provider_registry.is_provider_suspended(&caller) {
+            return Err("provider is suspended".to_string());
+        }
+
         Ok(())
     })
 }
@@ -165,8 +169,6 @@ fn unsuspend_provider(req: UnSuspendProviderRequest) {
         state.provider_registry.unsuspend_provider(&req.provider).unwrap()
     });
 }
-
-
 
 #[ic_cdk::query]
 #[candid::candid_method(query)]
