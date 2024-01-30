@@ -31,7 +31,7 @@ pub trait ToResponse<T: ResonpseMarker> {
     fn to_response(&self) -> T;
 }
 
-use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
+use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timestamp } };
 
 use self::{ patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey } };
 

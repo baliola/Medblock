@@ -5,7 +5,7 @@ use ic_stable_memory::{
     primitive::s_ref::SRef,
 };
 
-use crate::{ deref, types::Id };
+use crate::{ deref, internal_types::Id };
 
 use super::OutOfMemory;
 

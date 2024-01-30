@@ -12,17 +12,18 @@ use emr::{
     Records,
 };
 use random::{ CanisterRandomSource, CallError };
-use types::{ Id, AsciiRecordsKey };
-
-use crate::types::UUID_MAX_SOURCE_LEN;
+use internal_types::{ Id, AsciiRecordsKey };
+use api_types::*;
+use crate::internal_types::UUID_MAX_SOURCE_LEN;
 
 mod config;
 mod emr;
 mod encryption;
 mod log;
 mod macros;
-mod types;
+mod internal_types;
 mod random;
+mod api_types;
 
 // TODO :  make sure no unwrap() in this canister
 
@@ -128,7 +129,7 @@ fn init() {
 #[ic_cdk::update(guard = "only_canister_owner")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-async fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
+async fn register_new_provider(req: RegisterProviderRequest) {
     let id = generate_id().await.unwrap();
 
     STATE.with(|state| {
@@ -136,7 +137,7 @@ async fn register_new_provider(new_provider: Principal, encryted_display_name: S
         let state = state.as_mut().unwrap();
 
         state.provider_registry
-            .register_new_provider(new_provider, encryted_display_name, id)
+            .register_new_provider(req.new_provider, req.encryted_display_name, id)
             .unwrap()
     })
 }
@@ -159,7 +160,7 @@ fn suspend_provider(provider: Principal) {
 #[ic_cdk::query(guard = "only_patients_or_provider")]
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
-fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
+fn read_emr_by_id(emr_id: internal_types::Id) -> Option<emr::EmrDisplay> {
     // TODO : make a mechanism to control who provider has access to the emr,
     // currently, as long as you are the provider and has the emr id, you can read without user permission.
     STATE.with(|state| {
