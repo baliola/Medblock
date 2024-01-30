@@ -81,7 +81,8 @@ fn only_provider() -> Result<(), String> {
             return Err("only provider can call this method".to_string());
         }
 
-        if state.provider_registry.is_provider_suspended(&caller) {
+        // safe to unwrap as we already check if caller is a valid provider or not
+        if state.provider_registry.is_provider_suspended(&caller).unwrap() {
             return Err("provider is suspended".to_string());
         }
 
