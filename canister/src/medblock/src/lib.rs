@@ -256,12 +256,12 @@ fn emr_list_patient() -> Option<Vec<Id>> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
+fn register_patient(req: RegisterPatientRequest) -> Result<(), String> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.emr_registry.register_patient(owner, hashed_nik).unwrap();
+        state.emr_registry.register_patient(req.owner, req.hashed_nik).unwrap();
 
         Ok(())
     })
