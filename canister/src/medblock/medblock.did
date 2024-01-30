@@ -1,3 +1,4 @@
+type CreateEmrForUserRequest = record { emr_records : text; owner : text };
 type DisplayV001 = record {
   updated_at : nat64;
   records : text;
@@ -5,16 +6,29 @@ type DisplayV001 = record {
   emr_id : text;
 };
 type EmrDisplay = variant { V001 : DisplayV001 };
+type EmrListProviderRequest = record { max : nat8; anchor : nat64 };
+type ReadEmrByIdRequest = record { emr_id : text };
+type RebindPatientRequest = record { owner : principal; hashed_nik : text };
+type RegisterProviderRequest = record {
+  encryted_display_name : text;
+  new_provider : principal;
+};
 type Result = variant { Ok; Err : text };
+type RevokePatientAccessRequest = record { owner : principal };
+type SuspendProviderRequest = record { provider : principal };
+type UpdateEmrRequest = record {
+  emr_id : text;
+  updated_emr_data : vec record { text; text };
+};
 service : {
-  create_emr_for_user : (text, text) -> ();
+  create_emr_for_user : (CreateEmrForUserRequest) -> ();
   emr_list_patient : () -> (opt vec text) query;
-  emr_list_provider : (nat64, nat8) -> (vec text) query;
-  read_emr_by_id : (text) -> (opt EmrDisplay) query;
-  rebind_patient : (principal, text) -> ();
-  register_new_provider : (principal, text) -> ();
-  register_patient : (principal, text) -> (Result);
-  revoke_patient_access : (principal) -> ();
-  suspend_provider : (principal) -> ();
-  update_emr : (text, vec record { text; text }) -> ();
+  emr_list_provider : (EmrListProviderRequest) -> (vec text) query;
+  read_emr_by_id : (ReadEmrByIdRequest) -> (opt EmrDisplay) query;
+  rebind_patient : (RebindPatientRequest) -> ();
+  register_new_provider : (RegisterProviderRequest) -> ();
+  register_patient : (RebindPatientRequest) -> (Result);
+  revoke_patient_access : (RevokePatientAccessRequest) -> ();
+  suspend_provider : (SuspendProviderRequest) -> ();
+  update_emr : (UpdateEmrRequest) -> ();
 }

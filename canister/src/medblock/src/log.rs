@@ -1,4 +1,4 @@
-use crate::{ deref, types::{ Id, Timestamp } };
+use crate::{ deref, internal_types::{ Id, Timestamp } };
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SLog as Log,

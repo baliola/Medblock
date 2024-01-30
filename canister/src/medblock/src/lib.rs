@@ -8,21 +8,22 @@ use emr::{
     EmrDisplay,
     FromStableRef,
     patient::NIK,
-    RecrodsDisplay,
+    RecordsDisplay,
     Records,
 };
 use random::{ CanisterRandomSource, CallError };
-use types::{ Id, AsciiRecordsKey };
-
-use crate::types::UUID_MAX_SOURCE_LEN;
+use internal_types::{ Id, AsciiRecordsKey };
+use api_types::*;
+use crate::internal_types::UUID_MAX_SOURCE_LEN;
 
 mod config;
 mod emr;
 mod encryption;
 mod log;
 mod macros;
-mod types;
+mod internal_types;
 mod random;
+mod api_types;
 
 // TODO :  make sure no unwrap() in this canister
 
@@ -128,7 +129,7 @@ fn init() {
 #[ic_cdk::update(guard = "only_canister_owner")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-async fn register_new_provider(new_provider: Principal, encryted_display_name: String) {
+async fn register_new_provider(req: RegisterProviderRequest) {
     let id = generate_id().await.unwrap();
 
     STATE.with(|state| {
@@ -136,7 +137,7 @@ async fn register_new_provider(new_provider: Principal, encryted_display_name: S
         let state = state.as_mut().unwrap();
 
         state.provider_registry
-            .register_new_provider(new_provider, encryted_display_name, id)
+            .register_new_provider(req.new_provider, req.encryted_display_name, id)
             .unwrap()
     })
 }
@@ -144,29 +145,29 @@ async fn register_new_provider(new_provider: Principal, encryted_display_name: S
 #[ic_cdk::update(guard = "only_canister_owner")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn suspend_provider(provider: Principal) {
+fn suspend_provider(req: SuspendProviderRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.provider_registry.suspend_provider(provider).unwrap()
+        state.provider_registry.suspend_provider(req.provider).unwrap()
     });
 }
 
-// TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol 
+// TODO : adjust this function so that only authorized party may read a particular emr id, or maybe introduce a separate function/protocol
 // to authorize certain party to read a certain emr id. current implementation only check if the caller is a user or a provider, it does not
 // check if the user/provider has the authority to read other provider or user emr. this result in a user or provider, can techincally read other emr if they know the emr id.
 #[ic_cdk::query(guard = "only_patients_or_provider")]
 #[candid::candid_method(query)]
 // TODO : move arguments to a candid struct
-fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
+fn read_emr_by_id(req: ReadEmrByIdRequest) -> Option<emr::EmrDisplay> {
     // TODO : make a mechanism to control who provider has access to the emr,
     // currently, as long as you are the provider and has the emr id, you can read without user permission.
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
-        let emr = state.emr_registry.get_emr(&emr_id).unwrap();
+        let emr = state.emr_registry.get_emr(&req.emr_id).unwrap();
 
         Some(EmrDisplay::from_stable_ref(&*emr))
     })
@@ -176,10 +177,10 @@ fn read_emr_by_id(emr_id: types::Id) -> Option<emr::EmrDisplay> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
-    ic_cdk::eprintln!("create_emr_for_user: {}", emr_records.0);
+async fn create_emr_for_user(req: CreateEmrForUserRequest) {
+    ic_cdk::eprintln!("create_emr_for_user: {}", req.emr_records.0);
 
-    let records = Records::try_from(emr_records).unwrap();
+    let records = Records::try_from(req.emr_records).unwrap();
     let id = generate_id().await.unwrap();
 
     STATE.with(|state| {
@@ -189,7 +190,7 @@ async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
         // change the emr version if upgrade happens
         let emr = emr::V001::new(id, records).into();
 
-        let emr_id = state.emr_registry.register_emr(emr, owner).unwrap();
+        let emr_id = state.emr_registry.register_emr(emr, req.owner).unwrap();
 
         let caller = verified_caller().unwrap();
 
@@ -201,14 +202,14 @@ async fn create_emr_for_user(owner: NIK, emr_records: RecrodsDisplay) {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
+fn update_emr(req: UpdateEmrRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
         let caller = verified_caller().unwrap();
         // closure fo readability
-        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &emr_id);
+        let is_issued_by = || state.provider_registry.is_issued_by(&caller, &req.emr_id);
 
         // check if the caller is the issuer,
         // if not, trap
@@ -217,9 +218,9 @@ fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
         }
 
         // batch update the emr
-        key_val
+        req.updated_emr_data
             .into_iter()
-            .map(|(key, value)| { state.emr_registry.update_emr(&emr_id, key, value).unwrap() })
+            .map(|(key, value)| { state.emr_registry.update_emr(&req.emr_id, key, value).unwrap() })
             .collect::<Vec<_>>();
     })
 }
@@ -228,17 +229,16 @@ fn update_emr(emr_id: Id, key_val: Vec<(AsciiRecordsKey, String)>) {
 #[candid::candid_method(query)]
 // TODO : fix anchor
 // TODO : move arguments to a candid struct
-fn emr_list_provider(anchor: u64, max: u8) -> Vec<Id> {
+fn emr_list_provider(req: EmrListProviderRequest) -> Vec<Id> {
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().unwrap();
 
         let provider = verified_caller().unwrap();
 
-        state.provider_registry.get_issued(&provider, anchor, max).unwrap()
+        state.provider_registry.get_issued(&provider, req.anchor, req.max).unwrap()
     })
 }
-
 
 #[ic_cdk::query(guard = "only_patient")]
 #[candid::candid_method(query)]
@@ -256,12 +256,12 @@ fn emr_list_patient() -> Option<Vec<Id>> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
+fn register_patient(req: RegisterPatientRequest) -> Result<(), String> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.emr_registry.register_patient(owner, hashed_nik).unwrap();
+        state.emr_registry.register_patient(req.owner, req.hashed_nik).unwrap();
 
         Ok(())
     })
@@ -270,24 +270,24 @@ fn register_patient(owner: Principal, hashed_nik: NIK) -> Result<(), String> {
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn rebind_patient(owner: Principal, hashed_nik: NIK) {
+fn rebind_patient(req: RebindPatientRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.emr_registry.rebind_patient(owner, hashed_nik).unwrap();
+        state.emr_registry.rebind_patient(req.owner, req.hashed_nik).unwrap();
     })
 }
 
 #[ic_cdk::update(guard = "only_provider")]
 #[candid::candid_method(update)]
 // TODO : move arguments to a candid struct
-fn revoke_patient_access(owner: Principal) {
+fn revoke_patient_access(req: RevokePatientAccessRequest) {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let state = state.as_mut().unwrap();
 
-        state.emr_registry.revoke_patient_access(&owner);
+        state.emr_registry.revoke_patient_access(&req.owner);
     })
 }
 

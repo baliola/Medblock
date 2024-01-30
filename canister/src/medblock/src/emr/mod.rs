@@ -31,7 +31,7 @@ pub trait ToResponse<T: ResonpseMarker> {
     fn to_response(&self) -> T;
 }
 
-use crate::{ deref, measure_alloc, types::{ AsciiRecordsKey, Id, Timestamp } };
+use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timestamp } };
 
 use self::{ patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey } };
 
@@ -406,10 +406,10 @@ impl Records {
     }
 }
 
-impl TryFrom<RecrodsDisplay> for Records {
+impl TryFrom<RecordsDisplay> for Records {
     type Error = String;
 
-    fn try_from(value: RecrodsDisplay) -> Result<Self, Self::Error> {
+    fn try_from(value: RecordsDisplay) -> Result<Self, Self::Error> {
         let value = value.into_object();
 
         ic_cdk::eprintln!("{}", value.is_string());
@@ -434,9 +434,9 @@ impl TryFrom<RecrodsDisplay> for Records {
 }
 
 #[derive(Clone, Debug)]
-pub struct RecrodsDisplay(pub(crate) serde_json::Value);
+pub struct RecordsDisplay(pub(crate) serde_json::Value);
 
-impl RecrodsDisplay {
+impl RecordsDisplay {
     // needed because due to candid type the value is always serialized as string instead of object,
     // even if the value is a valid json object
     pub fn into_object(self) -> serde_json::Value {
@@ -445,15 +445,15 @@ impl RecrodsDisplay {
     }
 }
 
-impl ToString for RecrodsDisplay {
+impl ToString for RecordsDisplay {
     fn to_string(&self) -> String {
         self.0.to_string()
     }
 }
 
-impl ResonpseMarker for RecrodsDisplay {}
+impl ResonpseMarker for RecordsDisplay {}
 
-impl FromStableRef for RecrodsDisplay {
+impl FromStableRef for RecordsDisplay {
     type From = Records;
 
     fn from_stable_ref(sref: &Records) -> Self {
@@ -464,7 +464,7 @@ impl FromStableRef for RecrodsDisplay {
 // we need tis custom serde impls, as using the default derive macro would result it being sucessfully
 // deserialized into value but with string type instead of object, which is not what we want.
 // this ensures that the data is a valid json object
-impl<'de> serde::Deserialize<'de> for RecrodsDisplay {
+impl<'de> serde::Deserialize<'de> for RecordsDisplay {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
         let s = String::deserialize(deserializer)?;
         let value: Value = serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
@@ -473,7 +473,7 @@ impl<'de> serde::Deserialize<'de> for RecrodsDisplay {
     }
 }
 
-impl CandidType for RecrodsDisplay {
+impl CandidType for RecordsDisplay {
     fn _ty() -> candid::types::Type {
         candid::types::Type::Text
     }
@@ -576,7 +576,7 @@ impl FromStableRef for DisplayV001 {
             emr_id: sref.emr_id.clone(),
             created_at: sref.created_at,
             updated_at: sref.updated_at,
-            records: RecrodsDisplay::from_stable_ref(&sref.records),
+            records: RecordsDisplay::from_stable_ref(&sref.records),
         }
     }
 }
@@ -585,11 +585,11 @@ pub struct DisplayV001 {
     emr_id: Id,
     created_at: Timestamp,
     updated_at: Timestamp,
-    records: RecrodsDisplay,
+    records: RecordsDisplay,
 }
 
 impl DisplayV001 {
-    pub fn new(emr_id: Id, records: RecrodsDisplay) -> Self {
+    pub fn new(emr_id: Id, records: RecordsDisplay) -> Self {
         Self { emr_id, created_at: Timestamp::new(), updated_at: Timestamp::new(), records }
     }
 }

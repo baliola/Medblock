@@ -9,7 +9,7 @@ use ic_stable_memory::{
 };
 use serde::Deserialize;
 
-use crate::{ deref, types::{ Id, Timestamp }, random::CanisterRandomSource };
+use crate::{ deref, internal_types::{ Id, Timestamp }, random::CanisterRandomSource };
 
 use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
 
