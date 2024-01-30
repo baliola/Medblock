@@ -17,9 +17,10 @@ type RegisterProviderRequest = record {
 type Result = variant { Ok; Err : text };
 type RevokePatientAccessRequest = record { owner : principal };
 type SuspendProviderRequest = record { provider : principal };
+type UpdateEmrData = record { key : text; value : text };
 type UpdateEmrRequest = record {
   emr_id : text;
-  updated_emr_data : vec record { text; text };
+  updated_emr_data : vec UpdateEmrData;
 };
 service : {
   create_emr_for_user : (CreateEmrForUserRequest) -> ();

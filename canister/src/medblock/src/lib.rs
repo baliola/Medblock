@@ -248,7 +248,9 @@ fn update_emr(req: UpdateEmrRequest) {
         // batch update the emr
         req.updated_emr_data
             .into_iter()
-            .map(|(key, value)| { state.emr_registry.update_emr(&req.emr_id, key, value).unwrap() })
+            .map(|data| {
+                state.emr_registry.update_emr(&req.emr_id, data.key, data.value).unwrap()
+            })
             .collect::<Vec<_>>();
     })
 }

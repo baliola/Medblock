@@ -18,7 +18,6 @@ pub struct UnSuspendProviderRequest {
     pub provider: Principal,
 }
 
-
 #[derive(CandidType, Deserialize)]
 pub struct IsProviderSuspendRequest {
     pub provider: Principal,
@@ -38,7 +37,13 @@ pub struct CreateEmrForUserRequest {
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrRequest {
     pub emr_id: internal_types::Id,
-    pub updated_emr_data: Vec<(AsciiRecordsKey, String)>,
+    pub updated_emr_data: Vec<UpdateEmrData>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateEmrData {
+    pub key: AsciiRecordsKey,
+    pub value: String,
 }
 
 #[derive(CandidType, Deserialize)]
