@@ -8,3 +8,4 @@ ic-cdk-timers = "0.5.1"  # Feel free to remove this dependency if you don't need
 ic-stable-memory = "0.4"
 paste = "1.0.14"
 serde = "1.0.193"
+ic-stable-structures = "0.6.2"
