@@ -4,7 +4,9 @@ members = ["src/medblock"]
 [workspace.dependencies]
 ic-cdk = "0.8.1"
 candid = "0.8.4"
-ic-cdk-timers = "0.5.1"  # Feel free to remove this dependency if you don't need timers
+ic-cdk-timers = "0.5.1"                    # Feel free to remove this dependency if you don't need timers
 ic-stable-memory = "0.4"
 paste = "1.0.14"
 serde = "1.0.193"
+ic-stable-structures = "0.6.2"
+parity-scale-codec = { version = "3.6.9", features = ["derive"] }

@@ -18,6 +18,8 @@ ic-cdk-timers = { workspace = true } # Feel free to remove this dependency if yo
 ic-stable-memory = { workspace = true }
 paste = { workspace = true }
 serde = { workspace = true }
+parity-scale-codec = { workspace = true }
+ic-stable-structures = { workspace = true }
 thiserror = "1.0.50"
 uuid = { version = "1.6.1", default-features = false, features = [
     "serde",

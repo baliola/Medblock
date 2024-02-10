@@ -24,6 +24,7 @@ mod macros;
 mod internal_types;
 mod random;
 mod api_types;
+pub mod mem;
 
 // TODO :  make sure no unwrap() in this canister
 

@@ -28,9 +28,7 @@ macro_rules! kib {
 macro_rules! deref {
     (@CONSTRUCT) => {};
 
-    (
-        @CONSTRUCT $ident:ty: $target:ty;
-    ) => {
+    (@CONSTRUCT $ident:ty: $target:ty;) => {
             impl std::ops::Deref for $ident {
                 type Target = $target;
 
@@ -40,9 +38,7 @@ macro_rules! deref {
             }
     };
 
-    (
-        @CONSTRUCT MUTABLE $ident:ty: $target:ty;
-    ) => {
+    (@CONSTRUCT MUTABLE $ident:ty: $target:ty;) => {
             impl std::ops::DerefMut for $ident {
                 fn deref_mut(&mut self) -> &mut Self::Target {
                     &mut self.0
@@ -50,9 +46,7 @@ macro_rules! deref {
             }
     };
 
-    (
-        @CONSTRUCT $ident:tt: $target:tt $self:ident $expr:expr;
-    ) => {
+    (@CONSTRUCT $ident:tt: $target:tt $self:ident $expr:expr;) => {
             impl std::ops::Deref for $ident {
                 type Target = $target;
 
@@ -63,9 +57,7 @@ macro_rules! deref {
             }
     };
 
-    (
-        @CONSTRUCT MUTABLE $ident:tt: $target:tt $self:ident $expr:expr;
-    ) => {
+    (@CONSTRUCT MUTABLE $ident:tt: $target:tt $self:ident $expr:expr;) => {
             impl std::ops::DerefMut for $ident {
                 fn deref_mut(&mut self) -> &mut Self::Target {
                     let $self =self;
@@ -83,7 +75,6 @@ macro_rules! deref {
         deref!(@CONSTRUCT MUTABLE $ident: $target $($self)? $($expr)?;);
     };
 
-
     ($ident:tt: $target:ty) => {
         deref!(@CONSTRUCT $ident: $target;);
     };
@@ -99,12 +90,12 @@ macro_rules! deref {
 /// ```
 /// measure_alloc!("records": {
 ///       let mut records = Records::default();
-///       
+///
 ///       records.insert(
 ///           AsciiRecordsKey::new("test".to_string()).unwrap(),
 ///           EmrRecordsValue::new("test").unwrap(),
 ///       );
-///       
+///
 ///       // return the stable memory object
 ///       records
 /// });
@@ -157,5 +148,19 @@ macro_rules! measure_alloc {
                 }
             }
         }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_unbounded {
+    ($ty:ty) => {
+        impl $crate::mem::shared::MemBoundMarker for $ty{
+            const BOUND: ic_stable_structures::Bound = ic_stable_structures::storable::Bound::Unbounded;
+
+        }
+    };
+
+    () => {
+
     };
 }
