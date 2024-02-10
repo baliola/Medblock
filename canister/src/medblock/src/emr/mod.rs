@@ -1,5 +1,6 @@
 pub mod patient;
 pub mod providers;
+mod core;
 
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
@@ -110,12 +111,12 @@ impl EmrRegistry {
     }
 
     /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
-    pub fn get_patient_emr_list(&self, patient: &patient::Owner)  -> Option<Vec<Id>>{
-     let Some(internal_id) = self.owners.get_nik(patient) else {
-        return  None;
-    };    
+    pub fn get_patient_emr_list(&self, patient: &patient::Owner) -> Option<Vec<Id>> {
+        let Some(internal_id) = self.owners.get_nik(patient) else {
+            return None;
+        };
 
-     self.owner_emrs.emr_list(&internal_id) 
+        self.owner_emrs.emr_list(&internal_id)
     }
 
     pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {

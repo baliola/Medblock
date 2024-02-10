@@ -71,6 +71,7 @@ pub enum EmrKeyError {
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
+    // should probably make the check before initializing this struct so that it may be completely removed
     len: u8,
 }
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
