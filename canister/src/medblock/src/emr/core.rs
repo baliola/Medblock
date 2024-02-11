@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use ic_stable_structures::{ storable::Bound, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 
@@ -6,8 +8,6 @@ use crate::{
     internal_types::{ AsciiRecordsKey, Id },
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
-
-
 
 type UserId = Id;
 type ProviderId = Id;
@@ -24,6 +24,18 @@ impl MemBoundMarker for CompositeKey {
 }
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
+
+impl Debug for CoreRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut result = f.debug_struct("CoreRegistry");
+
+        for (key, value) in self.0.iter() {
+            result.field(&format!("{:?}", key), &format!("{:?}", value));
+        }
+
+        result.finish()
+    }
+}
 
 impl CoreRegistry {
     pub fn add() {
