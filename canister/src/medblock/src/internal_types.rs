@@ -1,10 +1,10 @@
-use std::{ str::FromStr, borrow::{ BorrowMut, Borrow } };
+use std::{ str::FromStr };
 
 use candid::CandidType;
-use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
+use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, random::CanisterRandomSource };
+use crate::{ deref };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -177,7 +177,7 @@ impl From<Uuid> for Id {
 
 impl From<&Uuid> for Id {
     fn from(value: &Uuid) -> Self {
-        Self(value.as_bytes().clone())
+        Self(*value.as_bytes())
     }
 }
 
@@ -235,11 +235,9 @@ mod deserialize {
             where D: serde::Deserializer<'de>
         {
             let str = String::deserialize(deserializer)?;
-            Ok(
-                Uuid::parse_str(&str)
+            Uuid::parse_str(&str)
                     .map_err(serde::de::Error::custom)
-                    .map(|uuid| uuid.into())?
-            )
+                    .map(|uuid| uuid.into())
         }
     }
 

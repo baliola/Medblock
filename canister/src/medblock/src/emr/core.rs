@@ -1,4 +1,4 @@
-use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
+use ic_stable_structures::{ storable::Bound, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
 
-use super::ModifyEmr;
+
 
 type UserId = Id;
 type ProviderId = Id;
@@ -42,16 +42,16 @@ impl CoreRegistry {
         todo!()
     }
 
-    pub fn get_list_provider_batch(page: u64, limit: u64) -> Vec<EmrId> {
+    pub fn get_list_provider_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
         todo!()
     }
 
-    pub fn get_list_user_batch(page: u64, limit: u64) -> Vec<EmrId> {
+    pub fn get_list_user_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
         todo!()
     }
 
     /** TODO: make type for conversing from opaque emr key-value type to type that can be seriaized */
-    pub fn get_record_id() -> () {
+    pub fn get_record_id() {
         todo!()
     }
 }

@@ -10,7 +10,6 @@ use ic_stable_memory::{
     AsFixedSizeBytes,
     SBox,
     StableType,
-    AsDynSizeBytes,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -96,7 +95,7 @@ impl EmrRegistry {
         key: AsciiRecordsKey,
         value: impl Into<EmrRecordsValue>
     ) -> Result<(), String> {
-        let Some(mut emr) = self.core_emrs.get_emr_mut(&emr_id) else {
+        let Some(mut emr) = self.core_emrs.get_emr_mut(emr_id) else {
             return Err("emr not found".to_string());
         };
 

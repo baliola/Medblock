@@ -7,12 +7,10 @@ use emr::{
     EmrRegistry,
     EmrDisplay,
     FromStableRef,
-    patient::NIK,
-    RecordsDisplay,
     Records,
 };
 use random::{ CanisterRandomSource, CallError };
-use internal_types::{ Id, AsciiRecordsKey };
+use internal_types::{ Id };
 use api_types::*;
 use crate::internal_types::UUID_MAX_SOURCE_LEN;
 
@@ -356,7 +354,7 @@ fn export_candid() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
     #[test]
     fn save_candid() {
