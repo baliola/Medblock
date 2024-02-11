@@ -1,5 +1,5 @@
 use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
     impl_max_size,
@@ -13,7 +13,7 @@ type UserId = Id;
 type ProviderId = Id;
 type EmrId = Id;
 type RecordsKey = AsciiRecordsKey;
-type OpaqueEmrValue = Vec<u8>;
+type ArbitraryEmrValue = String;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
@@ -23,7 +23,7 @@ impl MemBoundMarker for CompositeKey {
     const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };
 }
 
-pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, OpaqueEmrValue, Memory>);
+pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
 impl CoreRegistry {
     pub fn add() {
