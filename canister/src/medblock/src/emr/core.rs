@@ -17,6 +17,18 @@ type ArbitraryEmrValue = String;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
+
+impl CompositeKey {
+    pub fn new(
+        user_id: UserId,
+        provider_id: ProviderId,
+        emr_id: EmrId,
+        records_key: RecordsKey
+    ) -> Self {
+        Self(user_id, provider_id, emr_id, records_key)
+    }
+}
+
 impl_max_size!(CompositeKey, UserId, ProviderId, EmrId, RecordsKey);
 
 impl MemBoundMarker for CompositeKey {

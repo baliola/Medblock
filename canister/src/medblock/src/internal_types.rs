@@ -68,7 +68,19 @@ pub enum EmrKeyError {
 }
 
 /// arbitry ascii encoded string with max length of 32 bytes
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode
+)]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
@@ -80,6 +92,11 @@ const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
 deref!(AsciiRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
 
 impl AsciiRecordsKey {
+    pub const MIN: Self = AsciiRecordsKey {
+        key: [0u8; EMR_RECORDS_MAX_LEN_BYTES],
+        len: 0,
+    };
+    
     pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
         Self::from_str(s.as_ref())
     }
@@ -236,8 +253,8 @@ mod deserialize {
         {
             let str = String::deserialize(deserializer)?;
             Uuid::parse_str(&str)
-                    .map_err(serde::de::Error::custom)
-                    .map(|uuid| uuid.into())
+                .map_err(serde::de::Error::custom)
+                .map(|uuid| uuid.into())
         }
     }
 
