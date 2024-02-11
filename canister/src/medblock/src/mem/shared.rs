@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use ic_stable_structures::{ storable::Bound, Storable };
+use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
 use crate::{ deref, impl_unbounded };
 
@@ -8,9 +8,23 @@ pub trait MemBoundMarker {
     const BOUND: Bound;
 }
 
+pub trait ToStable {
+    fn to_stable(self) -> Stable<Self> where Self: Sized + MemBoundMarker {
+        Stable::new(self)
+    }
+
+    fn from_stable(stable: Stable<Self>) -> Self where Self: Sized + MemBoundMarker {
+        stable.into_inner()
+    }
+}
+
+impl<T: MemBoundMarker> ToStable for T {}
+
 impl<T: Storable> MemBoundMarker for T {
     const BOUND: Bound = <T as Storable>::BOUND;
 }
+
+pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMemoryImpl>;
 
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
 pub struct Stable<T>(T) where T: MemBoundMarker;
@@ -46,6 +60,18 @@ impl<T> PartialEq for Stable<T> where T: PartialEq + MemBoundMarker {
 }
 
 impl<T> Eq for Stable<T> where T: Eq + MemBoundMarker {}
+
+impl<T> PartialOrd for Stable<T> where T: PartialOrd + MemBoundMarker {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<T> Ord for Stable<T> where T: Ord + MemBoundMarker {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
 
 impl<T> Storable for Stable<T> where T: Codec + Sized + MemBoundMarker {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
@@ -100,5 +126,33 @@ mod test {
         assert_eq!(stable, stable2);
     }
 
+    #[test]
+    #[should_panic]
+    fn test_similar_struct_codec() {
+        #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug, PartialEq, Eq)]
+        struct TestStruct {
+            a: u32,
+            b: u32,
+        }
 
+        #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug, PartialEq, Eq)]
+        struct SimilarStruct {
+            a: u32,
+            b: u32,
+            optional: Option<u32>,
+        }
+
+        impl MemBoundMarker for TestStruct {
+            const BOUND: Bound = Bound::Unbounded;
+        }
+
+        impl MemBoundMarker for SimilarStruct {
+            const BOUND: Bound = Bound::Unbounded;
+        }
+
+        let str1 = TestStruct { a: 10, b: 20 };
+        let table_encoded = Stable::new(str1).encode();
+
+        Stable::<SimilarStruct>::from_bytes(table_encoded.to_bytes());
+    }
 }

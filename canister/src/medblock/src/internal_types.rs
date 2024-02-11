@@ -2,6 +2,7 @@ use std::{ str::FromStr, borrow::{ BorrowMut, Borrow } };
 
 use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
+use parity_scale_codec::{ Decode, Encode };
 
 use crate::{ deref, random::CanisterRandomSource };
 use serde::{ Deserialize, Serialize };
@@ -67,7 +68,7 @@ pub enum EmrKeyError {
 }
 
 /// arbitry ascii encoded string with max length of 32 bytes
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
@@ -123,7 +124,19 @@ impl AsciiRecordsKey {
 }
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode
+)]
 pub struct Id([u8; 16]);
 
 impl CandidType for Id {

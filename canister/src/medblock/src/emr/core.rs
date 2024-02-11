@@ -1,6 +1,11 @@
-use ic_stable_structures::{BTreeMap, Log};
+use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
+use parity_scale_codec::{Decode, Encode};
 
-use crate::internal_types::{AsciiRecordsKey, Id};
+use crate::{
+    impl_max_size,
+    internal_types::{ AsciiRecordsKey, Id },
+    mem::shared::{ MemBoundMarker, Memory, Stable },
+};
 
 use super::ModifyEmr;
 
@@ -10,9 +15,15 @@ type EmrId = Id;
 type RecordsKey = AsciiRecordsKey;
 type OpaqueEmrValue = Vec<u8>;
 
-type CompositeKey = (UserId, ProviderId, EmrId, RecordsKey);
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
+pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
+impl_max_size!(CompositeKey, UserId, ProviderId, EmrId, RecordsKey);
 
-pub struct CoreRegistry(BTreeMap<CompositeKey, OpaqueEmrValue>);
+impl MemBoundMarker for CompositeKey {
+    const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };
+}
+
+pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, OpaqueEmrValue, Memory>);
 
 impl CoreRegistry {
     pub fn add() {
@@ -39,11 +50,11 @@ impl CoreRegistry {
         todo!()
     }
 
-    pub fn get_record_id() -> /** TODO: make type for conversing from opaque emr key-value type to type that can be seriaized */ () {
+    /** TODO: make type for conversing from opaque emr key-value type to type that can be seriaized */
+    pub fn get_record_id() -> () {
         todo!()
     }
 }
 
-
-// TODO: implement log for core registry
-pub struct ActivityLog(/** TODO */);
+// // TODO: implement log for core registry
+// pub struct ActivityLog(/** TODO */);
