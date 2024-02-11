@@ -27,6 +27,10 @@ impl CompositeKey {
     ) -> Self {
         Self(user_id, provider_id, emr_id, records_key)
     }
+
+    pub fn range_compose() -> Self{
+        todo!()
+    }
 }
 
 impl_max_size!(CompositeKey, UserId, ProviderId, EmrId, RecordsKey);
