@@ -28,12 +28,12 @@ impl CompositeKey {
         Self(user_id, provider_id, emr_id, records_key)
     }
 
-    pub fn range_compose() -> Self{
+    pub fn range_compose() -> Self {
         todo!()
     }
 }
 
-impl_max_size!(CompositeKey, UserId, ProviderId, EmrId, RecordsKey);
+impl_max_size!(for CompositeKey: UserId, ProviderId, EmrId, RecordsKey);
 
 impl MemBoundMarker for CompositeKey {
     const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };

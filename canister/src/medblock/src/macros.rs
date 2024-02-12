@@ -167,7 +167,7 @@ macro_rules! impl_unbounded {
 
 #[macro_export]
 macro_rules! impl_max_size {
-    ($struct:ty, $($ty:ident),*) => {
+    (for $struct:ty: $($ty:ident),*) => {
 
         impl $struct {
             pub const fn max_size()-> usize {
