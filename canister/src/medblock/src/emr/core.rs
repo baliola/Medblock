@@ -10,7 +10,7 @@ use crate::{
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
 
-use super::key::{ ArbitraryEmrValue, CompositeKey };
+use super::key::{ ArbitraryEmrValue, CompositeKey, EmrId };
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 

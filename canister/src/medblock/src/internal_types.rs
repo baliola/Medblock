@@ -79,7 +79,8 @@ pub enum EmrKeyError {
     Clone,
     Debug,
     Encode,
-    Decode
+    Decode,
+    Default
 )]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
@@ -92,11 +93,6 @@ const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
 deref!(AsciiRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
 
 impl AsciiRecordsKey {
-    pub const MIN: Self = AsciiRecordsKey {
-        key: [0u8; EMR_RECORDS_MAX_LEN_BYTES],
-        len: 0,
-    };
-    
     pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
         Self::from_str(s.as_ref())
     }
@@ -155,6 +151,12 @@ impl AsciiRecordsKey {
     Decode
 )]
 pub struct Id([u8; 16]);
+
+impl Default for Id {
+    fn default() -> Self {
+        uuid::Uuid::default().into()
+    }
+}
 
 impl CandidType for Id {
     fn _ty() -> candid::types::Type {
