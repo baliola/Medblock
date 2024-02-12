@@ -27,8 +27,8 @@ impl Debug for CoreRegistry {
 }
 
 impl CoreRegistry {
-    pub fn add(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue) {
-        self.0.insert(key, value);
+    pub fn add(&mut self, key: CompositeKey, value: ArbitraryEmrValue) {
+        self.0.insert(key.into(), value);
     }
 
     pub fn update(

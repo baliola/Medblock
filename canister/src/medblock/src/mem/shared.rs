@@ -1,8 +1,5 @@
-
-
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
-
 
 pub trait MemBoundMarker {
     const BOUND: Bound;
@@ -28,6 +25,18 @@ pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMem
 
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
 pub struct Stable<T>(T) where T: MemBoundMarker;
+
+impl<T: MemBoundMarker> From<T> for Stable<T> {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
+impl<T: MemBoundMarker> From<Stable<T>> for T {
+    fn from(value: Stable<T>) -> Self {
+        value.into_inner()
+    }
+}
 
 impl<T> Stable<T> where T: MemBoundMarker {
     pub fn new(value: T) -> Self {
