@@ -8,6 +8,7 @@ use crate::{
     impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
     mem::shared::{ MemBoundMarker, Memory, Stable },
+    internal_types::Timestamp //import timestamp from internal_types
 };
 
 type UserId = Id;
@@ -102,12 +103,14 @@ pub struct ActivityLog {
     provider_id: ProviderId,
     emr_id: EmrId,
     records_key: RecordsKey,
-    add_activities: Vec<(RecordsKey, ArbitraryEmrValue)>,
-    update_activities: Vec<(RecordsKey, ArbitraryEmrValue)>,
-    remove_batch: Vec<RecordsKey>,
+    // use vector for tuples
+    add_activities: Vec<(RecordsKey, ArbitraryEmrValue, Timestamp)>,
+    update_activities: Vec<(RecordsKey, ArbitraryEmrValue, Timestamp)>,
+    remove_batch: Vec<(RecordsKey, Timestamp)>,
 }
 
 impl ActivityLog {
+    // create new instance
     pub fn new(
         user_id: UserId,
         provider_id: ProviderId,
@@ -126,18 +129,22 @@ impl ActivityLog {
     }
 
     pub fn add(&mut self, key: RecordsKey, value: ArbitraryEmrValue) {
-        self.add_activities.push((key, value));
+        let timestamp = Timestamp::new();
+        self.add_activities.push((key, value, timestamp));
     }
 
     pub fn update(&mut self, key: RecordsKey, value: ArbitraryEmrValue) {
-        self.update_activities.push((key, value));
+        let timestamp = Timestamp::new();
+        self.update_activities.push((key, value, timestamp));
     }
 
     pub fn update_batch(&mut self, records: Vec<(RecordsKey, ArbitraryEmrValue)>) {
-        self.update_activities.extend(records);
+        let timestamp = Timestamp::new();
+        self.update_activities.extend(records, timestamp);
     }
 
     pub fn remove_batch(&mut self, keys: Vec<RecordsKey>) {
-        self.remove_batch.extend(keys);
+        let timestamp = Timestamp::new();
+        self.remove_batch.extend(keys, timestamp);
     }
 }
