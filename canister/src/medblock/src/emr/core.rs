@@ -10,35 +10,7 @@ use crate::{
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
 
-type UserId = Id;
-type ProviderId = Id;
-type EmrId = Id;
-type RecordsKey = AsciiRecordsKey;
-type ArbitraryEmrValue = String;
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
-pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
-
-impl CompositeKey {
-    pub fn new(
-        user_id: UserId,
-        provider_id: ProviderId,
-        emr_id: EmrId,
-        records_key: RecordsKey
-    ) -> Self {
-        Self(user_id, provider_id, emr_id, records_key)
-    }
-
-    pub fn range_compose() -> Self {
-        todo!()
-    }
-}
-
-impl_max_size!(for CompositeKey: UserId, ProviderId, EmrId, RecordsKey);
-
-impl MemBoundMarker for CompositeKey {
-    const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };
-}
+use super::key::{ ArbitraryEmrValue, CompositeKey };
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
@@ -55,24 +27,25 @@ impl Debug for CoreRegistry {
 }
 
 impl CoreRegistry {
-    pub fn add(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue){
+    pub fn add(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue) {
         self.0.insert(key, value);
     }
 
-    pub fn update(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue) -> Result<(), OutOfMemory> {
-        if let Some(_) = self.0.insert(key, value) {
-            Ok(())
-        } else {
-            Err(OutOfMemory)
-        }
+    pub fn update(
+        &mut self,
+        key: Stable<CompositeKey>,
+        value: ArbitraryEmrValue
+    ) -> Option<ArbitraryEmrValue> {
+        self.0.insert(key, value)
     }
 
-    // update a batch of records at once 
-    pub fn update_batch(&mut self, records: Vec<(Stable<CompositeKey>, ArbitraryEmrValue)>) -> Result<(), OutOfMemory> {
+    // update a batch of records at once
+    pub fn update_batch(
+        &mut self,
+        records: Vec<(Stable<CompositeKey>, ArbitraryEmrValue)>
+    ) -> Result<(), OutOfMemory> {
         for (key, value) in records {
-            if let Some(_) = self.0.insert(key, value) {
-                return Err(OutOfMemory);
-            }
+            self.0.insert(key, value);
         }
 
         Ok(())

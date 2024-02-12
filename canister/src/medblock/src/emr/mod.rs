@@ -1,6 +1,7 @@
 pub mod patient;
 pub mod providers;
 mod core;
+pub(self) mod key;
 
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
