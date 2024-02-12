@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
-use ic_stable_structures::{ storable::Bound, BTreeMap };
+use ic_stable_memory::OutOfMemory;
+use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
@@ -54,20 +55,31 @@ impl Debug for CoreRegistry {
 }
 
 impl CoreRegistry {
-    pub fn add() {
-        todo!()
+    pub fn add(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue){
+        self.0.insert(key, value);
     }
 
-    pub fn update() {
-        todo!()
+    pub fn update(&mut self, key: Stable<CompositeKey>, value: ArbitraryEmrValue) -> Result<(), OutOfMemory> {
+        if let Some(_) = self.0.insert(key, value) {
+            Ok(())
+        } else {
+            Err(OutOfMemory)
+        }
     }
 
-    pub fn update_batch() {
-        todo!()
+    // update a batch of records at once 
+    pub fn update_batch(&mut self, records: Vec<(Stable<CompositeKey>, ArbitraryEmrValue)>) -> Result<(), OutOfMemory> {
+        for (key, value) in records {
+            if let Some(_) = self.0.insert(key, value) {
+                return Err(OutOfMemory);
+            }
+        }
+
+        Ok(())
     }
 
-    pub fn remove_record() {
-        todo!()
+    pub fn remove_record(&mut self, key: Stable<CompositeKey>) -> bool {
+        self.0.remove(&key).is_some()
     }
 
     pub fn get_list_provider_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
@@ -85,4 +97,22 @@ impl CoreRegistry {
 }
 
 // // TODO: implement log for core registry
-// pub struct ActivityLog(/** TODO */);
+// pub struct ActivityLog(
+//     // store the log in a vector
+//     logs: Vec<Log<String>>,
+// );
+
+// implement from struc to log
+// impl ActivityLog {
+//     pub fn new() -> Self {
+//         Self { logs: Vec::new() }
+//     }
+
+//     pub fn add(&mut self, log: Log<String>) {
+//         self.logs.push(log);
+//     }
+
+//     pub fn get_logs(&self) -> Vec<Log<String>> {
+//         self.logs.clone()
+//     }
+// }
