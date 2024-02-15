@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{ fmt::Debug, ops::RangeBounds };
 
 use ic_stable_memory::OutOfMemory;
 use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
@@ -18,7 +18,7 @@ pub type EmrId = Id;
 pub type RecordsKey = AsciiRecordsKey;
 pub type ArbitraryEmrValue = String;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
 pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
 
 impl CompositeKey {
@@ -29,6 +29,22 @@ impl CompositeKey {
         records_key: RecordsKey
     ) -> Self {
         Self(user_id, provider_id, emr_id, records_key)
+    }
+
+    pub fn user_id(&self) -> &UserId {
+        &self.0
+    }
+
+    pub fn provider_id(&self) -> &ProviderId {
+        &self.1
+    }
+
+    pub fn emr_id(&self) -> &EmrId {
+        &self.2
+    }
+
+    pub fn record_key(&self) -> &RecordsKey {
+        &self.3
     }
 }
 
