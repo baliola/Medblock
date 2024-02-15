@@ -82,8 +82,16 @@ impl CoreRegistry {
     }
 
     /** TODO: make type for conversing from opaque emr key-value type to type that can be serialized */
-    pub fn get_record_id() {
-        todo!()
+    pub fn get_record_id(&self, key: Stable<CompositeKey>) -> Option<EmrId> {
+        let record = self.0.get(&key)?;
+
+        // extract the id from the record
+        let record_id = match record {
+            ArbitraryEmrValue::Record(record) => Some(record.id),
+            _ => None
+        };
+
+        record_id
     }
 }
 
