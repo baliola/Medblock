@@ -1,9 +1,9 @@
-use std::{ cell::{ Cell, RefCell }, fmt::{ Display, Formatter } };
+use std::{ cell::{ RefCell }, fmt::{ Display, Formatter } };
 
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
-use crate::deref;
+
 
 #[derive(Default)]
 pub struct CanisterRandomSource {
@@ -36,7 +36,8 @@ impl CanisterRandomSource {
             ::raw_rand().await
             .map_err(CallError::from)?;
 
-        Ok(Self::refill_from_raw(buf, source))
+        Self::refill_from_raw(buf, source);
+        Ok(())
     }
 
     pub fn refill_from_raw(buf: &mut Vec<u8>, raw: impl IntoIterator<Item = u8>) {
@@ -68,7 +69,7 @@ impl CanisterRandomSource {
         Ok(Self::drain_source(rng.as_mut()))
     }
 
-    fn drain_source<const N: usize>(mut rng: &mut Vec<u8>) -> [u8; N] {
+    fn drain_source<const N: usize>(rng: &mut Vec<u8>) -> [u8; N] {
         let mut bytes = [0u8; N];
 
         // drain rng source and fill bytes
@@ -88,9 +89,9 @@ mod test {
 
     #[test]
     fn test_get_random() {
-        let mut rng = CanisterRandomSource::new();
+        let rng = CanisterRandomSource::new();
 
-        rng.rng.borrow_mut().extend(vec![1_u8].repeat(32));
+        rng.rng.borrow_mut().extend([1_u8].repeat(32));
 
         let bytes = rng.try_get_random_bytes::<32>().unwrap();
 

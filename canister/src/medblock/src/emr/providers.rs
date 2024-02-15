@@ -9,7 +9,7 @@ use ic_stable_memory::{
 };
 use serde::Deserialize;
 
-use crate::{ deref, internal_types::{ Id, Timestamp }, random::CanisterRandomSource };
+use crate::{ deref, internal_types::{ Id, Timestamp } };
 
 use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
 
@@ -131,7 +131,7 @@ impl ProviderRegistry {
 
     /// unsuspend a provider
     pub fn unsuspend_provider(&mut self, provider: &Principal) -> Result<(), &'static str> {
-        let Some(internal_id) = self.providers_bindings.get_internal_id(&provider) else {
+        let Some(internal_id) = self.providers_bindings.get_internal_id(provider) else {
             return Err("provider not found");
         };
 
@@ -153,7 +153,7 @@ impl ProviderRegistry {
 
     /// check if a provider is suspended
     pub fn is_provider_suspended(&self, provider: &Principal) -> Result<bool, &'static str> {
-        let Some(internal_id) = self.providers_bindings.get_internal_id(&provider) else {
+        let Some(internal_id) = self.providers_bindings.get_internal_id(provider) else {
             return Err("provider not found");
         };
 
@@ -182,10 +182,10 @@ impl ProviderRegistry {
         max: u8
     ) -> Result<Vec<Id>, &'static str> {
         let internal_id = self.providers_bindings
-            .get_internal_id(&provider)
+            .get_internal_id(provider)
             .ok_or("provider not found")?;
 
-        self.issued.get_issued(&*internal_id, anchor, max).ok_or("no emr collection found")
+        self.issued.get_issued(&internal_id, anchor, max).ok_or("no emr collection found")
     }
 }
 
@@ -219,7 +219,7 @@ impl Issued {
         &self,
         provider: &InternalProviderId,
         anchor: u64,
-        max: u8
+        _max: u8
     ) -> Option<Vec<EmrId>> {
         let Some(emr_id_collection) = self.get(provider) else {
             return None;

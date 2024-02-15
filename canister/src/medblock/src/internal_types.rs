@@ -1,9 +1,10 @@
-use std::{ str::FromStr, borrow::{ BorrowMut, Borrow } };
+use std::{ str::FromStr };
 
 use candid::CandidType;
-use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType }, primitive::s_ref::SRef };
+use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
+use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, random::CanisterRandomSource };
+use crate::{ deref };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -67,10 +68,24 @@ pub enum EmrKeyError {
 }
 
 /// arbitry ascii encoded string with max length of 32 bytes
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode,
+    Default
+)]
 pub struct AsciiRecordsKey {
     key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
+    // should probably make the check before initializing this struct so that it may be completely removed
     len: u8,
 }
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
@@ -122,8 +137,26 @@ impl AsciiRecordsKey {
 }
 
 /// wrapper for [uuid::Uuid] because candid is not implemented for [uuid::Uuid]
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode
+)]
 pub struct Id([u8; 16]);
+
+impl Default for Id {
+    fn default() -> Self {
+        uuid::Uuid::default().into()
+    }
+}
 
 impl CandidType for Id {
     fn _ty() -> candid::types::Type {
@@ -163,7 +196,7 @@ impl From<Uuid> for Id {
 
 impl From<&Uuid> for Id {
     fn from(value: &Uuid) -> Self {
-        Self(value.as_bytes().clone())
+        Self(*value.as_bytes())
     }
 }
 
@@ -221,11 +254,9 @@ mod deserialize {
             where D: serde::Deserializer<'de>
         {
             let str = String::deserialize(deserializer)?;
-            Ok(
-                Uuid::parse_str(&str)
-                    .map_err(serde::de::Error::custom)
-                    .map(|uuid| uuid.into())?
-            )
+            Uuid::parse_str(&str)
+                .map_err(serde::de::Error::custom)
+                .map(|uuid| uuid.into())
         }
     }
 
