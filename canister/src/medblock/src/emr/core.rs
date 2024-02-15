@@ -50,24 +50,34 @@ impl CoreRegistry {
         self.0.remove(&key).is_some()
     }
 
-    pub fn get_list_provider_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {
+    pub fn get_list_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {
         let start = page * limit;
         let end = start + limit;
 
         self.0
-            .range((key)..)
+            .range(key..)
             .skip(start as usize)
             .take(limit as usize)
             .map(|(k, _)| k.emr_id().to_owned())
             .collect::<Vec<_>>()
     }
-    pub fn get_list_user_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
-        todo!()
-    }
 
-    /** TODO: make type for conversing from opaque emr key-value type to type that can be seriaized */
-    pub fn get_record_id() {
-        todo!()
+    pub fn read_by_id(&self, key: &Stable<CompositeKey>) -> Option<RawEmr> {
+        Some(
+            self.0
+                .range(key..)
+                .map(|(key, value)| (key.record_key().to_owned(), value.to_owned()))
+                .collect::<Vec<_>>()
+                .into()
+        )
+    }
+}
+
+pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
+
+impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
+    fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
+        Self(records)
     }
 }
 
