@@ -21,6 +21,15 @@ pub type ArbitraryEmrValue = String;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
 pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
 
+impl RangeBounds<CompositeKey> for CompositeKey {
+    fn start_bound(&self) -> core::ops::Bound<&CompositeKey> {
+        core::ops::Bound::Included(self)
+    }
+
+    fn end_bound(&self) -> core::ops::Bound<&CompositeKey> {
+        core::ops::Bound::Unbounded
+    }
+}
 impl CompositeKey {
     pub fn new(
         user_id: UserId,

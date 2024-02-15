@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
 
@@ -33,6 +35,24 @@ impl<T> std::ops::Deref for Stable<T> where T: MemBoundMarker {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T: MemBoundMarker + RangeBounds<T>> RangeBounds<Stable<T>> for Stable<T> {
+    fn start_bound(&self) -> std::ops::Bound<&Stable<T>> {
+        match self.0.start_bound() {
+            std::ops::Bound::Included(_) => std::ops::Bound::Included(self),
+            std::ops::Bound::Excluded(_) => std::ops::Bound::Excluded(self),
+            std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+        }
+    }
+
+    fn end_bound(&self) -> std::ops::Bound<&Stable<T>> {
+        match self.0.end_bound() {
+            std::ops::Bound::Included(_) => std::ops::Bound::Included(self),
+            std::ops::Bound::Excluded(_) => std::ops::Bound::Excluded(self),
+            std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+        }
     }
 }
 

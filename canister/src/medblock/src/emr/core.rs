@@ -50,12 +50,12 @@ impl CoreRegistry {
         self.0.remove(&key).is_some()
     }
 
-    pub fn get_list_provider_batch(&self, page: u64, limit: u64, key: CompositeKey) -> Vec<EmrId> {
+    pub fn get_list_provider_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {
         let start = page * limit;
         let end = start + limit;
 
         self.0
-            .range((key.user_id().to_owned(), key.provider_id().to_owned(), key.emr_id().to_owned(), key.record_key().to_owned())..)
+            .range((key)..)
             .skip(start as usize)
             .take(limit as usize)
             .map(|(k, _)| k.emr_id().to_owned())
