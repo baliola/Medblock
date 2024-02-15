@@ -14,6 +14,13 @@ use super::key::{ ArbitraryEmrValue, CompositeKey, EmrId };
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
+impl CoreRegistry {
+    pub fn new(memory_manager: &crate::mem::MemoryManager) -> Self {
+        let tree = memory_manager.get_memory(|mem| BTreeMap::new(mem));
+        Self(tree)
+    }
+}
+
 impl Debug for CoreRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut result = f.debug_struct("CoreRegistry");
