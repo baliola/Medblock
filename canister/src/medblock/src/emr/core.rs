@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use chrono::offset;
 use ic_stable_memory::OutOfMemory;
 use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
 use parity_scale_codec::{ Decode, Encode };
@@ -10,7 +11,7 @@ use crate::{
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
 
-use super::key::{ ArbitraryEmrValue, CompositeKey, EmrId };
+use super::{key::{ ArbitraryEmrValue, CompositeKey, EmrId }, providers};
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
@@ -56,14 +57,31 @@ impl CoreRegistry {
     }
 
     pub fn get_list_provider_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
-        todo!()
+        let mut all = Vec::new();
+
+        let offset = _page * _limit;
+
+        for i in offset..offset + _limit {
+            all.push(EmrId::new(i));
+        }
+        all
     }
 
-    pub fn get_list_user_batch(_page: u64, _limit: u64) -> Vec<EmrId> {
-        todo!()
+    pub fn get_list_user_batch(&self, _page: u64, _limit: u64) -> Vec<EmrId> {
+        let mut all = Vec::new();
+
+        let offset: u64 = _page * _limit;
+
+        for _value in self.0.iter().skip(offset as usize).take(_limit as usize) {
+            if let ArbitraryEmrValue::Record(record) = _value {
+                all.push(record.id);
+            }
+        }
+
+        all
     }
 
-    /** TODO: make type for conversing from opaque emr key-value type to type that can be seriaized */
+    /** TODO: make type for conversing from opaque emr key-value type to type that can be serialized */
     pub fn get_record_id() {
         todo!()
     }
