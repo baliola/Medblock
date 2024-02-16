@@ -7,10 +7,21 @@ use parity_scale_codec::{ Decode, Encode };
 use crate::{
     impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
-    mem::shared::{ MemBoundMarker, Memory, Stable },
+    mem::shared::{ MemBoundMarker, Memory, Stable, ToStable },
 };
 
-use super::key::{ ArbitraryEmrValue, ByRecordsKey, CompositeKey, CompositeKeyBuilder, EmrId };
+use super::key::{
+    ArbitraryEmrValue,
+    ByEmr,
+    ByRecordsKey,
+    CompositeKey,
+    CompositeKeyBuilder,
+    EmrId,
+    Known,
+    ProviderId,
+    RecordsKey,
+    UserId,
+};
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
@@ -34,36 +45,46 @@ impl Debug for CoreRegistry {
 }
 
 impl CoreRegistry {
-    pub fn add_batch(&mut self, key: CompositeKeyBuilder<ByRecordsKey>, emr: RawEmr) {
-        // for (k, v) in emr.into_iter() {
-        //     let mut emr_key = key.to_owned();
-        //     emr_key.with_records_key(k);
-
-        //     let emr_key = emr_key.build();
-
-        //     self.0.insert(emr_key.into(), v);
-        // }
-
-        todo!()
+    pub fn add_batch(
+        &mut self,
+        key: CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>, Known<EmrId>>,
+        emr: RawEmr
+    ) {
+        for (k, v) in emr.into_iter() {
+            let emr_key = key.clone().with_records_key(k).build();
+            self.0.insert(emr_key.into(), v);
+        }
     }
 
     pub fn update(
         &mut self,
-        key: Stable<CompositeKey>,
+        key: CompositeKeyBuilder<
+            ByRecordsKey,
+            Known<UserId>,
+            Known<ProviderId>,
+            Known<EmrId>,
+            Known<RecordsKey>
+        >,
         value: ArbitraryEmrValue
     ) -> Option<ArbitraryEmrValue> {
+        let key = key.build().into();
         self.0.insert(key, value)
     }
+    pub fn remove_record(
+        &mut self,
+        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
+    ) {
+        let key = key.build().to_stable();
 
-    // update a batch of records at once
-    pub fn update_batch(&mut self, records: Vec<(Stable<CompositeKey>, ArbitraryEmrValue)>) {
-        for (key, value) in records {
-            self.0.insert(key, value);
+        let keys_to_remove: Vec<_> = self.0
+            .range(key.clone()..)
+            .take_while(|(k, _)| k.emr_id() == key.emr_id())
+            .map(|(k, _)| k.clone())
+            .collect();
+
+        for key in keys_to_remove {
+            self.0.remove(&key);
         }
-    }
-
-    pub fn remove_record(&mut self, key: Stable<CompositeKey>) -> bool {
-        self.0.remove(&key).is_some()
     }
 
     pub fn get_list_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {
@@ -78,14 +99,23 @@ impl CoreRegistry {
             .collect::<Vec<_>>()
     }
 
-    pub fn read_by_id(&self, key: &Stable<CompositeKey>) -> Option<RawEmr> {
-        Some(
-            self.0
-                .range(key..)
-                .map(|(key, value)| (key.record_key().to_owned(), value.to_owned()))
-                .collect::<Vec<_>>()
-                .into()
-        )
+    pub fn read_by_id(
+        &self,
+        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
+    ) -> Option<RawEmr> {
+        let key = key.build().to_stable();
+
+        let records = self.0
+            .range(key.clone()..)
+            .take_while(|(k, _)| k.emr_id() == key.emr_id())
+            .map(|(k, v)| (k.record_key().to_owned(), v.clone()))
+            .collect::<Vec<_>>();
+
+        if records.is_empty() {
+            None
+        } else {
+            Some(RawEmr::from(records))
+        }
     }
 }
 
