@@ -1,4 +1,4 @@
-use std::{ fmt::Debug, ops::RangeBounds };
+use std::{ default, fmt::Debug, marker::PhantomData, ops::RangeBounds };
 
 use ic_stable_memory::OutOfMemory;
 use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
@@ -8,6 +8,7 @@ use crate::{
     impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
     mem::shared::{ MemBoundMarker, Memory, Stable },
+    zero_sized_state,
 };
 
 use super::Emr;
@@ -56,8 +57,8 @@ impl CompositeKey {
         &self.3
     }
 
-    pub fn builder() -> CompositeKeyBuilder<UknownUsage> {
-        CompositeKeyBuilder::<UknownUsage>::new()
+    pub fn builder() -> CompositeKeyBuilder<UnknownUsage> {
+        CompositeKeyBuilder::<UnknownUsage>::new()
     }
 }
 
@@ -68,35 +69,68 @@ impl MemBoundMarker for CompositeKey {
 }
 
 // ----------------------------------------- Begin Builder -----------------------------------------
-pub struct UserBatch;
-pub struct ProviderBatch;
-pub struct ByEmr;
-pub struct ByRecordsKey;
 
-pub struct UknownUsage;
+zero_sized_state!(UserBatch, ProviderBatch, ByEmr, ByRecordsKey, UnknownUsage);
 
-pub struct CompositeKeyBuilder<Usage> {
-    user_id: Option<UserId>,
-    provider_id: Option<ProviderId>,
-    emr_id: Option<EmrId>,
-    records_key: Option<RecordsKey>,
+#[derive(Debug, Clone, Default)]
+pub struct Unknown<T>(PhantomData<T>);
+
+#[derive(Debug, Clone)]
+pub struct Known<T>(T);
+
+impl<T: Default> Default for Known<T> {
+    fn default() -> Self {
+        Self(T::default())
+    }
+}
+impl<T> Known<T> {
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CompositeKeyBuilder<
+    Usage,
+    UnknownUser = Unknown<UserId>,
+    UnknownProvider = Unknown<ProviderId>,
+    UnknownEmrId = Unknown<EmrId>,
+    UnknownRecordsKey = Unknown<RecordsKey>
+> {
+    user_id: UnknownUser,
+    provider_id: UnknownProvider,
+    emr_id: UnknownEmrId,
+    records_key: UnknownRecordsKey,
     __marker: std::marker::PhantomData<Usage>,
 }
 
 impl CompositeKeyBuilder<UserBatch> {
-    pub fn with_provider(&mut self, provider: ProviderId) -> &mut Self {
-        self.provider_id = Some(provider);
-        self
+    pub fn with_user(self, user: UserId) -> CompositeKeyBuilder<UserBatch, Known<UserId>> {
+        CompositeKeyBuilder {
+            user_id: Known(user),
+            ..Default::default()
+        }
     }
+}
 
-    pub fn with_user(&mut self, user: UserId) -> &mut Self {
-        self.user_id = Some(user);
-        self
+impl CompositeKeyBuilder<UserBatch, Known<UserId>> {
+    pub fn with_provider(
+        self,
+        provider: ProviderId
+    ) -> CompositeKeyBuilder<UserBatch, Known<UserId>, Known<ProviderId>> {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: Known(provider),
+            ..Default::default()
+        }
     }
+}
 
+impl CompositeKeyBuilder<UserBatch, Known<UserId>, Known<ProviderId>> {
     pub fn build(self) -> CompositeKey {
-        let user_id = self.user_id.expect("user_id is required");
-        let provider_id = self.provider_id.expect("provider_id is required");
+        let user_id = self.user_id.into_inner();
+        let provider_id = self.provider_id.into_inner();
+
         let emr_id = EmrId::default();
         let records_key = AsciiRecordsKey::default();
 
@@ -105,25 +139,45 @@ impl CompositeKeyBuilder<UserBatch> {
 }
 
 impl CompositeKeyBuilder<ByEmr> {
-    pub fn with_provider(&mut self, provider: ProviderId) -> &mut Self {
-        self.provider_id = Some(provider);
-        self
+    pub fn with_user(self, user: UserId) -> CompositeKeyBuilder<ByEmr, Known<UserId>> {
+        CompositeKeyBuilder {
+            user_id: Known(user),
+            ..Default::default()
+        }
     }
+}
 
-    pub fn with_user(&mut self, user: UserId) -> &mut Self {
-        self.user_id = Some(user);
-        self
+impl CompositeKeyBuilder<ByEmr, Known<UserId>> {
+    pub fn with_provider(
+        self,
+        provider: ProviderId
+    ) -> CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>> {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: Known(provider),
+            ..Default::default()
+        }
     }
-
-    pub fn with_emr_id(&mut self, emr_id: EmrId) -> &mut Self {
-        self.emr_id = Some(emr_id);
-        self
+}
+impl CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>> {
+    pub fn with_emr_id(
+        self,
+        emr_id: EmrId
+    ) -> CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>> {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: self.provider_id,
+            emr_id: Known(emr_id),
+            ..Default::default()
+        }
     }
+}
 
+impl CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>> {
     pub fn build(self) -> CompositeKey {
-        let user_id = self.user_id.expect("user_id is required");
-        let provider_id = self.provider_id.expect("provider_id is required");
-        let emr_id = self.emr_id.expect("emr_id is required");
+        let user_id = self.user_id.into_inner();
+        let provider_id = self.provider_id.into_inner();
+        let emr_id = self.emr_id.into_inner();
         let records_key = AsciiRecordsKey::default();
 
         CompositeKey::new(user_id, provider_id, emr_id, records_key)
@@ -131,14 +185,26 @@ impl CompositeKeyBuilder<ByEmr> {
 }
 
 impl CompositeKeyBuilder<ProviderBatch> {
-    pub fn with_provider(&mut self, provider: ProviderId) -> &mut Self {
-        self.provider_id = Some(provider);
-        self
+    pub fn with_provider(
+        self,
+        provider: ProviderId
+    ) -> CompositeKeyBuilder<
+        ProviderBatch,
+        Unknown<UserId>,
+        Known<ProviderId>,
+        Unknown<RecordsKey>
+    > {
+        CompositeKeyBuilder {
+            provider_id: Known(provider),
+            ..Default::default()
+        }
     }
+}
 
+impl CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>, Unknown<RecordsKey>> {
     pub fn build(self) -> CompositeKey {
         let user_id = UserId::default();
-        let provider_id = self.provider_id.expect("provider_id is required");
+        let provider_id = self.provider_id.into_inner();
         let emr_id = EmrId::default();
         let records_key = AsciiRecordsKey::default();
 
@@ -147,54 +213,86 @@ impl CompositeKeyBuilder<ProviderBatch> {
 }
 
 impl CompositeKeyBuilder<ByRecordsKey> {
-    pub fn with_provider(&mut self, provider: ProviderId) -> &mut Self {
-        self.provider_id = Some(provider);
-        self
+    pub fn with_user(self, user: UserId) -> CompositeKeyBuilder<ByRecordsKey, Known<UserId>> {
+        CompositeKeyBuilder {
+            user_id: Known(user),
+            ..Default::default()
+        }
     }
+}
 
-    pub fn with_user(&mut self, user: UserId) -> &mut Self {
-        self.user_id = Some(user);
-        self
+impl CompositeKeyBuilder<ByRecordsKey, Known<UserId>> {
+    pub fn with_provider(
+        self,
+        provider: ProviderId
+    ) -> CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>> {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: Known(provider),
+            ..Default::default()
+        }
     }
+}
 
-    pub fn with_emr_id(&mut self, emr_id: EmrId) -> &mut Self {
-        self.emr_id = Some(emr_id);
-        self
+impl CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>> {
+    pub fn with_emr_id(
+        self,
+        emr_id: EmrId
+    ) -> CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>, Known<EmrId>> {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: self.provider_id,
+            emr_id: Known(emr_id),
+            ..Default::default()
+        }
     }
+}
 
-    pub fn records_key(&mut self, records_key: RecordsKey) -> &mut Self {
-        self.records_key = Some(records_key);
-        self
+impl CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>, Known<EmrId>> {
+    pub fn with_records_key(
+        self,
+        records_key: RecordsKey
+    ) -> CompositeKeyBuilder<
+        ByRecordsKey,
+        Known<UserId>,
+        Known<ProviderId>,
+        Known<EmrId>,
+        Known<RecordsKey>
+    > {
+        CompositeKeyBuilder {
+            user_id: self.user_id,
+            provider_id: self.provider_id,
+            emr_id: self.emr_id,
+            records_key: Known(records_key),
+            ..Default::default()
+        }
     }
+}
 
+impl CompositeKeyBuilder<
+    ByRecordsKey,
+    Known<UserId>,
+    Known<ProviderId>,
+    Known<EmrId>,
+    Known<RecordsKey>
+> {
     pub fn build(self) -> CompositeKey {
-        let user_id = self.user_id.expect("user_id is required");
-        let provider_id = self.provider_id.expect("provider_id is required");
-        let emr_id = self.emr_id.expect("emr_id is required");
-        let records_key = self.records_key.expect("records_key is required");
+        let user_id = self.user_id.into_inner();
+        let provider_id = self.provider_id.into_inner();
+        let emr_id = self.emr_id.into_inner();
+        let records_key = self.records_key.into_inner();
 
         CompositeKey::new(user_id, provider_id, emr_id, records_key)
     }
 }
 
-impl CompositeKeyBuilder<UknownUsage> {
-    pub fn new() -> CompositeKeyBuilder<UknownUsage> {
-        CompositeKeyBuilder {
-            user_id: None,
-            provider_id: None,
-            emr_id: None,
-            records_key: None,
-            __marker: std::marker::PhantomData,
-        }
+impl CompositeKeyBuilder<UnknownUsage> {
+    pub fn new() -> CompositeKeyBuilder<UnknownUsage> {
+        CompositeKeyBuilder::<UnknownUsage>::default()
     }
-    fn new_with_usage<Usage>() -> CompositeKeyBuilder<Usage> {
-        CompositeKeyBuilder {
-            user_id: None,
-            provider_id: None,
-            emr_id: None,
-            records_key: None,
-            __marker: std::marker::PhantomData,
-        }
+
+    fn new_with_usage<Usage: Default>() -> CompositeKeyBuilder<Usage> {
+        CompositeKeyBuilder::<Usage>::default()
     }
 
     pub fn user_batch(self) -> CompositeKeyBuilder<UserBatch> {
@@ -205,11 +303,11 @@ impl CompositeKeyBuilder<UknownUsage> {
         Self::new_with_usage::<_>()
     }
 
-    pub fn by_emr(self) -> CompositeKeyBuilder<ByEmr> {
+    pub fn emr(self) -> CompositeKeyBuilder<ByEmr> {
         Self::new_with_usage::<_>()
     }
 
-    pub fn by_records_key(self) -> CompositeKeyBuilder<ByRecordsKey> {
+    pub fn records_key(self) -> CompositeKeyBuilder<ByRecordsKey> {
         Self::new_with_usage::<_>()
     }
 }

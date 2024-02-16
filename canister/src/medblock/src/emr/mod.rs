@@ -19,7 +19,7 @@ use serde_json::Value;
 /// and that is candid type and cloneable. this works because while stable memory type may implement
 /// candid, it cannot implement clone 'safely' as cloning a stable memory data involves
 /// allocating stable memory in which it may fail due to memory exhaustion.
-pub trait ResonpseMarker: CandidType + Clone + FromStableRef {}
+pub trait ResponseMarker: CandidType + Clone + FromStableRef {}
 
 /// this basically enforce that response maker type is only be able to be created from stable memory reference, effectively mirroring the stable memory data to heap
 pub trait FromStableRef {
@@ -28,7 +28,7 @@ pub trait FromStableRef {
     fn from_stable_ref(sref: &Self::From) -> Self;
 }
 
-pub trait ToResponse<T: ResonpseMarker> {
+pub trait ToResponse<T: ResponseMarker> {
     fn to_response(&self) -> T;
 }
 
@@ -275,7 +275,7 @@ pub enum EmrDisplay {
     V001(DisplayV001),
 }
 
-impl ResonpseMarker for EmrDisplay {}
+impl ResponseMarker for EmrDisplay {}
 
 impl FromStableRef for EmrDisplay {
     type From = Emr;
@@ -452,7 +452,7 @@ impl ToString for RecordsDisplay {
     }
 }
 
-impl ResonpseMarker for RecordsDisplay {}
+impl ResponseMarker for RecordsDisplay {}
 
 impl FromStableRef for RecordsDisplay {
     type From = Records;

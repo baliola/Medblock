@@ -10,7 +10,7 @@ use crate::{
     mem::shared::{ MemBoundMarker, Memory, Stable },
 };
 
-use super::key::{ ArbitraryEmrValue, CompositeKey, EmrId };
+use super::key::{ ArbitraryEmrValue, ByRecordsKey, CompositeKey, CompositeKeyBuilder, EmrId };
 
 pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
@@ -34,8 +34,17 @@ impl Debug for CoreRegistry {
 }
 
 impl CoreRegistry {
-    pub fn add(&mut self, key: CompositeKey, value: ArbitraryEmrValue) {
-        self.0.insert(key.into(), value);
+    pub fn add_batch(&mut self, key: CompositeKeyBuilder<ByRecordsKey>, emr: RawEmr) {
+        // for (k, v) in emr.into_iter() {
+        //     let mut emr_key = key.to_owned();
+        //     emr_key.with_records_key(k);
+
+        //     let emr_key = emr_key.build();
+
+        //     self.0.insert(emr_key.into(), v);
+        // }
+
+        todo!()
     }
 
     pub fn update(
@@ -85,6 +94,15 @@ pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
 impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
     fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
         Self(records)
+    }
+}
+
+impl IntoIterator for RawEmr {
+    type Item = (AsciiRecordsKey, ArbitraryEmrValue);
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

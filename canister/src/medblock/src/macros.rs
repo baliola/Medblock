@@ -176,3 +176,13 @@ macro_rules! impl_max_size {
         }
     };
 }
+
+#[macro_export]
+macro_rules! zero_sized_state {
+    ($($ident:ident),*) => {
+        $(
+            #[derive(Debug, Clone, Default)]
+            pub struct $ident;
+        )*
+    };
+}
