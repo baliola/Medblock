@@ -17,7 +17,6 @@ use crate::internal_types::UUID_MAX_SOURCE_LEN;
 mod config;
 mod emr;
 mod encryption;
-mod log;
 mod macros;
 mod internal_types;
 mod random;

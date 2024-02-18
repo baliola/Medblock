@@ -124,6 +124,15 @@ impl CompositeKeyBuilder<UserBatch, Known<UserId>> {
             ..Default::default()
         }
     }
+
+    pub fn build(self) -> CompositeKey {
+        let user_id = self.user_id.into_inner();
+        let provider_id = ProviderId::default();
+        let emr_id = EmrId::default();
+        let records_key = AsciiRecordsKey::default();
+
+        CompositeKey::new(user_id, provider_id, emr_id, records_key)
+    }
 }
 
 impl CompositeKeyBuilder<UserBatch, Known<UserId>, Known<ProviderId>> {
@@ -201,7 +210,7 @@ impl CompositeKeyBuilder<ProviderBatch> {
     }
 }
 
-impl CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>, Unknown<RecordsKey>> {
+impl CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>> {
     pub fn build(self) -> CompositeKey {
         let user_id = UserId::default();
         let provider_id = self.provider_id.into_inner();

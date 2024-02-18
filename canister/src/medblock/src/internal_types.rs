@@ -4,7 +4,7 @@ use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref };
+use crate::{ deref, impl_max_size, impl_mem_bound, mem::shared::MemBoundMarker };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -25,6 +25,8 @@ use uuid::Uuid;
     Serialize
 )]
 pub struct Timestamp(pub(crate) u64);
+impl_max_size!(for Timestamp: u64);
+impl_mem_bound!(for Timestamp: bounded; fixed_size: true);
 
 impl Timestamp {
     /// returns the current time in nanoseconds
@@ -91,6 +93,8 @@ pub struct AsciiRecordsKey {
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
 const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
 deref!(AsciiRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
+impl_max_size!(for AsciiRecordsKey: 33);
+impl_mem_bound!(for AsciiRecordsKey: bounded; fixed_size: true);
 
 impl AsciiRecordsKey {
     pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
@@ -151,6 +155,8 @@ impl AsciiRecordsKey {
     Decode
 )]
 pub struct Id([u8; 16]);
+impl_max_size!(for Id: 16);
+impl_mem_bound!(for Id: bounded; fixed_size: true);
 
 impl Default for Id {
     fn default() -> Self {

@@ -18,21 +18,24 @@ use super::key::{
     CompositeKeyBuilder,
     EmrId,
     Known,
+    ProviderBatch,
     ProviderId,
     RecordsKey,
+    Unknown,
+    UserBatch,
     UserId,
 };
 
-pub struct CoreRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
+pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
-impl CoreRegistry {
+impl CoreEmrRegistry {
     pub fn new(memory_manager: &crate::mem::MemoryManager) -> Self {
         let tree = memory_manager.get_memory(|mem| BTreeMap::new(mem));
         Self(tree)
     }
 }
 
-impl Debug for CoreRegistry {
+impl Debug for CoreEmrRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut result = f.debug_struct("CoreRegistry");
 
@@ -44,8 +47,8 @@ impl Debug for CoreRegistry {
     }
 }
 
-impl CoreRegistry {
-    pub fn add_batch(
+impl CoreEmrRegistry {
+    pub fn add(
         &mut self,
         key: CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>, Known<EmrId>>,
         emr: RawEmr
@@ -70,6 +73,7 @@ impl CoreRegistry {
         let key = key.build().into();
         self.0.insert(key, value)
     }
+
     pub fn remove_record(
         &mut self,
         key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
@@ -85,6 +89,28 @@ impl CoreRegistry {
         for key in keys_to_remove {
             self.0.remove(&key);
         }
+    }
+
+    /// Get the list of EMRs for a user, this will not filter by provider
+    pub fn get_user_list_batch(
+        &self,
+        page: u64,
+        limit: u64,
+        key: CompositeKeyBuilder<UserBatch, Known<UserId>>
+    ) -> Vec<EmrId> {
+        let key = key.build().to_stable();
+        self.get_list_batch(page, limit, &key)
+    }
+
+    /// Get the list of EMRs for a provider, this will not filter by user
+    pub fn get_provider_batch(
+        &self,
+        page: u64,
+        limit: u64,
+        key: CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>>
+    ) -> Vec<EmrId> {
+        let key = key.build().to_stable();
+        self.get_list_batch(page, limit, &key)
     }
 
     pub fn get_list_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {

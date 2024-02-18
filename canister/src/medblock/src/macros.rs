@@ -152,27 +152,42 @@ macro_rules! measure_alloc {
 }
 
 #[macro_export]
-macro_rules! impl_unbounded {
-    ($ty:ty) => {
-        impl $crate::mem::shared::MemBoundMarker for $ty{
-            const BOUND: ic_stable_structures::Bound = ic_stable_structures::storable::Bound::Unbounded;
-
-        }
-    };
-
-    () => {
-
-    };
-}
-
-#[macro_export]
 macro_rules! impl_max_size {
+    
     (for $struct:ty: $($ty:ident),*) => {
 
         impl $struct {
             pub const fn max_size()-> usize {
                 0 $(+ std::mem::size_of::<$ty>())*
             }
+        }
+    };
+    
+    
+    (for $struct:ty: $lit:tt) => {
+        impl $struct {
+            pub const fn max_size() -> usize {
+                $lit
+            }
+        }
+    };
+    
+}
+
+/// macro to implement [crate::mem::shared::MemBoundMarker] for a type.
+/// to use the bounded macro, make sure to use impl max size first
+#[macro_export]
+macro_rules! impl_mem_bound {
+    (for $struct:ty: unbounded) => {
+        impl crate::mem::shared::MemBoundMarker for $struct {
+            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
+        }
+    };
+
+    (for $struct:ty: bounded; fixed_size: $lit:literal) => {
+        impl crate::mem::shared::MemBoundMarker for $struct {
+    
+            const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded { max_size: <$struct>::max_size() as u32, is_fixed_size: $lit };
         }
     };
 }
