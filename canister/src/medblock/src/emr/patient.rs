@@ -4,8 +4,9 @@ use ic_stable_memory::{
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
+use ic_stable_structures::{ storable::Bound, BTreeMap };
 
-use crate::{ deref, internal_types::Id };
+use crate::{ deref, impl_max_size, impl_mem_bound, internal_types::Id, mem::shared::{ MemBoundMarker, Memory, Stable } };
 
 use super::OutOfMemory;
 
@@ -16,6 +17,10 @@ const KEY_LEN: usize = 32;
 /// we can't check for hash validity, so we assume it's valid by checking it's length.
 #[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct InternalBindingKey([u8; KEY_LEN]);
+impl_max_size!(for InternalBindingKey: 32);
+impl_mem_bound!(for InternalBindingKey: bounded; fixed_size: true);
+deref!(InternalBindingKey: [u8; KEY_LEN]);
+
 
 impl InternalBindingKey {
     pub fn as_str(&self) -> &str {
@@ -23,7 +28,8 @@ impl InternalBindingKey {
     }
 }
 
-deref!(InternalBindingKey: [u8; KEY_LEN]);
+
+
 
 mod deserialize {
     use super::*;
@@ -68,6 +74,8 @@ pub type NIK = InternalBindingKey;
 #[derive(Default)]
 pub struct OwnerMap(SBTreeMap<Owner, NIK>);
 
+// pub struct TOwnerMap(BTreeMap<Stable<Owner>, Stable<NIK>, Memory>);
+
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) {
         self.0.remove(owner);
@@ -87,12 +95,10 @@ impl OwnerMap {
     pub fn new() -> Self {
         Self::default()
     }
-
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
         self.0.contains_key(owner)
     }
 }
-
 deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
 
 pub type EmrIdCollection = SBTreeSet<EmrId>;
@@ -125,7 +131,12 @@ impl EmrBindingMap {
             return None;
         };
 
-        Some(list.iter().map(|id| id.clone()).collect())
+        Some(
+            list
+                .iter()
+                .map(|id| id.clone())
+                .collect()
+        )
     }
 
     pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
