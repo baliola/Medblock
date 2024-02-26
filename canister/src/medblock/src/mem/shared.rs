@@ -30,6 +30,12 @@ pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMem
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
 pub struct Stable<T>(T) where T: MemBoundMarker;
 
+impl<T> Stable<T> where T: MemBoundMarker {
+    pub fn as_inner(&self) -> &T {
+        &self.0
+    }
+}
+
 impl<T> std::ops::Deref for Stable<T> where T: MemBoundMarker {
     type Target = T;
 

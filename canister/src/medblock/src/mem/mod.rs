@@ -41,3 +41,11 @@ impl MemoryManager {
         }
     }
 }
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! fake_memory_manager {
+    () => {
+        crate::mem::MemoryManager::new()
+    };
+}

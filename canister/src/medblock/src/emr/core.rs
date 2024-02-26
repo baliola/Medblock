@@ -21,6 +21,7 @@ use super::key::{
     ProviderBatch,
     ProviderId,
     RecordsKey,
+    Threshold,
     Unknown,
     UserBatch,
     UserId,
@@ -99,7 +100,7 @@ impl CoreEmrRegistry {
         key: CompositeKeyBuilder<UserBatch, Known<UserId>>
     ) -> Vec<EmrId> {
         let key = key.build().to_stable();
-        self.get_list_batch(page, limit, &key)
+        self.get_list_batch::<UserBatch>(page, limit, &key)
     }
 
     /// Get the list of EMRs for a provider, this will not filter by user
@@ -110,19 +111,45 @@ impl CoreEmrRegistry {
         key: CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>>
     ) -> Vec<EmrId> {
         let key = key.build().to_stable();
-        self.get_list_batch(page, limit, &key)
+        self.get_list_batch::<ProviderBatch>(page, limit, &key)
     }
 
-    pub fn get_list_batch(&self, page: u64, limit: u64, key: &Stable<CompositeKey>) -> Vec<EmrId> {
+    fn get_list_batch<T: Threshold<T = Id>>(
+        &self,
+        page: u64,
+        limit: u64,
+        key: &Stable<CompositeKey>
+    ) -> Vec<EmrId> {
         let start = page * limit;
         let end = start + limit;
 
-        self.0
-            .range(key..)
-            .skip(start as usize)
-            .take(limit as usize)
-            .map(|(k, _)| k.emr_id().to_owned())
-            .collect::<Vec<_>>()
+        let mut last_id = Id::default();
+        let mut index = 0;
+
+        let iter = self.0.range(key..);
+
+        let mut result = vec![];
+
+        let threshold = T::threshold(key.as_inner());
+
+        for (k, _) in iter {
+            if T::threshold(k.as_inner()) != threshold {
+                break;
+            }
+
+            if k.emr_id() == &last_id {
+                continue;
+            }
+
+            if index >= start && index < end {
+                result.push(k.emr_id().clone());
+            }
+
+            last_id = k.emr_id().clone();
+            index += 1;
+        }
+
+        result
     }
 
     pub fn read_by_id(
@@ -145,6 +172,7 @@ impl CoreEmrRegistry {
     }
 }
 
+#[derive(Debug)]
 pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
 
 impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
@@ -159,6 +187,66 @@ impl IntoIterator for RawEmr {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+    use crate::{ fake_memory_manager, id };
+
+    #[test]
+    fn test_core_emr_registry() {
+        let memory_manager = fake_memory_manager!();
+        let mut registry = CoreEmrRegistry::new(&memory_manager);
+
+        let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
+        let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
+        let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
+
+        let key = CompositeKeyBuilder::new()
+            .records_key()
+            .with_user(user.clone())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let records = vec![
+            (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
+            (AsciiRecordsKey::new("key2").unwrap(), ArbitraryEmrValue::from("value2"))
+        ];
+        let emr = RawEmr::from(records);
+
+        registry.add(key.clone(), emr);
+
+        let key = CompositeKeyBuilder::new()
+            .emr()
+            .with_user(user.clone())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let result = registry.read_by_id(key.clone());
+        assert!(result.is_some());
+
+        let key = CompositeKeyBuilder::new().user_batch().with_user(user.clone());
+
+        let result = registry.get_user_list_batch(0, 10, key);
+        assert_eq!(result, vec![emr_id.clone()]);
+
+        let key = CompositeKeyBuilder::new().provider_batch().with_provider(provider.clone());
+        let result = registry.get_provider_batch(0, 10, key.clone());
+        assert_eq!(result, vec![emr_id.clone()]);
+
+        let key = CompositeKeyBuilder::new()
+            .emr()
+            .with_user(user.clone())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+        let result = registry.remove_record(key.clone());
+
+        let result = registry.read_by_id(key.clone());
+        assert!(result.is_none());
     }
 }
 

@@ -31,6 +31,7 @@ impl RangeBounds<CompositeKey> for CompositeKey {
         core::ops::Bound::Unbounded
     }
 }
+
 impl CompositeKey {
     pub fn new(
         user_id: UserId,
@@ -70,7 +71,29 @@ impl MemBoundMarker for CompositeKey {
 
 // ----------------------------------------- Begin Builder -----------------------------------------
 
+/// used to get the correct threshold for the composite key
 zero_sized_state!(UserBatch, ProviderBatch, ByEmr, ByRecordsKey, UnknownUsage);
+pub trait Threshold {
+    type T;
+
+    fn threshold(key: &CompositeKey) -> &Self::T where Self: Sized;
+}
+
+impl Threshold for UserBatch {
+    type T = UserId;
+
+    fn threshold(key: &CompositeKey) -> &UserId {
+        key.user_id()
+    }
+}
+
+impl Threshold for ProviderBatch {
+    type T = ProviderId;
+
+    fn threshold(key: &CompositeKey) -> &ProviderId {
+        key.provider_id()
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Unknown<T>(PhantomData<T>);
@@ -201,6 +224,7 @@ impl CompositeKeyBuilder<ProviderBatch> {
         ProviderBatch,
         Unknown<UserId>,
         Known<ProviderId>,
+        Unknown<EmrId>,
         Unknown<RecordsKey>
     > {
         CompositeKeyBuilder {

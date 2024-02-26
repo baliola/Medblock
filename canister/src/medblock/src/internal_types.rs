@@ -158,6 +158,18 @@ pub struct Id([u8; 16]);
 impl_max_size!(for Id: 16);
 impl_mem_bound!(for Id: bounded; fixed_size: true);
 
+#[cfg(test)]
+#[macro_export]
+macro_rules! id {
+    ($lit:literal) => {
+        {
+
+        let id = <uuid::Uuid as std::str::FromStr>::from_str($lit).unwrap();
+        crate::internal_types::Id::from(id)
+        }
+    };
+}
+
 impl Default for Id {
     fn default() -> Self {
         uuid::Uuid::default().into()
