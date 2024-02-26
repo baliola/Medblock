@@ -207,10 +207,10 @@ impl Issued {
         emr_id: Id
     ) -> Result<(), &'static str> {
         if !self.contains_key(provider) {
-            self.insert(provider.clone(), EmrIdCollection::default());
+            let _ =self.insert(provider.clone(), EmrIdCollection::default());
         }
 
-        self.get_mut(provider).unwrap().insert(emr_id);
+        let _ =self.get_mut(provider).unwrap().insert(emr_id);
 
         Ok(())
     }
@@ -360,7 +360,7 @@ impl Session {
 
     /// increment the session
     pub fn increment_session(&mut self) {
-        self.0.add(1);
+        let _ = self.0.add(1);
     }
 
     /// reset the session, call this when the provider had settled their bill

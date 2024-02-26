@@ -1,13 +1,12 @@
 use std::fmt::Debug;
 
-use ic_stable_memory::OutOfMemory;
-use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
-use parity_scale_codec::{ Decode, Encode };
+
+use ic_stable_structures::{ BTreeMap };
+
 
 use crate::{
-    impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
-    mem::shared::{ MemBoundMarker, Memory, Stable, ToStable },
+    mem::shared::{ Memory, Stable, ToStable },
 };
 
 use super::key::{
@@ -31,7 +30,7 @@ pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Mem
 
 impl CoreEmrRegistry {
     pub fn new(memory_manager: &crate::mem::MemoryManager) -> Self {
-        let tree = memory_manager.get_memory(|mem| BTreeMap::new(mem));
+        let tree = memory_manager.get_memory(BTreeMap::new);
         Self(tree)
     }
 }
@@ -192,7 +191,7 @@ impl IntoIterator for RawEmr {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    
 
     use super::*;
     use crate::{ fake_memory_manager, id };
@@ -243,7 +242,7 @@ mod tests {
             .with_user(user.clone())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
-        let result = registry.remove_record(key.clone());
+        registry.remove_record(key.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_none());

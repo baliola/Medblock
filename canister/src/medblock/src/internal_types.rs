@@ -4,7 +4,7 @@ use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, impl_max_size, impl_mem_bound, mem::shared::MemBoundMarker };
+use crate::{ deref, impl_max_size, impl_mem_bound };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -165,7 +165,7 @@ macro_rules! id {
         {
 
         let id = <uuid::Uuid as std::str::FromStr>::from_str($lit).unwrap();
-        crate::internal_types::Id::from(id)
+        $crate::internal_types::Id::from(id)
         }
     };
 }

@@ -1,14 +1,13 @@
 pub mod patient;
 pub mod providers;
 mod core;
-pub(self) mod key;
+ mod key;
 
 use candid::{ CandidType, Principal };
 use ic_stable_memory::{
     collections::SHashMap,
     derive::{ AsFixedSizeBytes, StableType },
     primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
-    AsFixedSizeBytes,
     SBox,
     StableType,
 };
@@ -57,7 +56,7 @@ impl EmrRegistry {
         let emr_id = emr.id().clone();
 
         self.core_emrs.new_emr(emr)?;
-        self.owner_emrs.issue_for(&user_id, emr_id.clone());
+        let _ = self.owner_emrs.issue_for(&user_id, emr_id.clone());
 
         Ok(emr_id)
     }

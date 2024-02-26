@@ -1,3 +1,4 @@
+#![allow(unused)]
 use candid::CandidType;
 use ic_cdk::export::Principal;
 use serde::Deserialize;

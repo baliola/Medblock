@@ -4,9 +4,9 @@ use ic_stable_memory::{
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
-use ic_stable_structures::{ storable::Bound, BTreeMap };
 
-use crate::{ deref, impl_max_size, impl_mem_bound, internal_types::Id, mem::shared::{ MemBoundMarker, Memory, Stable } };
+
+use crate::{ deref, impl_max_size, impl_mem_bound, internal_types::Id };
 
 use super::OutOfMemory;
 
@@ -140,7 +140,7 @@ impl EmrBindingMap {
     pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
         if !self.0.contains_key(nik) {
             let issue_map = EmrIdCollection::new();
-            self.0.insert(nik.clone(), issue_map);
+            let _ =self.0.insert(nik.clone(), issue_map);
         }
 
         let mut issue_map = self.0.get_mut(nik).unwrap();

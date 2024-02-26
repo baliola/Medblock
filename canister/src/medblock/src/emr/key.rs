@@ -1,17 +1,19 @@
-use std::{ default, fmt::Debug, marker::PhantomData, ops::RangeBounds };
+#![allow(unused)]
 
-use ic_stable_memory::OutOfMemory;
-use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
+use std::{ fmt::Debug, marker::PhantomData, ops::RangeBounds };
+
+
+use ic_stable_structures::{ storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
     impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
-    mem::shared::{ MemBoundMarker, Memory, Stable },
+    mem::shared::{ MemBoundMarker },
     zero_sized_state,
 };
 
-use super::Emr;
+
 
 pub type UserId = Id;
 pub type ProviderId = Id;

@@ -3,7 +3,7 @@ use std::ops::RangeBounds;
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
 
-use crate::deref;
+
 
 pub trait MemBoundMarker {
     const BOUND: Bound;

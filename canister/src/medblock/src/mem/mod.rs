@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use ic_stable_structures::{
     memory_manager::{ MemoryId, MemoryManager as IcMemoryManager },
     DefaultMemoryImpl,
-    Memory,
 };
 
 pub mod shared;
@@ -25,7 +24,7 @@ impl MemoryManager {
     pub fn get_memory<T>(&self, f: impl FnOnce(CanisterVirtualMemory) -> T) -> T {
         let mut index = self.index.borrow_mut();
 
-        let mem = self.manager.borrow().get(MemoryId::new(index.clone()));
+        let mem = self.manager.borrow().get(MemoryId::new(*index));
         let result = f(mem);
 
         *index += 1;
@@ -46,6 +45,6 @@ impl MemoryManager {
 #[macro_export]
 macro_rules! fake_memory_manager {
     () => {
-        crate::mem::MemoryManager::new()
+        $crate::mem::MemoryManager::new()
     };
 }

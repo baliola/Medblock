@@ -222,7 +222,7 @@ async fn create_emr_for_user(req: CreateEmrForUserRequest) {
         let caller = verified_caller().unwrap();
 
         // increment session
-        state.provider_registry.issue_emr(&caller, emr_id);
+        let _ =state.provider_registry.issue_emr(&caller, emr_id);
     })
 }
 
@@ -250,7 +250,7 @@ fn update_emr(req: UpdateEmrRequest) {
             .map(|data| {
                 state.emr_registry.update_emr(&req.emr_id, data.key, data.value).unwrap()
             })
-            .collect::<Vec<_>>();
+            .for_each(drop);
     })
 }
 
