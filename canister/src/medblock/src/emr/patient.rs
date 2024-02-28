@@ -191,3 +191,6 @@ impl EmrBindingMap {
             .map(|_| ())
     }
 }
+
+// pub type EmrSet = ic_stable_structures::BTreeMap<(Stable<NIK>, Stable<>)>
+// pub struct TEmrBindingMap(ic_stable_structures::<(Stable<NIK>, Stable<EmrId>), Stable<EmrIdCollection>, Memory>);
