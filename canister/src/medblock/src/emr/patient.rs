@@ -4,9 +4,15 @@ use ic_stable_memory::{
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
+use parity_scale_codec::{ Decode, Encode };
 
-
-use crate::{ deref, impl_max_size, impl_mem_bound, internal_types::Id };
+use crate::{
+    deref,
+    impl_max_size,
+    impl_mem_bound,
+    internal_types::Id,
+    mem::{ shared::{ Memory, Stable, ToStable }, MemoryManager },
+};
 
 use super::OutOfMemory;
 
@@ -15,19 +21,29 @@ const KEY_LEN: usize = 32;
 
 /// hex encoded SHA3-256 hash of NIK, used as key for [BindingMap].
 /// we can't check for hash validity, so we assume it's valid by checking it's length.
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode
+)]
 pub struct InternalBindingKey([u8; KEY_LEN]);
 impl_max_size!(for InternalBindingKey: 32);
 impl_mem_bound!(for InternalBindingKey: bounded; fixed_size: true);
 deref!(InternalBindingKey: [u8; KEY_LEN]);
-
 
 impl InternalBindingKey {
     pub fn as_str(&self) -> &str {
         std::str::from_utf8(&self.0).expect("key must be ascii")
     }
 }
-
 
 mod deserialize {
     use super::*;
@@ -99,6 +115,30 @@ impl OwnerMap {
 }
 deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
 
+pub type TOwner = ic_principal::Principal;
+pub struct TOwnerMap(ic_stable_structures::BTreeMap<TOwner, Stable<NIK>, Memory>);
+
+impl TOwnerMap {
+    pub fn revoke(&mut self, owner: &TOwner) {
+        self.0.remove(owner);
+    }
+
+    pub fn bind(&mut self, owner: TOwner, nik: NIK) -> Option<()> {
+        self.0.insert(owner, nik.to_stable()).map(|_| ())
+    }
+
+    pub fn get_nik(&self, owner: &TOwner) -> Option<Stable<InternalBindingKey>> {
+        self.0.get(owner)
+    }
+
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+    }
+    pub fn is_valid_owner(&self, owner: &TOwner) -> bool {
+        self.0.contains_key(owner)
+    }
+}
+
 pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
 /// we use hashed (SHA3-256) NIK as key and emr id as value.
@@ -140,7 +180,7 @@ impl EmrBindingMap {
     pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
         if !self.0.contains_key(nik) {
             let issue_map = EmrIdCollection::new();
-            let _ =self.0.insert(nik.clone(), issue_map);
+            let _ = self.0.insert(nik.clone(), issue_map);
         }
 
         let mut issue_map = self.0.get_mut(nik).unwrap();
