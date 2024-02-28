@@ -153,7 +153,6 @@ macro_rules! measure_alloc {
 
 #[macro_export]
 macro_rules! impl_max_size {
-    
     (for $struct:ty: $($ty:ident),*) => {
 
         impl $struct {
@@ -162,8 +161,7 @@ macro_rules! impl_max_size {
             }
         }
     };
-    
-    
+
     (for $struct:ty: $lit:tt) => {
         impl $struct {
             pub const fn max_size() -> usize {
@@ -171,7 +169,6 @@ macro_rules! impl_max_size {
             }
         }
     };
-    
 }
 
 /// macro to implement [crate::mem::shared::MemBoundMarker] for a type.
@@ -198,6 +195,24 @@ macro_rules! zero_sized_state {
         $(
             #[derive(Debug, Clone, Default)]
             pub struct $ident;
+        )*
+    };
+}
+
+#[macro_export]
+macro_rules! impl_range_bound {
+    ($($ident:ident),*) => {
+        
+        $(
+            impl std::ops::RangeBounds<$ident> for $ident {
+                fn start_bound(&self) -> std::ops::Bound<&$ident> {
+                    std::ops::Bound::Included(self)
+                }
+        
+                fn end_bound(&self) -> std::ops::Bound<&$ident> {
+                    std::ops::Bound::Excluded(self)
+                }
+            }
         )*
     };
 }

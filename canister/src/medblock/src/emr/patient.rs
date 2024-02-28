@@ -4,14 +4,16 @@ use ic_stable_memory::{
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
+use ic_stable_structures::memory_manager;
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
     deref,
     impl_max_size,
     impl_mem_bound,
+    impl_range_bound,
     internal_types::Id,
-    mem::{ shared::{ Memory, Stable, ToStable }, MemoryManager },
+    mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
 use super::OutOfMemory;
@@ -32,12 +34,14 @@ const KEY_LEN: usize = 32;
     Clone,
     Debug,
     Encode,
-    Decode
+    Decode,
+    Default
 )]
 pub struct InternalBindingKey([u8; KEY_LEN]);
 impl_max_size!(for InternalBindingKey: 32);
 impl_mem_bound!(for InternalBindingKey: bounded; fixed_size: true);
 deref!(InternalBindingKey: [u8; KEY_LEN]);
+impl_range_bound!(InternalBindingKey);
 
 impl InternalBindingKey {
     pub fn as_str(&self) -> &str {
@@ -192,5 +196,29 @@ impl EmrBindingMap {
     }
 }
 
-// pub type EmrSet = ic_stable_structures::BTreeMap<(Stable<NIK>, Stable<>)>
-// pub struct TEmrBindingMap(ic_stable_structures::<(Stable<NIK>, Stable<EmrId>), Stable<EmrIdCollection>, Memory>);
+pub struct TEmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
+
+impl TEmrBindingMap {
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(StableSet::new(memory_manager))
+    }
+
+    pub fn is_owner_of(&self, nik: NIK, emr_id: EmrId) -> bool {
+        self.0.contains_key(nik.to_stable(), emr_id.to_stable())
+    }
+
+    pub fn emr_list(&self, nik: &NIK) -> Option<Vec<EmrId>> {
+        let list = self.0.get_set_associated_by_key(&nik.to_stable())?;
+
+        Some(
+            list
+                .iter()
+                .map(|id| id.into_inner())
+                .collect()
+        )
+    }
+
+    pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
+        let _ = self.0.insert(nik.to_stable(), emr_id.to_stable());
+    }
+}

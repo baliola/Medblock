@@ -276,11 +276,15 @@ impl<K, V> StableSet<K, V>
 
         count
     }
+
+    pub fn contains_key(&self, key: K, value: V) -> bool {
+        self.contains_key(&(key, value), ())
+    }
 }
 
 #[cfg(test)]
 mod set_test {
-    use crate::{fake_memory_manager, impl_max_size, impl_mem_bound};
+    use crate::{ fake_memory_manager, impl_max_size, impl_mem_bound };
     use paste::paste;
     use super::*;
 
@@ -323,7 +327,6 @@ mod set_test {
     }
 
     native_bound!(u8, u32);
-    
 
     #[test]
     fn test_stable_set() {
@@ -333,11 +336,11 @@ mod set_test {
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
-        
+
         for v in value.iter() {
             set.insert(key.clone().to_stable(), v.clone().to_stable());
         }
-        
+
         let result = set.get_set_associated_by_key(&Nativeu8(10).to_stable()).unwrap();
         let initial_value = value.into_iter().map(ToStable::to_stable).collect::<Vec<_>>();
         let expected_value = result;

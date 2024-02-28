@@ -4,7 +4,7 @@ use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, impl_max_size, impl_mem_bound };
+use crate::{ deref, impl_max_size, impl_mem_bound, impl_range_bound };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -157,6 +157,7 @@ impl AsciiRecordsKey {
 pub struct Id([u8; 16]);
 impl_max_size!(for Id: 16);
 impl_mem_bound!(for Id: bounded; fixed_size: true);
+impl_range_bound!(Id);
 
 #[cfg(test)]
 #[macro_export]
