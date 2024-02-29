@@ -23,6 +23,7 @@ mod random;
 mod api_types;
 pub mod mem;
 mod permission;
+mod errors;
 
 // TODO :  make sure no unwrap() in this canister
 

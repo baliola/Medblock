@@ -39,6 +39,12 @@ use self::{
     patient::{ EmrBindingMap, InternalBindingKey, OwnerMap, NIK },
 };
 
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
+pub enum RegistryError {
+    #[error(transparent)]
+    OwnerMapError(#[from] patient::OwnerMapError),
+}
+
 pub struct EmrRegistry {
     owners: OwnerMap,
     owner_emrs: EmrBindingMap,
@@ -79,8 +85,8 @@ impl EmrRegistry {
     }
 
     /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
-    pub fn register_patient(&mut self, owner: ic_principal::Principal, hashed_nik: NIK) {
-        self.owners.bind(owner, hashed_nik)
+    pub fn register_patient(&mut self, owner: ic_principal::Principal, hashed_nik: NIK)  -> Result<(), RegistryError>{
+        Ok(self.owners.bind(owner, hashed_nik)?)
     }
 
     // /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted

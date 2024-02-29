@@ -92,7 +92,7 @@ pub type NIK = InternalBindingKey;
 pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
 pub enum OwnerMapError {
     #[error("operation not permitted, user exists")]
     UserExist,
