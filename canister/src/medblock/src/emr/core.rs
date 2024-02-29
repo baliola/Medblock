@@ -1,13 +1,8 @@
 use std::fmt::Debug;
 
-
 use ic_stable_structures::{ BTreeMap };
 
-
-use crate::{
-    internal_types::{ AsciiRecordsKey, Id },
-    mem::shared::{ Memory, Stable, ToStable },
-};
+use crate::{ internal_types::{ AsciiRecordsKey, Id }, mem::shared::{ Memory, Stable, ToStable } };
 
 use super::key::{
     ArbitraryEmrValue,
@@ -24,7 +19,7 @@ use super::key::{
     Unknown,
     UserBatch,
     UserId,
-}; 
+};
 
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
@@ -99,7 +94,7 @@ impl CoreEmrRegistry {
         key: CompositeKeyBuilder<UserBatch, Known<UserId>>
     ) -> Vec<EmrId> {
         let key = key.build().to_stable();
-        self.get_list_batch::<UserBatch>(page, limit, &key)
+        self.get_list_batch::<UserId, UserBatch>(page, limit, &key)
     }
 
     /// Get the list of EMRs for a provider, this will not filter by user
@@ -110,10 +105,10 @@ impl CoreEmrRegistry {
         key: CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>>
     ) -> Vec<EmrId> {
         let key = key.build().to_stable();
-        self.get_list_batch::<ProviderBatch>(page, limit, &key)
+        self.get_list_batch::<ProviderId, ProviderBatch>(page, limit, &key)
     }
 
-    fn get_list_batch<T: Threshold<T = Id>>(
+    fn get_list_batch<U: Eq, T: Threshold<T = U>>(
         &self,
         page: u64,
         limit: u64,
@@ -191,8 +186,6 @@ impl IntoIterator for RawEmr {
 
 #[cfg(test)]
 mod tests {
-    
-
     use super::*;
     use crate::{ fake_memory_manager, id };
 

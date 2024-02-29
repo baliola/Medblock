@@ -33,12 +33,12 @@ pub trait ToResponse<T: ResponseMarker> {
 
 use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey };
+use self::{ core::CoreEmrRegistry, key::CompositeKeyBuilder, patient::{ EmrBindingMap, InternalBindingKey, OwnerMap, NIK } };
 
 pub struct EmrRegistry {
     owners: OwnerMap,
     owner_emrs: EmrBindingMap,
-    core_emrs: EmrCollection,
+    core_emrs: CoreEmrRegistry,
 }
 
 // placeholder, will be removed later
@@ -46,7 +46,6 @@ impl Default for EmrRegistry {
     fn default() -> Self {
         todo!()
     }
-    
 }
 
 impl EmrRegistry {
@@ -54,134 +53,88 @@ impl EmrRegistry {
         Self::default()
     }
 
-    /// register new emr to the system, returns [OutOfMemory] if stable memory is exhausted
-    pub fn register_emr(
-        &mut self,
-        emr: Emr,
-        user_id: InternalBindingKey
-    ) -> Result<EmrId, OutOfMemory> {
-        let emr_id = emr.id().clone();
+    // /// register new emr to the system.
+    // pub fn register_emr(
+    //     &mut self,
+    //     emr: Emr,
+    //     user_id: InternalBindingKey
+    // ) -> Result<EmrId, OutOfMemory> {
+    //     let emr_id = emr.id().clone();
 
-        self.core_emrs.new_emr(emr)?;
-        let _ = self.owner_emrs.issue_for(user_id, emr_id.clone());
 
-        Ok(emr_id)
-    }
+    //     self.core_emrs.add(key, emr)
+    //     let _ = self.owner_emrs.issue_for(user_id, emr_id.clone());
 
-    /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
-    pub fn register_patient(
-        &mut self,
-        owner: Principal,
-        hashed_nik: NIK
-    ) -> Result<(), OutOfMemory> {
-        self.owners.bind(owner, hashed_nik)
-    }
+    //     Ok(emr_id)
+    // }
 
-    /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted
-    pub fn rebind_patient(&mut self, owner: Principal, hashed_nik: NIK) -> Result<(), OutOfMemory> {
-        self.owners.bind(owner, hashed_nik)
-    }
+    // /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
+    // pub fn register_patient(
+    //     &mut self,
+    //     owner: Principal,
+    //     hashed_nik: NIK
+    // ) -> Result<(), OutOfMemory> {
+    //     self.owners.bind(owner, hashed_nik)
+    // }
 
-    /// revoke patient access, if this method is called then the patient will no longer be able to access their emr. it will remove the [NIK]
-    /// from the owner map so attempting to access NIK owner will fail.
-    pub fn revoke_patient_access(&mut self, owner: &Principal) {
-        self.owners.revoke(owner)
-    }
+    // /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted
+    // pub fn rebind_patient(&mut self, owner: Principal, hashed_nik: NIK) -> Result<(), OutOfMemory> {
+    //     self.owners.bind(owner, hashed_nik)
+    // }
 
-    pub fn is_owner_of_emr(&self, owner: &Principal, emr_id: &Id) -> bool {
-        let Some(nik) = self.owners.get_nik(owner) else {
-            return false;
-        };
+    // /// revoke patient access, if this method is called then the patient will no longer be able to access their emr. it will remove the [NIK]
+    // /// from the owner map so attempting to access NIK owner will fail.
+    // pub fn revoke_patient_access(&mut self, owner: &Principal) {
+    //     self.owners.revoke(owner)
+    // }
 
-        self.owner_emrs.is_owner_of(nik.to_owned(), emr_id.clone())
-    }
+    // pub fn is_owner_of_emr(&self, owner: &Principal, emr_id: &Id) -> bool {
+    //     let Some(nik) = self.owners.get_nik(owner) else {
+    //         return false;
+    //     };
 
-    pub fn update_emr(
-        &mut self,
-        emr_id: &Id,
-        key: AsciiRecordsKey,
-        value: impl Into<EmrRecordsValue>
-    ) -> Result<(), String> {
-        let Some(mut emr) = self.core_emrs.get_emr_mut(emr_id) else {
-            return Err("emr not found".to_string());
-        };
+    //     self.owner_emrs.is_owner_of(nik.to_owned(), emr_id.clone())
+    // }
 
-        let value = value.into();
+    // pub fn update_emr(
+    //     &mut self,
+    //     emr_id: &Id,
+    //     key: AsciiRecordsKey,
+    //     value: impl Into<EmrRecordsValue>
+    // ) -> Result<(), String> {
+    //     let Some(mut emr) = self.core_emrs.get_emr_mut(emr_id) else {
+    //         return Err("emr not found".to_string());
+    //     };
 
-        let update = emr.update_record(key.clone(), value)?;
+    //     let value = value.into();
 
-        match update {
-            true => { Ok(()) }
-            false => Err(format!("record with key {} not found", key)),
-        }
-    }
+    //     let update = emr.update_record(key.clone(), value)?;
 
-    /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
-    pub fn get_patient_emr_list(&self, patient: &patient::Owner) -> Option<Vec<Id>> {
-        let Some(internal_id) = self.owners.get_nik(patient) else {
-            return None;
-        };
+    //     match update {
+    //         true => { Ok(()) }
+    //         false => Err(format!("record with key {} not found", key)),
+    //     }
+    // }
 
-        self.owner_emrs.emr_list(&internal_id)
-    }
+    // /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
+    // pub fn get_patient_emr_list(&self, patient: &patient::Owner) -> Option<Vec<Id>> {
+    //     let Some(internal_id) = self.owners.get_nik(patient) else {
+    //         return None;
+    //     };
 
-    pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
-        self.owners.is_valid_owner(owner)
-    }
+    //     self.owner_emrs.emr_list(&internal_id)
+    // }
 
-    pub fn get_emr(&self, emr_id: &Id) -> Option<SRef<'_, Emr>> {
-        self.core_emrs.get_emr(emr_id)
-    }
+    // pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
+    //     self.owners.is_valid_owner(owner)
+    // }
+
+    // pub fn get_emr(&self, emr_id: &Id) -> Option<SRef<'_, Emr>> {
+    //     self.core_emrs.get_emr(emr_id)
+    // }
 }
 
 type EmrId = Id;
-#[derive(Default)]
-pub struct EmrCollection(ic_stable_memory::collections::SBTreeMap<EmrId, Emr>);
-
-impl EmrCollection {
-    pub fn get_emr(&self, emr_id: &EmrId) -> Option<SRef<'_, Emr>> {
-        self.0.get(emr_id)
-    }
-
-    pub fn get_emr_mut(&mut self, emr_id: &EmrId) -> Option<SRefMut<'_, Emr>> {
-        self.0.get_mut(emr_id)
-    }
-
-    pub fn new_emr(&mut self, emr: Emr) -> Result<EmrId, OutOfMemory> {
-        let emr_id = emr.id().clone();
-
-        self.0.insert(emr_id.clone(), emr)?;
-
-        Ok(emr_id)
-    }
-}
-deref!(mut EmrCollection: ic_stable_memory::collections::SBTreeMap<EmrId,Emr>);
-measure_alloc!("emr_collection_with_10_thousands_emr_10_records": {
-    let mut emr_collection = EmrCollection::default();
-
-    for _i in 0..10_000 {
-        let id = uuid::Uuid::new_v4();
-        let id = Id::from(id);
-
-        let mut emr = V001::new(id.clone(), Records::default());
-
-        for i in 0..10 {
-            emr.records.insert(
-                AsciiRecordsKey::new(format!("test{}", i)).unwrap(),
-                EmrRecordsValue::new(format!("test{}", i)).unwrap(),
-            );
-        }
-
-        emr_collection.insert(
-            id,
-            Emr::V001(emr),
-        );
-    }
-
-
-
-    emr_collection
-});
 
 /// trait for modofying emr,
 /// must be implemented all version of emr, including it's enum container

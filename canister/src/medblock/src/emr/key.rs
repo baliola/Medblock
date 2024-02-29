@@ -13,9 +13,11 @@ use crate::{
     zero_sized_state,
 };
 
+use super::patient::NIK;
 
 
-pub type UserId = Id;
+
+pub type UserId = NIK;
 pub type ProviderId = Id;
 pub type EmrId = Id;
 pub type RecordsKey = AsciiRecordsKey;
@@ -83,9 +85,9 @@ pub trait Threshold {
 }
 
 impl Threshold for UserBatch {
-    type T = UserId;
+    type T = NIK;
 
-    fn threshold(key: &CompositeKey) -> &UserId {
+    fn threshold(key: &CompositeKey) -> &NIK {
         key.user_id()
     }
 }
