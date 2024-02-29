@@ -17,7 +17,7 @@ use crate::{
     mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
-use super::OutOfMemory;
+use super::{ key::UserId, OutOfMemory };
 
 type EmrId = Id;
 const KEY_LEN: usize = 32;
@@ -105,12 +105,18 @@ impl OwnerMap {
         self.0.remove(owner);
     }
 
-    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Option<()> {
-        self.0.insert(owner, nik.to_stable()).map(|_| ())
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Result<(), OwnerMapError> {
+        if self.get_nik(&owner).is_ok() {
+            return Err(OwnerMapError::UserExist);
+        }
+
+        let _ = self.0.insert(owner, nik.to_stable());
+        Ok(())
     }
 
-    pub fn get_nik(&self, owner: &Owner) -> Option<Stable<InternalBindingKey>> {
-        self.0.get(owner)
+    /// will return an error if owner does not exists
+    pub fn get_nik(&self, owner: &Owner) -> Result<Stable<UserId>, OwnerMapError> {
+        self.0.get(owner).ok_or(OwnerMapError::UserDoesNotExist)
     }
 
     pub fn new(memory_manager: MemoryManager) -> Self {
