@@ -278,7 +278,7 @@ impl<K, V> StableSet<K, V>
     }
 
     pub fn contains_key(&self, key: K, value: V) -> bool {
-        self.contains_key(&(key, value), ())
+        self.0.contains_key(&(key, value))
     }
 }
 

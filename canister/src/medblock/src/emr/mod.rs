@@ -35,11 +35,18 @@ use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timest
 
 use self::patient::{ EmrBindingMap, OwnerMap, NIK, InternalBindingKey };
 
-#[derive(Default)]
 pub struct EmrRegistry {
     owners: OwnerMap,
     owner_emrs: EmrBindingMap,
     core_emrs: EmrCollection,
+}
+
+// placeholder, will be removed later
+impl Default for EmrRegistry {
+    fn default() -> Self {
+        todo!()
+    }
+    
 }
 
 impl EmrRegistry {
@@ -56,7 +63,7 @@ impl EmrRegistry {
         let emr_id = emr.id().clone();
 
         self.core_emrs.new_emr(emr)?;
-        let _ = self.owner_emrs.issue_for(&user_id, emr_id.clone());
+        let _ = self.owner_emrs.issue_for(user_id, emr_id.clone());
 
         Ok(emr_id)
     }
@@ -86,7 +93,7 @@ impl EmrRegistry {
             return false;
         };
 
-        self.owner_emrs.is_owner_of(&nik, emr_id)
+        self.owner_emrs.is_owner_of(nik.to_owned(), emr_id.clone())
     }
 
     pub fn update_emr(

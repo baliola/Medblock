@@ -84,61 +84,30 @@ mod deserialize {
     }
 }
 
-pub type Owner = Principal;
 pub type NIK = InternalBindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
-#[derive(Default)]
-pub struct OwnerMap(SBTreeMap<Owner, NIK>);
-
-// pub struct TOwnerMap(BTreeMap<Stable<Owner>, Stable<NIK>, Memory>);
+pub type Owner = ic_principal::Principal;
+pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) {
         self.0.remove(owner);
     }
 
-    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Result<(), OutOfMemory> {
-        self.0
-            .insert(owner, nik)
-            .map_err(OutOfMemory::from)
-            .map(|_| ())
-    }
-
-    pub fn get_nik(&self, owner: &Owner) -> Option<SRef<'_, NIK>> {
-        self.0.get(owner)
-    }
-
-    pub fn new() -> Self {
-        Self::default()
-    }
-    pub fn is_valid_owner(&self, owner: &Owner) -> bool {
-        self.0.contains_key(owner)
-    }
-}
-deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
-
-pub type TOwner = ic_principal::Principal;
-pub struct TOwnerMap(ic_stable_structures::BTreeMap<TOwner, Stable<NIK>, Memory>);
-
-impl TOwnerMap {
-    pub fn revoke(&mut self, owner: &TOwner) {
-        self.0.remove(owner);
-    }
-
-    pub fn bind(&mut self, owner: TOwner, nik: NIK) -> Option<()> {
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Option<()> {
         self.0.insert(owner, nik.to_stable()).map(|_| ())
     }
 
-    pub fn get_nik(&self, owner: &TOwner) -> Option<Stable<InternalBindingKey>> {
+    pub fn get_nik(&self, owner: &Owner) -> Option<Stable<InternalBindingKey>> {
         self.0.get(owner)
     }
 
     pub fn new(memory_manager: MemoryManager) -> Self {
         Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
     }
-    pub fn is_valid_owner(&self, owner: &TOwner) -> bool {
+    pub fn is_valid_owner(&self, owner: &Owner) -> bool {
         self.0.contains_key(owner)
     }
 }
@@ -151,54 +120,9 @@ pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// and still be able to own and access their emr.
 ///
 /// NIK MUST be hashed offchain before being used as key.
-#[derive(Default)]
-pub struct EmrBindingMap(SBTreeMap<NIK, EmrIdCollection>);
-
-deref!(mut EmrBindingMap: SBTreeMap<NIK, EmrIdCollection>);
+pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
 
 impl EmrBindingMap {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn is_owner_of(&self, nik: &NIK, emr_id: &EmrId) -> bool {
-        self.0
-            .get(nik)
-            .map(|emr_ids| emr_ids.contains(emr_id))
-            .unwrap_or(false)
-    }
-
-    pub fn emr_list(&self, nik: &NIK) -> Option<Vec<EmrId>> {
-        let Some(list) = self.get(nik) else {
-            return None;
-        };
-
-        Some(
-            list
-                .iter()
-                .map(|id| id.clone())
-                .collect()
-        )
-    }
-
-    pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
-        if !self.0.contains_key(nik) {
-            let issue_map = EmrIdCollection::new();
-            let _ = self.0.insert(nik.clone(), issue_map);
-        }
-
-        let mut issue_map = self.0.get_mut(nik).unwrap();
-
-        issue_map
-            .insert(emr_id)
-            .map_err(OutOfMemory::from)
-            .map(|_| ())
-    }
-}
-
-pub struct TEmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
-
-impl TEmrBindingMap {
     pub fn new(memory_manager: MemoryManager) -> Self {
         Self(StableSet::new(memory_manager))
     }
@@ -208,11 +132,11 @@ impl TEmrBindingMap {
     }
 
     pub fn emr_list(&self, nik: &NIK) -> Option<Vec<EmrId>> {
-        let list = self.0.get_set_associated_by_key(&nik.to_stable())?;
+        let list = self.0.get_set_associated_by_key(&nik.clone().to_stable())?;
 
         Some(
             list
-                .iter()
+                .into_iter()
                 .map(|id| id.into_inner())
                 .collect()
         )

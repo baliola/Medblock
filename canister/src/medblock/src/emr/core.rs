@@ -24,7 +24,7 @@ use super::key::{
     Unknown,
     UserBatch,
     UserId,
-};
+}; 
 
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 

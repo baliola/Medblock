@@ -78,6 +78,7 @@ zero_sized_state!(UserBatch, ProviderBatch, ByEmr, ByRecordsKey, UnknownUsage);
 pub trait Threshold {
     type T;
 
+    /// get the correct threshold for this key, used to short circuit iteration on map and set to improve performance
     fn threshold(key: &CompositeKey) -> &Self::T where Self: Sized;
 }
 
