@@ -33,7 +33,11 @@ pub trait ToResponse<T: ResponseMarker> {
 
 use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timestamp } };
 
-use self::{ core::CoreEmrRegistry, key::CompositeKeyBuilder, patient::{ EmrBindingMap, InternalBindingKey, OwnerMap, NIK } };
+use self::{
+    core::{ CoreEmrRegistry, RawEmr },
+    key::{ CompositeKeyBuilder, ProviderId },
+    patient::{ EmrBindingMap, InternalBindingKey, OwnerMap, NIK },
+};
 
 pub struct EmrRegistry {
     owners: OwnerMap,
@@ -53,20 +57,26 @@ impl EmrRegistry {
         Self::default()
     }
 
-    // /// register new emr to the system.
-    // pub fn register_emr(
-    //     &mut self,
-    //     emr: Emr,
-    //     user_id: InternalBindingKey
-    // ) -> Result<EmrId, OutOfMemory> {
-    //     let emr_id = emr.id().clone();
+    /// register new emr to the system.
+    pub fn register_emr(
+        &mut self,
+        user_id: InternalBindingKey,
+        provider: ProviderId,
+        emr_id: EmrId,
+        emr_records: RawEmr
+    ) -> EmrId {
+        let key = key::CompositeKeyBuilder
+            ::new()
+            .records_key()
+            .with_user(user_id.clone())
+            .with_provider(provider)
+            .with_emr_id(emr_id.clone());
 
+        self.core_emrs.add(key, emr_records);
+        self.owner_emrs.issue_for(user_id, emr_id.clone());
 
-    //     self.core_emrs.add(key, emr)
-    //     let _ = self.owner_emrs.issue_for(user_id, emr_id.clone());
-
-    //     Ok(emr_id)
-    // }
+        emr_id
+    }
 
     // /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
     // pub fn register_patient(
