@@ -6,6 +6,7 @@ use ic_stable_memory::{
 };
 use ic_stable_structures::memory_manager;
 use parity_scale_codec::{ Decode, Encode };
+use serde_json::error;
 
 use crate::{
     deref,
@@ -91,6 +92,14 @@ pub type NIK = InternalBindingKey;
 pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
+#[derive(Debug, thiserror::Error)]
+pub enum OwnerMapError {
+    #[error("operation not permitted, user exists")]
+    UserExist,
+    #[error("operation not permitted, user does not exist")]
+    UserDoesNotExist,
+}
+
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) {
         self.0.remove(owner);
@@ -107,6 +116,7 @@ impl OwnerMap {
     pub fn new(memory_manager: MemoryManager) -> Self {
         Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
     }
+
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
         self.0.contains_key(owner)
     }

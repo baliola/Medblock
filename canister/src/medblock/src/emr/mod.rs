@@ -78,14 +78,10 @@ impl EmrRegistry {
         emr_id
     }
 
-    // /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
-    // pub fn register_patient(
-    //     &mut self,
-    //     owner: Principal,
-    //     hashed_nik: NIK
-    // ) -> Result<(), OutOfMemory> {
-    //     self.owners.bind(owner, hashed_nik)
-    // }
+    /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
+    pub fn register_patient(&mut self, owner: ic_principal::Principal, hashed_nik: NIK) {
+        self.owners.bind(owner, hashed_nik)
+    }
 
     // /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted
     // pub fn rebind_patient(&mut self, owner: Principal, hashed_nik: NIK) -> Result<(), OutOfMemory> {
