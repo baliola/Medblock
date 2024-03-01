@@ -17,7 +17,7 @@ use crate::{
     mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
-use super::{ key::UserId, OutOfMemory };
+use super::{ key::UserId };
 
 type EmrId = Id;
 const KEY_LEN: usize = 32;

@@ -173,7 +173,7 @@ impl CoreEmrRegistry {
     pub fn read_by_id(
         &self,
         key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
-    ) -> Option<RawEmr> {
+    ) -> RegistryResult<RawEmr> {
         let key = key.build().to_stable();
 
         let records = self.0
@@ -183,9 +183,9 @@ impl CoreEmrRegistry {
             .collect::<Vec<_>>();
 
         if records.is_empty() {
-            None
+            Err(CoreRegistryError::NotExist)
         } else {
-            Some(RawEmr::from(records))
+            Ok(RawEmr::from(records))
         }
     }
 }

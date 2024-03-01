@@ -3,11 +3,9 @@ use std::{ cell::RefCell, rc::Rc };
 use candid::Principal;
 use config::CanisterConfig;
 use emr::{
-    providers::ProviderRegistry,
+    // providers::ProviderRegistry,
     EmrRegistry,
-    EmrDisplay,
     FromStableRef,
-    Records,
 };
 use random::{ CanisterRandomSource, CallError };
 use internal_types::{ Id };
