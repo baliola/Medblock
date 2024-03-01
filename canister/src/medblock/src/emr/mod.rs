@@ -35,7 +35,7 @@ use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timest
 
 use self::{
     core::{ CoreEmrRegistry, RawEmr },
-    key::{ CompositeKeyBuilder, ProviderId },
+    key::{ CompositeKeyBuilder, ProviderId, UserId },
     patient::{ EmrBindingMap, InternalBindingKey, OwnerMap, NIK },
 };
 
@@ -115,25 +115,26 @@ impl EmrRegistry {
         self.owner_emrs.is_owner_of(nik.into_inner(), emr_id)
     }
 
-    // pub fn update_emr(
-    //     &mut self,
-    //     emr_id: &Id,
-    //     key: AsciiRecordsKey,
-    //     value: impl Into<EmrRecordsValue>
-    // ) -> Result<(), String> {
-    //     let Some(mut emr) = self.core_emrs.get_emr_mut(emr_id) else {
-    //         return Err("emr not found".to_string());
-    //     };
+    pub fn update_emr(
+        &mut self,
+        emr: RawEmr,
+        user_id: UserId,
+        provider: ProviderId,
+        emr_id: Id
+    ) -> Result<(), String> {
+        let partial_key = CompositeKeyBuilder::new()
+            .records_key()
+            .with_user(user_id)
+            .with_provider(provider)
+            .with_emr_id(emr_id);
 
-    //     let value = value.into();
+        for (k, v) in emr.into_iter() {
+            let key = partial_key.clone().with_records_key(k);
+            self.core_emrs.update(key, v);
+        }
 
-    //     let update = emr.update_record(key.clone(), value)?;
-
-    //     match update {
-    //         true => { Ok(()) }
-    //         false => Err(format!("record with key {} not found", key)),
-    //     }
-    // }
+        Ok(())
+    }
 
     // /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
     // pub fn get_patient_emr_list(&self, patient: &patient::Owner) -> Option<Vec<Id>> {

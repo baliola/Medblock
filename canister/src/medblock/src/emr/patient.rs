@@ -44,6 +44,12 @@ impl_mem_bound!(for InternalBindingKey: bounded; fixed_size: true);
 deref!(InternalBindingKey: [u8; KEY_LEN]);
 impl_range_bound!(InternalBindingKey);
 
+impl From<[u8; 32]> for InternalBindingKey {
+    fn from(key: [u8; 32]) -> Self {
+        Self(key)
+    }
+}
+
 impl InternalBindingKey {
     pub fn as_str(&self) -> &str {
         std::str::from_utf8(&self.0).expect("key must be ascii")

@@ -32,10 +32,10 @@ impl CoreEmrRegistry {
 
 impl Debug for CoreEmrRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut result = f.debug_struct("CoreRegistry");
+        let mut result = f.debug_map();
 
         for (key, value) in self.0.iter() {
-            result.field(&format!("{:?}", key), &format!("{:?}", value));
+            result.entry(&format!("{:?}", key), &format!("{:?}", value));
         }
 
         result.finish()
@@ -52,6 +52,17 @@ impl CoreEmrRegistry {
             let emr_key = key.clone().with_records_key(k).build();
             self.0.insert(emr_key.into(), v);
         }
+    }
+
+    pub fn is_emr_exists(
+        &self,
+        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
+    ) -> bool {
+        let key = key.build().to_stable();
+        self.0
+            .range(key..)
+            .max()
+            .is_some()
     }
 
     pub fn update(
@@ -195,12 +206,13 @@ mod tests {
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
+        let user = crate::utils::hash(user.as_bytes());
         let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
         let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
 
         let key = CompositeKeyBuilder::new()
             .records_key()
-            .with_user(user.clone())
+            .with_user(user.clone().into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -214,14 +226,14 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone())
+            .with_user(user.clone().into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_some());
 
-        let key = CompositeKeyBuilder::new().user_batch().with_user(user.clone());
+        let key = CompositeKeyBuilder::new().user_batch().with_user(user.clone().into());
 
         let result = registry.get_user_list_batch(0, 10, key);
         assert_eq!(result, vec![emr_id.clone()]);
@@ -232,13 +244,54 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone())
+            .with_user(user.clone().into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
         registry.remove_record(key.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_emr_exists() {
+        let memory_manager = fake_memory_manager!();
+        let mut registry = CoreEmrRegistry::new(&memory_manager);
+
+        let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
+        let user = crate::utils::hash(user.as_bytes());
+        let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
+        let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
+
+        let key = CompositeKeyBuilder::new()
+            .records_key()
+            .with_user(user.clone().into())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let records = vec![
+            (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
+            (AsciiRecordsKey::new("key4").unwrap(), ArbitraryEmrValue::from("value1"))
+        ];
+        let emr = RawEmr::from(records);
+
+        registry.add(key.clone(), emr);
+
+        let key = CompositeKeyBuilder::new()
+            .emr()
+            .with_user(user.clone().into())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let result = registry.is_emr_exists(key.clone());
+
+        assert!(result);
+
+        registry.remove_record(key.clone());
+
+        let result = registry.is_emr_exists(key.clone());
+
+        assert!(!result);
     }
 }
 
