@@ -100,14 +100,28 @@ pub enum OwnerMapError {
     UserDoesNotExist,
 }
 
+pub type OwnerMapResult<T = ()> = Result<T, OwnerMapError>;
+
 impl OwnerMap {
-    pub fn revoke(&mut self, owner: &Owner) {
-        self.0.remove(owner);
+    pub fn revoke(&mut self, owner: &Owner) -> OwnerMapResult {
+        self.0
+            .remove(owner)
+            .map(|_| ())
+            .ok_or(OwnerMapError::UserDoesNotExist)
     }
 
-    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Result<(), OwnerMapError> {
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> OwnerMapResult {
         if self.get_nik(&owner).is_ok() {
             return Err(OwnerMapError::UserExist);
+        }
+
+        let _ = self.0.insert(owner, nik.to_stable());
+        Ok(())
+    }
+
+    pub fn rebind(&mut self, owner: Owner, nik: NIK) -> OwnerMapResult {
+        if self.get_nik(&owner).is_err() {
+            return Err(OwnerMapError::UserDoesNotExist);
         }
 
         let _ = self.0.insert(owner, nik.to_stable());

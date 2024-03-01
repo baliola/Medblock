@@ -41,9 +41,10 @@ use self::{
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
 pub enum RegistryError {
-    #[error(transparent)]
-    OwnerMapError(#[from] patient::OwnerMapError),
+    #[error(transparent)] OwnerMapError(#[from] patient::OwnerMapError),
 }
+
+pub type RegistryResult<T = ()> = Result<T, RegistryError>;
 
 pub struct EmrRegistry {
     owners: OwnerMap,
@@ -84,29 +85,35 @@ impl EmrRegistry {
         emr_id
     }
 
-    /// register new patient to the system, returns [OutOfMemory] if stable memory is exhausted
-    pub fn register_patient(&mut self, owner: ic_principal::Principal, hashed_nik: NIK)  -> Result<(), RegistryError>{
+    pub fn register_patient(
+        &mut self,
+        owner: ic_principal::Principal,
+        hashed_nik: NIK
+    ) -> RegistryResult {
         Ok(self.owners.bind(owner, hashed_nik)?)
     }
 
-    // /// rebind patient to a new hashed_nik, returns [OutOfMemory] if stable memory is exhausted
-    // pub fn rebind_patient(&mut self, owner: Principal, hashed_nik: NIK) -> Result<(), OutOfMemory> {
-    //     self.owners.bind(owner, hashed_nik)
-    // }
+    pub fn rebind_patient(
+        &mut self,
+        owner: ic_principal::Principal,
+        hashed_nik: NIK
+    ) -> RegistryResult {
+        Ok(self.owners.rebind(owner, hashed_nik)?)
+    }
 
-    // /// revoke patient access, if this method is called then the patient will no longer be able to access their emr. it will remove the [NIK]
-    // /// from the owner map so attempting to access NIK owner will fail.
-    // pub fn revoke_patient_access(&mut self, owner: &Principal) {
-    //     self.owners.revoke(owner)
-    // }
+    /// revoke patient access, if this method is called then the patient will no longer be able to access their emr. it will remove the [NIK]
+    /// from the owner map so attempting to access NIK owner will fail.
+    pub fn revoke_patient_access(&mut self, owner: &ic_principal::Principal) -> RegistryResult {
+        Ok(self.owners.revoke(owner)?)
+    }
 
-    // pub fn is_owner_of_emr(&self, owner: &Principal, emr_id: &Id) -> bool {
-    //     let Some(nik) = self.owners.get_nik(owner) else {
-    //         return false;
-    //     };
+    pub fn is_owner_of_emr(&self, owner: &ic_principal::Principal, emr_id: EmrId) -> bool {
+        let Ok(nik) = self.owners.get_nik(owner) else {
+            return false;
+        };
 
-    //     self.owner_emrs.is_owner_of(nik.to_owned(), emr_id.clone())
-    // }
+        self.owner_emrs.is_owner_of(nik.into_inner(), emr_id)
+    }
 
     // pub fn update_emr(
     //     &mut self,
