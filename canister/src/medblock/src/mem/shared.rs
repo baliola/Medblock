@@ -227,6 +227,16 @@ impl<K, V> StableSet<K, V>
         Self(tree)
     }
 
+    /// This function checks if a key exists in the set. It does so by creating a range iterator
+    /// from the given key to the end of the set. It then checks if the maximum value in the range
+    /// iterator is not None. If it is not None, it returns true. Otherwise, it returns false.
+    pub fn range_key_exists(&self, partial_key: &K) -> bool {
+        self.0
+            .range((partial_key.clone(), V::default())..)
+            .max()
+            .is_some()
+    }
+
     pub fn inner_mut(&mut self) -> &mut ic_stable_structures::BTreeMap<(K, V), (), Memory> {
         &mut self.0
     }
@@ -258,25 +268,24 @@ impl<K, V> StableSet<K, V>
         }
     }
 
-
-// This function retrieves a page of unique values associated with a given key from a sorted set.
-// The set is sorted by key and value, and each key can be associated with multiple values.
-//
-// The function takes a key, a page number, and a limit as arguments.
-// The page number and limit are used to calculate the start and end indices of the page.
-//
-// The function starts by creating a range iterator from the given key to the end of the set.
-// It then iterates over the set, keeping track of the last value it has seen and the current index.
-//
-// For each entry in the set, it checks if the key of the entry is the same as the given key and if the index is within the page range.
-// If the key is different or the index is outside the page range, it breaks the loop.
-//
-// If the value of the entry is different from the last value it has seen and the index is within the page range, it adds the value to the result and increments the index.
-// If the value is different but the index is outside the page range, it just increments the index.
-//
-// After the loop, if the result is empty, it returns None. Otherwise, it returns the result wrapped in Some.
-//
-// This way, the function returns a page of unique values associated with the given key, or None if there are no such values.
+    // This function retrieves a page of unique values associated with a given key from a sorted set.
+    // The set is sorted by key and value, and each key can be associated with multiple values.
+    //
+    // The function takes a key, a page number, and a limit as arguments.
+    // The page number and limit are used to calculate the start and end indices of the page.
+    //
+    // The function starts by creating a range iterator from the given key to the end of the set.
+    // It then iterates over the set, keeping track of the last value it has seen and the current index.
+    //
+    // For each entry in the set, it checks if the key of the entry is the same as the given key and if the index is within the page range.
+    // If the key is different or the index is outside the page range, it breaks the loop.
+    //
+    // If the value of the entry is different from the last value it has seen and the index is within the page range, it adds the value to the result and increments the index.
+    // If the value is different but the index is outside the page range, it just increments the index.
+    //
+    // After the loop, if the result is empty, it returns None. Otherwise, it returns the result wrapped in Some.
+    //
+    // This way, the function returns a page of unique values associated with the given key, or None if there are no such values.
     pub fn get_set_associated_by_key_paged(
         &self,
         key: &K,
@@ -312,12 +321,13 @@ impl<K, V> StableSet<K, V>
                 result.push(v.clone());
                 last_id = v.clone();
                 index += 1;
-            } 
-            // If the value of the current entry is not the same as the last seen value,
-            // but the current index has not yet reached the start of the page,
-            // update the last seen value and increment the index.
-            // This is to skip over any unique values that fall before the start of the page.
-            else if v != last_id {
+            } else if
+                // If the value of the current entry is not the same as the last seen value,
+                // but the current index has not yet reached the start of the page,
+                // update the last seen value and increment the index.
+                // This is to skip over any unique values that fall before the start of the page.
+                v != last_id
+            {
                 last_id = v.clone();
                 index += 1;
             }
