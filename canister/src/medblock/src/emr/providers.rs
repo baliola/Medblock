@@ -216,8 +216,8 @@ pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<EmrId>>);
 deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<EmrId>>);
 
 impl Issued {
-    fn provider_exists(&self, provider: &InternalProviderId) -> bool {
-        self.range_key_exists(provider)
+    fn provider_exists(&self, provider: InternalProviderId) -> bool {
+        self.range_key_exists(&provider.to_stable())
     }
 
     pub fn is_issued_by(&self, provider: InternalProviderId, emr_id: Id) -> bool {
@@ -235,14 +235,19 @@ impl Issued {
 
     pub fn get_issued(
         &self,
-        provider: &InternalProviderId,
+        provider: InternalProviderId,
         page: u64,
         limit: u64
-    ) -> Option<Vec<EmrId>> {
+    ) -> IssueMapResult<Vec<Stable<EmrId>>> {
+        if !self.provider_exists(provider.clone()) {
+            return Err(IssueMapError::ProviderNotFound);
+        }
 
-       let result =  self.get_set_associated_by_key_paged(provider, page, limit);
-        todo!()
-     }
+        match self.get_set_associated_by_key_paged(&provider.to_stable(), page, limit) {
+            Some(ids) => Ok(ids),
+            None => Err(IssueMapError::EmrNotFound),
+        }
+    }
 }
 
 // /// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
