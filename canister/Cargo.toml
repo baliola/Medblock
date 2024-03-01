@@ -10,3 +10,4 @@ paste = "1.0.14"
 serde = "1.0.193"
 ic-stable-structures = "0.6.2"
 parity-scale-codec = { version = "3.6.9", features = ["derive"] }
+ic_principal = "0.1.1" 

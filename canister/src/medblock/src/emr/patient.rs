@@ -4,32 +4,57 @@ use ic_stable_memory::{
     derive::{ AsFixedSizeBytes, StableType },
     primitive::s_ref::SRef,
 };
-use ic_stable_structures::{ storable::Bound, BTreeMap };
+use ic_stable_structures::memory_manager;
+use parity_scale_codec::{ Decode, Encode };
+use serde_json::error;
 
-use crate::{ deref, impl_max_size, impl_mem_bound, internal_types::Id, mem::shared::{ MemBoundMarker, Memory, Stable } };
+use crate::{
+    deref,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
+    internal_types::Id,
+    mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
+};
 
-use super::OutOfMemory;
+use super::{ key::UserId };
 
 type EmrId = Id;
 const KEY_LEN: usize = 32;
 
 /// hex encoded SHA3-256 hash of NIK, used as key for [BindingMap].
 /// we can't check for hash validity, so we assume it's valid by checking it's length.
-#[derive(StableType, AsFixedSizeBytes, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+#[derive(
+    StableType,
+    AsFixedSizeBytes,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Debug,
+    Encode,
+    Decode,
+    Default
+)]
 pub struct InternalBindingKey([u8; KEY_LEN]);
 impl_max_size!(for InternalBindingKey: 32);
 impl_mem_bound!(for InternalBindingKey: bounded; fixed_size: true);
 deref!(InternalBindingKey: [u8; KEY_LEN]);
+impl_range_bound!(InternalBindingKey);
 
+impl From<[u8; 32]> for InternalBindingKey {
+    fn from(key: [u8; 32]) -> Self {
+        Self(key)
+    }
+}
 
 impl InternalBindingKey {
     pub fn as_str(&self) -> &str {
         std::str::from_utf8(&self.0).expect("key must be ascii")
     }
 }
-
-
-
 
 mod deserialize {
     use super::*;
@@ -66,40 +91,126 @@ mod deserialize {
     }
 }
 
-pub type Owner = Principal;
 pub type NIK = InternalBindingKey;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
-#[derive(Default)]
-pub struct OwnerMap(SBTreeMap<Owner, NIK>);
+pub type Owner = ic_principal::Principal;
+pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
-// pub struct TOwnerMap(BTreeMap<Stable<Owner>, Stable<NIK>, Memory>);
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BindingMapError {
+    #[error("operation not permitted, user exists")]
+    UserExist,
+    #[error("operation not permitted, user does not exist")]
+    UserDoesNotExist,
+}
+
+pub type BindingMapResult<T = ()> = Result<T, BindingMapError>;
 
 impl OwnerMap {
-    pub fn revoke(&mut self, owner: &Owner) {
-        self.0.remove(owner);
-    }
-
-    pub fn bind(&mut self, owner: Owner, nik: NIK) -> Result<(), OutOfMemory> {
+    pub fn revoke(&mut self, owner: &Owner) -> BindingMapResult {
         self.0
-            .insert(owner, nik)
-            .map_err(OutOfMemory::from)
+            .remove(owner)
             .map(|_| ())
+            .ok_or(BindingMapError::UserDoesNotExist)
     }
 
-    pub fn get_nik(&self, owner: &Owner) -> Option<SRef<'_, NIK>> {
-        self.0.get(owner)
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> BindingMapResult {
+        if self.get_nik(&owner).is_ok() {
+            return Err(BindingMapError::UserExist);
+        }
+
+        let _ = self.0.insert(owner, nik.to_stable());
+        Ok(())
     }
 
-    pub fn new() -> Self {
-        Self::default()
+    pub fn rebind(&mut self, owner: Owner, nik: NIK) -> BindingMapResult {
+        if self.get_nik(&owner).is_err() {
+            return Err(BindingMapError::UserDoesNotExist);
+        }
+
+        let _ = self.0.insert(owner, nik.to_stable());
+        Ok(())
     }
+
+    /// will return an error if owner does not exists
+    pub fn get_nik(&self, owner: &Owner) -> Result<Stable<UserId>, BindingMapError> {
+        self.0.get(owner).ok_or(BindingMapError::UserDoesNotExist)
+    }
+
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+    }
+
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
         self.0.contains_key(owner)
     }
 }
-deref!(mut OwnerMap: SBTreeMap<Owner, NIK>);
+
+#[cfg(test)]
+mod test_owner_map {
+    use crate::fake_memory_manager;
+
+    use super::*;
+
+    #[test]
+    fn test_bind() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap_err(), BindingMapError::UserExist);
+    }
+
+    #[test]
+    fn test_rebind() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(
+            owner_map.rebind(owner, nik.clone()).unwrap_err(),
+            BindingMapError::UserDoesNotExist
+        );
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.rebind(owner, nik.clone()).unwrap(), ());
+    }
+
+    #[test]
+    fn test_revoke() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.revoke(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.revoke(&owner).unwrap(), ());
+    }
+
+    #[test]
+    fn test_get_nik() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.get_nik(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.get_nik(&owner).unwrap(), nik.to_stable());
+    }
+
+    #[test]
+    fn test_is_valid_owner() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.is_valid_owner(&owner), false);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.is_valid_owner(&owner), true);
+    }
+}
 
 pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
@@ -109,47 +220,58 @@ pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// and still be able to own and access their emr.
 ///
 /// NIK MUST be hashed offchain before being used as key.
-#[derive(Default)]
-pub struct EmrBindingMap(SBTreeMap<NIK, EmrIdCollection>);
-
-deref!(mut EmrBindingMap: SBTreeMap<NIK, EmrIdCollection>);
+pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
 
 impl EmrBindingMap {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(StableSet::new(memory_manager))
     }
 
-    pub fn is_owner_of(&self, nik: &NIK, emr_id: &EmrId) -> bool {
-        self.0
-            .get(nik)
-            .map(|emr_ids| emr_ids.contains(emr_id))
-            .unwrap_or(false)
+    pub fn is_owner_of(&self, nik: NIK, emr_id: EmrId) -> bool {
+        self.0.contains_key(nik.to_stable(), emr_id.to_stable())
     }
 
-    pub fn emr_list(&self, nik: &NIK) -> Option<Vec<EmrId>> {
-        let Some(list) = self.get(nik) else {
-            return None;
-        };
-
-        Some(
-            list
-                .iter()
-                .map(|id| id.clone())
-                .collect()
+    pub fn emr_list(&self, nik: &NIK) -> BindingMapResult<Vec<Stable<EmrId>>> {
+        Ok(
+            self.0
+                .get_set_associated_by_key(&nik.clone().to_stable())
+                .ok_or(BindingMapError::UserDoesNotExist)?
         )
     }
 
-    pub fn issue_for(&mut self, nik: &NIK, emr_id: EmrId) -> Result<(), OutOfMemory> {
-        if !self.0.contains_key(nik) {
-            let issue_map = EmrIdCollection::new();
-            self.0.insert(nik.clone(), issue_map);
-        }
+    pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
+        let _ = self.0.insert(nik.to_stable(), emr_id.to_stable());
+    }
+}
 
-        let mut issue_map = self.0.get_mut(nik).unwrap();
+#[cfg(test)]
+mod test_emr_binding_map {
+    use crate::fake_memory_manager;
 
-        issue_map
-            .insert(emr_id)
-            .map_err(OutOfMemory::from)
-            .map(|_| ())
+    use super::*;
+
+    #[test]
+    fn test_issue_for() {
+        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let nik = NIK::from([0u8; 32]);
+
+        let mut random = [0u8; 10];
+        random.fill(0);
+        let emr_id = EmrId::new(&random);
+
+        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
+        assert_eq!(emr_binding_map.is_owner_of(nik.clone(), emr_id.clone()), true);
+    }
+
+    #[test]
+    fn test_emr_list() {
+        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let nik = NIK::from([0u8; 32]);
+        let mut random = [0u8; 10];
+        random.fill(0);
+        let emr_id = EmrId::new(&random);
+
+        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
+        assert_eq!(emr_binding_map.emr_list(&nik).unwrap(), vec![emr_id.to_stable()]);
     }
 }

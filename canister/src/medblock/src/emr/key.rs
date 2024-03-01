@@ -1,19 +1,20 @@
-use std::{ default, fmt::Debug, marker::PhantomData, ops::RangeBounds };
+#![allow(unused)]
 
-use ic_stable_memory::OutOfMemory;
-use ic_stable_structures::{ storable::Bound, BTreeMap, Log };
+use std::{ fmt::Debug, marker::PhantomData, ops::RangeBounds };
+
+use ic_stable_structures::{ storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
     impl_max_size,
     internal_types::{ AsciiRecordsKey, Id },
-    mem::shared::{ MemBoundMarker, Memory, Stable },
+    mem::shared::{ MemBoundMarker },
     zero_sized_state,
 };
 
-use super::Emr;
+use super::patient::NIK;
 
-pub type UserId = Id;
+pub type UserId = NIK;
 pub type ProviderId = Id;
 pub type EmrId = Id;
 pub type RecordsKey = AsciiRecordsKey;
@@ -31,6 +32,7 @@ impl RangeBounds<CompositeKey> for CompositeKey {
         core::ops::Bound::Unbounded
     }
 }
+
 impl CompositeKey {
     pub fn new(
         user_id: UserId,
@@ -70,7 +72,33 @@ impl MemBoundMarker for CompositeKey {
 
 // ----------------------------------------- Begin Builder -----------------------------------------
 
+/// marker trait for usage
+pub trait UsageMarker {}
 zero_sized_state!(UserBatch, ProviderBatch, ByEmr, ByRecordsKey, UnknownUsage);
+
+/// used to get the correct threshold for the composite key
+pub trait Threshold {
+    type T;
+
+    /// get the correct threshold for this key, used to short circuit iteration on map and set to improve performance
+    fn threshold(key: &CompositeKey) -> &Self::T where Self: Sized;
+}
+
+impl Threshold for UserBatch {
+    type T = NIK;
+
+    fn threshold(key: &CompositeKey) -> &NIK {
+        key.user_id()
+    }
+}
+
+impl Threshold for ProviderBatch {
+    type T = ProviderId;
+
+    fn threshold(key: &CompositeKey) -> &ProviderId {
+        key.provider_id()
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Unknown<T>(PhantomData<T>);
@@ -201,6 +229,7 @@ impl CompositeKeyBuilder<ProviderBatch> {
         ProviderBatch,
         Unknown<UserId>,
         Known<ProviderId>,
+        Unknown<EmrId>,
         Unknown<RecordsKey>
     > {
         CompositeKeyBuilder {

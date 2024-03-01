@@ -153,7 +153,6 @@ macro_rules! measure_alloc {
 
 #[macro_export]
 macro_rules! impl_max_size {
-    
     (for $struct:ty: $($ty:ident),*) => {
 
         impl $struct {
@@ -162,8 +161,7 @@ macro_rules! impl_max_size {
             }
         }
     };
-    
-    
+
     (for $struct:ty: $lit:tt) => {
         impl $struct {
             pub const fn max_size() -> usize {
@@ -171,7 +169,6 @@ macro_rules! impl_max_size {
             }
         }
     };
-    
 }
 
 /// macro to implement [crate::mem::shared::MemBoundMarker] for a type.
@@ -179,13 +176,13 @@ macro_rules! impl_max_size {
 #[macro_export]
 macro_rules! impl_mem_bound {
     (for $struct:ty: unbounded) => {
-        impl crate::mem::shared::MemBoundMarker for $struct {
+        impl $crate::mem::shared::MemBoundMarker for $struct {
             const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
         }
     };
 
     (for $struct:ty: bounded; fixed_size: $lit:literal) => {
-        impl crate::mem::shared::MemBoundMarker for $struct {
+        impl $crate::mem::shared::MemBoundMarker for $struct {
     
             const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded { max_size: <$struct>::max_size() as u32, is_fixed_size: $lit };
         }
@@ -198,6 +195,27 @@ macro_rules! zero_sized_state {
         $(
             #[derive(Debug, Clone, Default)]
             pub struct $ident;
+
+            impl crate::emr::key::UsageMarker for $ident {}
+
+        )*
+    };
+}
+
+#[macro_export]
+macro_rules! impl_range_bound {
+    ($($ident:ident),*) => {
+        
+        $(
+            impl std::ops::RangeBounds<$ident> for $ident {
+                fn start_bound(&self) -> std::ops::Bound<&$ident> {
+                    std::ops::Bound::Included(self)
+                }
+        
+                fn end_bound(&self) -> std::ops::Bound<&$ident> {
+                    std::ops::Bound::Excluded(self)
+                }
+            }
         )*
     };
 }
