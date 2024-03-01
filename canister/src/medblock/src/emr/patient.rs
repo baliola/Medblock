@@ -98,7 +98,7 @@ pub type NIK = InternalBindingKey;
 pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
-#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BindingMapError {
     #[error("operation not permitted, user exists")]
     UserExist,
@@ -148,6 +148,70 @@ impl OwnerMap {
     }
 }
 
+#[cfg(test)]
+mod test_owner_map {
+    use crate::fake_memory_manager;
+
+    use super::*;
+
+    #[test]
+    fn test_bind() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap_err(), BindingMapError::UserExist);
+    }
+
+    #[test]
+    fn test_rebind() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(
+            owner_map.rebind(owner, nik.clone()).unwrap_err(),
+            BindingMapError::UserDoesNotExist
+        );
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.rebind(owner, nik.clone()).unwrap(), ());
+    }
+
+    #[test]
+    fn test_revoke() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.revoke(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.revoke(&owner).unwrap(), ());
+    }
+
+    #[test]
+    fn test_get_nik() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.get_nik(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.get_nik(&owner).unwrap(), nik.to_stable());
+    }
+
+    #[test]
+    fn test_is_valid_owner() {
+        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let owner = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(owner_map.is_valid_owner(&owner), false);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
+        assert_eq!(owner_map.is_valid_owner(&owner), true);
+    }
+}
+
 pub type EmrIdCollection = SBTreeSet<EmrId>;
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
 /// we use hashed (SHA3-256) NIK as key and emr id as value.
@@ -177,5 +241,37 @@ impl EmrBindingMap {
 
     pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
         let _ = self.0.insert(nik.to_stable(), emr_id.to_stable());
+    }
+}
+
+#[cfg(test)]
+mod test_emr_binding_map {
+    use crate::fake_memory_manager;
+
+    use super::*;
+
+    #[test]
+    fn test_issue_for() {
+        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let nik = NIK::from([0u8; 32]);
+
+        let mut random = [0u8; 10];
+        random.fill(0);
+        let emr_id = EmrId::new(&random);
+
+        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
+        assert_eq!(emr_binding_map.is_owner_of(nik.clone(), emr_id.clone()), true);
+    }
+
+    #[test]
+    fn test_emr_list() {
+        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let nik = NIK::from([0u8; 32]);
+        let mut random = [0u8; 10];
+        random.fill(0);
+        let emr_id = EmrId::new(&random);
+
+        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
+        assert_eq!(emr_binding_map.emr_list(&nik).unwrap(), vec![emr_id.to_stable()]);
     }
 }

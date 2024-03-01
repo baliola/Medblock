@@ -159,9 +159,9 @@ impl EmrRegistry {
         Ok(self.owner_emrs.emr_list(&internal_id)?)
     }
 
-    // pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
-    //     self.owners.is_valid_owner(owner)
-    // }
+    pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
+        self.owners.is_valid_owner(owner)
+    }
 
     // pub fn get_emr(&self, emr_id: &Id) -> Option<SRef<'_, Emr>> {
     //     self.core_emrs.get_emr(emr_id)
