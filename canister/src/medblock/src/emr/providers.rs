@@ -1,49 +1,55 @@
-// use std::ops::Add;
+use std::ops::Add;
 
-// use candid::{ CandidType, Principal };
-// use ic_stable_memory::{
-//     collections::SBTreeMap,
-//     derive::{ AsFixedSizeBytes, StableType },
-//     primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
-//     SBox,
-// };
-// use serde::Deserialize;
+use candid::{ CandidType, Principal };
+use ic_stable_memory::{
+    collections::SBTreeMap,
+    derive::{ AsFixedSizeBytes, StableType },
+    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
+    SBox,
+};
+use ic_stable_structures::BTreeMap;
+use parity_scale_codec::{ Decode, Encode };
+use serde::Deserialize;
 
-// use crate::{ deref, internal_types::{ Id, Timestamp } };
+use crate::{
+    deref,
+    internal_types::{ Id, Timestamp },
+    mem::shared::{ Stable, StableSet, ToStable },
+};
 
-// use super::{ patient::EmrIdCollection, OutOfMemory, EmrId };
+use super::{ patient::EmrIdCollection, EmrId };
 
-// #[derive(StableType, AsFixedSizeBytes, Deserialize, CandidType, Debug)]
-// pub enum Status {
-//     Verified,
+#[derive(CandidType, Deserialize, Debug)]
+pub enum Status {
+    Active,
 
-//     Suspended,
-// }
+    Suspended,
+}
 
-// impl Status {
-//     /// Returns `true` if the status is [`Verified`].
-//     ///
-//     /// [`Verified`]: Status::Verified
-//     #[must_use]
-//     pub fn is_verified(&self) -> bool {
-//         matches!(self, Self::Verified)
-//     }
+impl Status {
+    /// Returns `true` if the status is [`Suspended`].
+    ///
+    /// [`Suspended`]: Status::Suspended
+    #[must_use]
+    pub fn is_suspended(&self) -> bool {
+        matches!(self, Self::Suspended)
+    }
 
-//     /// Returns `true` if the status is [`Suspended`].
-//     ///
-//     /// [`Suspended`]: Status::Suspended
-//     #[must_use]
-//     pub fn is_suspended(&self) -> bool {
-//         matches!(self, Self::Suspended)
-//     }
-// }
+    /// Returns `true` if the status is [`Active`].
+    ///
+    /// [`Active`]: Status::Active
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Active)
+    }
+}
 
-// #[derive(Default)]
-// pub struct ProviderRegistry {
-//     providers: Providers,
-//     providers_bindings: ProvidersBindings,
-//     issued: Issued,
-// }
+#[derive(Default)]
+pub struct ProviderRegistry {
+    // providers: Providers,
+    // providers_bindings: ProvidersBindings,
+    // issued: Issued,
+}
 
 // impl ProviderRegistry {
 //     /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
@@ -189,51 +195,50 @@
 //     }
 // }
 
-// pub type InternalProviderId = Id;
-// pub type ProviderPrincipal = Principal;
-// /// Issued emr map. used to track emr issued by a particular provider.
-// #[derive(Default)]
-// pub struct Issued(SBTreeMap<InternalProviderId, EmrIdCollection>);
-// deref!(mut Issued: SBTreeMap<InternalProviderId, EmrIdCollection>);
+pub type InternalProviderId = Id;
+pub type ProviderPrincipal = ic_principal::Principal;
 
-// impl Issued {
-//     pub fn is_issued_by(&self, provider: &InternalProviderId, _emr_id: &Id) -> bool {
-//         self.contains_key(provider)
-//     }
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum IssueMapError {
+    #[error("provider not found")]
+    ProviderNotFound,
 
-//     pub fn issue_emr(
-//         &mut self,
-//         provider: &InternalProviderId,
-//         emr_id: Id
-//     ) -> Result<(), &'static str> {
-//         if !self.contains_key(provider) {
-//             let _ =self.insert(provider.clone(), EmrIdCollection::default());
-//         }
+    #[error("emr already issued")]
+    AlreadyIssued,
 
-//         let _ =self.get_mut(provider).unwrap().insert(emr_id);
+    #[error("emr not found")]
+    EmrNotFound,
+}
 
-//         Ok(())
-//     }
+pub type IssueMapResult<T> = Result<T, IssueMapError>;
+/// Issued emr map. used to track emr issued by a particular provider.
+pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<EmrId>>);
+deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<EmrId>>);
 
-//     pub fn get_issued(
-//         &self,
-//         provider: &InternalProviderId,
-//         anchor: u64,
-//         _max: u8
-//     ) -> Option<Vec<EmrId>> {
-//         let Some(emr_id_collection) = self.get(provider) else {
-//             return None;
-//         };
+impl Issued {
+    pub fn is_issued_by(&self, provider: InternalProviderId, emr_id: Id) -> bool {
+        self.0.contains_key(provider.to_stable(), emr_id.to_stable())
+    }
 
-//         let emrs = emr_id_collection
-//             .iter()
-//             .skip(anchor as usize)
-//             .map(|e| e.to_owned())
-//             .collect::<Vec<_>>();
+    pub fn issue_emr(&mut self, provider: &InternalProviderId, emr_id: Id) -> IssueMapResult<()> {
+        if self.is_issued_by(provider.clone(), emr_id.clone()) {
+            return Err(IssueMapError::AlreadyIssued);
+        }
 
-//         Some(emrs)
-//     }
-// }
+        self.0.insert(provider.clone().to_stable(), emr_id.to_stable());
+        Ok(())
+    }
+
+    pub fn get_issued(
+        &self,
+        provider: &InternalProviderId,
+        anchor: u64,
+        _max: u8
+    ) -> Option<Vec<EmrId>> {
+        // self.0.get_set_associated_by_key(key)
+        todo!()
+    }
+}
 
 // /// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
 // /// this is used to track healthcare providers using their principal. this is needed because we want to be able to change the principal without costly update. we can just update the principal here.
