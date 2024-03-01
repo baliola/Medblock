@@ -2,7 +2,6 @@
 
 use std::{ fmt::Debug, marker::PhantomData, ops::RangeBounds };
 
-
 use ic_stable_structures::{ storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
@@ -14,8 +13,6 @@ use crate::{
 };
 
 use super::patient::NIK;
-
-
 
 pub type UserId = NIK;
 pub type ProviderId = Id;
@@ -75,8 +72,11 @@ impl MemBoundMarker for CompositeKey {
 
 // ----------------------------------------- Begin Builder -----------------------------------------
 
-/// used to get the correct threshold for the composite key
+/// marker trait for usage
+pub trait UsageMarker {}
 zero_sized_state!(UserBatch, ProviderBatch, ByEmr, ByRecordsKey, UnknownUsage);
+
+/// used to get the correct threshold for the composite key
 pub trait Threshold {
     type T;
 

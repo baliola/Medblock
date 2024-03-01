@@ -31,7 +31,12 @@ pub trait ToResponse<T: ResponseMarker> {
     fn to_response(&self) -> T;
 }
 
-use crate::{ deref, measure_alloc, internal_types::{ AsciiRecordsKey, Id, Timestamp } };
+use crate::{
+    deref,
+    internal_types::{ AsciiRecordsKey, Id, Timestamp },
+    measure_alloc,
+    mem::shared::Stable,
+};
 
 use self::{
     core::{ CoreEmrRegistry, RawEmr },
@@ -41,7 +46,8 @@ use self::{
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
 pub enum RegistryError {
-    #[error(transparent)] OwnerMapError(#[from] patient::OwnerMapError),
+    #[error(transparent)] OwnerMapError(#[from] patient::BindingMapError),
+    #[error(transparent)] CoreRegistryError(#[from] core::CoreRegistryError),
 }
 
 pub type RegistryResult<T = ()> = Result<T, RegistryError>;
@@ -121,7 +127,15 @@ impl EmrRegistry {
         user_id: UserId,
         provider: ProviderId,
         emr_id: Id
-    ) -> Result<(), String> {
+    ) -> RegistryResult {
+        let key = CompositeKeyBuilder::new()
+            .emr()
+            .with_user(user_id.clone())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        self.core_emrs.is_emr_exists(key)?;
+
         let partial_key = CompositeKeyBuilder::new()
             .records_key()
             .with_user(user_id)
@@ -136,14 +150,14 @@ impl EmrRegistry {
         Ok(())
     }
 
-    // /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
-    // pub fn get_patient_emr_list(&self, patient: &patient::Owner) -> Option<Vec<Id>> {
-    //     let Some(internal_id) = self.owners.get_nik(patient) else {
-    //         return None;
-    //     };
-
-    //     self.owner_emrs.emr_list(&internal_id)
-    // }
+    /// get all user emr id, will return [None] if the nik used as index is invalid or no emr was found
+    pub fn get_patient_emr_list(
+        &self,
+        patient: &patient::Owner
+    ) -> RegistryResult<Vec<Stable<EmrId>>> {
+        let internal_id = self.owners.get_nik(patient)?;
+        Ok(self.owner_emrs.emr_list(&internal_id)?)
+    }
 
     // pub fn is_valid_patient(&self, owner: &patient::Owner) -> bool {
     //     self.owners.is_valid_owner(owner)

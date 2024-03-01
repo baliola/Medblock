@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use candid::error;
 use ic_stable_structures::{ BTreeMap };
 
 use crate::{ internal_types::{ AsciiRecordsKey, Id }, mem::shared::{ Memory, Stable, ToStable } };
@@ -21,6 +22,13 @@ use super::key::{
     UserId,
 };
 
+#[derive(thiserror::Error, Debug, candid::CandidType, serde::Deserialize)]
+pub enum CoreRegistryError {
+    #[error("The EMR does not exist")]
+    NotExist,
+}
+
+pub type RegistryResult<T> = Result<T, CoreRegistryError>;
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
 impl CoreEmrRegistry {
@@ -57,12 +65,17 @@ impl CoreEmrRegistry {
     pub fn is_emr_exists(
         &self,
         key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
-    ) -> bool {
+    ) -> RegistryResult<()> {
         let key = key.build().to_stable();
-        self.0
-            .range(key..)
-            .max()
-            .is_some()
+        match
+            self.0
+                .range(key..)
+                .max()
+                .is_some()
+        {
+            true => Ok(()),
+            false => Err(CoreRegistryError::NotExist),
+        }
     }
 
     pub fn update(
@@ -285,13 +298,13 @@ mod tests {
 
         let result = registry.is_emr_exists(key.clone());
 
-        assert!(result);
+        assert!(result.is_ok());
 
         registry.remove_record(key.clone());
 
         let result = registry.is_emr_exists(key.clone());
 
-        assert!(!result);
+        assert!(!result.is_ok());
     }
 }
 
