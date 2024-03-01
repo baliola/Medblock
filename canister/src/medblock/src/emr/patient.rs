@@ -99,35 +99,35 @@ pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BindingMapError {
+pub enum PatientBindingMapError {
     #[error("operation not permitted, user exists")]
     UserExist,
     #[error("operation not permitted, user does not exist")]
     UserDoesNotExist,
 }
 
-pub type BindingMapResult<T = ()> = Result<T, BindingMapError>;
+pub type PatientBindingMapResult<T = ()> = Result<T, PatientBindingMapError>;
 
 impl OwnerMap {
-    pub fn revoke(&mut self, owner: &Owner) -> BindingMapResult {
+    pub fn revoke(&mut self, owner: &Owner) -> PatientBindingMapResult {
         self.0
             .remove(owner)
             .map(|_| ())
-            .ok_or(BindingMapError::UserDoesNotExist)
+            .ok_or(PatientBindingMapError::UserDoesNotExist)
     }
 
-    pub fn bind(&mut self, owner: Owner, nik: NIK) -> BindingMapResult {
+    pub fn bind(&mut self, owner: Owner, nik: NIK) -> PatientBindingMapResult {
         if self.get_nik(&owner).is_ok() {
-            return Err(BindingMapError::UserExist);
+            return Err(PatientBindingMapError::UserExist);
         }
 
         let _ = self.0.insert(owner, nik.to_stable());
         Ok(())
     }
 
-    pub fn rebind(&mut self, owner: Owner, nik: NIK) -> BindingMapResult {
+    pub fn rebind(&mut self, owner: Owner, nik: NIK) -> PatientBindingMapResult {
         if self.get_nik(&owner).is_err() {
-            return Err(BindingMapError::UserDoesNotExist);
+            return Err(PatientBindingMapError::UserDoesNotExist);
         }
 
         let _ = self.0.insert(owner, nik.to_stable());
@@ -135,8 +135,8 @@ impl OwnerMap {
     }
 
     /// will return an error if owner does not exists
-    pub fn get_nik(&self, owner: &Owner) -> Result<Stable<UserId>, BindingMapError> {
-        self.0.get(owner).ok_or(BindingMapError::UserDoesNotExist)
+    pub fn get_nik(&self, owner: &Owner) -> PatientBindingMapResult<Stable<UserId>> {
+        self.0.get(owner).ok_or(PatientBindingMapError::UserDoesNotExist)
     }
 
     pub fn new(memory_manager: MemoryManager) -> Self {
@@ -161,7 +161,7 @@ mod test_owner_map {
         let nik = NIK::from([0u8; 32]);
 
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
-        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap_err(), BindingMapError::UserExist);
+        assert_eq!(owner_map.bind(owner, nik.clone()).unwrap_err(), PatientBindingMapError::UserExist);
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod test_owner_map {
 
         assert_eq!(
             owner_map.rebind(owner, nik.clone()).unwrap_err(),
-            BindingMapError::UserDoesNotExist
+            PatientBindingMapError::UserDoesNotExist
         );
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.rebind(owner, nik.clone()).unwrap(), ());
@@ -184,7 +184,7 @@ mod test_owner_map {
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
-        assert_eq!(owner_map.revoke(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.revoke(&owner).unwrap_err(), PatientBindingMapError::UserDoesNotExist);
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.revoke(&owner).unwrap(), ());
     }
@@ -195,7 +195,7 @@ mod test_owner_map {
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
-        assert_eq!(owner_map.get_nik(&owner).unwrap_err(), BindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.get_nik(&owner).unwrap_err(), PatientBindingMapError::UserDoesNotExist);
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.get_nik(&owner).unwrap(), nik.to_stable());
     }
@@ -231,11 +231,11 @@ impl EmrBindingMap {
         self.0.contains_key(nik.to_stable(), emr_id.to_stable())
     }
 
-    pub fn emr_list(&self, nik: &NIK) -> BindingMapResult<Vec<Stable<EmrId>>> {
+    pub fn emr_list(&self, nik: &NIK) -> PatientBindingMapResult<Vec<Stable<EmrId>>> {
         Ok(
             self.0
                 .get_set_associated_by_key(&nik.clone().to_stable())
-                .ok_or(BindingMapError::UserDoesNotExist)?
+                .ok_or(PatientBindingMapError::UserDoesNotExist)?
         )
     }
 

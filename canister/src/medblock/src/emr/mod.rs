@@ -46,7 +46,7 @@ use self::{
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize)]
 pub enum RegistryError {
-    #[error(transparent)] OwnerMapError(#[from] patient::BindingMapError),
+    #[error(transparent)] OwnerMapError(#[from] patient::PatientBindingMapError),
     #[error(transparent)] CoreRegistryError(#[from] core::CoreRegistryError),
 }
 

@@ -14,7 +14,7 @@ use serde::Deserialize;
 use crate::{
     deref,
     internal_types::{ Id, Timestamp },
-    mem::shared::{ Stable, StableSet, ToStable },
+    mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
 use super::{ patient::EmrIdCollection, EmrId };
@@ -250,30 +250,70 @@ impl Issued {
     }
 }
 
-// /// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
-// /// this is used to track healthcare providers using their principal. this is needed because we want to be able to change the principal without costly update. we can just update the principal here.
-// #[derive(Default)]
-// pub struct ProvidersBindings(SBTreeMap<ProviderPrincipal, InternalProviderId>);
-// deref!(mut ProvidersBindings: SBTreeMap<ProviderPrincipal, InternalProviderId>);
+/// Healthcare principal to internal provider id map. used to track healthcare providers using [ProviderPrincipal] as key. resolve to that provider's [InternalProviderId].
+/// this is used to track healthcare providers using their principal. this is needed because we want to be able to change the principal without costly update. we can just update the principal here.
+pub struct ProvidersBindings(BTreeMap<ProviderPrincipal, Stable<InternalProviderId>, Memory>);
+deref!(mut ProvidersBindings: BTreeMap<ProviderPrincipal, Stable<InternalProviderId>, Memory>);
+#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ProviderBindingMapError {
+    #[error("operation not permitted, provider exists")]
+    ProviderExist,
+    #[error("operation not permitted, provider does not exist")]
+    ProviderDoesNotExist,
+}
 
-// impl ProvidersBindings {
-//     pub fn bind(
-//         &mut self,
-//         principal: ProviderPrincipal,
-//         internal_id: InternalProviderId
-//     ) -> Result<(), OutOfMemory> {
-//         Ok(self.insert(principal, internal_id).map(|_| ())?)
-//     }
-// }
+pub type ProviderBindingMapResult<T = ()> = Result<T, ProviderBindingMapError>;
 
-// impl ProvidersBindings {
-//     pub fn get_internal_id(
-//         &self,
-//         principal: &ProviderPrincipal
-//     ) -> Option<SRef<'_, InternalProviderId>> {
-//         self.get(principal)
-//     }
-// }
+impl ProvidersBindings {
+    pub fn revoke(&mut self, principal: &ProviderPrincipal) -> ProviderBindingMapResult {
+        self.0
+            .remove(principal)
+            .map(|_| ())
+            .ok_or(ProviderBindingMapError::ProviderDoesNotExist)
+    }
+
+    pub fn bind(
+        &mut self,
+        provider: ProviderPrincipal,
+        internal_id: InternalProviderId
+    ) -> ProviderBindingMapResult {
+        if self.get_internal_id(&provider).is_ok() {
+            return Err(ProviderBindingMapError::ProviderExist);
+        }
+
+        let _ = self.0.insert(provider, internal_id.to_stable());
+        Ok(())
+    }
+
+    pub fn rebind(
+        &mut self,
+        provider: ProviderPrincipal,
+        internal_id: InternalProviderId
+    ) -> ProviderBindingMapResult {
+        if self.get_internal_id(&provider).is_err() {
+            return Err(ProviderBindingMapError::ProviderDoesNotExist);
+        }
+
+        let _ = self.0.insert(provider, internal_id.to_stable());
+        Ok(())
+    }
+
+    /// will return an error if owner does not exists
+    pub fn get_internal_id(
+        &self,
+        provider: &ProviderPrincipal
+    ) -> ProviderBindingMapResult<Stable<InternalProviderId>> {
+        self.0.get(provider).ok_or(ProviderBindingMapError::ProviderDoesNotExist)
+    }
+
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+    }
+
+    pub fn is_valid_owner(&self, provider: &ProviderPrincipal) -> bool {
+        self.0.contains_key(provider)
+    }
+}
 
 // /// Healthcare provider map. used to track healthcare providers using [InternalProviderId] as key. resolves to version aware [Provider].
 // #[derive(Default)]
