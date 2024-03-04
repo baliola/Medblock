@@ -23,7 +23,9 @@ use uuid::Uuid;
     Debug,
     Copy,
     Deserialize,
-    Serialize
+    Serialize,
+    Encode,
+    Decode
 )]
 pub struct Timestamp(pub(crate) u64);
 impl_max_size!(for Timestamp: u64);
@@ -95,7 +97,6 @@ impl<const N: usize> Default for AsciiRecordsKey<N> {
     }
 }
 
-/// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
 const DEFAULT_RECORDS_LEN: usize = 32;
 deref!(AsciiRecordsKey: [u8; DEFAULT_RECORDS_LEN] |_self| => &_self.key);
 

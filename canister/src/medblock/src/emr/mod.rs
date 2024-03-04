@@ -58,7 +58,7 @@ pub struct EmrRegistry {
     core_emrs: CoreEmrRegistry,
 }
 
-// placeholder, will be removed later
+// TODO: placeholder, will be removed later
 impl Default for EmrRegistry {
     fn default() -> Self {
         todo!()

@@ -1,30 +1,36 @@
 use std::ops::Add;
 
-use candid::{ CandidType, Principal };
+use candid::{ CandidType };
 use ic_stable_memory::{
     collections::SBTreeMap,
     derive::{ AsFixedSizeBytes, StableType },
     primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
     SBox,
 };
-use ic_stable_structures::BTreeMap;
+use ic_stable_structures::{ storable::Bound, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 use serde::Deserialize;
 
 use crate::{
     deref,
-    internal_types::{ Id, Timestamp },
-    mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
+    impl_max_size,
+    impl_mem_bound,
+    internal_types::{ AsciiRecordsKey, Id, Timestamp },
+    mem::{ shared::{ MemBoundMarker, Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
 use super::{ patient::EmrIdCollection, EmrId };
 
-#[derive(CandidType, Deserialize, Debug)]
+type Principal = ic_principal::Principal;
+
+#[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone)]
 pub enum Status {
     Active,
-
     Suspended,
 }
+
+impl_max_size!(for Status: Status);
+impl_mem_bound!(for Status: bounded; fixed_size: true);
 
 impl Status {
     /// Returns `true` if the status is [`Suspended`].
@@ -44,156 +50,147 @@ impl Status {
     }
 }
 
-#[derive(Default)]
-pub struct ProviderRegistry {
-    // providers: Providers,
-    // providers_bindings: ProvidersBindings,
-    // issued: Issued,
+#[derive(thiserror::Error, Debug, CandidType, serde::Deserialize)]
+pub enum RegistryError {
+    #[error(transparent)] IssueMapError(#[from] IssueMapError),
+    #[error(transparent)] ProviderBindingMapError(#[from] ProviderBindingMapError),
 }
 
-// impl ProviderRegistry {
-//     /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
-//     /// so even if the provider principal is changed, this function will still return true if the provider is the one that issued the emr.
-//     pub fn is_issued_by(&self, provider: &Principal, emr_id: &Id) -> bool {
-//         let Some(id) = self.providers_bindings.get_internal_id(provider) else {
-//             return false;
-//         };
+pub type ProviderRegistryResult<T = ()> = Result<T, RegistryError>;
 
-//         self.issued.is_issued_by(&id, emr_id)
-//     }
+pub struct ProviderRegistry {
+    providers: Providers,
+    providers_bindings: ProvidersBindings,
+    issued: Issued,
+}
 
-//     pub fn issue_emr(&mut self, provider: &Principal, emr_id: Id) -> Result<(), &'static str> {
-//         let Some(id) = self.providers_bindings.get_internal_id(provider) else {
-//             return Err("provider not found");
-//         };
+impl ProviderRegistry {
+    /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
+    /// so even if the provider principal is changed, this function will still return true if the provider is the one that issued the emr.
+    pub fn is_issued_by(&self, provider: &ProviderPrincipal, emr_id: Id) -> bool {
+        let Ok(id) = self.providers_bindings.get_internal_id(provider) else {
+            return false;
+        };
 
-//         let Some(mut provider) = self.providers.get_mut(&id) else {
-//             return Err("provider not found");
-//         };
+        self.issued.is_issued_by(id.into_inner(), emr_id)
+    }
 
-//         provider.increment_session();
+    pub fn issue_emr(&mut self, provider: &Principal, emr_id: Id) -> ProviderRegistryResult<()> {
+        match self.providers_bindings.get(provider) {
+            Some(id) => {
+                self.providers.try_mutate(
+                    id.into_inner(),
+                    |mut provider| -> ProviderRegistryResult<()> {
+                        provider.increment_session();
+                        Ok(self.issued.issue_emr(&provider.internal_id, emr_id)?)
+                    }
+                )?
+            }
+            None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
+        }
+    }
 
-//         self.issued.issue_emr(&id, emr_id)?;
-//         Ok(())
-//     }
+    /// check a given principal is valid and registered as provider
+    pub fn is_valid_provider(&self, provider: &ProviderPrincipal) -> bool {
+        self.providers_bindings.contains_key(provider)
+    }
 
-//     pub fn get_provider_mut(
-//         &mut self,
-//         provider: &Principal
-//     ) -> Result<SRefMut<'_, Provider>, &str> {
-//         let Some(id) = self.providers_bindings.get_internal_id(provider) else {
-//             return Err("provider not found");
-//         };
+    /// register a new provider, this function will create a new provider and bind the principal to the internal id.
+    pub fn register_new_provider(
+        &mut self,
+        provider_principal: ProviderPrincipal,
+        display_name: AsciiRecordsKey<64>,
+        id: Id
+    ) -> ProviderRegistryResult<()> {
+        // create a new provider, note that this might change version depending on the version of the emr used.
+        let provider = Provider::new(display_name, id);
 
-//         self.providers.get_mut(&id).ok_or("provider not found")
-//     }
+        // bind the principal to the internal id
+        self.providers_bindings.bind(provider_principal, provider.internal_id.clone())?;
 
-//     /// check a given principal is valid and registered as provider
-//     pub fn is_valid_provider(&self, provider: &Principal) -> bool {
-//         self.providers_bindings.contains_key(provider)
-//     }
+        // add the provider to the provider map
+        self.providers.add_provider(provider.into())?;
 
-//     /// register a new provider, this function will create a new provider and bind the principal to the internal id.
-//     pub fn register_new_provider(
-//         &mut self,
-//         provider_principal: ProviderPrincipal,
-//         display_name: String,
-//         id: Id
-//     ) -> Result<(), OutOfMemory> {
-//         // create a new provider, note that this might change version depending on the version of the emr used.
-//         let provider = ProviderV001::new(display_name, provider_principal, id)?;
+        Ok(())
+    }
 
-//         // bind the principal to the internal id
-//         self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
+    /// suspend a provider, this function will change the provider activation status to suspended.
+    /// suspended provider can't do things such as issuing, and reading emr
+    pub fn suspend_provider(
+        &mut self,
+        provider_principal: ProviderPrincipal
+    ) -> ProviderRegistryResult<()> {
+        match self.providers_bindings.get(&provider_principal) {
+            Some(id) => {
+                Ok(
+                    self.providers.try_mutate(id.into_inner(), |mut provider| {
+                        provider.suspend();
+                    })?
+                )
+            }
+            None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
+        }
+    }
 
-//         // add the provider to the provider map
-//         self.providers.add_provider(provider.into())?;
+    /// unsuspend a provider
+    pub fn unsuspend_provider(
+        &mut self,
+        provider: &ProviderPrincipal
+    ) -> ProviderRegistryResult<()> {
+        match self.providers_bindings.get(provider) {
+            Some(id) => {
+                Ok(
+                    self.providers.try_mutate(id.into_inner(), |mut provider| {
+                        provider.unsuspend();
+                    })?
+                )
+            }
+            None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
+        }
+    }
 
-//         Ok(())
-//     }
+    /// check if a provider is suspended
+    pub fn is_provider_suspended(&self, provider: &Principal) -> ProviderRegistryResult<bool> {
+        match self.providers_bindings.get(provider) {
+            Some(id) => {
+                Ok(
+                    self.providers
+                        .get_provider(id.into_inner())
+                        .map(|provider| provider.activation_status.is_suspended())
+                        .ok_or(ProviderBindingMapError::ProviderDoesNotExist)?
+                )
+            }
+            None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
+        }
+    }
 
-//     /// suspend a provider, this function will change the provider activation status to suspended.
-//     /// suspended provider can't do things such as issuing, and reading emr
-//     pub fn suspend_provider(
-//         &mut self,
-//         provider_principal: ProviderPrincipal
-//     ) -> Result<(), &'static str> {
-//         let Some(internal_id) = self.providers_bindings.get_internal_id(&provider_principal) else {
-//             return Err("provider not found");
-//         };
+    /// get issued emr by a provider, this function will return a vector of emr id issued by a provider.
+    ///
+    /// `provider`: the provider principal
+    ///
+    /// `anchor`: the anchor, this is used to paginate the result. the result will be returned starting from the anchor.
+    /// so for example if the anchor is 0, the result will be returned starting from the first emr issued by the provider.
+    /// and if the anchor is 10, the result will be returned starting from the 10th emr issued by the provider.
+    ///
+    /// `max`: the maximum number of emr to be returned.
+    pub fn get_issued(
+        &self,
+        provider: &ProviderPrincipal,
+        page: u64,
+        limit: u64
+    ) -> ProviderRegistryResult<Vec<EmrId>> {
+        let internal_id = self.providers_bindings.get_internal_id(provider)?;
 
-//         let Some(mut provider) = self.providers.get_mut(&internal_id) else {
-//             return Err("provider not found");
-//         };
-
-//         match *provider {
-//             Provider::V001(ref mut provider) => {
-//                 provider.activation_status = Status::Suspended;
-//             }
-//         }
-
-//         Ok(())
-//     }
-
-//     /// unsuspend a provider
-//     pub fn unsuspend_provider(&mut self, provider: &Principal) -> Result<(), &'static str> {
-//         let Some(internal_id) = self.providers_bindings.get_internal_id(provider) else {
-//             return Err("provider not found");
-//         };
-
-//         let Some(mut provider) = self.providers.get_mut(&internal_id) else {
-//             return Err("provider not found");
-//         };
-
-//         match *provider {
-//             Provider::V001(ref mut provider) => {
-//                 // no op if status is suspended
-//                 if provider.activation_status.is_verified() {
-//                     provider.activation_status = Status::Suspended;
-//                 }
-//             }
-//         }
-
-//         Ok(())
-//     }
-
-//     /// check if a provider is suspended
-//     pub fn is_provider_suspended(&self, provider: &Principal) -> Result<bool, &'static str> {
-//         let Some(internal_id) = self.providers_bindings.get_internal_id(provider) else {
-//             return Err("provider not found");
-//         };
-
-//         let Some(provider) = self.providers.get(&internal_id) else {
-//             return Err("provider not found");
-//         };
-
-//         match *provider {
-//             Provider::V001(ref provider) => { Ok(provider.activation_status.is_suspended()) }
-//         }
-//     }
-
-//     /// get issued emr by a provider, this function will return a vector of emr id issued by a provider.
-//     ///
-//     /// `provider`: the provider principal
-//     ///
-//     /// `anchor`: the anchor, this is used to paginate the result. the result will be returned starting from the anchor.
-//     /// so for example if the anchor is 0, the result will be returned starting from the first emr issued by the provider.
-//     /// and if the anchor is 10, the result will be returned starting from the 10th emr issued by the provider.
-//     ///
-//     /// `max`: the maximum number of emr to be returned.
-//     pub fn get_issued(
-//         &self,
-//         provider: &ProviderPrincipal,
-//         anchor: u64,
-//         max: u8
-//     ) -> Result<Vec<Id>, &'static str> {
-//         let internal_id = self.providers_bindings
-//             .get_internal_id(provider)
-//             .ok_or("provider not found")?;
-
-//         self.issued.get_issued(&internal_id, anchor, max).ok_or("no emr collection found")
-//     }
-// }
+        Ok(
+            self.issued.get_issued(internal_id.into_inner(), page, limit).map(|ids|
+                ids
+                    .into_iter()
+                    .map(|ids| ids.into_inner())
+                    .collect::<Vec<_>>()
+            )?
+        )
+    }
+}
 
 pub type InternalProviderId = Id;
 pub type ProviderPrincipal = ic_principal::Principal;
@@ -315,204 +312,187 @@ impl ProvidersBindings {
     }
 }
 
-// /// Healthcare provider map. used to track healthcare providers using [InternalProviderId] as key. resolves to version aware [Provider].
-// #[derive(Default)]
-// pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
+pub struct Providers(BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>);
 
-// // pub struct TProviders(BTreeMap<InternalProviderId, >)
+impl Providers {
+    pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
+        match self.is_exist(provider.internal_id.clone()) {
+            true => Err(ProviderBindingMapError::ProviderExist),
+            false =>
+                Ok(
+                    self.0
+                        .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
+                        .map(|_| ())
+                        .expect("provider does not exist, this is a bug")
+                ),
+        }
+    }
 
-// impl Providers {
-//     pub fn add_provider(&mut self, provider: Provider) -> Result<(), OutOfMemory> {
-//         Ok(self.insert(provider.internal_id().clone(), provider).map(|_| ())?)
-//     }
-// }
+    fn update_unchecked(&mut self, provider: Stable<Provider>) {
+        let _ = self.0.insert(provider.internal_id.clone().to_stable(), provider);
+    }
 
-// deref!(mut Providers: SBTreeMap<InternalProviderId, Provider>);
+    /// try mutate a provider, will return [ProviderBindingMapError::ProviderDoesNotExist] if the provider does not exist
+    pub fn try_mutate<T>(
+        &mut self,
+        provider: InternalProviderId,
+        f: impl FnOnce(&mut Stable<Provider>) -> T
+    ) -> ProviderBindingMapResult<T> {
+        let mut raw = self.0.get(&provider.to_stable());
 
-// #[derive(StableType, AsFixedSizeBytes, Debug)]
-// pub enum Provider {
-//     V001(ProviderV001),
-// }
+        match raw {
+            Some(mut provider) => {
+                let result = f(&mut provider);
 
-// impl EssentialProviderAttributes for Provider {
-//     fn internal_id(&self) -> &InternalProviderId {
-//         match self {
-//             Provider::V001(provider) => provider.internal_id(),
-//         }
-//     }
-// }
+                self.update_unchecked(provider);
 
-// impl Billable for Provider {
-//     fn session(&self) -> Session {
-//         match self {
-//             Provider::V001(provider) => provider.session(),
-//         }
-//     }
+                Ok(result)
+            }
+            None => Err(ProviderBindingMapError::ProviderDoesNotExist),
+        }
+    }
 
-//     fn session_mut(&mut self) -> &mut Session {
-//         match self {
-//             Provider::V001(provider) => provider.session_mut(),
-//         }
-//     }
-// }
+    pub fn is_exist(&self, provider: InternalProviderId) -> bool {
+        self.0.contains_key(&provider.to_stable())
+    }
 
-// impl std::cmp::PartialEq for Provider {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.internal_id().eq(other.internal_id())
-//     }
-// }
+    pub fn new(memory_manager: MemoryManager) -> Self {
+        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+    }
 
-// impl std::cmp::Eq for Provider {}
+    pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider>> {
+        self.0.get(&provider.to_stable())
+    }
+}
 
-// impl std::cmp::PartialOrd for Provider {
-//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         self.internal_id().partial_cmp(other.internal_id())
-//     }
-// }
+pub trait Billable {
+    /// returns immutable session for this provider
+    fn session(&self) -> Session;
 
-// impl std::cmp::Ord for Provider {
-//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//         self.internal_id().cmp(other.internal_id())
-//     }
-// }
+    /// returns mutable session for this provider
+    fn session_mut(&mut self) -> &mut Session;
 
-// /// Essential provider attributes, this trait must be implemented for all [Provider] enum members.
-// pub trait EssentialProviderAttributes {
-//     /// used to automatically derive [PartialEq], [PartialOrd], [Ord] and [Eq] for [Provider] enum members at enum level.
-//     fn internal_id(&self) -> &InternalProviderId;
-// }
+    /// increment the session for this provider, call this when issuing emr
+    fn increment_session(&mut self) {
+        self.session_mut().increment_session();
+    }
 
-// /// Billable trait, this trait must be implemented for all [Provider] enum members.
-// pub trait Billable {
-//     /// returns immutable session for this provider
-//     fn session(&self) -> Session;
+    fn reset_session(&mut self) {
+        self.session_mut().reset_session();
+    }
+}
 
-//     /// returns mutable session for this provider
-//     fn session_mut(&mut self) -> &mut Session;
+// START ------------------------------ SESSION ------------------------------ START
 
-//     /// increment the session for this provider, call this when issuing emr
-//     fn increment_session(&mut self) {
-//         self.session_mut().increment_session();
-//     }
-// }
+/// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+#[derive(Deserialize, CandidType, Debug, Default, Clone, Copy, Encode, Decode)]
+pub struct Session(u64);
 
-// // START ------------------------------ SESSION ------------------------------ START
+// blanket impl for session
+impl<T> From<T> for Session where T: Into<u64> {
+    fn from(session: T) -> Self {
+        Self(session.into())
+    }
+}
 
-// /// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-// #[derive(StableType, AsFixedSizeBytes, CandidType, Debug, Default, Clone, Copy)]
-// pub struct Session(u64);
+impl Session {
+    /// create a new session
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-// // blanket impl for session
-// impl<T> From<T> for Session where T: Into<u64> {
-//     fn from(session: T) -> Self {
-//         Self(session.into())
-//     }
-// }
+    /// increment the session
+    pub fn increment_session(&mut self) {
+        let _ = self.0.add(1);
+    }
 
-// impl Session {
-//     /// create a new session
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
+    /// reset the session, call this when the provider had settled their bill
+    pub fn reset_session(&mut self) {
+        self.0 = 0;
+    }
 
-//     /// increment the session
-//     pub fn increment_session(&mut self) {
-//         let _ = self.0.add(1);
-//     }
+    /// return inner session
+    pub fn session(&self) -> u64 {
+        self.0
+    }
+}
 
-//     /// reset the session, call this when the provider had settled their bill
-//     pub fn reset_session(&mut self) {
-//         self.0 = 0;
-//     }
+// END ------------------------------ SESSION ------------------------------ END
 
-//     /// return inner session
-//     pub fn session(&self) -> u64 {
-//         self.0
-//     }
-// }
+// START ------------------------------ PROVIDER------------------------------ START
 
-// // END ------------------------------ SESSION ------------------------------ END
+/// Healthcare provider representaion which have and internal
+/// canister identifier that is used to identify the provider. that means, whichever principal
+/// that is associated with this provider internal id is the principal that can issue emr for this provider.
+/// this also makes it possible to change the underlying principal without costly update.
+#[derive(Clone, Encode, Decode)]
+pub struct Provider {
+    /// provider activation status, this is used to track if the provider is still active
+    /// can either be verified or suspended
+    activation_status: Status,
 
-// // START ------------------------------ PROVIDER V1 ------------------------------ START
+    /// encrypted display name for health provider
+    display_name: AsciiRecordsKey<64>,
 
-// /// Healthcare provider representaion which have and internal
-// /// canister identifier that is used to identify the provider. that means, whichever principal
-// /// that is associated with this provider internal id is the principal that can issue emr for this provider.
-// /// this also makes it possible to change the underlying principal without costly update.
-// #[derive(StableType, AsFixedSizeBytes, CandidType, Debug)]
-// pub struct ProviderV001 {
-//     /// provider activation status, this is used to track if the provider is still active
-//     /// can either be verified or suspended
-//     activation_status: Status,
+    /// internal identifier for this provider
+    /// we separate this from the principal because we want to be able to change the principal
+    /// incase the health provider lost or somehow can't access their underlying internet identity
+    internal_id: InternalProviderId,
 
-//     /// encrypted display name for health provider
-//     display_name: SBox<String>,
+    /// provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+    session: Session,
 
-//     /// internal identifier for this provider
-//     /// we separate this from the principal because we want to be able to change the principal
-//     /// incase the health provider lost or somehow can't access their underlying internet identity
-//     internal_id: InternalProviderId,
+    // TODO: discuss this. are we gonna make the billing automaticly onchain?
+    // active_until:
+    /// time when this provider was registered in nanosecond
+    registered_at: Timestamp,
 
-//     /// provider associated principal, the principal that get set here effectively
-//     /// issues all the emr that this provider internal id issues.
-//     owner_principal: Principal,
+    /// time when this provider was last updated in nanosecond
+    updated_at: Timestamp,
+    // TODO : discuss this as to what data is gonna be collected
+    // provider_details:
+}
 
-//     /// provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-//     session: Session,
+impl Provider {
+    pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
+        Self {
+            activation_status: Status::Active,
+            display_name,
+            internal_id,
+            session: Session::default(),
+            registered_at: Timestamp::new(),
+            updated_at: Timestamp::new(),
+        }
+    }
 
-//     // TODO: discuss this. are we gonna make the billing automaticly onchain?
-//     // active_until:
-//     /// time when this provider was registered in nanosecond
-//     registered_at: Timestamp,
+    pub fn suspend(&mut self) {
+        self.activation_status = Status::Suspended;
+    }
 
-//     /// time when this provider was last updated in nanosecond
-//     updated_at: Timestamp,
-//     // TODO : discuss this as to what data is gonna be collected
-//     // provider_details:
-// }
+    pub fn unsuspend(&mut self) {
+        self.activation_status = Status::Active;
+    }
 
-// pub struct TProvider {
-//     activation_status: Status,
-//     display_name: String,
-// }
-// impl Billable for ProviderV001 {
-//     fn session(&self) -> Session {
-//         self.session
-//     }
+    pub fn incretment_session(&mut self) {
+        self.session.increment_session();
+    }
 
-//     fn session_mut(&mut self) -> &mut Session {
-//         &mut self.session
-//     }
-// }
+    pub fn reset_session(&mut self) {
+        self.session.reset_session();
+    }
+}
 
-// impl ProviderV001 {
-//     pub fn new(
-//         encrypted_display_name: String,
-//         initial_principal: Principal,
-//         id: Id
-//     ) -> Result<Self, OutOfMemory> {
-//         Ok(ProviderV001 {
-//             session: Session::new(),
-//             activation_status: Status::Verified,
-//             display_name: SBox::new(encrypted_display_name).map_err(OutOfMemory::from)?,
-//             internal_id: id,
-//             owner_principal: initial_principal,
-//             registered_at: Timestamp::default(),
-//             updated_at: Timestamp::default(),
-//         })
-//     }
-// }
+impl_max_size!(for Provider: Provider);
+impl_mem_bound!(for Provider: bounded; fixed_size: true);
 
-// impl From<ProviderV001> for Provider {
-//     fn from(provider: ProviderV001) -> Self {
-//         Provider::V001(provider)
-//     }
-// }
+impl Billable for Provider {
+    fn session(&self) -> Session {
+        self.session
+    }
 
-// impl EssentialProviderAttributes for ProviderV001 {
-//     fn internal_id(&self) -> &InternalProviderId {
-//         &self.internal_id
-//     }
-// }
+    fn session_mut(&mut self) -> &mut Session {
+        &mut self.session
+    }
+}
 
-// // END ------------------------------ PROVIDER V1 ------------------------------ END
+// END ------------------------------ PROVIDER V1 ------------------------------ END

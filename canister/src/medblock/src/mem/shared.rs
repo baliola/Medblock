@@ -1,4 +1,4 @@
-use std::{ borrow::Borrow, ops::RangeBounds };
+use std::{ borrow::Borrow, ops::{ DerefMut, RangeBounds } };
 
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
@@ -55,6 +55,12 @@ impl<T> std::ops::Deref for Stable<T> where T: MemBoundMarker {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> DerefMut for Stable<T> where T: MemBoundMarker {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
