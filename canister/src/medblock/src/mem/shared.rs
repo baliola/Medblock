@@ -256,7 +256,7 @@ impl<K, V> StableSet<K, V>
 
         let range = self.0.range((key.clone(), V::default())..);
 
-        for (k, v) in range {
+        for (k, _v) in range {
             if k.0 == *key {
                 result.push(k.1.clone());
             }

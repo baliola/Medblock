@@ -1,12 +1,11 @@
-use candid::{ CandidType, Principal };
+use candid::{ CandidType };
 use ic_stable_memory::{
-    collections::{ SBTreeMap, SBTreeSet },
+    collections::{ SBTreeSet },
     derive::{ AsFixedSizeBytes, StableType },
-    primitive::s_ref::SRef,
 };
-use ic_stable_structures::memory_manager;
+
 use parity_scale_codec::{ Decode, Encode };
-use serde_json::error;
+
 
 use crate::{
     deref,
@@ -206,9 +205,9 @@ mod test_owner_map {
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
-        assert_eq!(owner_map.is_valid_owner(&owner), false);
+        assert!(!owner_map.is_valid_owner(&owner));
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
-        assert_eq!(owner_map.is_valid_owner(&owner), true);
+        assert!(owner_map.is_valid_owner(&owner));
     }
 }
 
@@ -232,15 +231,13 @@ impl EmrBindingMap {
     }
 
     pub fn emr_list(&self, nik: &NIK) -> PatientBindingMapResult<Vec<Stable<EmrId>>> {
-        Ok(
-            self.0
+        self.0
                 .get_set_associated_by_key(&nik.clone().to_stable())
-                .ok_or(PatientBindingMapError::UserDoesNotExist)?
-        )
+                .ok_or(PatientBindingMapError::UserDoesNotExist)
     }
 
     pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
-        let _ = self.0.insert(nik.to_stable(), emr_id.to_stable());
+        self.0.insert(nik.to_stable(), emr_id.to_stable());
     }
 }
 
@@ -260,7 +257,7 @@ mod test_emr_binding_map {
         let emr_id = EmrId::new(&random);
 
         emr_binding_map.issue_for(nik.clone(), emr_id.clone());
-        assert_eq!(emr_binding_map.is_owner_of(nik.clone(), emr_id.clone()), true);
+        assert!(emr_binding_map.is_owner_of(nik.clone(), emr_id.clone()));
     }
 
     #[test]

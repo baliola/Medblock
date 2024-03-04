@@ -1,13 +1,8 @@
 use std::ops::Add;
 
 use candid::{ CandidType };
-use ic_stable_memory::{
-    collections::SBTreeMap,
-    derive::{ AsFixedSizeBytes, StableType },
-    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
-    SBox,
-};
-use ic_stable_structures::{ storable::Bound, BTreeMap };
+
+use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 use serde::Deserialize;
 
@@ -16,10 +11,10 @@ use crate::{
     impl_max_size,
     impl_mem_bound,
     internal_types::{ AsciiRecordsKey, Id, Timestamp },
-    mem::{ shared::{ MemBoundMarker, Memory, Stable, StableSet, ToStable }, MemoryManager },
+    mem::{ shared::{ Memory, Stable, StableSet, ToStable }, MemoryManager },
 };
 
-use super::{ patient::EmrIdCollection, EmrId };
+use super::{ EmrId };
 
 type Principal = ic_principal::Principal;
 
@@ -80,7 +75,7 @@ impl ProviderRegistry {
             Some(id) => {
                 self.providers.try_mutate(
                     id.into_inner(),
-                    |mut provider| -> ProviderRegistryResult<()> {
+                    |provider| -> ProviderRegistryResult<()> {
                         provider.increment_session();
                         Ok(self.issued.issue_emr(&provider.internal_id, emr_id)?)
                     }
@@ -109,7 +104,7 @@ impl ProviderRegistry {
         self.providers_bindings.bind(provider_principal, provider.internal_id.clone())?;
 
         // add the provider to the provider map
-        self.providers.add_provider(provider.into())?;
+        self.providers.add_provider(provider)?;
 
         Ok(())
     }
@@ -123,7 +118,7 @@ impl ProviderRegistry {
         match self.providers_bindings.get(&provider_principal) {
             Some(id) => {
                 Ok(
-                    self.providers.try_mutate(id.into_inner(), |mut provider| {
+                    self.providers.try_mutate(id.into_inner(), |provider| {
                         provider.suspend();
                     })?
                 )
@@ -140,7 +135,7 @@ impl ProviderRegistry {
         match self.providers_bindings.get(provider) {
             Some(id) => {
                 Ok(
-                    self.providers.try_mutate(id.into_inner(), |mut provider| {
+                    self.providers.try_mutate(id.into_inner(), |provider| {
                         provider.unsuspend();
                     })?
                 )
@@ -319,12 +314,15 @@ impl Providers {
         match self.is_exist(provider.internal_id.clone()) {
             true => Err(ProviderBindingMapError::ProviderExist),
             false =>
-                Ok(
+                {
                     self.0
-                        .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
-                        .map(|_| ())
-                        .expect("provider does not exist, this is a bug")
-                ),
+                    .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
+                    .map(|_| ())
+                    .expect("provider does not exist, this is a bug");
+                    Ok(
+                        ()
+                    )
+                },
         }
     }
 
@@ -338,7 +336,7 @@ impl Providers {
         provider: InternalProviderId,
         f: impl FnOnce(&mut Stable<Provider>) -> T
     ) -> ProviderBindingMapResult<T> {
-        let mut raw = self.0.get(&provider.to_stable());
+        let raw = self.0.get(&provider.to_stable());
 
         match raw {
             Some(mut provider) => {

@@ -3,16 +3,12 @@ pub mod providers;
 pub mod core;
 pub mod key;
 
-use candid::{ CandidType, Principal };
+use candid::{ CandidType };
 use ic_stable_memory::{
-    collections::SHashMap,
-    derive::{ AsFixedSizeBytes, StableType },
-    primitive::{ s_ref::SRef, s_ref_mut::SRefMut },
-    SBox,
     StableType,
 };
-use serde::Deserialize;
-use serde_json::Value;
+
+
 
 /// marker for types that can be serialized as response, it basically have 2 requirements
 /// and that is candid type and cloneable. this works because while stable memory type may implement
@@ -32,9 +28,7 @@ pub trait ToResponse<T: ResponseMarker> {
 }
 
 use crate::{
-    deref,
-    internal_types::{ AsciiRecordsKey, Id, Timestamp },
-    measure_alloc,
+    internal_types::{ Id },
     mem::shared::Stable,
 };
 
@@ -169,7 +163,7 @@ impl EmrRegistry {
         provider: ProviderId,
         emr_id: Id
     ) -> RegistryResult<RawEmr> {
-        let user_id = self.owners.get_nik(&user_id)?.into_inner();
+        let user_id = self.owners.get_nik(user_id)?.into_inner();
         let key = CompositeKeyBuilder::new()
             .emr()
             .with_user(user_id)

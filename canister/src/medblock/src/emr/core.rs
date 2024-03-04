@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use candid::error;
+
 use ic_stable_structures::{ BTreeMap };
 
 use crate::{ internal_types::{ AsciiRecordsKey, Id }, mem::shared::{ Memory, Stable, ToStable } };
@@ -239,7 +239,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .records_key()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -253,14 +253,14 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_ok());
 
-        let key = CompositeKeyBuilder::new().user_batch().with_user(user.clone().into());
+        let key = CompositeKeyBuilder::new().user_batch().with_user(user.into());
 
         let result = registry.get_user_list_batch(0, 10, key);
         assert_eq!(result, vec![emr_id.clone()]);
@@ -271,7 +271,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -293,7 +293,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .records_key()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -307,7 +307,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -319,7 +319,7 @@ mod tests {
 
         let result = registry.is_emr_exists(key.clone());
 
-        assert!(!result.is_ok());
+        assert!(result.is_err());
     }
 }
 
