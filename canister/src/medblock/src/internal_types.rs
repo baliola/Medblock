@@ -2,9 +2,10 @@ use std::{ str::FromStr };
 
 use candid::CandidType;
 use ic_stable_memory::{ derive::{ AsFixedSizeBytes, StableType } };
+use ic_stable_structures::storable::Bound;
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, impl_max_size, impl_mem_bound, impl_range_bound };
+use crate::{ deref, impl_max_size, impl_mem_bound, impl_range_bound, mem::shared::MemBoundMarker };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -61,7 +62,7 @@ impl Default for Timestamp {
 }
 
 #[derive(thiserror::Error, Debug, CandidType)]
-pub enum EmrKeyError {
+pub enum AsciiKeyError {
     #[error("key must be a ascii string")]
     ContainsInvalidChars,
 
@@ -69,55 +70,57 @@ pub enum EmrKeyError {
     TooLong,
 }
 
-/// arbitry ascii encoded string with max length of 32 bytes
-#[derive(
-    StableType,
-    AsFixedSizeBytes,
-    Hash,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Clone,
-    Debug,
-    Encode,
-    Decode,
-    Default
-)]
-pub struct AsciiRecordsKey {
-    key: [u8; EMR_RECORDS_MAX_LEN_BYTES],
+/// arbitry ascii encoded string with max length of `N` bytes
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
+pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
+    key: [u8; N],
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
     // should probably make the check before initializing this struct so that it may be completely removed
     len: u8,
 }
+
+impl<const N: usize> MemBoundMarker for AsciiRecordsKey<N> {
+    const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: true };
+}
+
+impl<const N: usize> AsciiRecordsKey<N> {
+    pub const fn max_size() -> usize {
+        N + 1
+    }
+}
+
+impl<const N: usize> Default for AsciiRecordsKey<N> {
+    fn default() -> Self {
+        Self { key: [0_u8; N], len: Default::default() }
+    }
+}
+
 /// for some reason [CandidType] only supports fixed size arrays up to 32 bytes
-const EMR_RECORDS_MAX_LEN_BYTES: usize = 32;
-deref!(AsciiRecordsKey: [u8; EMR_RECORDS_MAX_LEN_BYTES] |_self| => &_self.key);
-impl_max_size!(for AsciiRecordsKey: 33);
-impl_mem_bound!(for AsciiRecordsKey: bounded; fixed_size: true);
+const DEFAULT_RECORDS_LEN: usize = 32;
+deref!(AsciiRecordsKey: [u8; DEFAULT_RECORDS_LEN] |_self| => &_self.key);
 
 impl AsciiRecordsKey {
-    pub fn new(s: impl AsRef<str>) -> Result<Self, EmrKeyError> {
+    pub fn new(s: impl AsRef<str>) -> Result<Self, AsciiKeyError> {
         Self::from_str(s.as_ref())
     }
 }
 
-impl FromStr for AsciiRecordsKey {
-    type Err = EmrKeyError;
+impl<const N: usize> FromStr for AsciiRecordsKey<N> {
+    type Err = AsciiKeyError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.is_ascii() {
-            return Err(EmrKeyError::ContainsInvalidChars);
+            return Err(AsciiKeyError::ContainsInvalidChars);
         }
 
         let len = s.len();
 
-        if len > EMR_RECORDS_MAX_LEN_BYTES {
-            return Err(EmrKeyError::TooLong);
+        if len > N {
+            return Err(AsciiKeyError::TooLong);
         }
 
         // TODO: duplicate code as serialization implementation
-        let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
+        let mut key = [0u8; N];
         key[..s.len()].copy_from_slice(s.as_bytes());
 
         Ok(Self {
@@ -126,13 +129,13 @@ impl FromStr for AsciiRecordsKey {
         })
     }
 }
-impl std::fmt::Display for AsciiRecordsKey {
+impl<const N: usize> std::fmt::Display for AsciiRecordsKey<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.to_ascii_str().fmt(f)
     }
 }
 
-impl AsciiRecordsKey {
+impl<const N: usize> AsciiRecordsKey<N> {
     pub fn to_ascii_str(&self) -> &str {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
@@ -254,11 +257,11 @@ mod deserialize {
 
             s.make_ascii_lowercase();
 
-            if s.len() > EMR_RECORDS_MAX_LEN_BYTES {
+            if s.len() > DEFAULT_RECORDS_LEN {
                 return Err(serde::de::Error::custom("key must not exceed 32 ascii characters"));
             }
             // TODO: unnecessary copy
-            let mut key = [0u8; EMR_RECORDS_MAX_LEN_BYTES];
+            let mut key = [0u8; DEFAULT_RECORDS_LEN];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
             Ok(Self {

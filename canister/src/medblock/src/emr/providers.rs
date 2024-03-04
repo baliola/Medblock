@@ -319,6 +319,8 @@ impl ProvidersBindings {
 // #[derive(Default)]
 // pub struct Providers(SBTreeMap<InternalProviderId, Provider>);
 
+// // pub struct TProviders(BTreeMap<InternalProviderId, >)
+
 // impl Providers {
 //     pub fn add_provider(&mut self, provider: Provider) -> Result<(), OutOfMemory> {
 //         Ok(self.insert(provider.internal_id().clone(), provider).map(|_| ())?)
@@ -467,6 +469,11 @@ impl ProvidersBindings {
 //     updated_at: Timestamp,
 //     // TODO : discuss this as to what data is gonna be collected
 //     // provider_details:
+// }
+
+// pub struct TProvider {
+//     activation_status: Status,
+//     display_name: String,
 // }
 // impl Billable for ProviderV001 {
 //     fn session(&self) -> Session {
