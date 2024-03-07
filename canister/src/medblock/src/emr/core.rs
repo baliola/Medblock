@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use candid::error;
+
 use ic_stable_structures::{ BTreeMap };
 
 use crate::{ internal_types::{ AsciiRecordsKey, Id }, mem::shared::{ Memory, Stable, ToStable } };
@@ -150,23 +150,37 @@ impl CoreEmrRegistry {
 
         let threshold = T::threshold(key.as_inner());
 
+        // Iterate over the range iterator
         for (k, _) in iter {
+            // If the threshold of the current key does not match the provided threshold,
+            // break the loop. This ensures that we only process entries with the same threshold.
             if T::threshold(k.as_inner()) != threshold {
                 break;
             }
 
+            // If the emr_id of the current key is the same as the last seen emr_id,
+            // skip this iteration and continue with the next one. This ensures that we only process unique emr_ids.
             if k.emr_id() == &last_id {
                 continue;
             }
 
-            if index >= start && index < end {
+            // If the current index has reached or exceeded the end of the page,
+            // break the loop. This ensures that we stop processing entries once we've reached the end of the page.
+            if index >= end {
+                break;
+            }
+
+            // If the current index has reached or exceeded the start of the page,
+            // add the emr_id of the current key to the result. This ensures that we only start adding emr_ids to the result
+            // once we've reached the start of the page.
+            if index >= start {
                 result.push(k.emr_id().clone());
             }
 
+            // Update the last seen emr_id and increment the index.
             last_id = k.emr_id().clone();
             index += 1;
         }
-
         result
     }
 
@@ -225,7 +239,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .records_key()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -239,14 +253,14 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
         let result = registry.read_by_id(key.clone());
-        assert!(result.is_some());
+        assert!(result.is_ok());
 
-        let key = CompositeKeyBuilder::new().user_batch().with_user(user.clone().into());
+        let key = CompositeKeyBuilder::new().user_batch().with_user(user.into());
 
         let result = registry.get_user_list_batch(0, 10, key);
         assert_eq!(result, vec![emr_id.clone()]);
@@ -257,13 +271,14 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
+
         registry.remove_record(key.clone());
 
         let result = registry.read_by_id(key.clone());
-        assert!(result.is_none());
+        assert!(result.is_err());
     }
 
     #[test]
@@ -278,7 +293,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .records_key()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -292,7 +307,7 @@ mod tests {
 
         let key = CompositeKeyBuilder::new()
             .emr()
-            .with_user(user.clone().into())
+            .with_user(user.into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
@@ -304,7 +319,7 @@ mod tests {
 
         let result = registry.is_emr_exists(key.clone());
 
-        assert!(!result.is_ok());
+        assert!(result.is_err());
     }
 }
 

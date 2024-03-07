@@ -196,7 +196,7 @@ macro_rules! zero_sized_state {
             #[derive(Debug, Clone, Default)]
             pub struct $ident;
 
-            impl crate::emr::key::UsageMarker for $ident {}
+            impl $crate::emr::key::UsageMarker for $ident {}
 
         )*
     };

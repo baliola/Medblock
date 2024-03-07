@@ -1,4 +1,4 @@
-use std::{ borrow::Borrow, ops::RangeBounds };
+use std::{ borrow::Borrow, ops::{ DerefMut, RangeBounds } };
 
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
@@ -55,6 +55,12 @@ impl<T> std::ops::Deref for Stable<T> where T: MemBoundMarker {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> DerefMut for Stable<T> where T: MemBoundMarker {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -227,6 +233,16 @@ impl<K, V> StableSet<K, V>
         Self(tree)
     }
 
+    /// This function checks if a key exists in the set. It does so by creating a range iterator
+    /// from the given key to the end of the set. It then checks if the maximum value in the range
+    /// iterator is not None. If it is not None, it returns true. Otherwise, it returns false.
+    pub fn range_key_exists(&self, partial_key: &K) -> bool {
+        self.0
+            .range((partial_key.clone(), V::default())..)
+            .max()
+            .is_some()
+    }
+
     pub fn inner_mut(&mut self) -> &mut ic_stable_structures::BTreeMap<(K, V), (), Memory> {
         &mut self.0
     }
@@ -240,7 +256,7 @@ impl<K, V> StableSet<K, V>
 
         let range = self.0.range((key.clone(), V::default())..);
 
-        for (k, v) in range {
+        for (k, _v) in range {
             if k.0 == *key {
                 result.push(k.1.clone());
             }
@@ -248,6 +264,78 @@ impl<K, V> StableSet<K, V>
             // short circuit if we have moved to the next key
             if k.0 != *key {
                 break;
+            }
+        }
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
+    // This function retrieves a page of unique values associated with a given key from a sorted set.
+    // The set is sorted by key and value, and each key can be associated with multiple values.
+    //
+    // The function takes a key, a page number, and a limit as arguments.
+    // The page number and limit are used to calculate the start and end indices of the page.
+    //
+    // The function starts by creating a range iterator from the given key to the end of the set.
+    // It then iterates over the set, keeping track of the last value it has seen and the current index.
+    //
+    // For each entry in the set, it checks if the key of the entry is the same as the given key and if the index is within the page range.
+    // If the key is different or the index is outside the page range, it breaks the loop.
+    //
+    // If the value of the entry is different from the last value it has seen and the index is within the page range, it adds the value to the result and increments the index.
+    // If the value is different but the index is outside the page range, it just increments the index.
+    //
+    // After the loop, if the result is empty, it returns None. Otherwise, it returns the result wrapped in Some.
+    //
+    // This way, the function returns a page of unique values associated with the given key, or None if there are no such values.
+    pub fn get_set_associated_by_key_paged(
+        &self,
+        key: &K,
+        page: u64,
+        limit: u64
+    ) -> Option<Vec<V>> {
+        let start = page * limit;
+        let end = start + limit;
+
+        let mut last_id = V::default();
+        let mut index = 0;
+
+        let iter = self.0.range((key.clone(), V::default())..);
+
+        let mut result = vec![];
+
+        // Iterate over the range iterator
+        for ((k, v), _) in iter {
+            // If the key of the current entry is not the same as the provided key,
+            // or if the current index has reached or exceeded the end of the page,
+            // break the loop. This is to ensure that we only process entries with the
+            // provided key and within the specified page.
+            if k != *key || index >= end {
+                break;
+            }
+
+            // If the value of the current entry is not the same as the last seen value
+            // and the current index has reached or exceeded the start of the page,
+            // add the value to the result, update the last seen value, and increment the index.
+            // This is to ensure that we only add unique values to the result and only after
+            // we have reached the start of the page.
+            if v != last_id && index >= start {
+                result.push(v.clone());
+                last_id = v.clone();
+                index += 1;
+            } else if
+                // If the value of the current entry is not the same as the last seen value,
+                // but the current index has not yet reached the start of the page,
+                // update the last seen value and increment the index.
+                // This is to skip over any unique values that fall before the start of the page.
+                v != last_id
+            {
+                last_id = v.clone();
+                index += 1;
             }
         }
 
@@ -349,5 +437,69 @@ mod set_test {
 
         let total = set.total_associated_of_key(&Nativeu8(10).to_stable());
         assert_eq!(total, expected_value.len());
+    }
+
+    #[test]
+    fn test_paged_query() {
+        let memor_manager = fake_memory_manager!();
+
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+
+        let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
+        let key = Nativeu8(10);
+
+        for v in value.iter() {
+            set.insert(key.clone().to_stable(), v.clone().to_stable());
+        }
+
+        let result = set.get_set_associated_by_key_paged(&Nativeu8(10).to_stable(), 0, 2).unwrap();
+        let initial_value = value.into_iter().map(ToStable::to_stable).take(2).collect::<Vec<_>>();
+        let expected_value = result;
+
+        assert_eq!(initial_value, expected_value);
+    }
+
+    #[test]
+    fn test_paged_query_with_wrong_keys() {
+        let memor_manager = fake_memory_manager!();
+
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+
+        let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
+        let key = Nativeu8(10);
+
+        for v in value.iter() {
+            set.insert(key.clone().to_stable(), v.clone().to_stable());
+        }
+
+        let result = set.get_set_associated_by_key_paged(&Nativeu8(20).to_stable(), 0, 2);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_paged_query_with_mixed_keys() {
+        let memor_manager = fake_memory_manager!();
+
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+
+        let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
+        let key = Nativeu8(10);
+
+        for v in value.iter() {
+            set.insert(key.clone().to_stable(), v.clone().to_stable());
+        }
+
+        let wrong_key = Nativeu8(20);
+        let wrong_value = [Nativeu8(56), Nativeu8(78), Nativeu8(90), Nativeu8(100)].to_vec();
+
+        for v in wrong_value.iter() {
+            set.insert(wrong_key.clone().to_stable(), v.clone().to_stable());
+        }
+
+        let result = set.get_set_associated_by_key_paged(&Nativeu8(10).to_stable(), 0, 2).unwrap();
+        let initial_value = value.into_iter().map(ToStable::to_stable).take(2).collect::<Vec<_>>();
+        let expected_value = result;
+
+        assert_eq!(initial_value, expected_value);
     }
 }
