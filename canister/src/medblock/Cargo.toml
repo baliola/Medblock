@@ -9,26 +9,18 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.75"
-ciborium = "0.2.1"
-hex = "0.4.3"
+hex = { workspace = true }
 ic-cdk = { workspace = true }
 candid = { workspace = true }
-ic-cdk-timers = { workspace = true } # Feel free to remove this dependency if you don't need timers
+ic-cdk-timers = { workspace = true }        # Feel free to remove this dependency if you don't need timers
 ic-stable-memory = { workspace = true }
 paste = { workspace = true }
 serde = { workspace = true }
 parity-scale-codec = { workspace = true }
 ic-stable-structures = { workspace = true }
-thiserror = "1.0.50"
-uuid = { version = "1.6.1", default-features = false, features = [
-    "serde",
-    "v7",
-] }
-serde_json = { version = "1.0.108", features = [
-    "alloc",
-], default-features = false }
-getrandom = { version = "0.2", features = ["custom"] }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+serde_json = { workspace = true }
 ic_principal = { workspace = true }
 
 [dev-dependencies]
