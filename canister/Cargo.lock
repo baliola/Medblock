@@ -241,6 +241,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "canister_common"
+version = "0.1.0"
+dependencies = [
+ "ic-stable-structures",
+ "parity-scale-codec",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"

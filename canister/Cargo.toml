@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["src/medblock"]
+members = [ "src/canister_common","src/medblock"]
 
 [workspace.dependencies]
 ic-cdk = "0.8.1"
