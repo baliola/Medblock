@@ -1,5 +1,6 @@
 pub mod mmgr;
 pub mod stable;
+mod macros;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
