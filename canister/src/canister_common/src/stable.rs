@@ -1,4 +1,4 @@
-use std::{ borrow::Borrow, ops::{ DerefMut, RangeBounds } };
+use std::{ borrow::Borrow, fmt::Debug, ops::{ Deref, DerefMut, RangeBounds } };
 
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
@@ -210,6 +210,7 @@ mod stable_test {
         let str1 = TestStruct { a: 10, b: 20 };
         let table_encoded = Stable::new(str1).encode();
 
+        println!("{:?}", table_encoded.len());
         Stable::<SimilarStruct>::from_bytes(table_encoded.to_bytes());
     }
 }

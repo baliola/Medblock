@@ -176,13 +176,13 @@ macro_rules! impl_max_size {
 #[macro_export]
 macro_rules! impl_mem_bound {
     (for $struct:ty: unbounded) => {
-        impl $crate::mem::shared::MemBoundMarker for $struct {
+        impl $crate::stable::MemBoundMarker for $struct {
             const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
         }
     };
 
     (for $struct:ty: bounded; fixed_size: $lit:literal) => {
-        impl $crate::mem::shared::MemBoundMarker for $struct {
+        impl $crate::stable::MemBoundMarker for $struct {
     
             const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded { max_size: <$struct>::max_size() as u32, is_fixed_size: $lit };
         }

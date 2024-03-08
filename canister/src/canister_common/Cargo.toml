@@ -8,3 +8,15 @@ edition = "2021"
 [dependencies]
 ic-stable-structures = { workspace = true }
 parity-scale-codec = { workspace = true }
+serde = { workspace = true }
+candid = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+paste = { workspace = true }
+
+
+# for getting timestamp outside of canister execution environment
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+chrono = "0.4.19"

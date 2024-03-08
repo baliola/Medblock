@@ -3,8 +3,8 @@ resolver = "2"
 members = [ "src/canister_common","src/medblock"]
 
 [workspace.dependencies]
-ic-cdk = "0.8.1"
-candid = "0.8.4"
+ic-cdk = "0.13.1"
+candid = "0.10.4"
 ic-cdk-timers = "0.5.1"                                           # Feel free to remove this dependency if you don't need timers
 ic-stable-memory = "0.4"
 paste = "1.0.14"
@@ -24,4 +24,6 @@ uuid = { version = "1.6.1", default-features = false, features = [
 serde_json = { version = "1.0.108", features = [
     "alloc",
 ], default-features = false }
+
+chrono = "0.4.19"
 

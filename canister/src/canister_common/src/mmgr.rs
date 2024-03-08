@@ -43,6 +43,6 @@ impl MemoryManager {
 #[macro_export]
 macro_rules! fake_memory_manager {
     () => {
-        $crate::mem::MemoryManager::new()
+        $crate::mmgr::MemoryManager::new()
     };
 }
