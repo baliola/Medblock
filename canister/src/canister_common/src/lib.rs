@@ -3,17 +3,15 @@ pub mod stable;
 mod macros;
 pub mod common;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod alloc {
+    pub use tikv_jemallocator::Jemalloc as Allocator;
+    pub use tikv_jemalloc_ctl as ctl;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    #[macro_export]
+    macro_rules! setup_allocator {
+        () => {
+            #[global_allocator]
+            static GLOBAL: $crate::alloc::Allocator = $crate::alloc::Allocator;
+        };
     }
 }

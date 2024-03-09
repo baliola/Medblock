@@ -373,48 +373,11 @@ impl<K, V> StableSet<K, V>
 
 #[cfg(test)]
 mod set_test {
-    use crate::{ fake_memory_manager, impl_max_size, impl_mem_bound };
+    use crate::{ fake_memory_manager, impl_max_size, impl_mem_bound, native_bound };
     use paste::paste;
     use super::*;
 
-    macro_rules! native_bound {
-        ($($ident:ident),*) => {
-            $(
-                paste!{
-
-                #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
-                pub struct [<Native $ident>]($ident);
-
-               impl_max_size!(for [<Native $ident>]: $ident);
-               impl_mem_bound!(for [<Native $ident>]: bounded; fixed_size: true);
-
-                impl RangeBounds<[<Native $ident>]> for [<Native $ident>] {
-                    fn start_bound(&self) -> std::ops::Bound<&[<Native $ident>]> {
-                        std::ops::Bound::Included(self)
-                    }
-
-                    fn end_bound(&self) -> std::ops::Bound<&[<Native $ident>]> {
-                        std::ops::Bound::Excluded(self)
-                    }
-                }
-
-                impl From<$ident> for [<Native $ident>] {
-                    fn from(value: $ident) -> Self {
-                        [<Native $ident>](value)
-                    }
-                }
-
-                impl Into<$ident> for [<Native $ident>] {
-                    fn into(self) -> $ident {
-                        self.0
-                    }
-                }
-                }
-
-            )*
-        };
-    }
-
+    
     native_bound!(u8, u32);
 
     #[test]
