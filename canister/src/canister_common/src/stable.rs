@@ -30,6 +30,12 @@ pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMem
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
 pub struct Stable<T>(T) where T: MemBoundMarker;
 
+impl<T> From<T> for Stable<T> where T: MemBoundMarker {
+    fn from(value: T) -> Self {
+        Stable::new(value)
+    }
+}
+
 impl<T> PartialEq for Stable<T> where T: MemBoundMarker + PartialEq {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(other.as_inner())
@@ -85,12 +91,6 @@ impl<T: MemBoundMarker + RangeBounds<T>> RangeBounds<Stable<T>> for Stable<T> {
             std::ops::Bound::Excluded(_) => std::ops::Bound::Excluded(self),
             std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
         }
-    }
-}
-
-impl<T: MemBoundMarker> From<T> for Stable<T> {
-    fn from(value: T) -> Self {
-        Self::new(value)
     }
 }
 
@@ -219,6 +219,19 @@ pub struct StableSet<K, V>(ic_stable_structures::BTreeMap<(K, V), (), Memory>)
     where
         K: Storable + Ord + Clone + RangeBounds<K> + Default,
         V: Storable + Ord + Clone + RangeBounds<V> + Default;
+
+impl<K, V> Debug
+    for StableSet<K, V>
+    where
+        K: Storable + Ord + Clone + RangeBounds<K> + Default + Debug,
+        V: Storable + Ord + Clone + RangeBounds<V> + Default + Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map()
+            .entries(self.0.iter().map(|((k, v), _)| ((k.clone(), v.clone()), ())))
+            .finish()
+    }
+}
 
 impl<K, V> StableSet<K, V>
     where
@@ -373,16 +386,15 @@ impl<K, V> StableSet<K, V>
 
 #[cfg(test)]
 mod set_test {
-    use crate::{ fake_memory_manager, impl_max_size, impl_mem_bound, native_bound };
+    use crate::{ memory_manager, impl_max_size, impl_mem_bound, native_bound };
     use paste::paste;
     use super::*;
 
-    
     native_bound!(u8, u32);
 
     #[test]
     fn test_stable_set() {
-        let memor_manager = fake_memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
 
@@ -405,7 +417,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query() {
-        let memor_manager = fake_memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
 
@@ -425,7 +437,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_wrong_keys() {
-        let memor_manager = fake_memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
 
@@ -442,7 +454,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_mixed_keys() {
-        let memor_manager = fake_memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
 

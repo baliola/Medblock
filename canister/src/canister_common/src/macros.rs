@@ -222,19 +222,18 @@ macro_rules! impl_range_bound {
 
 
 #[macro_export]
-#[cfg(test)]
 macro_rules! native_bound {
     ($($ident:ident),*) => {
             $(
-                paste!{
+                paste::paste!{
 
-                #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
-                pub struct [<Native $ident>]($ident);
+                #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, parity_scale_codec::Encode, parity_scale_codec::Decode, Default)]
+                pub struct [<Native $ident>](pub $ident);
 
-               impl_max_size!(for [<Native $ident>]: $ident);
-               impl_mem_bound!(for [<Native $ident>]: bounded; fixed_size: true);
+               $crate::impl_max_size!(for [<Native $ident>]: $ident);
+               $crate::impl_mem_bound!(for [<Native $ident>]: bounded; fixed_size: true);
 
-                impl RangeBounds<[<Native $ident>]> for [<Native $ident>] {
+                impl std::ops::RangeBounds<[<Native $ident>]> for [<Native $ident>] {
                     fn start_bound(&self) -> std::ops::Bound<&[<Native $ident>]> {
                         std::ops::Bound::Included(self)
                     }

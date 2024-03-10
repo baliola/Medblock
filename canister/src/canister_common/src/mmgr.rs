@@ -39,9 +39,9 @@ impl MemoryManager {
     }
 }
 
-#[cfg(test)]
+
 #[macro_export]
-macro_rules! fake_memory_manager {
+macro_rules! memory_manager {
     () => {
         $crate::mmgr::MemoryManager::new()
     };
