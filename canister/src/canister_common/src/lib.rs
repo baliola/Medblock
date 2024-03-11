@@ -3,17 +3,31 @@ pub mod stable;
 mod macros;
 pub mod common;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod alloc {
+    pub use tikv_jemallocator::Jemalloc as Allocator;
+    pub use tikv_jemalloc_ctl as ctl;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    #[macro_export]
+    macro_rules! impl_allocation_statistics {
+        () => {
+            #[global_allocator]
+            static GLOBAL: $crate::alloc::Allocator = $crate::alloc::Allocator;
+        };
+    }
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+
+
+    pub trait Metrics {
+        fn metrics_name() -> &'static str;
+
+        fn metrics_measurements() -> &'static str;
+
+        fn prometheus_id() -> String {
+            format!("{}_{}", Self::metrics_name(), Self::metrics_measurements())
+        }
+
+        fn update_measurements(&self);
+
+        fn cached_allocated_size(&self) -> usize;
     }
 }
