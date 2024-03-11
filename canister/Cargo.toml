@@ -1,11 +1,10 @@
 [workspace]
 resolver = "2"
-members = [ "src/canister_common","src/medblock"]
+members = ["src/canister_common", "src/medblock"]
 
 [workspace.dependencies]
 ic-cdk = "0.13.1"
 candid = "0.10.4"
-ic-cdk-timers = "0.5.1"                                           # Feel free to remove this dependency if you don't need timers
 ic-stable-memory = "0.4"
 paste = "1.0.14"
 serde = "1.0.193"
@@ -20,6 +19,7 @@ uuid = { version = "1.6.1", default-features = false, features = [
     "v7",
 ] }
 
+ic-cdk-timers = "0.7.0"
 tikv-jemallocator = "0.5"
 tikv-jemalloc-ctl = "0.5.4"
 
@@ -29,4 +29,3 @@ serde_json = { version = "1.0.108", features = [
 ], default-features = false }
 
 chrono = "0.4.19"
-

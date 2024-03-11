@@ -14,4 +14,20 @@ pub mod alloc {
             static GLOBAL: $crate::alloc::Allocator = $crate::alloc::Allocator;
         };
     }
+
+
+
+    pub trait Metrics {
+        fn metrics_name() -> &'static str;
+
+        fn metrics_measurements() -> &'static str;
+
+        fn prometheus_id() -> String {
+            format!("{}_{}", Self::metrics_name(), Self::metrics_measurements())
+        }
+
+        fn update_measurements(&self);
+
+        fn cached_allocated_size(&self) -> usize;
+    }
 }
