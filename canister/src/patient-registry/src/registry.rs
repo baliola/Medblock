@@ -1,13 +1,15 @@
+use std::cell::RefCell;
 use std::ops::{ Add, RangeBounds };
 
 use candid::{ CandidType };
 
+use canister_common::alloc::{ Metrics, OpaqueMetrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
-use serde::Deserialize;
+use serde::{ Deserialize, Serialize };
 
-use canister_common::{ deref, impl_max_size, impl_mem_bound, impl_range_bound };
+use canister_common::{ deref, impl_max_size, impl_mem_bound, impl_range_bound, zero_sized_state };
 use canister_common::{
     common::{ AsciiRecordsKey, Id, Timestamp },
     stable::{ Memory, Stable, StableSet, ToStable },
@@ -16,8 +18,10 @@ use canister_common::{
 
 type EmrId = Id;
 type Principal = ic_principal::Principal;
+pub struct AllocationMetrics;
+pub struct LengthMetrics;
 
-#[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone)]
+#[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Status {
     Active,
     Suspended,
@@ -361,17 +365,101 @@ impl ProvidersBindings {
     }
 }
 
-pub struct Providers(BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>);
+#[derive(Default)]
+pub struct ProviderMetrics {
+    approx_allocation_bytes: u128,
+}
+
+impl ProviderMetrics {
+    pub fn record_allocation(&mut self, bytes: u128) {
+        self.approx_allocation_bytes += bytes;
+    }
+
+    pub fn record_deallocation(&mut self, bytes: u128) {
+        self.approx_allocation_bytes -= bytes;
+    }
+}
+
+pub struct Providers(
+    BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>,
+    RefCell<ProviderMetrics>,
+);
+
+impl OpaqueMetrics for Providers {
+    fn measure(&self) -> String {
+        [
+            Metrics::<LengthMetrics>::get_measurements(self),
+            Metrics::<AllocationMetrics>::get_measurements(self),
+        ].join("\n")
+    }
+}
+
+impl std::fmt::Debug for Providers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let provider = self.0
+            .iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect::<Vec<_>>();
+
+        f.debug_struct("Providers")
+            .field("approx_allocation_bytes", &self.1.borrow().approx_allocation_bytes)
+            .field("map", &provider)
+            .finish()
+    }
+}
+
+impl Metrics<LengthMetrics> for Providers {
+    fn metrics_name() -> &'static str {
+        "providers"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "length"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
+
+impl Metrics<AllocationMetrics> for Providers {
+    fn metrics_name() -> &'static str {
+        "providers_approx_allocation"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "bytes"
+    }
+
+    fn update_measurements(&self) {
+        // no-op, will be updated incrementally
+    }
+
+    fn get_measurements(&self) -> String {
+        self.1.borrow().approx_allocation_bytes.to_string()
+    }
+}
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
         match self.is_exist(provider.internal_id.clone()) {
             true => Err(ProviderBindingMapError::ProviderExist),
             false => {
-                self.0
+                let bytes_allocated_approx =
+                    std::mem::size_of_val(&provider.internal_id) + std::mem::size_of_val(&provider);
+
+                let result = self.0
                     .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
-                    .map(|_| ())
-                    .expect("provider does not exist, this is a bug");
+                    .map(|_| ());
+
+                assert_eq!(result.is_none(), true, "provider does not exist, this is a bug");
+
+                self.1.borrow_mut().record_allocation(bytes_allocated_approx as u128);
+
                 Ok(())
             }
         }
@@ -406,11 +494,63 @@ impl Providers {
     }
 
     pub fn new(memory_manager: MemoryManager) -> Self {
-        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+        let mem = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
+        let metrics = ProviderMetrics::default();
+
+        Self(mem, RefCell::new(metrics))
     }
 
     pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider>> {
         self.0.get(&provider.to_stable())
+    }
+}
+
+#[cfg(test)]
+mod provider_test {
+    use super::*;
+
+    #[test]
+    fn test_add_read() {
+        let mut memory_manager = MemoryManager::new();
+        let mut providers = Providers::new(memory_manager);
+
+        let mut id_bytes = [0; 10];
+        id_bytes.fill(0);
+
+        let internal_id = Id::new(&id_bytes);
+        let provider = Provider::new(
+            AsciiRecordsKey::<64>::new("test".to_string()).unwrap(),
+            internal_id.clone()
+        );
+
+        println!("{:?}", providers);
+        let _ = providers.add_provider(provider.clone());
+        println!("{:?}", providers);
+        let provider = providers.get_provider(internal_id).unwrap();
+
+        assert_eq!(provider, provider);
+    }
+
+    #[test]
+    fn test_metrics() {
+        let mut memory_manager = MemoryManager::new();
+        let mut providers = Providers::new(memory_manager);
+
+        let mut id_bytes = [0; 10];
+        id_bytes.fill(0);
+
+        let internal_id = Id::new(&id_bytes);
+        let provider = Provider::new(
+            AsciiRecordsKey::<64>::new("test".to_string()).unwrap(),
+            internal_id.clone()
+        );
+
+        let bytes_allocated_approx =
+            std::mem::size_of_val(&internal_id) + std::mem::size_of_val(&provider);
+
+        providers.add_provider(provider.clone()).unwrap();
+
+        assert_eq!(providers.1.borrow().approx_allocation_bytes, bytes_allocated_approx as u128);
     }
 }
 
@@ -434,7 +574,20 @@ pub trait Billable {
 // START ------------------------------ SESSION ------------------------------ START
 
 /// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-#[derive(Deserialize, CandidType, Debug, Default, Clone, Copy, Encode, Decode)]
+#[derive(
+    Deserialize,
+    CandidType,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord
+)]
 pub struct Session(u64);
 
 // blanket impl for session
@@ -474,7 +627,7 @@ impl Session {
 /// canister identifier that is used to identify the provider. that means, whichever principal
 /// that is associated with this provider internal id is the principal that can issue emr for this provider.
 /// this also makes it possible to change the underlying principal without costly update.
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone, Encode, Decode, Debug, PartialEq, Eq, CandidType, Deserialize)]
 pub struct Provider {
     /// provider activation status, this is used to track if the provider is still active
     /// can either be verified or suspended
@@ -532,7 +685,7 @@ impl Provider {
 }
 
 impl_max_size!(for Provider: Provider);
-impl_mem_bound!(for Provider: bounded; fixed_size: true);
+impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
 impl Billable for Provider {
     fn session(&self) -> Session {

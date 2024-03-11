@@ -97,7 +97,7 @@ impl<const N: usize> Default for AsciiRecordsKey<N> {
 const DEFAULT_RECORDS_LEN: usize = 32;
 deref!(AsciiRecordsKey: [u8; DEFAULT_RECORDS_LEN] |_self| => &_self.key);
 
-impl AsciiRecordsKey {
+impl<const N: usize> AsciiRecordsKey<N> {
     pub fn new(s: impl AsRef<str>) -> Result<Self, AsciiKeyError> {
         Self::from_str(s.as_ref())
     }
@@ -219,7 +219,7 @@ deref!(Id: Uuid |_self| => Uuid::from_bytes_ref(&_self.0));
 mod deserialize {
     use super::*;
 
-    impl CandidType for AsciiRecordsKey {
+    impl<const N: usize> CandidType for AsciiRecordsKey<N> {
         fn _ty() -> candid::types::Type {
             candid::types::TypeInner::Text.into()
         }
@@ -231,7 +231,7 @@ mod deserialize {
         }
     }
 
-    impl<'de> serde::Deserialize<'de> for AsciiRecordsKey {
+    impl<'de, const N: usize> serde::Deserialize<'de> for AsciiRecordsKey<N> {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
@@ -247,7 +247,7 @@ mod deserialize {
                 return Err(serde::de::Error::custom("key must not exceed 32 ascii characters"));
             }
             // TODO: unnecessary copy
-            let mut key = [0u8; DEFAULT_RECORDS_LEN];
+            let mut key = [0u8; N];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
             Ok(Self {

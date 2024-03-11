@@ -17,7 +17,14 @@ pub mod alloc {
         };
     }
 
-    pub trait Metrics {
+    /// everything metrics trait. every type that implements [Metrics] must implement metrics with this type
+    pub trait OpaqueMetrics {
+        fn measure(&self) -> String;
+    }
+
+    /// general metrics trait for data structures, M here is actually just a
+    /// placeholder for usecase, similar to [core::marker::PhantomData]
+    pub trait Metrics<M> {
         fn metrics_name() -> &'static str;
 
         fn metrics_measurements() -> &'static str;
@@ -28,6 +35,12 @@ pub mod alloc {
 
         fn update_measurements(&self);
 
-        fn cached_allocated_size(&self) -> usize;
+        fn get_measurements(&self) -> String;
+
+        /// prometheus styled metrics, e.g. "key_size 100", "value_size 200" etc.
+        /// meant to be stacked with other type that implement metrics
+        fn measure(&self) -> String {
+            format!("{} {}", Self::prometheus_id(), self.get_measurements())
+        }
     }
 }
