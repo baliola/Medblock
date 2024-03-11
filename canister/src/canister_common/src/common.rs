@@ -359,7 +359,19 @@ mod tests {
     }
 }
 
-#[derive(Encode, Debug, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Encode,
+    Debug,
+    Decode,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+    Default
+)]
 pub struct PrincipalBytes([u8; Principal::MAX_LENGTH_IN_BYTES]);
 
 impl PrincipalBytes {
