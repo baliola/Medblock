@@ -2,6 +2,7 @@ pub mod mmgr;
 pub mod stable;
 mod macros;
 pub mod common;
+pub mod random;
 
 pub mod alloc {
     pub use tikv_jemallocator::Jemalloc as Allocator;
