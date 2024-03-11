@@ -3,9 +3,20 @@ use std::{ cell::{ RefCell }, fmt::{ Display, Formatter } };
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
+pub trait RandomSource {
+    #[allow(async_fn_in_trait)]
+    async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError>;
+}
+
 #[derive(Default)]
 pub struct CanisterRandomSource {
     rng: RefCell<Vec<u8>>,
+}
+
+impl RandomSource for CanisterRandomSource {
+    async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError> {
+        self.get_random_bytes::<N>().await
+    }
 }
 
 type Reason = String;
@@ -18,9 +29,20 @@ impl From<(RejectionCode, String)> for CallError {
     }
 }
 
+impl From<CallError> for String {
+    fn from(value: CallError) -> Self {
+        value.to_string()
+    }
+}
+
 impl Display for CallError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error while calling canister with code : {:?} and reason : {} ", self.0, self.1)
+        write!(
+            f,
+            "Error while calling ic management canister with code : {:?} and reason : {} ",
+            self.0,
+            self.1
+        )
     }
 }
 

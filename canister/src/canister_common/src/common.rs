@@ -180,7 +180,7 @@ impl CandidType for Id {
 }
 
 /// max random bytes array len used to generate v7 uuid
-pub const UUID_MAX_SOURCE_LEN: usize = 10;
+pub(crate) const UUID_MAX_SOURCE_LEN: usize = 10;
 
 impl Id {
     pub fn new(random_bytes: &[u8; UUID_MAX_SOURCE_LEN]) -> Self {

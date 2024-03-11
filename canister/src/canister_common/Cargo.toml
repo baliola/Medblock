@@ -12,7 +12,10 @@ ic-stable-structures = { workspace = true }
 parity-scale-codec = { workspace = true }
 serde = { workspace = true }
 candid = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, default-features = false, features = [
+    "serde",
+    "v7",
+] }
 thiserror = { workspace = true }
 ic-cdk = { workspace = true }
 
@@ -21,6 +24,7 @@ tikv-jemallocator = "0.5"
 tikv-jemalloc-ctl = "0.5.4"
 
 [dev-dependencies]
+tokio = { version = "1.36.0", features = ["macros","rt"] }
 paste = { workspace = true }
 
 
