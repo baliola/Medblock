@@ -1,6 +1,6 @@
 pub mod mmgr;
 pub mod stable;
-mod macros;
+pub mod macros;
 pub mod common;
 pub mod random;
 pub mod id_generator;
@@ -16,8 +16,6 @@ pub mod alloc {
             static GLOBAL: $crate::alloc::Allocator = $crate::alloc::Allocator;
         };
     }
-
-
 
     pub trait Metrics {
         fn metrics_name() -> &'static str;

@@ -9,11 +9,13 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+canister-common = { path = "../canister_common" }
 ic-cdk = { workspace = true }
 candid = { workspace = true }
-ic-cdk-timers = { workspace = true }       
+ic-cdk-timers = { workspace = true }
 serde = { workspace = true }
 parity-scale-codec = { workspace = true }
 ic-stable-structures = { workspace = true }
 thiserror = { workspace = true }
+ic_principal = { workspace = true }
 uuid = { workspace = true }

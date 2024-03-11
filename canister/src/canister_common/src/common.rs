@@ -1,6 +1,6 @@
-use std::{ str::FromStr };
+use std::{ borrow::BorrowMut, str::FromStr };
 
-use candid::CandidType;
+use candid::{ CandidType, Principal };
 use ic_stable_structures::storable::Bound;
 use parity_scale_codec::{ Decode, Encode };
 
@@ -295,10 +295,9 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos() as u64;
-        
+
         assert!(timestamp.inner() <= now);
     }
-
 
     #[test]
     fn test_timestamp_inner() {
@@ -357,5 +356,54 @@ mod tests {
         let id = id!("97780ca3-a626-4fc5-b150-7fa8bc665df6");
         let converted_uuid: Uuid = id.into();
         assert_eq!(converted_uuid, uuid);
+    }
+}
+
+#[derive(Encode, Debug, Decode, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrincipalBytes([u8; Principal::MAX_LENGTH_IN_BYTES]);
+
+impl PrincipalBytes {
+    pub fn new(principal: Principal) -> Self {
+        let mut bytes = [0; Principal::MAX_LENGTH_IN_BYTES];
+        let principal_bytes = principal.as_slice();
+        bytes[..principal_bytes.len()].copy_from_slice(principal_bytes);
+        Self(bytes)
+    }
+}
+
+impl From<Principal> for PrincipalBytes {
+    fn from(principal: Principal) -> Self {
+        Self::new(principal)
+    }
+}
+
+impl From<PrincipalBytes> for Principal {
+    fn from(principal_bytes: PrincipalBytes) -> Self {
+        Principal::from_slice(&principal_bytes.0)
+    }
+}
+
+impl CandidType for PrincipalBytes {
+    fn _ty() -> candid::types::Type {
+        <Principal as CandidType>::_ty()
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+        where S: candid::types::Serializer
+    {
+        <Principal as CandidType>::idl_serialize(&Principal::from_slice(&self.0), serializer)
+    }
+}
+
+#[cfg(test)]
+mod principal_bytes_tests {
+    use super::*;
+
+    #[test]
+    fn test_principal_bytes_conv() {
+        let principal = Principal::anonymous();
+        let principal_bytes = PrincipalBytes::new(principal);
+
+        let principal = Into::<Principal>::into(principal_bytes);
     }
 }

@@ -267,13 +267,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "canister_common"
+name = "canister-common"
 version = "0.1.0"
 dependencies = [
  "candid 0.10.4",
  "chrono",
  "ic-cdk 0.13.1",
  "ic-stable-structures",
+ "ic_principal",
  "parity-scale-codec",
  "paste",
  "serde",
@@ -1067,9 +1068,11 @@ name = "patient-registry"
 version = "0.1.0"
 dependencies = [
  "candid 0.10.4",
+ "canister-common",
  "ic-cdk 0.13.1",
  "ic-cdk-timers",
  "ic-stable-structures",
+ "ic_principal",
  "parity-scale-codec",
  "serde",
  "thiserror",
