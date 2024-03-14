@@ -78,7 +78,7 @@ pub mod traits {
             pub fn get_stable_size() -> u64 {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    ic_cdk::api::stable::stable_size() * WASM_PAGE_SIZE
+                    ic_cdk::api::stable::stable64_size() * WASM_PAGE_SIZE
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
@@ -155,7 +155,7 @@ pub mod traits {
             fn get_measurements(&self) -> String {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    ic_cdk::api::canister_balance128().to_string();
+                    ic_cdk::api::canister_balance128().to_string()
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
