@@ -16,6 +16,21 @@ thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::new(None);
 }
 
+/// A helper method to read the state.
+///
+/// Precondition: the state is already initialized.
+pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
+    STATE.with(|cell| f(cell.borrow().as_ref().expect("state not initialized")))
+}
+
+/// A helper method to mutate the state.
+///
+/// Precondition: the state is already initialized.
+pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
+    STATE.with(|cell| f(cell.borrow_mut().as_mut().expect("state not initialized")))
+}
+
+
 fn verified_caller() -> Result<Principal, String> {
     let caller = ic_cdk::caller();
 
