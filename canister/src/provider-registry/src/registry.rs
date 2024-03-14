@@ -9,7 +9,14 @@ use ic_stable_structures::{ memory_manager, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 use serde::{ Deserialize, Serialize };
 
-use canister_common::{ deref, impl_max_size, impl_mem_bound, impl_range_bound, zero_sized_state };
+use canister_common::{
+    deref,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
+    metrics,
+    zero_sized_state,
+};
 use canister_common::{
     common::{ AsciiRecordsKey, Id, Timestamp },
     stable::{ Memory, Stable, StableSet, ToStable },
@@ -18,8 +25,8 @@ use canister_common::{
 
 type EmrId = Id;
 type Principal = ic_principal::Principal;
-pub struct AllocationMetrics;
-pub struct LengthMetrics;
+
+metrics!(AllocationMetrics, LengthMetrics);
 
 #[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Status {
