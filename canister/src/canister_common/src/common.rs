@@ -1,4 +1,4 @@
-use std::{ borrow::BorrowMut, str::FromStr };
+use std::str::FromStr;
 
 use candid::{ CandidType, Principal };
 use ic_stable_structures::storable::Bound;
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_ascii_records_key_new() {
-        let key = AsciiRecordsKey::new("test").unwrap();
+        let key = AsciiRecordsKey::<32>::new("test").unwrap();
         assert_eq!(key.to_ascii_str(), "test");
     }
 
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_ascii_records_key_to_ascii_str() {
-        let key = AsciiRecordsKey::new("test").unwrap();
+        let key = AsciiRecordsKey::<32>::new("test").unwrap();
         assert_eq!(key.to_ascii_str(), "test");
     }
 

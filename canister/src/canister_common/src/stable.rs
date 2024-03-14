@@ -1,4 +1,4 @@
-use std::{ borrow::Borrow, fmt::Debug, ops::{ Deref, DerefMut, RangeBounds } };
+use std::{ borrow::Borrow, fmt::Debug, ops::{ DerefMut, RangeBounds } };
 
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
@@ -417,7 +417,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query() {
-        let &memor_manager = memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
@@ -437,7 +437,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_wrong_keys() {
-        let &memor_manager = memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
@@ -454,7 +454,7 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_mixed_keys() {
-        let &memor_manager = memory_manager!();
+        let memor_manager = memory_manager!();
 
         let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
