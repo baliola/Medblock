@@ -20,6 +20,7 @@ impl Default for MemoryManager {
 
 impl MemoryManager {
     pub fn get_memory<T>(&self, f: impl FnOnce(CanisterVirtualMemory) -> T) -> T {
+
         let mut index = self.index.borrow_mut();
 
         let mem = self.manager.borrow().get(MemoryId::new(*index));

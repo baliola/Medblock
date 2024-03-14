@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "medblock": {
-      "candid": "src/medblock/medblock.did",
-      "package": "medblock",
+    "provider-registry": {
+      "candid": "src/provider-registry/provider-registry.did",
+      "package": "provider-registry",
       "type": "rust"
     }
   },

@@ -1,6 +1,6 @@
-use std::{ str::FromStr };
+use std::str::FromStr;
 
-use candid::CandidType;
+use candid::{ CandidType, Principal };
 use ic_stable_structures::storable::Bound;
 use parity_scale_codec::{ Decode, Encode };
 
@@ -97,7 +97,7 @@ impl<const N: usize> Default for AsciiRecordsKey<N> {
 const DEFAULT_RECORDS_LEN: usize = 32;
 deref!(AsciiRecordsKey: [u8; DEFAULT_RECORDS_LEN] |_self| => &_self.key);
 
-impl AsciiRecordsKey {
+impl<const N: usize> AsciiRecordsKey<N> {
     pub fn new(s: impl AsRef<str>) -> Result<Self, AsciiKeyError> {
         Self::from_str(s.as_ref())
     }
@@ -180,7 +180,7 @@ impl CandidType for Id {
 }
 
 /// max random bytes array len used to generate v7 uuid
-pub const UUID_MAX_SOURCE_LEN: usize = 10;
+pub(crate) const UUID_MAX_SOURCE_LEN: usize = 10;
 
 impl Id {
     pub fn new(random_bytes: &[u8; UUID_MAX_SOURCE_LEN]) -> Self {
@@ -219,7 +219,7 @@ deref!(Id: Uuid |_self| => Uuid::from_bytes_ref(&_self.0));
 mod deserialize {
     use super::*;
 
-    impl CandidType for AsciiRecordsKey {
+    impl<const N: usize> CandidType for AsciiRecordsKey<N> {
         fn _ty() -> candid::types::Type {
             candid::types::TypeInner::Text.into()
         }
@@ -231,7 +231,7 @@ mod deserialize {
         }
     }
 
-    impl<'de> serde::Deserialize<'de> for AsciiRecordsKey {
+    impl<'de, const N: usize> serde::Deserialize<'de> for AsciiRecordsKey<N> {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
@@ -247,7 +247,7 @@ mod deserialize {
                 return Err(serde::de::Error::custom("key must not exceed 32 ascii characters"));
             }
             // TODO: unnecessary copy
-            let mut key = [0u8; DEFAULT_RECORDS_LEN];
+            let mut key = [0u8; N];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
             Ok(Self {
@@ -295,10 +295,9 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos() as u64;
-        
+
         assert!(timestamp.inner() <= now);
     }
-
 
     #[test]
     fn test_timestamp_inner() {
@@ -314,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_ascii_records_key_new() {
-        let key = AsciiRecordsKey::new("test").unwrap();
+        let key = AsciiRecordsKey::<32>::new("test").unwrap();
         assert_eq!(key.to_ascii_str(), "test");
     }
 
@@ -326,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_ascii_records_key_to_ascii_str() {
-        let key = AsciiRecordsKey::new("test").unwrap();
+        let key = AsciiRecordsKey::<32>::new("test").unwrap();
         assert_eq!(key.to_ascii_str(), "test");
     }
 
@@ -357,5 +356,66 @@ mod tests {
         let id = id!("97780ca3-a626-4fc5-b150-7fa8bc665df6");
         let converted_uuid: Uuid = id.into();
         assert_eq!(converted_uuid, uuid);
+    }
+}
+
+#[derive(
+    Encode,
+    Debug,
+    Decode,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+    Default
+)]
+pub struct PrincipalBytes([u8; Principal::MAX_LENGTH_IN_BYTES]);
+
+impl PrincipalBytes {
+    pub fn new(principal: Principal) -> Self {
+        let mut bytes = [0; Principal::MAX_LENGTH_IN_BYTES];
+        let principal_bytes = principal.as_slice();
+        bytes[..principal_bytes.len()].copy_from_slice(principal_bytes);
+        Self(bytes)
+    }
+}
+
+impl From<Principal> for PrincipalBytes {
+    fn from(principal: Principal) -> Self {
+        Self::new(principal)
+    }
+}
+
+impl From<PrincipalBytes> for Principal {
+    fn from(principal_bytes: PrincipalBytes) -> Self {
+        Principal::from_slice(&principal_bytes.0)
+    }
+}
+
+impl CandidType for PrincipalBytes {
+    fn _ty() -> candid::types::Type {
+        <Principal as CandidType>::_ty()
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+        where S: candid::types::Serializer
+    {
+        <Principal as CandidType>::idl_serialize(&Principal::from_slice(&self.0), serializer)
+    }
+}
+
+#[cfg(test)]
+mod principal_bytes_tests {
+    use super::*;
+
+    #[test]
+    fn test_principal_bytes_conv() {
+        let principal = Principal::anonymous();
+        let principal_bytes = PrincipalBytes::new(principal);
+
+        let principal = Into::<Principal>::into(principal_bytes);
     }
 }

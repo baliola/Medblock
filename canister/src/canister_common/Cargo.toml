@@ -1,7 +1,10 @@
 [package]
-name = "canister_common"
+name = "canister-common"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,15 +13,19 @@ ic-stable-structures = { workspace = true }
 parity-scale-codec = { workspace = true }
 serde = { workspace = true }
 candid = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, default-features = false, features = [
+    "serde",
+    "v7",
+] }
 thiserror = { workspace = true }
+ic-cdk = { workspace = true }
+ic_principal = { workspace = true }
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-tikv-jemallocator = "0.5"
-tikv-jemalloc-ctl = "0.5.4"
 
 [dev-dependencies]
+tokio = { version = "1.36.0", features = ["macros", "rt"] }
 paste = { workspace = true }
+
 
 
 # for getting timestamp outside of canister execution environment
