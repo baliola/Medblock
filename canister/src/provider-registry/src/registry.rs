@@ -3,7 +3,7 @@ use std::ops::{ Add, Deref, RangeBounds };
 
 use candid::{ CandidType };
 
-use canister_common::alloc::{ Metrics, OpaquePrometheusMetrics };
+use canister_common::statistics::traits::{ Metrics, OpaqueMetrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ memory_manager, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -410,11 +410,15 @@ impl std::fmt::Debug for Providers {
     }
 }
 
-impl OpaquePrometheusMetrics for Providers {
+impl OpaqueMetrics for Providers {
     fn measure(&self) -> String {
         [Metrics::<LengthMetrics>::measure(self), Metrics::<AllocationMetrics>::measure(self)].join(
             "\n"
         )
+    }
+
+    fn update(&self) {
+        todo!()
     }
 }
 
@@ -564,7 +568,7 @@ mod provider_test {
             providers.metrics.borrow().approx_allocation_bytes,
             bytes_allocated_approx as u128
         );
-        println!("{:?}", <Providers as OpaquePrometheusMetrics>::measure(&providers));
+        println!("{:?}", <Providers as OpaqueMetrics>::measure(&providers));
     }
 }
 

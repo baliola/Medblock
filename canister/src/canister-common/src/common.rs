@@ -419,3 +419,19 @@ mod principal_bytes_tests {
         let principal = Into::<Principal>::into(principal_bytes);
     }
 }
+
+pub mod guard {
+    use ic_principal::Principal;
+
+
+    /// doesn't allow calls from anonymous principal
+    pub fn verified_caller() -> Result<Principal, String> {
+        let caller = ic_cdk::caller();
+
+        if caller.ne(&Principal::anonymous()) {
+            return Err(String::from("anonymous caller is not allowed"));
+        }
+
+        Ok(caller)
+    }
+}
