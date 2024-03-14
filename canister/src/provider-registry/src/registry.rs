@@ -1,11 +1,11 @@
 use std::cell::RefCell;
-use std::ops::{ Add, RangeBounds };
+use std::ops::{ Add, Deref, RangeBounds };
 
 use candid::{ CandidType };
 
-use canister_common::alloc::{ Metrics, OpaqueMetrics };
+use canister_common::alloc::{ Metrics, OpaquePrometheusMetrics };
 use canister_common::common::PrincipalBytes;
-use ic_stable_structures::{ BTreeMap };
+use ic_stable_structures::{ memory_manager, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 use serde::{ Deserialize, Serialize };
 
@@ -63,6 +63,14 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    pub fn new(memory_manager: &MemoryManager) -> Self {
+        let providers = Providers::new(memory_manager);
+        let providers_bindings = ProvidersBindings::new(memory_manager);
+        let issued = Issued::new(memory_manager);
+
+        Self { providers, providers_bindings, issued }
+    }
+
     /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
     /// so even if the provider principal is changed, this function will still return true if the provider is the one that issued the emr.
     pub fn is_issued_by(
@@ -241,6 +249,9 @@ pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<Emr>>);
 deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<Emr>>);
 
 impl Issued {
+    fn new(memory_manager: &MemoryManager) -> Self {
+        Self(StableSet::new(memory_manager))
+    }
     fn provider_exists(&self, provider: InternalProviderId) -> bool {
         self.range_key_exists(&provider.to_stable())
     }
@@ -356,7 +367,7 @@ impl ProvidersBindings {
         self.0.get(provider).ok_or(ProviderBindingMapError::ProviderDoesNotExist)
     }
 
-    pub fn new(memory_manager: MemoryManager) -> Self {
+    pub fn new(memory_manager: &MemoryManager) -> Self {
         Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
     }
 
@@ -380,31 +391,30 @@ impl ProviderMetrics {
     }
 }
 
-pub struct Providers(
-    BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>,
-    RefCell<ProviderMetrics>,
-);
-
-impl OpaqueMetrics for Providers {
-    fn measure(&self) -> String {
-        [
-            Metrics::<LengthMetrics>::get_measurements(self),
-            Metrics::<AllocationMetrics>::get_measurements(self),
-        ].join("\n")
-    }
+pub struct Providers {
+    map: BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>,
+    metrics: RefCell<ProviderMetrics>,
 }
 
 impl std::fmt::Debug for Providers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let provider = self.0
+        let provider = self.map
             .iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect::<Vec<_>>();
 
         f.debug_struct("Providers")
-            .field("approx_allocation_bytes", &self.1.borrow().approx_allocation_bytes)
+            .field("approx_allocation_bytes", &self.metrics.borrow().approx_allocation_bytes)
             .field("map", &provider)
             .finish()
+    }
+}
+
+impl OpaquePrometheusMetrics for Providers {
+    fn measure(&self) -> String {
+        [Metrics::<LengthMetrics>::measure(self), Metrics::<AllocationMetrics>::measure(self)].join(
+            "\n"
+        )
     }
 }
 
@@ -422,7 +432,7 @@ impl Metrics<LengthMetrics> for Providers {
     }
 
     fn get_measurements(&self) -> String {
-        self.0.len().to_string()
+        self.map.len().to_string()
     }
 }
 
@@ -440,7 +450,7 @@ impl Metrics<AllocationMetrics> for Providers {
     }
 
     fn get_measurements(&self) -> String {
-        self.1.borrow().approx_allocation_bytes.to_string()
+        self.metrics.borrow().approx_allocation_bytes.to_string()
     }
 }
 
@@ -452,13 +462,13 @@ impl Providers {
                 let bytes_allocated_approx =
                     std::mem::size_of_val(&provider.internal_id) + std::mem::size_of_val(&provider);
 
-                let result = self.0
+                let result = self.map
                     .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
                     .map(|_| ());
 
                 assert_eq!(result.is_none(), true, "provider does not exist, this is a bug");
 
-                self.1.borrow_mut().record_allocation(bytes_allocated_approx as u128);
+                self.metrics.borrow_mut().record_allocation(bytes_allocated_approx as u128);
 
                 Ok(())
             }
@@ -466,7 +476,7 @@ impl Providers {
     }
 
     fn update_unchecked(&mut self, provider: Stable<Provider>) {
-        let _ = self.0.insert(provider.internal_id.clone().to_stable(), provider);
+        let _ = self.map.insert(provider.internal_id.clone().to_stable(), provider);
     }
 
     /// try mutate a provider, will return [ProviderBindingMapError::ProviderDoesNotExist] if the provider does not exist
@@ -475,7 +485,7 @@ impl Providers {
         provider: InternalProviderId,
         f: impl FnOnce(&mut Stable<Provider>) -> T
     ) -> ProviderBindingMapResult<T> {
-        let raw = self.0.get(&provider.to_stable());
+        let raw = self.map.get(&provider.to_stable());
 
         match raw {
             Some(mut provider) => {
@@ -490,18 +500,18 @@ impl Providers {
     }
 
     pub fn is_exist(&self, provider: InternalProviderId) -> bool {
-        self.0.contains_key(&provider.to_stable())
+        self.map.contains_key(&provider.to_stable())
     }
 
-    pub fn new(memory_manager: MemoryManager) -> Self {
+    pub fn new(memory_manager: &MemoryManager) -> Self {
         let mem = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
         let metrics = ProviderMetrics::default();
 
-        Self(mem, RefCell::new(metrics))
+        Self { map: mem, metrics: RefCell::new(metrics) }
     }
 
     pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider>> {
-        self.0.get(&provider.to_stable())
+        self.map.get(&provider.to_stable())
     }
 }
 
@@ -512,7 +522,7 @@ mod provider_test {
     #[test]
     fn test_add_read() {
         let mut memory_manager = MemoryManager::new();
-        let mut providers = Providers::new(memory_manager);
+        let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);
@@ -534,7 +544,7 @@ mod provider_test {
     #[test]
     fn test_metrics() {
         let mut memory_manager = MemoryManager::new();
-        let mut providers = Providers::new(memory_manager);
+        let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);
@@ -550,7 +560,11 @@ mod provider_test {
 
         providers.add_provider(provider.clone()).unwrap();
 
-        assert_eq!(providers.1.borrow().approx_allocation_bytes, bytes_allocated_approx as u128);
+        assert_eq!(
+            providers.metrics.borrow().approx_allocation_bytes,
+            bytes_allocated_approx as u128
+        );
+        println!("{:?}", <Providers as OpaquePrometheusMetrics>::measure(&providers));
     }
 }
 

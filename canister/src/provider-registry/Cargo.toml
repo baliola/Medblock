@@ -1,5 +1,5 @@
 [package]
-name = "patient-registry"
+name = "provider-registry"
 version = "0.1.0"
 edition = "2021"
 
@@ -18,7 +18,10 @@ parity-scale-codec = { workspace = true }
 ic-stable-structures = { workspace = true }
 thiserror = { workspace = true }
 ic_principal = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true , default-features = false, features = [
+    "serde",
+    "v7",
+]}
 
 [dev-dependencies]
 uuid = { version = "1.6.1", default-features = false, features = [

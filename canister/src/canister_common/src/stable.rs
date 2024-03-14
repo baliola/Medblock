@@ -242,7 +242,7 @@ impl<K, V> StableSet<K, V>
         &self.0
     }
 
-    pub fn new(memory_manager: MemoryManager) -> StableSet<K, V> {
+    pub fn new(memory_manager: &MemoryManager) -> StableSet<K, V> {
         let tree = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
         Self(tree)
     }
@@ -396,7 +396,7 @@ mod set_test {
     fn test_stable_set() {
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -417,9 +417,9 @@ mod set_test {
 
     #[test]
     fn test_paged_query() {
-        let memor_manager = memory_manager!();
+        let &memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -437,9 +437,9 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_wrong_keys() {
-        let memor_manager = memory_manager!();
+        let &memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -454,9 +454,9 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_mixed_keys() {
-        let memor_manager = memory_manager!();
+        let &memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
