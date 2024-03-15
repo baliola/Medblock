@@ -83,6 +83,8 @@ impl CanisterRandomSource {
     }
 }
 
+// TODO : implement threshold for refilling the rng source
+
 #[cfg(test)]
 mod test {
     use super::*;

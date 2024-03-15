@@ -4,7 +4,7 @@ use std::ops::{ Add, Deref, RangeBounds };
 use candid::{ CandidType };
 
 use canister_common::stable::CBOR;
-use canister_common::statistics::traits::{ Metrics, OpaqueMetrics };
+use canister_common::statistics::traits::{ Metrics, MetricsCollectionStrategy, OpaqueMetrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ memory_manager, BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -26,8 +26,6 @@ use canister_common::{
 
 type EmrId = Id;
 type Principal = ic_principal::Principal;
-
-metrics!(AllocationMetrics, LengthMetrics);
 
 #[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Status {
@@ -404,6 +402,8 @@ pub struct Providers {
     metrics: RefCell<ProviderMetrics>,
 }
 
+metrics!(Providers: LengthMetrics);
+
 impl std::fmt::Debug for Providers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let provider = self.map
@@ -418,18 +418,6 @@ impl std::fmt::Debug for Providers {
     }
 }
 
-impl OpaqueMetrics for Providers {
-    fn measure(&self) -> String {
-        [Metrics::<LengthMetrics>::measure(self), Metrics::<AllocationMetrics>::measure(self)].join(
-            "\n"
-        )
-    }
-
-    fn update(&self) {
-        todo!()
-    }
-}
-
 impl Metrics<LengthMetrics> for Providers {
     fn metrics_name() -> &'static str {
         "providers"
@@ -440,31 +428,15 @@ impl Metrics<LengthMetrics> for Providers {
     }
 
     fn update_measurements(&self) {
-        // no-op
+        unimplemented!()
     }
 
     fn get_measurements(&self) -> String {
         self.map.len().to_string()
     }
+
 }
 
-impl Metrics<AllocationMetrics> for Providers {
-    fn metrics_name() -> &'static str {
-        "providers_approx_allocation"
-    }
-
-    fn metrics_measurements() -> &'static str {
-        "bytes"
-    }
-
-    fn update_measurements(&self) {
-        // no-op, will be updated incrementally
-    }
-
-    fn get_measurements(&self) -> String {
-        self.metrics.borrow().approx_allocation_bytes.to_string()
-    }
-}
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
