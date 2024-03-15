@@ -9,17 +9,24 @@ use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
 pub mod traits {
-    use std::time::Duration;
+    use std::{ cell::RefCell, time::Duration };
+
+    use ic_cdk_timers::TimerId;
 
     /// scheduler api, type that have something to do at regular interval must implement this trait
     ///
     /// precondition : type can only update themselves, and not interact with other types
-    pub trait ScheduledTask {
+    pub trait ScheduledTask where Self: Sized + 'static {
         /// interval of the schedule
         fn interval() -> Duration;
 
-        /// update some state
+        /// update some state, will be called every [ScheduledTask::interval]
         fn update(&self);
+
+        fn start_periodic_task(s: RefCell<Self>) -> TimerId {
+            let update = move || s.borrow().update();
+            ic_cdk_timers::set_timer(Self::interval(), update)
+        }
     }
 }
 
@@ -447,5 +454,62 @@ pub mod guard {
         }
 
         Ok(caller)
+    }
+}
+
+pub mod freeze {
+    use std::{ borrow::BorrowMut, cell::RefCell };
+
+    use super::traits::ScheduledTask;
+
+    pub enum AllowCallFlag {
+        Enabled,
+        Disabled,
+    }
+
+    pub struct FreezeThreshold {
+        threshold: u128,
+        allow_call_flag: RefCell<AllowCallFlag>,
+    }
+
+    impl FreezeThreshold {
+        pub fn new(threshold: u128) -> Self {
+            Self {
+                allow_call_flag: AllowCallFlag::Enabled.into(),
+                threshold,
+            }
+        }
+
+        pub fn update_threshold(&mut self, threshold: u128) {
+            self.threshold = threshold;
+        }
+
+        /// INSPECT MESSAGE, DO NOT ALLOW CALL TO BE ACCEPTED IF CANISTER BALANCE IS BELOW THRESHOLD
+        ///
+        /// MAKE SURE TO CALL THIS IN THE CANISTER INSPECT MESSAGE HANDLE
+        pub fn inspect_message(&self) {
+            match self.allow_call_flag.borrow() {
+                AllowCallFlag::Enabled => (),
+                AllowCallFlag::Disabled => ic_cdk::trap("canister is currently freezed"),
+            }
+        }
+    }
+
+    impl ScheduledTask for FreezeThreshold {
+        fn interval() -> std::time::Duration {
+            // check threshold every 10 seconds, freeze canister if below threshold
+            std::time::Duration::from_secs(10)
+        }
+
+        fn update(&self) {
+            let balance = ic_cdk::api::canister_balance128();
+
+            match balance.cmp(&self.threshold) {
+                std::cmp::Ordering::Less => {
+                    self.borrow_mut().allow_call_flag = AllowCallFlag::Disabled;
+                }
+                _ => (),
+            }
+        }
     }
 }

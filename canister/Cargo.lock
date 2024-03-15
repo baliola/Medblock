@@ -164,6 +164,7 @@ dependencies = [
  "chrono",
  "ciborium",
  "ic-cdk",
+ "ic-cdk-timers",
  "ic-stable-structures",
  "ic_principal",
  "parity-scale-codec",
