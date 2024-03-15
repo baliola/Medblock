@@ -1,24 +1,82 @@
 /// metrics macro, used to define metrics for data structures
 #[macro_export]
 macro_rules! metrics {
-    ($($ident:ident),*) => {
+    () => {};
+
+    (@COUNT $ident:ident) => {1_u8};
+
+    (@COUNT $(ident: ident),*) => {
+    0 + 1_u8  metrics!(@COUNT $($ident),*)
+    };
+
+    ($ty:ty: $($ident:ident),*) => {
         $(struct $ident;
 
             impl $crate::statistics::traits::MetricsMarker for $ident {}
         )*
+
+        impl $crate::statistics::traits::OpaqueMetrics for $ty {
+            fn measure(&self) -> String {
+                [
+                    $(
+                        <$ty as $crate::statistics::traits::Metrics<$ident>>::measure(self),
+                    )*
+                ].join("\n")
+            }
+
+            fn update(&self) {
+               $( 
+                    $crate::statistics::traits::Metrics::<$ident>::update_measurements(self);
+                )*
+            }
+        }
     };
 }
 
 pub mod traits {
-    pub trait MetricsMarker {}
-    /// everything metrics trait. every type that implements [Metrics] must implement metrics with this type
-    /// as this type basically stack all the metrics together
-    pub trait OpaqueMetrics {
-        /// stack all metrics implemented using [Metrics] together. meant to be used in prometheus and http response
-        fn measure(&self) -> String;
+    use std::time::Duration;
 
+    use crate::common::traits::ScheduledTask;
+
+    pub trait MetricsMarker {}
+
+    /// everything metrics trait. every type that implements [Metrics] must implement metrics with this type
+    /// as this type basically stack all the metrics together, auto implemented by [metrics!] macro
+    pub trait OpaqueMetrics where Self: Sized {
         /// update the measurements of metrics, should call all internal [Metrics] implementation
         fn update(&self);
+
+        /// stack all metrics implemented using [Metrics] together. meant to be used in prometheus and http response
+        fn measure(&self) -> String;
+    }
+
+    /// metrics scheduler, decide if this metrics needs timer to periodically collect and update metrics
+    pub trait MetricsScheduler: OpaqueMetrics {
+        fn interval() -> Duration;
+
+        fn task_type() -> MetricsCollectionStrategy;
+    }
+
+    impl<M> ScheduledTask for M where M: OpaqueMetrics + MetricsScheduler + 'static {
+        fn interval() -> Duration {
+            <M as MetricsScheduler>::interval()
+        }
+
+        fn update(&self) {
+            match <M as MetricsScheduler>::task_type() {
+                MetricsCollectionStrategy::Periodic => <M as OpaqueMetrics>::update(self),
+                MetricsCollectionStrategy::Static => (),
+            }
+        }
+    }
+
+    /// metrics collection strategy, used to determine the type of task, if it's periodic, it'll call the update method every interval specified in [Metrics]
+    pub enum MetricsCollectionStrategy {
+        /// periodic task
+        Periodic,
+
+        /// a static task type i.e task that dont need periodic interval to execute. this could be gathered on the spot or other methods.
+        Static,
     }
 
     /// general metrics trait for data structures, M here is actually just a
@@ -60,7 +118,7 @@ pub mod traits {
 
         /// canister memory statistics, only works in wasm environment
         pub struct MemoryStatistics;
-        metrics!(Stable, Heap);
+        metrics!(MemoryStatistics: Stable, Heap);
 
         impl MemoryStatistics {
             pub fn get_heap_size() -> u64 {
@@ -124,18 +182,8 @@ pub mod traits {
             }
         }
 
-        impl OpaqueMetrics for MemoryStatistics {
-            fn measure(&self) -> String {
-                [Metrics::<Stable>::measure(self), Metrics::<Heap>::measure(self)].join("\n")
-            }
-
-            fn update(&self) {
-                // no-op
-            }
-        }
-
         pub struct BlockchainMetrics;
-        metrics!(CycleBalance, CycleBurnt);
+        metrics!(BlockchainMetrics: CycleBalance, CycleBurnt);
 
         // todo : implement freezing cycles threshold
 
@@ -179,18 +227,6 @@ pub mod traits {
             fn get_measurements(&self) -> String {
                 // TODO : will implement later
                 String::from("0")
-            }
-        }
-
-        impl OpaqueMetrics for BlockchainMetrics {
-            fn measure(&self) -> String {
-                [Metrics::<CycleBalance>::measure(self), Metrics::<CycleBurnt>::measure(self)].join(
-                    "\n"
-                )
-            }
-
-            fn update(&self) {
-                // no-op
             }
         }
 

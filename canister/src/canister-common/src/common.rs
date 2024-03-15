@@ -9,9 +9,11 @@ use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
 pub mod traits {
-    use std::{ cell::RefCell, time::Duration };
+    use std::{ borrow::Borrow, cell::RefCell, rc::Rc, time::Duration };
 
     use ic_cdk_timers::TimerId;
+
+    use crate::statistics::traits::{ Metrics, MetricsCollectionStrategy, MetricsMarker };
 
     /// scheduler api, type that have something to do at regular interval must implement this trait
     ///
@@ -23,8 +25,8 @@ pub mod traits {
         /// update some state, will be called every [ScheduledTask::interval]
         fn update(&self);
 
-        fn start_periodic_task(s: RefCell<Self>) -> TimerId {
-            let update = move || s.borrow().update();
+        fn start_periodic_task(s: Rc<Self>) -> TimerId {
+            let update = move || s.update();
             ic_cdk_timers::set_timer(Self::interval(), update)
         }
     }
@@ -487,11 +489,11 @@ pub mod freeze {
         /// INSPECT MESSAGE, DO NOT ALLOW CALL TO BE ACCEPTED IF CANISTER BALANCE IS BELOW THRESHOLD
         ///
         /// MAKE SURE TO CALL THIS IN THE CANISTER INSPECT MESSAGE HANDLE
-        pub fn inspect_message(&self) {
-            match self.allow_call_flag.borrow() {
+        pub fn check(&self) {
+            match *self.allow_call_flag.borrow() {
                 AllowCallFlag::Enabled => (),
                 AllowCallFlag::Disabled => ic_cdk::trap("canister is currently freezed"),
-            }
+            };
         }
     }
 
@@ -506,7 +508,7 @@ pub mod freeze {
 
             match balance.cmp(&self.threshold) {
                 std::cmp::Ordering::Less => {
-                    self.borrow_mut().allow_call_flag = AllowCallFlag::Disabled;
+                    *self.allow_call_flag.borrow_mut() = AllowCallFlag::Disabled;
                 }
                 _ => (),
             }
