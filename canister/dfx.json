@@ -2,7 +2,7 @@
   "canisters": {
     "provider-registry": {
       "candid": "src/provider-registry/provider-registry.did",
-      "package": "provider-registry",
+      "package": "provider_registry",
       "type": "rust"
     }
   },

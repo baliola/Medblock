@@ -108,144 +108,157 @@ pub mod traits {
             format!("{} {}", Self::prometheus_id(), self.get_measurements())
         }
     }
+}
 
-    pub mod canister_statistics {
-        use ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
+pub mod canister {
+    use ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
 
-        use super::{ Metrics, OpaqueMetrics };
+    use super::{ traits::OpaqueMetrics, traits::Metrics };
 
-        pub const WASM_PAGE_SIZE: u64 = WASM_PAGE_SIZE_IN_BYTES as u64;
+    pub const WASM_PAGE_SIZE: u64 = WASM_PAGE_SIZE_IN_BYTES as u64;
 
-        /// canister memory statistics, only works in wasm environment
-        pub struct MemoryStatistics;
-        metrics!(MemoryStatistics: Stable, Heap);
+    /// canister memory statistics, only works in wasm environment
+    pub struct MemoryStatistics;
 
-        impl MemoryStatistics {
-            pub fn get_heap_size() -> u64 {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
-                }
+    impl MemoryStatistics {
+        pub fn measure() -> String {
+            OpaqueMetrics::measure(&Self)
+        }
+    }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    0
-                }
+    metrics!(MemoryStatistics: Stable, Heap);
+
+    impl MemoryStatistics {
+        pub fn get_heap_size() -> u64 {
+            #[cfg(target_arch = "wasm32")]
+            {
+                (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
             }
 
-            pub fn get_stable_size() -> u64 {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    ic_cdk::api::stable::stable64_size() * WASM_PAGE_SIZE
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    0
-                }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                0
             }
         }
 
-        impl Metrics<Stable> for MemoryStatistics {
-            fn metrics_name() -> &'static str {
-                "stable_size"
+        pub fn get_stable_size() -> u64 {
+            #[cfg(target_arch = "wasm32")]
+            {
+                ic_cdk::api::stable::stable64_size() * WASM_PAGE_SIZE
             }
 
-            fn metrics_measurements() -> &'static str {
-                "bytes"
-            }
-
-            fn update_measurements(&self) {
-                // no-op
-            }
-
-            fn get_measurements(&self) -> String {
-                MemoryStatistics::get_stable_size().to_string()
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                0
             }
         }
+    }
 
-        impl Metrics<Heap> for MemoryStatistics {
-            fn metrics_name() -> &'static str {
-                "heap_size"
-            }
-
-            fn metrics_measurements() -> &'static str {
-                "bytes"
-            }
-
-            fn update_measurements(&self) {
-                // no-op
-            }
-
-            fn get_measurements(&self) -> String {
-                MemoryStatistics::get_heap_size().to_string()
-            }
+    impl Metrics<Stable> for MemoryStatistics {
+        fn metrics_name() -> &'static str {
+            "stable_size"
         }
 
-        pub struct BlockchainMetrics;
-        metrics!(BlockchainMetrics: CycleBalance, CycleBurnt);
-
-        // todo : implement freezing cycles threshold
-
-        impl Metrics<CycleBalance> for BlockchainMetrics {
-            fn metrics_name() -> &'static str {
-                "balance"
-            }
-
-            fn metrics_measurements() -> &'static str {
-                "cycles"
-            }
-
-            fn update_measurements(&self) {
-                // no-op
-            }
-
-            fn get_measurements(&self) -> String {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    ic_cdk::api::canister_balance128().to_string()
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                ({ 0 }).to_string()
-            }
+        fn metrics_measurements() -> &'static str {
+            "bytes"
         }
 
-        impl Metrics<CycleBurnt> for BlockchainMetrics {
-            fn metrics_name() -> &'static str {
-                "burnt"
-            }
-
-            fn metrics_measurements() -> &'static str {
-                "cycles"
-            }
-
-            fn update_measurements(&self) {
-                // no-op
-            }
-
-            fn get_measurements(&self) -> String {
-                // TODO : will implement later
-                String::from("0")
-            }
+        fn update_measurements(&self) {
+            // no-op
         }
 
-        #[cfg(test)]
-        mod test {
-            use super::*;
+        fn get_measurements(&self) -> String {
+            MemoryStatistics::get_stable_size().to_string()
+        }
+    }
 
-            #[test]
-            fn test_memory_statistics() {
-                assert_eq!(MemoryStatistics::get_heap_size(), 0);
-                assert_eq!(MemoryStatistics::get_stable_size(), 0);
+    impl Metrics<Heap> for MemoryStatistics {
+        fn metrics_name() -> &'static str {
+            "heap_size"
+        }
+
+        fn metrics_measurements() -> &'static str {
+            "bytes"
+        }
+
+        fn update_measurements(&self) {
+            // no-op
+        }
+
+        fn get_measurements(&self) -> String {
+            MemoryStatistics::get_heap_size().to_string()
+        }
+    }
+
+    pub struct BlockchainMetrics;
+
+    impl BlockchainMetrics {
+        pub fn measure() -> String {
+            OpaqueMetrics::measure(&Self)
+        }
+    }
+    metrics!(BlockchainMetrics: CycleBalance, CycleBurnt);
+
+    // todo : implement freezing cycles threshold
+
+    impl Metrics<CycleBalance> for BlockchainMetrics {
+        fn metrics_name() -> &'static str {
+            "balance"
+        }
+
+        fn metrics_measurements() -> &'static str {
+            "cycles"
+        }
+
+        fn update_measurements(&self) {
+            // no-op
+        }
+
+        fn get_measurements(&self) -> String {
+            #[cfg(target_arch = "wasm32")]
+            {
+                ic_cdk::api::canister_balance128().to_string()
             }
 
-            // just to debug print
-            #[test]
-            #[should_panic]
-            fn test_blockchain_metrics() {
-                panic!("{}", <MemoryStatistics as OpaqueMetrics>::measure(&MemoryStatistics));
-            }
+            #[cfg(not(target_arch = "wasm32"))]
+            ({ 0 }).to_string()
+        }
+    }
+
+    impl Metrics<CycleBurnt> for BlockchainMetrics {
+        fn metrics_name() -> &'static str {
+            "burnt"
+        }
+
+        fn metrics_measurements() -> &'static str {
+            "cycles"
+        }
+
+        fn update_measurements(&self) {
+            // no-op
+        }
+
+        fn get_measurements(&self) -> String {
+            // TODO : will implement later
+            String::from("0")
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        #[test]
+        fn test_memory_statistics() {
+            assert_eq!(MemoryStatistics::get_heap_size(), 0);
+            assert_eq!(MemoryStatistics::get_stable_size(), 0);
+        }
+
+        // just to debug print
+        #[test]
+        #[should_panic]
+        fn test_blockchain_metrics() {
+            panic!("{}", <MemoryStatistics as OpaqueMetrics>::measure(&MemoryStatistics));
         }
     }
 }

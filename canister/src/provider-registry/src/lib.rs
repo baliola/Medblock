@@ -1,9 +1,10 @@
 use std::{ cell::RefCell, rc::Rc };
 
 use canister_common::{
-    common::{ freeze::FreezeThreshold, traits::{ Scheduler } },
+    common::{ self, freeze::FreezeThreshold, traits::Scheduler },
     mmgr::MemoryManager,
     random::CanisterRandomSource,
+    statistics::{ self, traits::OpaqueMetrics },
 };
 use ic_principal::Principal;
 use registry::ProviderRegistry;
@@ -105,7 +106,7 @@ fn only_provider() -> Result<(), String> {
     })
 }
 
-// #[ic_cdk::init]
+#[ic_cdk::init]
 fn init() {
     STATE.with(|state| {
         let memory_manager = MemoryManager::new();
@@ -124,3 +125,13 @@ fn init() {
         *state.borrow_mut() = Some(init);
     });
 }
+
+#[ic_cdk::query]
+fn metrics() -> String {
+    [
+        statistics::canister::BlockchainMetrics::measure(),
+        statistics::canister::MemoryStatistics::measure(),
+    ].join("\n")
+}
+
+ic_cdk::export_candid!();
