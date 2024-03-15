@@ -5,6 +5,18 @@ use ic_principal::Principal;
 
 mod registry;
 mod config;
+
+/// approximate estimation of how much cycles it takes to handle 500 id generation in 1 seconds sustained until exactly 1 minutes before it exhausted.
+/// 
+/// 1 id generation cost : 10 random bytes
+/// 
+/// 500 id generation cost : 500 x 10 = 5000
+/// 
+/// 500 id generation cost in 1 minutes = 500 x 10 x 60 = 300_000
+/// 
+/// depending of the time it takes for the random bytes to arrive (~2.5s) and the interval configured, this will fill up naturally over a course of ~6-10h.
+const RANDOM_BYTES_THRESHOLD: u64 = 300_000;
+
 pub struct State {
     providers: registry::ProviderRegistry,
     rng: Rc<CanisterRandomSource>,
@@ -87,7 +99,7 @@ fn init() {
 
         let init = State {
             providers: registry::ProviderRegistry::new(&memory_manager),
-            rng: Rc::new(CanisterRandomSource::new()),
+            rng: Rc::new(CanisterRandomSource::new(RANDOM_BYTES_THRESHOLD)),
             config: config::CanisterConfig::default(),
             memory_manager,
         };

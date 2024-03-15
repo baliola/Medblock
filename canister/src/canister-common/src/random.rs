@@ -1,4 +1,4 @@
-use std::{ cell::{ RefCell }, fmt::{ Display, Formatter } };
+use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add };
 
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
@@ -11,20 +11,22 @@ pub trait RandomSource {
 }
 
 #[derive(Default)]
-pub struct CanisterRandomSource<const CycleThreshold: usize> {
+pub struct CanisterRandomSource {
     rng: RefCell<Vec<u8>>,
+    cycle_threshold: u64,
 }
 
-impl<const CycleThreshold: usize> ScheduledTask for CanisterRandomSource<CycleThreshold> {
+impl ScheduledTask for CanisterRandomSource {
     fn interval() -> std::time::Duration {
-        // 2 seconds to account for update calls + possible calls to different subnets
-        std::time::Duration::from_secs(2)
+        // 2.5 seconds to account for update calls (~2 seconds) and latency (~0.5 seconds)
+        std::time::Duration::from_secs(2) + std::time::Duration::from_millis(500)
     }
 
     fn update(&self) {
         let len = self.rng.borrow().len();
+        let threshold = self.cycle_threshold;
 
-        if len < CycleThreshold {
+        if len < (threshold as usize) {
             let rng = self.rng.clone();
 
             ic_cdk::spawn(async move {
@@ -32,7 +34,7 @@ impl<const CycleThreshold: usize> ScheduledTask for CanisterRandomSource<CycleTh
                 let mut rng = rng.borrow_mut();
 
                 match Self::refill_from_ic(rng.as_mut()).await {
-                    Ok(_) => (),
+                    Ok(_) => ic_cdk::eprintln!("refilled source"),
                     Err(e) => ic_cdk::eprintln!("{}", e),
                 }
             })
@@ -40,7 +42,7 @@ impl<const CycleThreshold: usize> ScheduledTask for CanisterRandomSource<CycleTh
     }
 }
 
-impl<const CycleThreshold: usize> RandomSource for CanisterRandomSource<CycleThreshold> {
+impl RandomSource for CanisterRandomSource {
     async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError> {
         self.get_random_bytes::<N>().await
     }
@@ -73,9 +75,12 @@ impl Display for CallError {
     }
 }
 
-impl<const CycleThreshold: usize> CanisterRandomSource<CycleThreshold> {
-    pub fn new() -> Self {
-        Self::default()
+impl CanisterRandomSource {
+    pub fn new(threshold: u64) -> Self {
+        Self {
+            rng: Default::default(),
+            cycle_threshold: threshold,
+        }
     }
 
     pub async fn refill_from_ic(buf: &mut Vec<u8>) -> Result<(), CallError> {
@@ -133,10 +138,11 @@ impl<const CycleThreshold: usize> CanisterRandomSource<CycleThreshold> {
 #[cfg(test)]
 mod test {
     use super::*;
+    const RANDOM_THRESHOLD: u64 = 30000;
 
     #[test]
     fn test_get_random() {
-        let rng = CanisterRandomSource::new();
+        let rng = CanisterRandomSource::new(RANDOM_THRESHOLD);
 
         rng.rng.borrow_mut().extend([1_u8].repeat(32));
 
@@ -148,16 +154,17 @@ mod test {
 #[cfg(test)]
 mod tests {
     use super::*;
+    pub const RANDOM_THRESHOLD: u64 = 30000;
 
     #[test]
     fn test_new() {
-        let rng = CanisterRandomSource::new();
+        let rng = CanisterRandomSource::new(RANDOM_THRESHOLD);
         assert!(rng.rng.borrow().is_empty());
     }
 
     #[test]
     fn test_refill_from_raw() {
-        let mut rng = CanisterRandomSource::new();
+        let mut rng = CanisterRandomSource::new(RANDOM_THRESHOLD);
         CanisterRandomSource::refill_from_raw(
             rng.rng.borrow_mut().as_mut(),
             vec![1, 2, 3, 4].into_iter()
@@ -167,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_try_get_random_bytes() {
-        let rng = CanisterRandomSource::new();
+        let rng = CanisterRandomSource::new(RANDOM_THRESHOLD);
         rng.rng.borrow_mut().extend([1_u8].repeat(32));
 
         let bytes = rng.try_get_random_bytes::<16>().unwrap();
