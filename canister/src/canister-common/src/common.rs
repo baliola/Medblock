@@ -8,6 +8,21 @@ use crate::{ deref, impl_max_size, impl_mem_bound, impl_range_bound, stable::Mem
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
+pub mod traits {
+    use std::time::Duration;
+
+    /// scheduler api, type that have something to do at regular interval must implement this trait
+    ///
+    /// precondition : type can only update themselves, and not interact with other types
+    pub trait ScheduledTask {
+        /// interval of the schedule
+        fn interval() -> Duration;
+
+        /// update some state
+        fn update(&self);
+    }
+}
+
 /// timestamp in nanoseconds
 #[derive(
     CandidType,
@@ -422,7 +437,6 @@ mod principal_bytes_tests {
 
 pub mod guard {
     use ic_principal::Principal;
-
 
     /// doesn't allow calls from anonymous principal
     pub fn verified_caller() -> Result<Principal, String> {

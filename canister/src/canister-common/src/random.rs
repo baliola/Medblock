@@ -3,17 +3,44 @@ use std::{ cell::{ RefCell }, fmt::{ Display, Formatter } };
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
+use crate::common::traits::ScheduledTask;
+
 pub trait RandomSource {
     #[allow(async_fn_in_trait)]
     async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError>;
 }
 
 #[derive(Default)]
-pub struct CanisterRandomSource {
+pub struct CanisterRandomSource<const CycleThreshold: usize> {
     rng: RefCell<Vec<u8>>,
 }
 
-impl RandomSource for CanisterRandomSource {
+impl<const CycleThreshold: usize> ScheduledTask for CanisterRandomSource<CycleThreshold> {
+    fn interval() -> std::time::Duration {
+        // 2 seconds to account for update calls + possible calls to different subnets
+        std::time::Duration::from_secs(2)
+    }
+
+    fn update(&self) {
+        let len = self.rng.borrow().len();
+
+        if len < CycleThreshold {
+            let rng = self.rng.clone();
+
+            ic_cdk::spawn(async move {
+                let rng = rng;
+                let mut rng = rng.borrow_mut();
+
+                match Self::refill_from_ic(rng.as_mut()).await {
+                    Ok(_) => (),
+                    Err(e) => ic_cdk::eprintln!("{}", e),
+                }
+            })
+        }
+    }
+}
+
+impl<const CycleThreshold: usize> RandomSource for CanisterRandomSource<CycleThreshold> {
     async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError> {
         self.get_random_bytes::<N>().await
     }
@@ -46,7 +73,7 @@ impl Display for CallError {
     }
 }
 
-impl CanisterRandomSource {
+impl<const CycleThreshold: usize> CanisterRandomSource<CycleThreshold> {
     pub fn new() -> Self {
         Self::default()
     }
