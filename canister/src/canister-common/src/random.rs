@@ -35,7 +35,7 @@ impl ScheduledTask for CanisterRandomSource {
 
                 match Self::refill_from_ic(rng.as_mut()).await {
                     Ok(_) => ic_cdk::eprintln!("refilled source"),
-                    Err(e) => ic_cdk::eprintln!("{}", e),
+                    Err(e) => ic_cdk::eprintln!("error refilling canister random source :{}", e),
                 }
             })
         }

@@ -119,8 +119,8 @@ fn init() {
         };
 
         ScheduledTask::start_periodic_task(init.freeze_threshold.clone());
-        ScheduledTask::start_periodic_task(init.providers.clone());
-        
+        ScheduledTask::start_periodic_task(init.rng.clone());
+
         *state.borrow_mut() = Some(init);
     });
 }
