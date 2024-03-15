@@ -3,7 +3,7 @@ use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add };
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
-use crate::common::traits::ScheduledTask;
+use crate::common::traits::Scheduler;
 
 pub trait RandomSource {
     #[allow(async_fn_in_trait)]
@@ -16,7 +16,7 @@ pub struct CanisterRandomSource {
     cycle_threshold: u64,
 }
 
-impl ScheduledTask for CanisterRandomSource {
+impl Scheduler for CanisterRandomSource {
     fn interval() -> std::time::Duration {
         // 2.5 seconds to account for update calls (~2 seconds) and latency (~0.5 seconds)
         std::time::Duration::from_secs(2) + std::time::Duration::from_millis(500)

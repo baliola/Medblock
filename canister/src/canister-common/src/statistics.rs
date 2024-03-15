@@ -36,7 +36,7 @@ macro_rules! metrics {
 pub mod traits {
     use std::time::Duration;
 
-    use crate::common::traits::ScheduledTask;
+    use crate::common::traits::Scheduler;
 
     pub trait MetricsMarker {}
 
@@ -57,7 +57,7 @@ pub mod traits {
         fn task_type() -> MetricsCollectionStrategy;
     }
 
-    impl<M> ScheduledTask for M where M: OpaqueMetrics + MetricsScheduler + 'static {
+    impl<M> Scheduler for M where M: OpaqueMetrics + MetricsScheduler + 'static {
         fn interval() -> Duration {
             <M as MetricsScheduler>::interval()
         }

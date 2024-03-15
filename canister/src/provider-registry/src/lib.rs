@@ -1,7 +1,7 @@
 use std::{ cell::RefCell, rc::Rc };
 
 use canister_common::{
-    common::{ freeze::FreezeThreshold, traits::{ ScheduledTask } },
+    common::{ freeze::FreezeThreshold, traits::{ Scheduler } },
     mmgr::MemoryManager,
     random::CanisterRandomSource,
 };
@@ -118,8 +118,8 @@ fn init() {
             freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD).into(),
         };
 
-        ScheduledTask::start_periodic_task(init.freeze_threshold.clone());
-        ScheduledTask::start_periodic_task(init.rng.clone());
+        Scheduler::start(init.freeze_threshold.clone());
+        Scheduler::start(init.rng.clone());
 
         *state.borrow_mut() = Some(init);
     });

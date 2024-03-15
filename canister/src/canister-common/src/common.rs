@@ -18,14 +18,14 @@ pub mod traits {
     /// scheduler api, type that have something to do at regular interval must implement this trait
     ///
     /// precondition : type can only update themselves, and not interact with other types
-    pub trait ScheduledTask where Self: Sized + 'static {
+    pub trait Scheduler where Self: Sized + 'static {
         /// interval of the schedule
         fn interval() -> Duration;
 
         /// update some state, will be called every [ScheduledTask::interval]
         fn update(&self);
 
-        fn start_periodic_task(s: Rc<Self>) -> TimerId {
+        fn start(s: Rc<Self>) -> TimerId {
             let update = move || s.update();
             ic_cdk_timers::set_timer(Self::interval(), update)
         }
@@ -462,7 +462,7 @@ pub mod guard {
 pub mod freeze {
     use std::{ borrow::BorrowMut, cell::RefCell };
 
-    use super::traits::ScheduledTask;
+    use super::traits::Scheduler;
 
     pub enum AllowCallFlag {
         Enabled,
@@ -497,7 +497,7 @@ pub mod freeze {
         }
     }
 
-    impl ScheduledTask for FreezeThreshold {
+    impl Scheduler for FreezeThreshold {
         fn interval() -> std::time::Duration {
             // check threshold every 10 seconds, freeze canister if below threshold
             std::time::Duration::from_secs(10)
