@@ -3,6 +3,7 @@ use std::ops::{ Add, Deref, RangeBounds };
 
 use candid::{ CandidType };
 
+use canister_common::stable::CBOR;
 use canister_common::statistics::traits::{ Metrics, OpaqueMetrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ memory_manager, BTreeMap };

@@ -1,7 +1,8 @@
-use std::{ borrow::Borrow, fmt::Debug, ops::{ DerefMut, RangeBounds } };
+use std::{ borrow::Borrow, fmt::Debug, marker::PhantomData, ops::{ DerefMut, RangeBounds } };
 
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
+use serde::{ de::DeserializeOwned, Serialize };
 
 use super::mmgr::MemoryManager;
 
@@ -10,11 +11,15 @@ pub trait MemBoundMarker {
 }
 
 pub trait ToStable {
-    fn to_stable(self) -> Stable<Self> where Self: Sized + MemBoundMarker {
+    fn to_stable<Encoding: EncodingMarker>(self) -> Stable<Self, Encoding>
+        where Self: Sized + MemBoundMarker
+    {
         Stable::new(self)
     }
 
-    fn from_stable(stable: Stable<Self>) -> Self where Self: Sized + MemBoundMarker {
+    fn from_stable<Encoding: EncodingMarker>(stable: Stable<Self, Encoding>) -> Self
+        where Self: Sized + MemBoundMarker
+    {
         stable.into_inner()
     }
 }
@@ -27,57 +32,89 @@ impl<T: Storable> MemBoundMarker for T {
 
 pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMemoryImpl>;
 
-#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
-pub struct Stable<T>(T) where T: MemBoundMarker;
+#[derive(Debug)]
+pub struct SCALE;
+#[derive(Debug)]
+pub struct CBOR;
+trait EncodingMarker {}
+impl EncodingMarker for SCALE {}
+impl EncodingMarker for CBOR {}
 
-impl<T> From<T> for Stable<T> where T: MemBoundMarker {
-    fn from(value: T) -> Self {
+#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
+pub struct Stable<Data, Encoding = SCALE>(Data, PhantomData<Encoding>)
+    where Data: MemBoundMarker, Encoding: EncodingMarker;
+
+impl<Data, Encoding> From<Data>
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker, Encoding: EncodingMarker
+{
+    fn from(value: Data) -> Self {
         Stable::new(value)
     }
 }
 
-impl<T> PartialEq for Stable<T> where T: MemBoundMarker + PartialEq {
+impl<Data, Encoding> PartialEq
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker + PartialEq, Encoding: EncodingMarker
+{
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(other.as_inner())
     }
 }
 
-impl<T> Eq for Stable<T> where T: MemBoundMarker + Eq {}
+impl<Data, Encoding> Eq
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker + Eq, Encoding: EncodingMarker {}
 
-impl<T> Default for Stable<T> where T: MemBoundMarker + Default {
+impl<Data, Encoding> Default
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker + Default, Encoding: EncodingMarker
+{
     fn default() -> Self {
-        Stable(Default::default())
+        Stable(Default::default(), PhantomData)
     }
 }
 
-impl<T> Stable<T> where T: MemBoundMarker {
-    pub fn as_inner(&self) -> &T {
+impl<Data, Encoding> Stable<Data, Encoding> where Data: MemBoundMarker, Encoding: EncodingMarker {
+    pub fn as_inner(&self) -> &Data {
         &self.0
     }
 }
 
-impl<T> std::ops::Deref for Stable<T> where T: MemBoundMarker {
-    type Target = T;
+impl<Data, Encoding> std::ops::Deref
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker, Encoding: EncodingMarker
+{
+    type Target = Data;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T> DerefMut for Stable<T> where T: MemBoundMarker {
+impl<Data, Encoding> DerefMut
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker, Encoding: EncodingMarker
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T> Borrow<T> for Stable<T> where T: MemBoundMarker {
-    fn borrow(&self) -> &T {
+impl<Data, Encoding> Borrow<Data>
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker, Encoding: EncodingMarker
+{
+    fn borrow(&self) -> &Data {
         &self.0
     }
 }
 
-impl<T: MemBoundMarker + RangeBounds<T>> RangeBounds<Stable<T>> for Stable<T> {
-    fn start_bound(&self) -> std::ops::Bound<&Stable<T>> {
+impl<Data, Encoding> RangeBounds<Stable<Data, Encoding>>
+    for Stable<Data, Encoding>
+    where Encoding: EncodingMarker, Data: MemBoundMarker + RangeBounds<Data>
+{
+    fn start_bound(&self) -> std::ops::Bound<&Stable<Data, Encoding>> {
         match self.0.start_bound() {
             std::ops::Bound::Included(_) => std::ops::Bound::Included(self),
             std::ops::Bound::Excluded(_) => std::ops::Bound::Excluded(self),
@@ -85,7 +122,7 @@ impl<T: MemBoundMarker + RangeBounds<T>> RangeBounds<Stable<T>> for Stable<T> {
         }
     }
 
-    fn end_bound(&self) -> std::ops::Bound<&Stable<T>> {
+    fn end_bound(&self) -> std::ops::Bound<&Stable<Data, Encoding>> {
         match self.0.end_bound() {
             std::ops::Bound::Included(_) => std::ops::Bound::Included(self),
             std::ops::Bound::Excluded(_) => std::ops::Bound::Excluded(self),
@@ -94,43 +131,52 @@ impl<T: MemBoundMarker + RangeBounds<T>> RangeBounds<Stable<T>> for Stable<T> {
     }
 }
 
-impl<T> Stable<T> where T: MemBoundMarker {
-    pub fn new(value: T) -> Self {
-        Stable(value)
+impl<Data, Encoding> Stable<Data, Encoding> where Data: MemBoundMarker, Encoding: EncodingMarker {
+    pub fn new(value: Data) -> Self {
+        Stable(value, PhantomData)
     }
 
-    pub fn get(&self) -> &T {
+    pub fn get(&self) -> &Data {
         &self.0
     }
 
-    pub fn get_mut(&mut self) -> &mut T {
+    pub fn get_mut(&mut self) -> &mut Data {
         &mut self.0
     }
 
-    pub fn into_inner(self) -> T {
+    pub fn into_inner(self) -> Data {
         self.0
     }
 }
 
-impl<T> Clone for Stable<T> where T: Clone + Encode + MemBoundMarker {
+impl<Data, Encoding> Clone
+    for Stable<Data, Encoding>
+    where Data: Clone + Encode + MemBoundMarker, Encoding: EncodingMarker
+{
     fn clone(&self) -> Self {
-        Stable(self.0.clone())
+        Stable(self.0.clone(), PhantomData)
     }
 }
 
-impl<T> PartialOrd for Stable<T> where T: PartialOrd + MemBoundMarker {
+impl<Data, Encoding> PartialOrd
+    for Stable<Data, Encoding>
+    where Data: PartialOrd + MemBoundMarker, Encoding: EncodingMarker
+{
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)
     }
 }
 
-impl<T> Ord for Stable<T> where T: Ord + MemBoundMarker {
+impl<Data, Encoding> Ord
+    for Stable<Data, Encoding>
+    where Data: Ord + MemBoundMarker, Encoding: EncodingMarker
+{
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
     }
 }
 
-impl<T> Storable for Stable<T> where T: Codec + Sized + MemBoundMarker {
+impl<Data> Storable for Stable<Data, SCALE> where Data: Codec + Sized + MemBoundMarker {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         let buf = <Self as Encode>::encode(self);
 
@@ -141,7 +187,24 @@ impl<T> Storable for Stable<T> where T: Codec + Sized + MemBoundMarker {
         <Self as Decode>::decode(&mut &*bytes).unwrap()
     }
 
-    const BOUND: Bound = <T as MemBoundMarker>::BOUND;
+    const BOUND: Bound = <Data as MemBoundMarker>::BOUND;
+}
+
+impl<Data> Storable
+    for Stable<Data, CBOR>
+    where Data: Serialize + DeserializeOwned + Sized + MemBoundMarker
+{
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        let mut buf = vec![];
+        ciborium::ser::into_writer(&self.0, &mut buf).unwrap();
+        std::borrow::Cow::Owned(buf)
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        Self(ciborium::de::from_reader(bytes.as_ref()).unwrap(), PhantomData)
+    }
+
+    const BOUND: Bound = <Data as MemBoundMarker>::BOUND;
 }
 
 #[cfg(test)]
@@ -150,7 +213,7 @@ mod stable_test {
 
     #[test]
     fn test_stable() {
-        let stable = Stable::new(10_u32);
+        let stable = Stable::<_>::new(10_u32);
         let bytes = stable.to_bytes();
         let stable2 = Stable::from_bytes(bytes);
         assert_eq!(stable, stable2);
@@ -177,7 +240,7 @@ mod stable_test {
 
     #[test]
     fn test_unbounded_vec() {
-        let stable = Stable::new(vec![1, 2, 3, 4]);
+        let stable = Stable::<_>::new(vec![1, 2, 3, 4]);
         let bytes = stable.to_bytes();
         let stable2 = Stable::from_bytes(bytes);
         assert_eq!(stable, stable2);
@@ -208,7 +271,7 @@ mod stable_test {
         }
 
         let str1 = TestStruct { a: 10, b: 20 };
-        let table_encoded = Stable::new(str1).encode();
+        let table_encoded = Stable::<_>::new(str1).encode();
 
         println!("{:?}", table_encoded.len());
         Stable::<SimilarStruct>::from_bytes(table_encoded.to_bytes());

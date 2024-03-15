@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["src/canister-common", "src/medblock", "src/provider-registry"]
+members = ["src/canister-common", "src/provider-registry"]
 
 [workspace.dependencies]
 ic-cdk = "0.13.1"
@@ -18,6 +18,7 @@ hex = "0.4.3"
 thiserror = "1.0.50"
 uuid = { default-features = false, version = "1.6.1" }
 
+ciborium = "0.2.2"
 ic-cdk-timers = "0.7.0"
 
 
