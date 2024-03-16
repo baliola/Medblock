@@ -1,4 +1,4 @@
-use std::{ cell::RefCell, rc::Rc };
+use std::{ borrow::Borrow, cell::RefCell, rc::Rc };
 
 use canister_common::{
     common::{ self, freeze::FreezeThreshold, traits::Scheduler },
@@ -28,10 +28,10 @@ const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
 
 pub struct State {
     providers: Rc<ProviderRegistry>,
-    rng: Rc<CanisterRandomSource>,
+    rng: Rc<RefCell<CanisterRandomSource>>,
     config: config::CanisterConfig,
     memory_manager: MemoryManager,
-    freeze_threshold: Rc<FreezeThreshold>,
+    freeze_threshold: Rc<RefCell<FreezeThreshold>>,
 }
 
 thread_local! {
@@ -54,7 +54,13 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 
 #[ic_cdk::inspect_message]
 fn inspect_message() {
-    with_state(|s| s.freeze_threshold.check());
+    verified_caller().expect("caller is not verified");
+    with_state(|s| {
+        let threshold: &RefCell<FreezeThreshold> = s.borrow().freeze_threshold.borrow();
+        threshold.borrow().check();
+    });
+
+    ic_cdk::api::call::accept_message()
 }
 
 fn verified_caller() -> Result<Principal, String> {
@@ -107,31 +113,42 @@ fn only_provider() -> Result<(), String> {
 }
 
 #[ic_cdk::init]
-fn init() {
+fn canister_init() {
     STATE.with(|state| {
+        ic_cdk::print("initialized");
+
         let memory_manager = MemoryManager::new();
 
         let init = State {
             providers: ProviderRegistry::new(&memory_manager).into(),
-            rng: Rc::new(CanisterRandomSource::new(RANDOM_BYTES_THRESHOLD)),
+            rng: RefCell::new(CanisterRandomSource::new(RANDOM_BYTES_THRESHOLD)).into(),
             config: config::CanisterConfig::default(),
             memory_manager,
-            freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD).into(),
+            freeze_threshold: RefCell::new(FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD)).into(),
         };
-
-        Scheduler::start(init.freeze_threshold.clone());
-        Scheduler::start(init.rng.clone());
 
         *state.borrow_mut() = Some(init);
     });
 }
+#[ic_cdk::update]
+fn start_scheduler() {
+    with_state(|s| {
+        Scheduler::start(s.freeze_threshold.clone());
+        Scheduler::start(s.rng.clone());
+    })
+}
 
 #[ic_cdk::query]
 fn metrics() -> String {
-    [
-        statistics::canister::BlockchainMetrics::measure(),
-        statistics::canister::MemoryStatistics::measure(),
-    ].join("\n")
+    with_state(|s| {
+        let rng: &RefCell<CanisterRandomSource> = s.borrow().rng.tr;
+        [
+            s.providers.measure(),
+            rng.borrow().measure(),
+            statistics::canister::BlockchainMetrics::measure(),
+            statistics::canister::MemoryStatistics::measure(),
+        ].join("\n")
+    })
 }
 
 ic_cdk::export_candid!();

@@ -33,6 +33,13 @@ macro_rules! metrics {
     };
 }
 
+#[macro_export]
+macro_rules! opaque_metrics {
+    ($s:ident.$ident:ident) => {
+        $crate::statistics::traits::OpaqueMetrics::measure(&$s.$ident)
+    };
+}
+
 pub mod traits {
     use std::time::Duration;
 

@@ -305,6 +305,10 @@ impl<K, V> StableSet<K, V>
         &self.0
     }
 
+    pub fn len (&self) -> u64 {
+        self.0.len()
+    }
+    
     pub fn new(memory_manager: &MemoryManager) -> StableSet<K, V> {
         let tree = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
         Self(tree)

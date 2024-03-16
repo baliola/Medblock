@@ -25,9 +25,18 @@ pub mod traits {
         /// update some state, will be called every [ScheduledTask::interval]
         fn update(&self);
 
-        fn start(s: Rc<Self>) -> TimerId {
-            let update = move || s.update();
-            ic_cdk_timers::set_timer(Self::interval(), update)
+        fn start(s: Rc<RefCell<Self>>) {
+            fn update<A: Scheduler>(s: Rc<RefCell<A>>) {
+                let inner: &RefCell<A> = Rc::borrow(&s);
+                inner.borrow().update();
+                
+                ic_cdk_timers::set_timer(A::interval(), move || {
+                    update(s);
+                });
+
+            }
+            
+            update(s);
         }
     }
 }

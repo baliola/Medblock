@@ -1,9 +1,9 @@
-use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add };
+use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add, rc::Rc };
 
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
-use crate::common::traits::Scheduler;
+use crate::{common::traits::Scheduler, metrics, statistics::traits::Metrics};
 
 pub trait RandomSource {
     #[allow(async_fn_in_trait)]
@@ -12,8 +12,30 @@ pub trait RandomSource {
 
 #[derive(Default)]
 pub struct CanisterRandomSource {
-    rng: RefCell<Vec<u8>>,
+    rng: Rc<RefCell<Vec<u8>>>,
     cycle_threshold: u64,
+}
+
+metrics!(CanisterRandomSource: RandomBytes);
+
+impl Metrics<RandomBytes> for CanisterRandomSource {
+    
+    fn metrics_name() -> &'static str {
+        "random"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "bytes"
+    }
+
+    fn update_measurements(&self) {
+        unimplemented!()
+    }
+    
+    fn get_measurements(&self) -> String {
+        let len = self.rng.borrow().len();
+        len.to_string()
+    }
 }
 
 impl Scheduler for CanisterRandomSource {
@@ -78,7 +100,7 @@ impl Display for CallError {
 impl CanisterRandomSource {
     pub fn new(threshold: u64) -> Self {
         Self {
-            rng: Default::default(),
+            rng: Rc::new(RefCell::new(Vec::new())),
             cycle_threshold: threshold,
         }
     }
@@ -87,6 +109,7 @@ impl CanisterRandomSource {
         let (source,) = ic_cdk::api::management_canister::main
             ::raw_rand().await
             .map_err(CallError::from)?;
+        u128::from_ne_bytes(&source);
 
         Self::refill_from_raw(buf, source);
         Ok(())

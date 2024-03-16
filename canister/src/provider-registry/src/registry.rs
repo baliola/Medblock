@@ -11,12 +11,7 @@ use parity_scale_codec::{ Decode, Encode };
 use serde::{ Deserialize, Serialize };
 
 use canister_common::{
-    deref,
-    impl_max_size,
-    impl_mem_bound,
-    impl_range_bound,
-    metrics,
-    zero_sized_state,
+    deref, impl_max_size, impl_mem_bound, impl_range_bound, metrics, opaque_metrics, zero_sized_state
 };
 use canister_common::{
     common::{ AsciiRecordsKey, Id, Timestamp },
@@ -66,6 +61,29 @@ pub struct ProviderRegistry {
     providers: Providers,
     providers_bindings: ProvidersBindings,
     issued: Issued,
+}
+
+metrics!(ProviderRegistry: RegistryMetrics);
+
+impl Metrics<RegistryMetrics> for ProviderRegistry {
+    fn metrics_name() -> &'static str {
+        "provider_registry"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        unimplemented!()
+    }
+
+    fn get_measurements(&self) -> String {
+        
+        [opaque_metrics!(self.providers), opaque_metrics!(self.providers_bindings), opaque_metrics!(self.issued)].join(
+            "\n"
+        )
+    }
 }
 
 impl ProviderRegistry {
@@ -253,6 +271,25 @@ pub type IssueMapResult<T> = Result<T, IssueMapError>;
 /// Issued emr map. used to track emr issued by a particular provider.
 pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<Emr>>);
 deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<Emr>>);
+metrics!(Issued: SetLength);
+
+impl Metrics<SetLength> for Issued {
+    fn metrics_name() -> &'static str {
+        "provider_issued"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        unimplemented!()
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
 
 impl Issued {
     fn new(memory_manager: &MemoryManager) -> Self {
@@ -327,6 +364,25 @@ pub enum ProviderBindingMapError {
     ProviderExist,
     #[error("operation not permitted, provider does not exist")]
     ProviderDoesNotExist,
+}
+metrics!(ProvidersBindings: BindingsMapLength);
+
+impl Metrics<BindingsMapLength> for ProvidersBindings {
+    fn metrics_name() -> &'static str {
+        "providers_bindings"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        unimplemented!()
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
 }
 
 pub type ProviderBindingMapResult<T = ()> = Result<T, ProviderBindingMapError>;
@@ -434,9 +490,7 @@ impl Metrics<LengthMetrics> for Providers {
     fn get_measurements(&self) -> String {
         self.map.len().to_string()
     }
-
 }
-
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
