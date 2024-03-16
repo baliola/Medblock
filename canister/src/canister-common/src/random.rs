@@ -3,71 +3,15 @@ use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add, rc::Rc };
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 
-use crate::{common::traits::Scheduler, metrics, statistics::traits::Metrics};
+use crate::{ common::traits::Scheduler, metrics, statistics::traits::Metrics };
 
 pub trait RandomSource {
-    #[allow(async_fn_in_trait)]
-    async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError>;
+    fn get_random_bytes(&self) -> Result<[u8; 32], CallError>;
 }
 
-#[derive(Default)]
 pub struct CanisterRandomSource {
-    rng: Rc<RefCell<Vec<u8>>>,
+    rng: RefCell<oorandom::Rand64>,
     cycle_threshold: u64,
-}
-
-metrics!(CanisterRandomSource: RandomBytes);
-
-impl Metrics<RandomBytes> for CanisterRandomSource {
-    
-    fn metrics_name() -> &'static str {
-        "random"
-    }
-
-    fn metrics_measurements() -> &'static str {
-        "bytes"
-    }
-
-    fn update_measurements(&self) {
-        unimplemented!()
-    }
-    
-    fn get_measurements(&self) -> String {
-        let len = self.rng.borrow().len();
-        len.to_string()
-    }
-}
-
-impl Scheduler for CanisterRandomSource {
-    fn interval() -> std::time::Duration {
-        // 2.5 seconds to account for update calls (~2 seconds) and latency (~0.5 seconds)
-        std::time::Duration::from_secs(2) + std::time::Duration::from_millis(500)
-    }
-
-    fn update(&self) {
-        let len = self.rng.borrow().len();
-        let threshold = self.cycle_threshold;
-
-        if len < (threshold as usize) {
-            let rng = self.rng.clone();
-
-            ic_cdk::spawn(async move {
-                let rng = rng;
-                let mut rng = rng.borrow_mut();
-
-                match Self::refill_from_ic(rng.as_mut()).await {
-                    Ok(_) => ic_cdk::eprintln!("refilled source"),
-                    Err(e) => ic_cdk::eprintln!("error refilling canister random source :{}", e),
-                }
-            })
-        }
-    }
-}
-
-impl RandomSource for CanisterRandomSource {
-    async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError> {
-        self.get_random_bytes::<N>().await
-    }
 }
 
 type Reason = String;
@@ -98,11 +42,23 @@ impl Display for CallError {
 }
 
 impl CanisterRandomSource {
-    pub fn new(threshold: u64) -> Self {
+    pub async fn new(seed: u64) -> Self {}
+
+    pub fn new_with_seed(seed: u128) -> Self {
+        let mut rng = oorandom::Rand64::new(seed);
+        
         Self {
-            rng: Rc::new(RefCell::new(Vec::new())),
-            cycle_threshold: threshold,
+            rng: RefCell::new(rng),
+            cycle_threshold: 0,
         }
+    }
+
+    async fn random_ic_bytes() -> Result<[u8; 32], CallError> {
+        let (source,) = ic_cdk::api::management_canister::main
+            ::raw_rand().await
+            .map_err(CallError::from)?;
+
+        [0; 32].copy_from_slice(&source)
     }
 
     pub async fn refill_from_ic(buf: &mut Vec<u8>) -> Result<(), CallError> {
