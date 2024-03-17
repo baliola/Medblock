@@ -11,7 +11,7 @@ use uuid::Uuid;
 pub type UserId = H256;
 pub type ProviderId = Id;
 pub type EmrId = Id;
-pub type RecordsKeconsty<const N: usize> = AsciiRecordsKey<N>;
+pub type RecordsKey<const N: usize> = AsciiRecordsKey<N>;
 pub type ArbitraryEmrValue = String;
 
 /// timestamp in nanoseconds
