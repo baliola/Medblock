@@ -208,11 +208,11 @@ impl ProviderRegistry {
     ///
     /// `provider`: the provider principal
     ///
-    /// `anchor`: the anchor, this is used to paginate the result. the result will be returned starting from the anchor.
+    /// `page`: the anchor, this is used to paginate the result. the result will be returned starting from the anchor.
     /// so for example if the anchor is 0, the result will be returned starting from the first emr issued by the provider.
     /// and if the anchor is 10, the result will be returned starting from the 10th emr issued by the provider.
     ///
-    /// `max`: the maximum number of emr to be returned.
+    /// `limit`: the maximum number of emr to be returned.
     pub fn get_issued(
         &self,
         provider: &ProviderPrincipal,

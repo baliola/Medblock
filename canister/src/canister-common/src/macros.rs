@@ -154,7 +154,6 @@ macro_rules! impl_range_bound {
     };
 }
 
-
 #[macro_export]
 macro_rules! native_bound {
     ($($ident:ident),*) => {
@@ -191,5 +190,33 @@ macro_rules! native_bound {
                 }
 
             )*
+    };
+}
+
+/// will emit a `value` variable that can be used to reference members of `$from`
+#[macro_export]
+macro_rules! from {
+    ($ty:ty: $($from:ty),*) => {
+        $(
+            impl From<$from> for $ty {
+                fn from(value: $from) -> Self {
+                    Self(value)
+                }
+            }
+        )*
+    };
+
+    ($ty:ty: $($from:ty as $var:ident { $($k:ident: $v:ident)* }),*) => {
+        $(
+            impl From<$from> for $ty {
+                fn from($var: $from) -> Self {
+                    Self{
+                        $(
+                            $k: $v,
+                        )*
+                    }
+                }
+            }
+        )*
     };
 }

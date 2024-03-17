@@ -3,7 +3,7 @@ use candid::Principal;
 pub struct CanisterConfig {
     owner: Principal,
     // TODO: make this configurable
-    max_item_per_response: usize,
+    max_item_per_response: u8,
 }
 
 impl Default for CanisterConfig {
@@ -26,7 +26,7 @@ impl CanisterConfig {
     /// this values will be used to limit the number of emrs returned. to account for 2MB response limit.
     ///
     /// initially set to 10.
-    const INITIAL_MAX_EMR_RESPONSE: usize = 10;
+    const INITIAL_MAX_EMR_RESPONSE: u8 = 10;
 
     pub fn new(owner: Principal) -> Self {
         Self {
@@ -37,5 +37,9 @@ impl CanisterConfig {
 
     pub fn is_canister_owner(&self, principal: &Principal) -> bool {
         self.owner.eq(principal)
+    }
+    
+    pub fn max_item_per_response(&self) -> u8 {
+        self.max_item_per_response
     }
 }
