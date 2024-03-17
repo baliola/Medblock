@@ -7,32 +7,43 @@ impl<Source: RandomSource> IdGenerator<Source> {
         Self(source)
     }
 
-    pub async fn generate_id(&self) -> Result<crate::common::Id, CallError> {
-        let random_bytes = self.0.get_random_bytes::<UUID_MAX_SOURCE_LEN>().await?;
-        Ok(crate::common::Id::new(&random_bytes))
+    pub async fn reseed_randomness(&mut self) -> Result<(), CallError> {
+        self.0.reseed().await;
+        Ok(())
+    }
+
+    pub fn generate_id(&mut self) -> crate::common::Id {
+        let mut random_bytes = self.0.get_random_bytes();
+
+        let mut bytes = [0; UUID_MAX_SOURCE_LEN];
+        bytes.copy_from_slice(&random_bytes[0..UUID_MAX_SOURCE_LEN]);
+
+        crate::common::Id::new(&bytes)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::future;
+    use std::{ collections::{ HashMap, HashSet }, future };
+
+    use crate::random::CanisterRandomSource;
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_generate_id() {
-        struct MockRandomSource;
+    #[test]
+    fn test_generate_id() {
+        let mut map = HashSet::new();
 
-        impl RandomSource for MockRandomSource {
-            async fn get_random_bytes<const N: usize>(&self) -> Result<[u8; N], CallError> {
-                let mut bytes = [0; N];
-                bytes.fill(0);
-                Ok(bytes)
-            }
+        /// 1 billion iterations, should be enough to test the randomness of the id generator
+
+        let source = CanisterRandomSource::new_with_seed(10000);
+        let mut generator = IdGenerator::new(source);
+
+        for i in 0..1_000_000 {
+            println!("running {} iteration", i);
+            let id = generator.generate_id();
+
+            map.insert(id);
         }
-
-        let generator = IdGenerator::new(MockRandomSource);
-        let id = generator.generate_id().await.unwrap();
-        assert_eq!(id.to_string().len(), 36);
     }
 }

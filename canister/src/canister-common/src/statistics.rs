@@ -43,8 +43,6 @@ macro_rules! opaque_metrics {
 pub mod traits {
     use std::time::Duration;
 
-    use crate::common::traits::Scheduler;
-
     pub trait MetricsMarker {}
 
     /// everything metrics trait. every type that implements [Metrics] must implement metrics with this type
@@ -55,26 +53,6 @@ pub mod traits {
 
         /// stack all metrics implemented using [Metrics] together. meant to be used in prometheus and http response
         fn measure(&self) -> String;
-    }
-
-    /// metrics scheduler, decide if this metrics needs timer to periodically collect and update metrics
-    pub trait MetricsScheduler: OpaqueMetrics {
-        fn interval() -> Duration;
-
-        fn task_type() -> MetricsCollectionStrategy;
-    }
-
-    impl<M> Scheduler for M where M: OpaqueMetrics + MetricsScheduler + 'static {
-        fn interval() -> Duration {
-            <M as MetricsScheduler>::interval()
-        }
-
-        fn update(&self) {
-            match <M as MetricsScheduler>::task_type() {
-                MetricsCollectionStrategy::Periodic => <M as OpaqueMetrics>::update(self),
-                MetricsCollectionStrategy::Static => (),
-            }
-        }
     }
 
     /// metrics collection strategy, used to determine the type of task, if it's periodic, it'll call the update method every interval specified in [Metrics]
