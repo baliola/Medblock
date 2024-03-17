@@ -1,7 +1,8 @@
-use std::{ cell::RefCell, rc::Rc };
+use std::{ borrow::Borrow, cell::RefCell, rc::Rc, time::Duration };
 
 use canister_common::{
-    common::{ self, freeze::FreezeThreshold, traits::Scheduler },
+    common::{ self, freeze::FreezeThreshold },
+    id_generator::IdGenerator,
     mmgr::MemoryManager,
     random::CanisterRandomSource,
     statistics::{ self, traits::OpaqueMetrics },
@@ -12,30 +13,23 @@ use registry::ProviderRegistry;
 mod registry;
 mod config;
 
-/// approximate estimation of how much cycles it takes to handle 500 id generation in 1 seconds sustained until exactly 1 minutes before it exhausted.
-///
-/// 1 id generation cost : 10 random bytes
-///
-/// 500 id generation cost : 500 x 10 = 5000
-///
-/// 500 id generation cost in 1 minutes = 500 x 10 x 60 = 300_000
-///
-/// depending of the time it takes for the random bytes to arrive (~2.5s) and the interval configured, this will fill up naturally over a course of ~6-10h.
-const RANDOM_BYTES_THRESHOLD: u64 = 300_000;
+/// initial seed for the random source, this is insecure and only used for bootstraping the random source before it is reseeded again
+/// using true random bytes from ic.
+const INSECURE_INITIAL_SEED: u128 = 724361971;
 
-/// TODO: benchmark this, for now, the same as random bytes threshold
+/// TODO: benchmark this
 const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
 
 pub struct State {
-    providers: Rc<ProviderRegistry>,
-    rng: Rc<CanisterRandomSource>,
+    providers: ProviderRegistry,
     config: config::CanisterConfig,
     memory_manager: MemoryManager,
-    freeze_threshold: Rc<FreezeThreshold>,
+    freeze_threshold: FreezeThreshold,
 }
 
 thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::new(None);
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = RefCell::new(None);
 }
 
 /// A helper method to read the state.
@@ -54,7 +48,10 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 
 #[ic_cdk::inspect_message]
 fn inspect_message() {
+    verified_caller().expect("caller is not verified");
     with_state(|s| s.freeze_threshold.check());
+
+    ic_cdk::api::call::accept_message()
 }
 
 fn verified_caller() -> Result<Principal, String> {
@@ -106,32 +103,46 @@ fn only_provider() -> Result<(), String> {
     })
 }
 
+async fn initialize_id_generator() {
+    let rng = CanisterRandomSource::new().await;
+    let id_generator = IdGenerator::new(rng);
+
+    ID_GENERATOR.with(|id_gen| {
+        *id_gen.borrow_mut() = Some(id_generator);
+    });
+
+    ic_cdk::print("id generator initialized");
+}
+
 #[ic_cdk::init]
-fn init() {
-    STATE.with(|state| {
+fn canister_init() {
+    STATE.with(move |state| {
         let memory_manager = MemoryManager::new();
 
         let init = State {
             providers: ProviderRegistry::new(&memory_manager).into(),
-            rng: Rc::new(CanisterRandomSource::new(RANDOM_BYTES_THRESHOLD)),
             config: config::CanisterConfig::default(),
             memory_manager,
-            freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD).into(),
+            freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD),
         };
 
-        Scheduler::start(init.freeze_threshold.clone());
-        Scheduler::start(init.rng.clone());
-
         *state.borrow_mut() = Some(init);
+
+        ic_cdk::print("state initialized");
     });
+
+    ic_cdk_timers::set_timer(Duration::from_secs(3), || ic_cdk::spawn(initialize_id_generator()));
 }
 
 #[ic_cdk::query]
 fn metrics() -> String {
-    [
-        statistics::canister::BlockchainMetrics::measure(),
-        statistics::canister::MemoryStatistics::measure(),
-    ].join("\n")
+    with_state(|s| {
+        [
+            s.providers.measure(),
+            statistics::canister::BlockchainMetrics::measure(),
+            statistics::canister::MemoryStatistics::measure(),
+        ].join("\n")
+    })
 }
 
 ic_cdk::export_candid!();
