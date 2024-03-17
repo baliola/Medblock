@@ -12,7 +12,6 @@ pub struct EmrListProviderRequest {
 pub struct EmrListProviderResponse {
     ids: Vec<Id>,
 }
-
 from!(EmrListProviderResponse: Vec<Id> as value {
     ids: value
 });
