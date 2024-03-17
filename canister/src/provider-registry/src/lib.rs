@@ -12,6 +12,7 @@ use registry::ProviderRegistry;
 
 mod registry;
 mod config;
+mod types;
 
 /// initial seed for the random source, this is insecure and only used for bootstraping the random source before it is reseeded again
 /// using true random bytes from ic.
@@ -142,6 +143,45 @@ fn metrics() -> String {
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
         ].join("\n")
+    })
+}
+
+// TODO
+// #[ic_cdk::update(guard = "only_provider")]
+// #[candid::candid_method(update)]
+// // TODO : move arguments to a candid struct
+// async fn create_emr_for_user(req: CreateEmrForUserRequest) {
+//     ic_cdk::eprintln!("create_emr_for_user: {}", req.emr_records.0);
+
+//     let records = Records::try_from(req.emr_records).unwrap();
+//     let id = generate_id().await.unwrap();
+
+//     STATE.with(|state| {
+//         let mut state = state.borrow_mut();
+//         let state = state.as_mut().unwrap();
+
+//         // change the emr version if upgrade happens
+//         let emr = emr::V001::new(id, records).into();
+
+//         let emr_id = state.emr_registry.register_emr(emr, req.owner).unwrap();
+
+//         let caller = verified_caller().unwrap();
+
+//         // increment session
+//         let _ =state.provider_registry.issue_emr(&caller, emr_id);
+//     })
+// }
+
+#[ic_cdk::query(guard = "only_provider")]
+// TODO : fix anchor
+// TODO : move arguments to a candid struct
+fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProviderResponse {
+    with_state(|state| {
+        let provider = verified_caller().unwrap();
+
+        let limit = state.config.max_item_per_response().min(req.limit);
+
+        state.providers.get_issued(&provider, req.page, req.limit as u64).unwrap().into()
     })
 }
 
