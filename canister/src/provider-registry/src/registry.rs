@@ -707,6 +707,8 @@ pub struct Provider {
     // provider_details:
 }
 
+// TODO: store it as cbor encoded bytes in stable memory
+
 impl Provider {
     pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
         Self {
