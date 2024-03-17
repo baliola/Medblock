@@ -4,10 +4,15 @@ use candid::{ CandidType, Principal };
 use ic_stable_structures::storable::Bound;
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, impl_max_size, impl_mem_bound, impl_range_bound, stable::MemBoundMarker };
+use crate::{ deref, from, impl_max_size, impl_mem_bound, impl_range_bound, stable::MemBoundMarker };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
+pub type UserId = H256;
+pub type ProviderId = Id;
+pub type EmrId = Id;
+pub type RecordsKeconsty<const N: usize> = AsciiRecordsKey<N>;
+pub type ArbitraryEmrValue = String;
 
 /// timestamp in nanoseconds
 #[derive(
@@ -439,7 +444,6 @@ pub mod guard {
 pub mod freeze {
     use std::{ borrow::BorrowMut, cell::RefCell };
 
-
     pub enum AllowCallFlag {
         Enabled,
         Disabled,
@@ -469,6 +473,60 @@ pub mod freeze {
                 std::cmp::Ordering::Less => ic_cdk::trap("canister is currently freezed"),
                 _ => (),
             }
+        }
+    }
+}
+
+pub const HASH_LEN: usize = 32;
+
+/// generap purpose 256 bit arbitrary hex encoded hash, could be used as index.
+/// currently we make no assumption of the hash method used, as this should generally be
+/// generated offchain and only deserialized onchain.
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode, Default)]
+pub struct H256([u8; HASH_LEN]);
+impl_max_size!(for H256: 32);
+impl_mem_bound!(for H256: bounded; fixed_size: true);
+deref!(H256: [u8; HASH_LEN]);
+impl_range_bound!(H256);
+from!(H256: [u8; HASH_LEN]);
+
+impl H256 {
+    pub fn as_str(&self) -> &str {
+        std::str::from_utf8(&self.0).expect("key must be ascii")
+    }
+}
+
+mod deserialize_h256 {
+    use super::*;
+
+    impl<'de> serde::Deserialize<'de> for H256 {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where D: serde::Deserializer<'de>
+        {
+            let s = String::deserialize(deserializer)?;
+            let s = hex::decode(s).map_err(serde::de::Error::custom)?;
+
+            if s.len() != HASH_LEN {
+                return Err(serde::de::Error::custom("invalid nik hash length"));
+            }
+
+            // TODO: unnecessary copy
+            let mut key = [0u8; HASH_LEN];
+            key[..s.len()].copy_from_slice(&s);
+
+            Ok(Self(key))
+        }
+    }
+
+    impl CandidType for H256 {
+        fn _ty() -> candid::types::Type {
+            candid::types::TypeInner::Text.into()
+        }
+
+        fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+            where S: candid::types::Serializer
+        {
+            serializer.serialize_text(self.as_str())
         }
     }
 }

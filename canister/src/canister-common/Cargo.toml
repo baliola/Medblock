@@ -21,6 +21,7 @@ ciborium = "0.2.2"
 ic-cdk-timers = { workspace = true }
 oorandom = { workspace = true }
 tiny-keccak = { workspace = true }
+hex = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.36.0", features = ["macros", "rt"] }
