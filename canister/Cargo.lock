@@ -701,6 +701,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
+name = "patient-registry"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "canister-common",
+ "ic-cdk",
+ "ic-cdk-timers",
+ "ic-stable-structures",
+ "ic_principal",
+ "parity-scale-codec",
+ "serde",
+ "thiserror",
+ "tiny-keccak",
+ "uuid",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
