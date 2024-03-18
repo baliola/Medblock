@@ -278,6 +278,12 @@ mod deserialize {
             Uuid::from_bytes_ref(&self.0).serialize(serializer)
         }
     }
+
+    impl<'de, const N: usize> serde::Serialize for AsciiRecordsKey<N> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+            serializer.serialize_str(self.to_ascii_str())
+        }
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -441,8 +447,6 @@ pub mod guard {
 }
 
 pub mod freeze {
-    
-
     pub enum AllowCallFlag {
         Enabled,
         Disabled,

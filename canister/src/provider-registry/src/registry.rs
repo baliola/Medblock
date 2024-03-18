@@ -3,15 +3,20 @@ use std::ops::{ Add };
 
 use candid::{ CandidType };
 
-
+use canister_common::stable::CBOR;
 use canister_common::statistics::traits::{ Metrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
-use serde::{ Deserialize };
+use serde::{ Deserialize, Serialize };
 
 use canister_common::{
-    deref, impl_max_size, impl_mem_bound, impl_range_bound, metrics, opaque_metrics
+    deref,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
+    metrics,
+    opaque_metrics,
 };
 use canister_common::{
     common::{ AsciiRecordsKey, Id, Timestamp },
@@ -22,7 +27,7 @@ use canister_common::{
 type EmrId = Id;
 type Principal = ic_principal::Principal;
 
-#[derive(CandidType, Deserialize, Debug, Encode, Decode, Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(CandidType, Deserialize, Debug, Serialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Status {
     Active,
     Suspended,
@@ -79,10 +84,11 @@ impl Metrics<RegistryMetrics> for ProviderRegistry {
     }
 
     fn get_measurements(&self) -> String {
-        
-        [opaque_metrics!(self.providers), opaque_metrics!(self.providers_bindings), opaque_metrics!(self.issued)].join(
-            "\n"
-        )
+        [
+            opaque_metrics!(self.providers),
+            opaque_metrics!(self.providers_bindings),
+            opaque_metrics!(self.issued),
+        ].join("\n")
     }
 }
 
@@ -454,7 +460,7 @@ impl ProviderMetrics {
 }
 
 pub struct Providers {
-    map: BTreeMap<Stable<InternalProviderId>, Stable<Provider>, Memory>,
+    map: BTreeMap<Stable<InternalProviderId>, Stable<Provider, CBOR>, Memory>,
     metrics: RefCell<ProviderMetrics>,
 }
 
@@ -513,7 +519,7 @@ impl Providers {
         }
     }
 
-    fn update_unchecked(&mut self, provider: Stable<Provider>) {
+    fn update_unchecked(&mut self, provider: Stable<Provider, CBOR>) {
         let _ = self.map.insert(provider.internal_id.clone().to_stable(), provider);
     }
 
@@ -521,7 +527,7 @@ impl Providers {
     pub fn try_mutate<T>(
         &mut self,
         provider: InternalProviderId,
-        f: impl FnOnce(&mut Stable<Provider>) -> T
+        f: impl FnOnce(&mut Stable<Provider, CBOR>) -> T
     ) -> ProviderBindingMapResult<T> {
         let raw = self.map.get(&provider.to_stable());
 
@@ -548,7 +554,7 @@ impl Providers {
         Self { map: mem, metrics: RefCell::new(metrics) }
     }
 
-    pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider>> {
+    pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider, CBOR>> {
         self.map.get(&provider.to_stable())
     }
 }
@@ -635,12 +641,11 @@ pub trait Billable {
     Default,
     Clone,
     Copy,
-    Encode,
-    Decode,
     PartialEq,
     Eq,
     PartialOrd,
-    Ord
+    Ord,
+    Serialize
 )]
 pub struct Session(u64);
 
@@ -681,7 +686,7 @@ impl Session {
 /// canister identifier that is used to identify the provider. that means, whichever principal
 /// that is associated with this provider internal id is the principal that can issue emr for this provider.
 /// this also makes it possible to change the underlying principal without costly update.
-#[derive(Clone, Encode, Decode, Debug, PartialEq, Eq, CandidType, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
 pub struct Provider {
     /// provider activation status, this is used to track if the provider is still active
     /// can either be verified or suspended
