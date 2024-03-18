@@ -34,12 +34,12 @@ mod test {
     fn test_generate_id() {
         let mut map = HashSet::new();
 
-        /// 1 billion iterations, should be enough to test the randomness of the id generator
+        /// 10 million iterations, should be enough to test the randomness of the id generator
 
         let source = CanisterRandomSource::new_with_seed(10000);
         let mut generator = IdGenerator::new(source);
 
-        for i in 0..1_000_000 {
+        for i in 0..10_000_000 {
             println!("running {} iteration", i);
             let id = generator.generate_id();
 

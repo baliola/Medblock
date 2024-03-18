@@ -13,7 +13,7 @@ use canister_common::{
 };
 
 const DEFAULT_KEY_LEN: usize = 32;
-type RecordsKey = canister_common::common::RecordsKey<DEFAULT_KEY_LEN>;
+pub(crate) type RecordsKey = canister_common::common::RecordsKey<DEFAULT_KEY_LEN>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
 pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
