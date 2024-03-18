@@ -555,6 +555,8 @@ impl Providers {
 
 #[cfg(test)]
 mod provider_test {
+    use canister_common::statistics::traits::OpaqueMetrics;
+
     use super::*;
 
     #[test]
