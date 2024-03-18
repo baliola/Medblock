@@ -322,7 +322,7 @@ mod tests {
     }
 }
 
-// // TODO: implement log for core registry
+// TODO: implement log for core registry
 // pub struct ActivityLog(
 //     // store the log in a vector
 //     logs: Vec<Log<String>>,
