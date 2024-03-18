@@ -1,7 +1,7 @@
-use std::{ borrow::Borrow, cell::RefCell, rc::Rc, time::Duration };
+use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
 use canister_common::{
-    common::{ self, freeze::FreezeThreshold },
+    common::{ freeze::FreezeThreshold },
     id_generator::IdGenerator,
     mmgr::MemoryManager,
     random::CanisterRandomSource,
@@ -121,7 +121,7 @@ fn canister_init() {
         let memory_manager = MemoryManager::new();
 
         let init = State {
-            providers: ProviderRegistry::new(&memory_manager).into(),
+            providers: ProviderRegistry::new(&memory_manager),
             config: config::CanisterConfig::default(),
             memory_manager,
             freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD),
@@ -179,7 +179,7 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
     with_state(|state| {
         let provider = verified_caller().unwrap();
 
-        let limit = state.config.max_item_per_response().min(req.limit);
+        let _limit = state.config.max_item_per_response().min(req.limit);
 
         state.providers.get_issued(&provider, req.page, req.limit as u64).unwrap().into()
     })

@@ -1,10 +1,10 @@
-use std::{ cell::RefCell, fmt::{ Display, Formatter }, ops::Add, rc::Rc };
+use std::{ fmt::{ Display, Formatter } };
 
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 use tiny_keccak::Hasher;
 
-use crate::{ metrics, statistics::traits::Metrics };
+
 
 pub trait RandomSource {
     fn get_random_bytes(&mut self) -> [u8; 32];
@@ -64,7 +64,7 @@ impl CanisterRandomSource {
 
         seed.copy_from_slice(&bytes[0..16]);
 
-        let mut rng = oorandom::Rand64::new(u128::from_ne_bytes(seed));
+        let rng = oorandom::Rand64::new(u128::from_ne_bytes(seed));
 
         Self {
             rng,
@@ -98,7 +98,7 @@ impl CanisterRandomSource {
     }
 
     pub fn new_with_seed(seed: u128) -> Self {
-        let mut rng = oorandom::Rand64::new(seed);
+        let rng = oorandom::Rand64::new(seed);
 
         Self {
             rng,

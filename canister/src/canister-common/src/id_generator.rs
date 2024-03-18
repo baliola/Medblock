@@ -13,7 +13,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
     }
 
     pub fn generate_id(&mut self) -> crate::common::Id {
-        let mut random_bytes = self.0.get_random_bytes();
+        let random_bytes = self.0.get_random_bytes();
 
         let mut bytes = [0; UUID_MAX_SOURCE_LEN];
         bytes.copy_from_slice(&random_bytes[0..UUID_MAX_SOURCE_LEN]);
@@ -24,7 +24,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
 
 #[cfg(test)]
 mod test {
-    use std::{ collections::{ HashMap, HashSet }, future };
+    use std::{ collections::{ HashSet } };
 
     use crate::random::CanisterRandomSource;
 

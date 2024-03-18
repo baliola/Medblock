@@ -295,8 +295,8 @@ mod tests {
 
         std::thread::sleep(Duration::from_millis(500));
 
-        let timestamp2 = Timestamp::new();
-        let now2 = SystemTime::now()
+        let _timestamp2 = Timestamp::new();
+        let _now2 = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos() as u64;
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_id_new() {
-        let uuid = Uuid::from_str("97780ca3-a626-4fc5-b150-7fa8bc665df6").unwrap();
+        let _uuid = Uuid::from_str("97780ca3-a626-4fc5-b150-7fa8bc665df6").unwrap();
         let id = id!("97780ca3-a626-4fc5-b150-7fa8bc665df6");
         assert_eq!(id.0.len(), 16);
     }
@@ -421,7 +421,7 @@ mod principal_bytes_tests {
         let principal = Principal::anonymous();
         let principal_bytes = PrincipalBytes::new(principal);
 
-        let principal = Into::<Principal>::into(principal_bytes);
+        let _principal = Into::<Principal>::into(principal_bytes);
     }
 }
 
@@ -441,7 +441,7 @@ pub mod guard {
 }
 
 pub mod freeze {
-    use std::{ borrow::BorrowMut, cell::RefCell };
+    
 
     pub enum AllowCallFlag {
         Enabled,
