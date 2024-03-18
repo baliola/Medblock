@@ -1,17 +1,17 @@
 use std::cell::RefCell;
-use std::ops::{ Add, Deref, RangeBounds };
+use std::ops::{ Add };
 
 use candid::{ CandidType };
 
-use canister_common::stable::CBOR;
-use canister_common::statistics::traits::{ Metrics, MetricsCollectionStrategy, OpaqueMetrics };
+
+use canister_common::statistics::traits::{ Metrics };
 use canister_common::common::PrincipalBytes;
-use ic_stable_structures::{ memory_manager, BTreeMap };
+use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
-use serde::{ Deserialize, Serialize };
+use serde::{ Deserialize };
 
 use canister_common::{
-    deref, impl_max_size, impl_mem_bound, impl_range_bound, metrics, opaque_metrics, zero_sized_state
+    deref, impl_max_size, impl_mem_bound, impl_range_bound, metrics, opaque_metrics
 };
 use canister_common::{
     common::{ AsciiRecordsKey, Id, Timestamp },
@@ -319,7 +319,7 @@ impl Issued {
         emr_id: Id,
         canister_id: Principal
     ) -> IssueMapResult<()> {
-        if self.is_issued_by(provider.clone(), emr_id.clone(), canister_id.clone()) {
+        if self.is_issued_by(provider.clone(), emr_id.clone(), canister_id) {
             return Err(IssueMapError::AlreadyIssued);
         }
         let emr = (Emr {
@@ -504,7 +504,7 @@ impl Providers {
                     .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
                     .map(|_| ());
 
-                assert_eq!(result.is_none(), true, "provider does not exist, this is a bug");
+                assert!(result.is_none(), "provider does not exist, this is a bug");
 
                 self.metrics.borrow_mut().record_allocation(bytes_allocated_approx as u128);
 
@@ -555,11 +555,13 @@ impl Providers {
 
 #[cfg(test)]
 mod provider_test {
+    use canister_common::statistics::traits::OpaqueMetrics;
+
     use super::*;
 
     #[test]
     fn test_add_read() {
-        let mut memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::new();
         let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];
@@ -567,7 +569,7 @@ mod provider_test {
 
         let internal_id = Id::new(&id_bytes);
         let provider = Provider::new(
-            AsciiRecordsKey::<64>::new("test".to_string()).unwrap(),
+            AsciiRecordsKey::<64>::new("test").unwrap(),
             internal_id.clone()
         );
 
@@ -581,7 +583,7 @@ mod provider_test {
 
     #[test]
     fn test_metrics() {
-        let mut memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::new();
         let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];
@@ -589,7 +591,7 @@ mod provider_test {
 
         let internal_id = Id::new(&id_bytes);
         let provider = Provider::new(
-            AsciiRecordsKey::<64>::new("test".to_string()).unwrap(),
+            AsciiRecordsKey::<64>::new("test").unwrap(),
             internal_id.clone()
         );
 
@@ -706,6 +708,8 @@ pub struct Provider {
     // TODO : discuss this as to what data is gonna be collected
     // provider_details:
 }
+
+// TODO: store it as cbor encoded bytes in stable memory
 
 impl Provider {
     pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {

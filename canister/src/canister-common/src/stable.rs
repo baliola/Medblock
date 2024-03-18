@@ -453,8 +453,8 @@ impl<K, V> StableSet<K, V>
 
 #[cfg(test)]
 mod set_test {
-    use crate::{ memory_manager, impl_max_size, impl_mem_bound, native_bound };
-    use paste::paste;
+    use crate::{ memory_manager, native_bound };
+    
     use super::*;
 
     native_bound!(u8, u32);

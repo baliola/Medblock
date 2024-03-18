@@ -41,7 +41,7 @@ macro_rules! opaque_metrics {
 }
 
 pub mod traits {
-    use std::time::Duration;
+    
 
     pub trait MetricsMarker {}
 

@@ -13,7 +13,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
     }
 
     pub fn generate_id(&mut self) -> crate::common::Id {
-        let mut random_bytes = self.0.get_random_bytes();
+        let random_bytes = self.0.get_random_bytes();
 
         let mut bytes = [0; UUID_MAX_SOURCE_LEN];
         bytes.copy_from_slice(&random_bytes[0..UUID_MAX_SOURCE_LEN]);
@@ -24,7 +24,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
 
 #[cfg(test)]
 mod test {
-    use std::{ collections::{ HashMap, HashSet }, future };
+    use std::{ collections::{ HashSet } };
 
     use crate::random::CanisterRandomSource;
 
@@ -34,12 +34,12 @@ mod test {
     fn test_generate_id() {
         let mut map = HashSet::new();
 
-        /// 1 billion iterations, should be enough to test the randomness of the id generator
+        /// 10 million iterations, should be enough to test the randomness of the id generator
 
         let source = CanisterRandomSource::new_with_seed(10000);
         let mut generator = IdGenerator::new(source);
 
-        for i in 0..1_000_000 {
+        for i in 0..10_000_000 {
             println!("running {} iteration", i);
             let id = generator.generate_id();
 
