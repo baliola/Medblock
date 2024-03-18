@@ -23,6 +23,10 @@ oorandom = { workspace = true }
 tiny-keccak = { workspace = true }
 hex = { workspace = true }
 
+[features]
+default = []
+test-utils = []
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.36.0", features = ["macros", "rt"] }
 paste = { workspace = true }

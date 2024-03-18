@@ -27,3 +27,6 @@ uuid = { workspace = true, default-features = false, features = [
     "serde",
     "v4",
 ] }
+tiny-keccak = { workspace = true }
+canister-common = { path = "../canister-common" , features = ["test-utils"]}
+

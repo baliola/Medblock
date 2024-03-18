@@ -309,6 +309,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "thiserror",
+ "tiny-keccak",
  "uuid",
 ]
 

@@ -224,15 +224,15 @@ impl IntoIterator for RawEmr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ fake_memory_manager, id };
+    use canister_common::id;
 
     #[test]
     fn test_core_emr_registry() {
-        let memory_manager = fake_memory_manager!();
+        let memory_manager = MemoryManager::new();
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
-        let user = crate::utils::hash(user.as_bytes());
+        let user = canister_common::test_utils::hash(user.as_bytes());
         let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
         let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
 
@@ -282,11 +282,11 @@ mod tests {
 
     #[test]
     fn test_emr_exists() {
-        let memory_manager = fake_memory_manager!();
+        let memory_manager = MemoryManager::new();
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
-        let user = crate::utils::hash(user.as_bytes());
+        let user = canister_common::test_utils::hash(user.as_bytes());
         let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
         let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
 

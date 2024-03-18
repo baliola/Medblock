@@ -154,7 +154,6 @@ impl_max_size!(for Id: 16);
 impl_mem_bound!(for Id: bounded; fixed_size: true);
 impl_range_bound!(Id);
 
-#[cfg(test)]
 #[macro_export]
 macro_rules! id {
     ($lit:literal) => {
