@@ -1,8 +1,9 @@
 use std::{ borrow::Borrow, fmt::Debug, marker::PhantomData, ops::{ DerefMut, RangeBounds } };
 
+use candid::CandidType;
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
-use serde::{ de::DeserializeOwned, Serialize };
+use serde::{ de::DeserializeOwned, Deserialize, Serialize };
 
 use super::mmgr::MemoryManager;
 
@@ -33,15 +34,15 @@ impl<T: Storable> MemBoundMarker for T {
 pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMemoryImpl>;
 
 #[derive(Debug)]
-pub struct SCALE;
+pub struct Scale;
 #[derive(Debug)]
-pub struct CBOR;
+pub struct Candid;
 trait EncodingMarker {}
-impl EncodingMarker for SCALE {}
-impl EncodingMarker for CBOR {}
+impl EncodingMarker for Scale {}
+impl EncodingMarker for Candid {}
 
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
-pub struct Stable<Data, Encoding = SCALE>(Data, PhantomData<Encoding>)
+pub struct Stable<Data, Encoding = Scale>(Data, PhantomData<Encoding>)
     where Data: MemBoundMarker, Encoding: EncodingMarker;
 
 impl<Data, Encoding> From<Data>
@@ -176,7 +177,7 @@ impl<Data, Encoding> Ord
     }
 }
 
-impl<Data> Storable for Stable<Data, SCALE> where Data: Codec + Sized + MemBoundMarker {
+impl<Data> Storable for Stable<Data, Scale> where Data: Codec + Sized + MemBoundMarker {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         let buf = <Self as Encode>::encode(self);
 
@@ -191,17 +192,19 @@ impl<Data> Storable for Stable<Data, SCALE> where Data: Codec + Sized + MemBound
 }
 
 impl<Data> Storable
-    for Stable<Data, CBOR>
-    where Data: Serialize + DeserializeOwned + Sized + MemBoundMarker
+    for Stable<Data, Candid>
+    where Data: CandidType + DeserializeOwned + Sized + MemBoundMarker
 {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        let mut buf = vec![];
-        ciborium::ser::into_writer(&self.0, &mut buf).unwrap();
+        use candid::Encode;
+        let buf = Encode!(&self.0).unwrap();
         std::borrow::Cow::Owned(buf)
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(ciborium::de::from_reader(bytes.as_ref()).unwrap(), PhantomData)
+        use candid::Decode;
+        let buf = Decode!(bytes.as_ref(), Data).unwrap();
+        Stable::new(buf)
     }
 
     const BOUND: Bound = <Data as MemBoundMarker>::BOUND;
@@ -305,10 +308,10 @@ impl<K, V> StableSet<K, V>
         &self.0
     }
 
-    pub fn len (&self) -> u64 {
+    pub fn len(&self) -> u64 {
         self.0.len()
     }
-    
+
     pub fn new(memory_manager: &MemoryManager) -> StableSet<K, V> {
         let tree = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
         Self(tree)
@@ -454,7 +457,7 @@ impl<K, V> StableSet<K, V>
 #[cfg(test)]
 mod set_test {
     use crate::{ memory_manager, native_bound };
-    
+
     use super::*;
 
     native_bound!(u8, u32);

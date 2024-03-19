@@ -87,7 +87,7 @@ macro_rules! deref {
 
 #[macro_export]
 macro_rules! impl_max_size {
-    (for $struct:ty: $($ty:ident),*) => {
+    (for $struct:ty: $($ty:ty),*) => {
 
         impl $struct {
             pub const fn max_size()-> usize {
@@ -152,6 +152,7 @@ macro_rules! impl_range_bound {
     };
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 #[macro_export]
 macro_rules! native_bound {
     ($($ident:ident),*) => {

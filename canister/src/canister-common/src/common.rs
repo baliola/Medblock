@@ -26,7 +26,6 @@ pub type ArbitraryEmrValue = String;
     Debug,
     Copy,
     Deserialize,
-    Serialize,
     Encode,
     Decode
 )]
@@ -85,7 +84,7 @@ pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
 }
 
 impl<const N: usize> MemBoundMarker for AsciiRecordsKey<N> {
-    const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: true };
+    const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };
 }
 
 impl<const N: usize> AsciiRecordsKey<N> {
@@ -123,7 +122,6 @@ impl<const N: usize> FromStr for AsciiRecordsKey<N> {
             return Err(AsciiKeyError::TooLong);
         }
 
-        // TODO: duplicate code as serialization implementation
         let mut key = [0u8; N];
         key[..s.len()].copy_from_slice(s.as_bytes());
 
@@ -144,6 +142,23 @@ impl<const N: usize> AsciiRecordsKey<N> {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
         std::str::from_utf8(buffer_ref).expect("key must be ascii")
+    }
+}
+
+#[cfg(test)]
+mod test_ascii_records {
+    use super::*;
+
+    #[test]
+    fn test_len_encoded() {
+        use candid::{ Encode, Decode };
+
+        let key = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
+        let encoded = Encode!(&key).unwrap();
+
+        let decoded = Decode!(&encoded, AsciiRecordsKey::<64>).unwrap();
+
+        assert_eq!(decoded, key);
     }
 }
 
@@ -175,7 +190,6 @@ impl CandidType for Id {
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
         where S: candid::types::Serializer
     {
-        // TODO : to_string() invloves copy
         serializer.serialize_text(self.to_string().as_str())
     }
 
@@ -248,10 +262,10 @@ mod deserialize {
 
             s.make_ascii_lowercase();
 
-            if s.len() > DEFAULT_RECORDS_LEN {
-                return Err(serde::de::Error::custom("key must not exceed 32 ascii characters"));
+            if s.len() > N {
+                return Err(serde::de::Error::custom(format!("key exceeded max length of {}", N)));
             }
-            // TODO: unnecessary copy
+          
             let mut key = [0u8; N];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
@@ -276,6 +290,14 @@ mod deserialize {
     impl<'de> serde::Serialize for Id {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
             Uuid::from_bytes_ref(&self.0).serialize(serializer)
+        }
+    }
+
+    impl<'de, const N: usize> serde::Serialize for AsciiRecordsKey<N> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+            let ref_str = self.to_ascii_str();
+
+            serializer.serialize_str(ref_str)
         }
     }
 }
@@ -441,8 +463,6 @@ pub mod guard {
 }
 
 pub mod freeze {
-    
-
     pub enum AllowCallFlag {
         Enabled,
         Disabled,
@@ -509,7 +529,6 @@ mod deserialize_h256 {
                 return Err(serde::de::Error::custom("invalid nik hash length"));
             }
 
-            // TODO: unnecessary copy
             let mut key = [0u8; HASH_LEN];
             key[..s.len()].copy_from_slice(&s);
 
