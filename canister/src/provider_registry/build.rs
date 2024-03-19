@@ -1,5 +1,5 @@
 use ic_cdk_bindgen::{ Builder, Config };
-use std::{ fs, path::PathBuf, process::{ Command, Stdio } };
+use std::{ fs, panic::catch_unwind, path::PathBuf, process::{ Command, Stdio } };
 
 fn get_workspace_root() -> PathBuf {
     let mut manifest_dir = PathBuf::from(
@@ -16,6 +16,18 @@ fn get_workspace_root() -> PathBuf {
 }
 
 fn main() {
+    // dont run this script in test environment
+    if !std::env::var("LINK").unwrap_or("true".to_string()).parse::<bool>().unwrap() {
+        return;
+    }
+    let result = catch_unwind(|| build_declaration());
+    match  result{
+        Ok(_) => (),
+        Err(_) => panic!("\nERROR: failed to generate foreign canister binding, are you running tests?\nNOTE: run with `LINK=false` to disable this i.e for test/linting, etc.."),
+    }
+}
+
+fn build_declaration() {
     // A workaround to force always rerun build.rs
     println!("cargo:rerun-if-changed=NULL");
     let manifest_dir = get_workspace_root();
