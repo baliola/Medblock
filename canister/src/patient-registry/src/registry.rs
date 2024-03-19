@@ -54,7 +54,7 @@ impl OwnerMap {
         self.0.get(owner).ok_or(PatientBindingMapError::UserDoesNotExist)
     }
 
-    pub fn new(memory_manager: MemoryManager) -> Self {
+    pub fn new(memory_manager: &MemoryManager) -> Self {
         Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
     }
 
@@ -65,13 +65,12 @@ impl OwnerMap {
 
 #[cfg(test)]
 mod test_owner_map {
-    use crate::fake_memory_manager;
 
     use super::*;
 
     #[test]
     fn test_bind() {
-        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let mut owner_map = OwnerMap::new(&MemoryManager::new());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -84,7 +83,7 @@ mod test_owner_map {
 
     #[test]
     fn test_rebind() {
-        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let mut owner_map = OwnerMap::new(&MemoryManager::new());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -98,7 +97,7 @@ mod test_owner_map {
 
     #[test]
     fn test_revoke() {
-        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let mut owner_map = OwnerMap::new(&MemoryManager::new());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -109,7 +108,7 @@ mod test_owner_map {
 
     #[test]
     fn test_get_nik() {
-        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let mut owner_map = OwnerMap::new(&MemoryManager::new());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -123,7 +122,7 @@ mod test_owner_map {
 
     #[test]
     fn test_is_valid_owner() {
-        let mut owner_map = OwnerMap::new(fake_memory_manager!());
+        let mut owner_map = OwnerMap::new(&MemoryManager::new());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -164,13 +163,12 @@ impl EmrBindingMap {
 
 #[cfg(test)]
 mod test_emr_binding_map {
-    use crate::fake_memory_manager;
 
     use super::*;
 
     #[test]
     fn test_issue_for() {
-        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::new());
         let nik = NIK::from([0u8; 32]);
 
         let mut random = [0u8; 10];
@@ -183,7 +181,7 @@ mod test_emr_binding_map {
 
     #[test]
     fn test_emr_list() {
-        let mut emr_binding_map = EmrBindingMap::new(fake_memory_manager!());
+        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::new());
         let nik = NIK::from([0u8; 32]);
         let mut random = [0u8; 10];
         random.fill(0);

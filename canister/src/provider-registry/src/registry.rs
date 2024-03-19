@@ -3,7 +3,7 @@ use std::ops::{ Add };
 
 use candid::{ CandidType };
 
-use canister_common::stable::CBOR;
+use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
 use canister_common::common::PrincipalBytes;
 use ic_stable_structures::{ BTreeMap };
@@ -460,7 +460,7 @@ impl ProviderMetrics {
 }
 
 pub struct Providers {
-    map: BTreeMap<Stable<InternalProviderId>, Stable<Provider, CBOR>, Memory>,
+    map: BTreeMap<Stable<InternalProviderId>, Stable<Provider, Candid>, Memory>,
     metrics: RefCell<ProviderMetrics>,
 }
 
@@ -519,7 +519,7 @@ impl Providers {
         }
     }
 
-    fn update_unchecked(&mut self, provider: Stable<Provider, CBOR>) {
+    fn update_unchecked(&mut self, provider: Stable<Provider, Candid>) {
         let _ = self.map.insert(provider.internal_id.clone().to_stable(), provider);
     }
 
@@ -527,7 +527,7 @@ impl Providers {
     pub fn try_mutate<T>(
         &mut self,
         provider: InternalProviderId,
-        f: impl FnOnce(&mut Stable<Provider, CBOR>) -> T
+        f: impl FnOnce(&mut Stable<Provider, Candid>) -> T
     ) -> ProviderBindingMapResult<T> {
         let raw = self.map.get(&provider.to_stable());
 
@@ -554,13 +554,14 @@ impl Providers {
         Self { map: mem, metrics: RefCell::new(metrics) }
     }
 
-    pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider, CBOR>> {
+    pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider, Candid>> {
         self.map.get(&provider.to_stable())
     }
 }
 
 #[cfg(test)]
 mod provider_test {
+    use candid::Encode;
     use canister_common::statistics::traits::OpaqueMetrics;
 
     use super::*;
@@ -574,14 +575,15 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
-        let provider = Provider::new(
-            AsciiRecordsKey::<64>::new("test").unwrap(),
+        let name = "a".repeat(64);
+        let provider = Provider:: new(
+            AsciiRecordsKey::<64>::new(name).unwrap(),
             internal_id.clone()
         );
 
-        println!("{:?}", providers);
+        let encoded_provider_size = Encode!(&provider).unwrap();
         let _ = providers.add_provider(provider.clone());
-        println!("{:?}", providers);
+
         let provider = providers.get_provider(internal_id).unwrap();
 
         assert_eq!(provider, provider);
@@ -634,19 +636,7 @@ pub trait Billable {
 // START ------------------------------ SESSION ------------------------------ START
 
 /// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-#[derive(
-    Deserialize,
-    CandidType,
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Serialize
-)]
+#[derive(Deserialize, CandidType, Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Session(u64);
 
 // blanket impl for session
@@ -686,7 +676,7 @@ impl Session {
 /// canister identifier that is used to identify the provider. that means, whichever principal
 /// that is associated with this provider internal id is the principal that can issue emr for this provider.
 /// this also makes it possible to change the underlying principal without costly update.
-#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
 pub struct Provider {
     /// provider activation status, this is used to track if the provider is still active
     /// can either be verified or suspended
@@ -714,7 +704,6 @@ pub struct Provider {
     // provider_details:
 }
 
-// TODO: store it as cbor encoded bytes in stable memory
 
 impl Provider {
     pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
@@ -745,7 +734,8 @@ impl Provider {
     }
 }
 
-impl_max_size!(for Provider: Provider);
+// 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
+impl_max_size!(for Provider: 200);
 impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
 impl Billable for Provider {
