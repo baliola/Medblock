@@ -1,5 +1,5 @@
 [package]
-name = "patient-registry"
+name = "patient_registry"
 version = "0.1.0"
 edition = "2021"
 

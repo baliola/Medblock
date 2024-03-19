@@ -25,3 +25,6 @@ uuid = { workspace = true , default-features = false, features = [
     "v4",
 ] }
 
+[build-dependencies]
+ic-cdk-bindgen = { workspace = true }
+

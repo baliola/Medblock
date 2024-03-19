@@ -10,6 +10,8 @@ use canister_common::{
 use ic_principal::Principal;
 use registry::ProviderRegistry;
 
+
+mod declarations;
 mod registry;
 mod config;
 mod types;
