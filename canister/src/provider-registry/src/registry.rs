@@ -5,10 +5,12 @@ use candid::{ CandidType };
 
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::PrincipalBytes;
+use canister_common::common::{ EmrId, PrincipalBytes };
+use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
 use serde::{ Deserialize, Serialize };
+use provider::attr::*;
 
 use canister_common::{
     deref,
@@ -24,35 +26,7 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
-type EmrId = Id;
-type Principal = ic_principal::Principal;
-
-#[derive(CandidType, Deserialize, Debug, Serialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub enum Status {
-    Active,
-    Suspended,
-}
-
-impl_max_size!(for Status: Status);
-impl_mem_bound!(for Status: bounded; fixed_size: true);
-
-impl Status {
-    /// Returns `true` if the status is [`Suspended`].
-    ///
-    /// [`Suspended`]: Status::Suspended
-    #[must_use]
-    pub fn is_suspended(&self) -> bool {
-        matches!(self, Self::Suspended)
-    }
-
-    /// Returns `true` if the status is [`Active`].
-    ///
-    /// [`Active`]: Status::Active
-    #[must_use]
-    pub fn is_active(&self) -> bool {
-        matches!(self, Self::Active)
-    }
-}
+use self::provider::{ Provider, V1 };
 
 #[derive(thiserror::Error, Debug, CandidType, serde::Deserialize)]
 pub enum RegistryError {
@@ -128,7 +102,7 @@ impl ProviderRegistry {
                     id.into_inner(),
                     |provider| -> ProviderRegistryResult<()> {
                         provider.increment_session();
-                        Ok(self.issued.issue_emr(&provider.internal_id, emr_id, canister_id)?)
+                        Ok(self.issued.issue_emr(&provider.internal_id(), emr_id, canister_id)?)
                     }
                 )?
             }
@@ -148,11 +122,13 @@ impl ProviderRegistry {
         display_name: AsciiRecordsKey<64>,
         id: Id
     ) -> ProviderRegistryResult<()> {
+        // IMPORTANT: dont forget to change to newer version if updating provider version.
+
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = Provider::new(display_name, id);
+        let provider = V1::new(display_name, id).to_provider();
 
         // bind the principal to the internal id
-        self.providers_bindings.bind(provider_principal, provider.internal_id.clone())?;
+        self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
 
         // add the provider to the provider map
         self.providers.add_provider(provider)?;
@@ -202,7 +178,7 @@ impl ProviderRegistry {
                 Ok(
                     self.providers
                         .get_provider(id.into_inner())
-                        .map(|provider| provider.activation_status.is_suspended())
+                        .map(|provider| provider.activation_status().is_suspended())
                         .ok_or(ProviderBindingMapError::ProviderDoesNotExist)?
                 )
             }
@@ -239,7 +215,7 @@ impl ProviderRegistry {
 }
 
 pub type InternalProviderId = Id;
-pub type ProviderPrincipal = ic_principal::Principal;
+pub type ProviderPrincipal = Principal;
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IssueMapError {
@@ -444,24 +420,8 @@ impl ProvidersBindings {
     }
 }
 
-#[derive(Default)]
-pub struct ProviderMetrics {
-    approx_allocation_bytes: u128,
-}
-
-impl ProviderMetrics {
-    pub fn record_allocation(&mut self, bytes: u128) {
-        self.approx_allocation_bytes += bytes;
-    }
-
-    pub fn record_deallocation(&mut self, bytes: u128) {
-        self.approx_allocation_bytes -= bytes;
-    }
-}
-
 pub struct Providers {
     map: BTreeMap<Stable<InternalProviderId>, Stable<Provider, Candid>, Memory>,
-    metrics: RefCell<ProviderMetrics>,
 }
 
 metrics!(Providers: LengthMetrics);
@@ -474,7 +434,6 @@ impl std::fmt::Debug for Providers {
             .collect::<Vec<_>>();
 
         f.debug_struct("Providers")
-            .field("approx_allocation_bytes", &self.metrics.borrow().approx_allocation_bytes)
             .field("map", &provider)
             .finish()
     }
@@ -500,19 +459,18 @@ impl Metrics<LengthMetrics> for Providers {
 
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
-        match self.is_exist(provider.internal_id.clone()) {
+        match self.is_exist(provider.internal_id().clone()) {
             true => Err(ProviderBindingMapError::ProviderExist),
             false => {
                 let bytes_allocated_approx =
-                    std::mem::size_of_val(&provider.internal_id) + std::mem::size_of_val(&provider);
+                    std::mem::size_of_val(&provider.internal_id()) +
+                    std::mem::size_of_val(&provider);
 
                 let result = self.map
-                    .insert(provider.internal_id.clone().to_stable(), provider.to_stable())
+                    .insert(provider.internal_id().clone().to_stable(), provider.to_stable())
                     .map(|_| ());
 
                 assert!(result.is_none(), "provider does not exist, this is a bug");
-
-                self.metrics.borrow_mut().record_allocation(bytes_allocated_approx as u128);
 
                 Ok(())
             }
@@ -520,7 +478,7 @@ impl Providers {
     }
 
     fn update_unchecked(&mut self, provider: Stable<Provider, Candid>) {
-        let _ = self.map.insert(provider.internal_id.clone().to_stable(), provider);
+        let _ = self.map.insert(provider.internal_id().clone().to_stable(), provider);
     }
 
     /// try mutate a provider, will return [ProviderBindingMapError::ProviderDoesNotExist] if the provider does not exist
@@ -549,9 +507,8 @@ impl Providers {
 
     pub fn new(memory_manager: &MemoryManager) -> Self {
         let mem = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
-        let metrics = ProviderMetrics::default();
 
-        Self { map: mem, metrics: RefCell::new(metrics) }
+        Self { map: mem }
     }
 
     pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider, Candid>> {
@@ -567,7 +524,7 @@ mod provider_test {
     use super::*;
 
     #[test]
-    fn test_add_read() {
+    fn test_add_read_v1() {
         let memory_manager = MemoryManager::new();
         let mut providers = Providers::new(&memory_manager);
 
@@ -576,10 +533,10 @@ mod provider_test {
 
         let internal_id = Id::new(&id_bytes);
         let name = "a".repeat(64);
-        let provider = Provider:: new(
+        let provider = V1::new(
             AsciiRecordsKey::<64>::new(name).unwrap(),
             internal_id.clone()
-        );
+        ).to_provider();
 
         let encoded_provider_size = Encode!(&provider).unwrap();
         let _ = providers.add_provider(provider.clone());
@@ -598,154 +555,381 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
-        let provider = Provider::new(
+        let provider = V1::new(
             AsciiRecordsKey::<64>::new("test").unwrap(),
             internal_id.clone()
-        );
+        ).to_provider();
 
         let bytes_allocated_approx =
             std::mem::size_of_val(&internal_id) + std::mem::size_of_val(&provider);
 
         providers.add_provider(provider.clone()).unwrap();
 
-        assert_eq!(
-            providers.metrics.borrow().approx_allocation_bytes,
-            bytes_allocated_approx as u128
-        );
         println!("{:?}", <Providers as OpaqueMetrics>::measure(&providers));
     }
 }
 
-pub trait Billable {
-    /// returns immutable session for this provider
-    fn session(&self) -> Session;
+// TODO : make a documentation for updating provider version.
+// write new data structure -> impl basic provider traits -> add test to measure encoded size v
+// impl max size -> impl mem bound -> add test_add_read, update the inserted version at registry
+pub mod provider {
+    use super::*;
+    use attr::*;
+    pub mod attr {
+        use super::super::*;
 
-    /// returns mutable session for this provider
-    fn session_mut(&mut self) -> &mut Session;
+        #[derive(CandidType, Deserialize, Debug, Serialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
+        pub enum Status {
+            Active,
+            Suspended,
+        }
 
-    /// increment the session for this provider, call this when issuing emr
-    fn increment_session(&mut self) {
-        self.session_mut().increment_session();
+        impl_max_size!(for Status: Status);
+        impl_mem_bound!(for Status: bounded; fixed_size: true);
+
+        impl Status {
+            /// Returns `true` if the status is [`Suspended`].
+            ///
+            /// [`Suspended`]: Status::Suspended
+            #[must_use]
+            pub fn is_suspended(&self) -> bool {
+                matches!(self, Self::Suspended)
+            }
+
+            /// Returns `true` if the status is [`Active`].
+            ///
+            /// [`Active`]: Status::Active
+            #[must_use]
+            pub fn is_active(&self) -> bool {
+                matches!(self, Self::Active)
+            }
+        }
+
+        pub trait ActivationSatus {
+            fn activation_status(&self) -> &Status;
+
+            fn activation_status_mut(&mut self) -> &mut Status;
+
+            fn suspend(&mut self) {
+                *self.activation_status_mut() = Status::Suspended;
+            }
+
+            fn unsuspend(&mut self) {
+                *self.activation_status_mut() = Status::Active;
+            }
+        }
+
+        // START ------------------------------ SESSION ------------------------------ START
+
+        // TODO:  make this a proc macro later on
+
+        /// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+        #[derive(
+            Deserialize,
+            CandidType,
+            Debug,
+            Default,
+            Clone,
+            Copy,
+            PartialEq,
+            Eq,
+            PartialOrd,
+            Ord
+        )]
+        pub struct Session(u64);
+
+        // blanket impl for session
+        impl<T> From<T> for Session where T: Into<u64> {
+            fn from(session: T) -> Self {
+                Self(session.into())
+            }
+        }
+
+        impl Session {
+            /// create a new session
+            pub fn new() -> Self {
+                Self::default()
+            }
+
+            /// increment the session
+            pub fn increment_session(&mut self) {
+                let _ = self.0.add(1);
+            }
+
+            /// reset the session, call this when the provider had settled their bill
+            pub fn reset_session(&mut self) {
+                self.0 = 0;
+            }
+
+            /// return inner session
+            pub fn session(&self) -> u64 {
+                self.0
+            }
+        }
+
+        pub trait Billable {
+            /// returns immutable session for this provider
+            fn session(&self) -> Session;
+
+            /// returns mutable session for this provider
+            fn session_mut(&mut self) -> &mut Session;
+
+            /// increment the session for this provider, call this when issuing emr
+            fn increment_session(&mut self) {
+                self.session_mut().increment_session();
+            }
+
+            fn reset_session(&mut self) {
+                self.session_mut().reset_session();
+            }
+        }
+
+        pub trait BasicProviderAttributes {
+            fn display_name(&self) -> &AsciiRecordsKey<64>;
+            fn display_name_mut(&mut self) -> &mut AsciiRecordsKey<64>;
+
+            fn internal_id(&self) -> &InternalProviderId;
+            fn internal_id_mut(&mut self) -> &mut InternalProviderId;
+
+            fn registered_at(&self) -> &Timestamp;
+
+            fn updated_at(&self) -> &Timestamp;
+            fn updated_at_mut(&mut self) -> &mut Timestamp;
+        }
+
+        pub trait ToProvider {
+            fn to_provider(self) -> super::Provider;
+        }
+
+        pub trait BasicProvider: Billable +
+            ActivationSatus +
+            BasicProviderAttributes +
+            ToProvider {}
+        impl<P> BasicProvider
+            for P
+            where P: Billable + ActivationSatus + BasicProviderAttributes + ToProvider {}
+    }
+    // END ------------------------------ SESSION ------------------------------ END
+
+    //  TODO : make this a derive macro to auto impl the necessary basic provider traits later on.
+
+    /// Healthcare provider representaion which have and internal
+    /// canister identifier that is used to identify the provider. that means, whichever principal
+    /// that is associated with this provider internal id is the principal that can issue emr for this provider.
+    /// this also makes it possible to change the underlying principal without costly update.
+    #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
+    pub enum Provider {
+        V1(V1),
     }
 
-    fn reset_session(&mut self) {
-        self.session_mut().reset_session();
-    }
-}
+    impl Billable for Provider {
+        fn session(&self) -> Session {
+            match self {
+                Self::V1(v1) => v1.session(),
+            }
+        }
 
-// START ------------------------------ SESSION ------------------------------ START
-
-/// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-#[derive(Deserialize, CandidType, Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Session(u64);
-
-// blanket impl for session
-impl<T> From<T> for Session where T: Into<u64> {
-    fn from(session: T) -> Self {
-        Self(session.into())
-    }
-}
-
-impl Session {
-    /// create a new session
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// increment the session
-    pub fn increment_session(&mut self) {
-        let _ = self.0.add(1);
-    }
-
-    /// reset the session, call this when the provider had settled their bill
-    pub fn reset_session(&mut self) {
-        self.0 = 0;
-    }
-
-    /// return inner session
-    pub fn session(&self) -> u64 {
-        self.0
-    }
-}
-
-// END ------------------------------ SESSION ------------------------------ END
-
-// START ------------------------------ PROVIDER------------------------------ START
-
-/// Healthcare provider representaion which have and internal
-/// canister identifier that is used to identify the provider. that means, whichever principal
-/// that is associated with this provider internal id is the principal that can issue emr for this provider.
-/// this also makes it possible to change the underlying principal without costly update.
-#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
-pub struct Provider {
-    /// provider activation status, this is used to track if the provider is still active
-    /// can either be verified or suspended
-    activation_status: Status,
-
-    /// encrypted display name for health provider
-    display_name: AsciiRecordsKey<64>,
-
-    /// internal identifier for this provider
-    /// we separate this from the principal because we want to be able to change the principal
-    /// incase the health provider lost or somehow can't access their underlying internet identity
-    internal_id: InternalProviderId,
-
-    /// provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
-    session: Session,
-
-    // TODO: discuss this. are we gonna make the billing automaticly onchain?
-    // active_until:
-    /// time when this provider was registered in nanosecond
-    registered_at: Timestamp,
-
-    /// time when this provider was last updated in nanosecond
-    updated_at: Timestamp,
-    // TODO : discuss this as to what data is gonna be collected
-    // provider_details:
-}
-
-
-impl Provider {
-    pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
-        Self {
-            activation_status: Status::Active,
-            display_name,
-            internal_id,
-            session: Session::default(),
-            registered_at: Timestamp::new(),
-            updated_at: Timestamp::new(),
+        fn session_mut(&mut self) -> &mut Session {
+            match self {
+                Self::V1(v1) => v1.session_mut(),
+            }
         }
     }
 
-    pub fn suspend(&mut self) {
-        self.activation_status = Status::Suspended;
+    impl ActivationSatus for Provider {
+        fn activation_status(&self) -> &Status {
+            match self {
+                Self::V1(v1) => v1.activation_status(),
+            }
+        }
+
+        fn activation_status_mut(&mut self) -> &mut Status {
+            match self {
+                Self::V1(v1) => v1.activation_status_mut(),
+            }
+        }
     }
 
-    pub fn unsuspend(&mut self) {
-        self.activation_status = Status::Active;
+    impl BasicProviderAttributes for Provider {
+        fn display_name(&self) -> &AsciiRecordsKey<64> {
+            match self {
+                Self::V1(v1) => v1.display_name(),
+            }
+        }
+
+        fn display_name_mut(&mut self) -> &mut AsciiRecordsKey<64> {
+            match self {
+                Self::V1(v1) => v1.display_name_mut(),
+            }
+        }
+
+        fn internal_id(&self) -> &InternalProviderId {
+            match self {
+                Self::V1(v1) => v1.internal_id(),
+            }
+        }
+
+        fn internal_id_mut(&mut self) -> &mut InternalProviderId {
+            match self {
+                Self::V1(v1) => v1.internal_id_mut(),
+            }
+        }
+
+        fn registered_at(&self) -> &Timestamp {
+            match self {
+                Self::V1(v1) => v1.registered_at(),
+            }
+        }
+
+        fn updated_at(&self) -> &Timestamp {
+            match self {
+                Self::V1(v1) => v1.updated_at(),
+            }
+        }
+
+        fn updated_at_mut(&mut self) -> &mut Timestamp {
+            match self {
+                Self::V1(v1) => v1.updated_at_mut(),
+            }
+        }
     }
 
-    pub fn incretment_session(&mut self) {
-        self.session.increment_session();
+    impl Provider {
+        pub const fn max_size() -> usize {
+            V1::max_size()
+        }
     }
 
-    pub fn reset_session(&mut self) {
-        self.session.reset_session();
+    #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
+    pub struct V1 {
+        /// provider activation status, this is used to track if the provider is still active
+        /// can either be verified or suspended
+        activation_status: Status,
+
+        /// encrypted display name for health provider
+        display_name: AsciiRecordsKey<64>,
+
+        /// internal identifier for this provider
+        /// we separate this from the principal because we want to be able to change the principal
+        /// incase the health provider lost or somehow can't access their underlying internet identity
+        internal_id: InternalProviderId,
+
+        /// provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
+        session: Session,
+
+        // TODO: discuss this. are we gonna make the billing automaticly onchain?
+        // active_until:
+        /// time when this provider was registered in nanosecond
+        registered_at: Timestamp,
+
+        /// time when this provider was last updated in nanosecond
+        updated_at: Timestamp,
+        // TODO : discuss this as to what data is gonna be collected
+        // provider_details:
+    }
+
+    impl V1 {
+        pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
+            Self {
+                activation_status: Status::Active,
+                display_name,
+                internal_id,
+                session: Session::default(),
+                registered_at: Timestamp::new(),
+                updated_at: Timestamp::new(),
+            }
+        }
+
+        pub fn incretment_session(&mut self) {
+            self.session.increment_session();
+        }
+
+        pub fn reset_session(&mut self) {
+            self.session.reset_session();
+        }
+    }
+
+    // make this a macro also, for testing encoded len
+    #[cfg(test)]
+    mod v1_test {
+        use canister_common::id;
+
+        use super::*;
+
+        #[test]
+        fn test_len_encoded() {
+            use candid::{ Encode, Decode };
+
+            let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
+            let s = V1::new(name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"));
+            let encoded = Encode!(&s).unwrap();
+
+            println!("encoded len: {}", encoded.len());
+
+            let decoded = Decode!(&encoded, V1).unwrap();
+
+            assert_eq!(decoded, s);
+        }
+    }
+
+    // 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
+    // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
+    impl_max_size!(for V1: 200);
+    impl_mem_bound!(for Provider: bounded; fixed_size: false);
+
+    impl Billable for V1 {
+        fn session(&self) -> Session {
+            self.session
+        }
+
+        fn session_mut(&mut self) -> &mut Session {
+            &mut self.session
+        }
+    }
+
+    impl ActivationSatus for V1 {
+        fn activation_status(&self) -> &Status {
+            &self.activation_status
+        }
+
+        fn activation_status_mut(&mut self) -> &mut Status {
+            &mut self.activation_status
+        }
+    }
+
+    impl BasicProviderAttributes for V1 {
+        fn display_name(&self) -> &AsciiRecordsKey<64> {
+            &self.display_name
+        }
+
+        fn display_name_mut(&mut self) -> &mut AsciiRecordsKey<64> {
+            &mut self.display_name
+        }
+
+        fn internal_id(&self) -> &InternalProviderId {
+            &self.internal_id
+        }
+
+        fn internal_id_mut(&mut self) -> &mut InternalProviderId {
+            &mut self.internal_id
+        }
+
+        fn registered_at(&self) -> &Timestamp {
+            &self.registered_at
+        }
+
+        fn updated_at(&self) -> &Timestamp {
+            &self.updated_at
+        }
+
+        fn updated_at_mut(&mut self) -> &mut Timestamp {
+            &mut self.updated_at
+        }
+    }
+
+    impl ToProvider for V1 {
+        fn to_provider(self) -> provider::Provider {
+            provider::Provider::V1(self)
+        }
     }
 }
-
-// 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
-impl_max_size!(for Provider: 200);
-impl_mem_bound!(for Provider: bounded; fixed_size: false);
-
-impl Billable for Provider {
-    fn session(&self) -> Session {
-        self.session
-    }
-
-    fn session_mut(&mut self) -> &mut Session {
-        &mut self.session
-    }
-}
-
-// END ------------------------------ PROVIDER V1 ------------------------------ END
