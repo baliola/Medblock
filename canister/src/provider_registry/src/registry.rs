@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+
 use std::ops::{ Add };
 
 use candid::{ CandidType };
@@ -102,7 +102,7 @@ impl ProviderRegistry {
                     id.into_inner(),
                     |provider| -> ProviderRegistryResult<()> {
                         provider.increment_session();
-                        Ok(self.issued.issue_emr(&provider.internal_id(), emr_id, canister_id)?)
+                        Ok(self.issued.issue_emr(provider.internal_id(), emr_id, canister_id)?)
                     }
                 )?
             }
@@ -462,7 +462,7 @@ impl Providers {
         match self.is_exist(provider.internal_id().clone()) {
             true => Err(ProviderBindingMapError::ProviderExist),
             false => {
-                let bytes_allocated_approx =
+                let _bytes_allocated_approx =
                     std::mem::size_of_val(&provider.internal_id()) +
                     std::mem::size_of_val(&provider);
 
@@ -538,7 +538,7 @@ mod provider_test {
             internal_id.clone()
         ).to_provider();
 
-        let encoded_provider_size = Encode!(&provider).unwrap();
+        let _encoded_provider_size = Encode!(&provider).unwrap();
         let _ = providers.add_provider(provider.clone());
 
         let provider = providers.get_provider(internal_id).unwrap();
@@ -560,7 +560,7 @@ mod provider_test {
             internal_id.clone()
         ).to_provider();
 
-        let bytes_allocated_approx =
+        let _bytes_allocated_approx =
             std::mem::size_of_val(&internal_id) + std::mem::size_of_val(&provider);
 
         providers.add_provider(provider.clone()).unwrap();
@@ -574,7 +574,7 @@ mod provider_test {
 // impl max size -> impl mem bound -> add test_add_read, update the inserted version at registry
 pub mod provider {
     use super::*;
-    use attr::*;
+    
     pub mod attr {
         use super::super::*;
 
