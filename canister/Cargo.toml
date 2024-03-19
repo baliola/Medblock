@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["src/canister-common", "src/provider-registry", "src/emr-registry", "src/patient-registry"]
+members = ["src/canister-common", "src/provider_registry", "src/emr_registry", "src/patient_registry"]
 
 [workspace.dependencies]
 ic-cdk = "0.13.1"

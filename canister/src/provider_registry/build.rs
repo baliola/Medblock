@@ -22,7 +22,7 @@ fn main() {
 
     let mut emr = Config::new("emr_registry");
 
-    emr.candid_path = manifest_dir.join("src/emr-registry/candid.did");
+    emr.candid_path = manifest_dir.join("src/emr_registry/candid.did");
 
     let workspace_cargo_toml_manifest_path = manifest_dir.join("Cargo.toml");
 
@@ -32,5 +32,5 @@ fn main() {
 
     let mut builder = Builder::new();
     builder.add(emr);
-    builder.build(Some(manifest_dir.join("src/provider-registry/src/declarations")));
+    builder.build(Some(manifest_dir.join("src/provider_registry/src/declarations")));
 }
