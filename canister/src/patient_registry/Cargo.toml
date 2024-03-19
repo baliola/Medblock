@@ -30,3 +30,7 @@ uuid = { workspace = true, default-features = false, features = [
 tiny-keccak = { workspace = true }
 canister-common = { path = "../canister-common" , features = ["test-utils"]}
 
+
+[build-dependencies]
+ic-cdk-bindgen = { workspace = true }
+

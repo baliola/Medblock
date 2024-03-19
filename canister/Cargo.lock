@@ -972,6 +972,7 @@ dependencies = [
  "candid",
  "canister-common",
  "ic-cdk",
+ "ic-cdk-bindgen",
  "ic-cdk-timers",
  "ic-stable-structures",
  "ic_principal",

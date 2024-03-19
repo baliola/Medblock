@@ -14,7 +14,8 @@
     "patient_registry": {
       "candid": "src/patient_registry/candid.did",
       "package": "patient_registry",
-      "type": "rust"
+      "type": "rust",
+      "dependencies": ["emr_registry"]
     }
   },
   "defaults": {
