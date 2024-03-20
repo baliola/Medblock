@@ -1,0 +1,8 @@
+type EmrListProviderRequest = record { page : nat64; limit : nat8 };
+type EmrListProviderResponse = record { ids : vec text };
+service : () -> {
+  emr_list_provider : (EmrListProviderRequest) -> (
+      EmrListProviderResponse,
+    ) query;
+  metrics : () -> (text) query;
+}

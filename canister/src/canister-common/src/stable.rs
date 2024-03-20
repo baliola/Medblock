@@ -3,7 +3,7 @@ use std::{ borrow::Borrow, fmt::Debug, marker::PhantomData, ops::{ DerefMut, Ran
 use candid::CandidType;
 use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
 use parity_scale_codec::{ Codec, Decode, Encode };
-use serde::{ de::DeserializeOwned, Deserialize, Serialize };
+use serde::{ de::DeserializeOwned };
 
 use super::mmgr::MemoryManager;
 

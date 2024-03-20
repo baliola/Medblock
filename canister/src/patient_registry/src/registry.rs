@@ -1,9 +1,9 @@
 use candid::{ CandidType };
 use canister_common::{common::{EmrId, Id, UserId, H256}, mmgr::MemoryManager, stable::{Memory, Stable, StableSet, ToStable}};
 
-use parity_scale_codec::{ Decode, Encode };
 
-use canister_common::{ deref, impl_max_size, impl_mem_bound, impl_range_bound };
+
+
 
 pub type NIK = H256;
 

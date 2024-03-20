@@ -1,9 +1,21 @@
 {
   "canisters": {
-    "provider-registry": {
-      "candid": "src/declarations/provider-registry/provider-registry.did",
+    "provider_registry": {
+      "candid": "src/provider_registry/candid.did",
       "package": "provider_registry",
+      "type": "rust",
+      "dependencies": ["emr_registry"]
+    },
+    "emr_registry": {
+      "candid": "src/emr_registry/candid.did",
+      "package": "emr_registry",
       "type": "rust"
+    },
+    "patient_registry": {
+      "candid": "src/patient_registry/candid.did",
+      "package": "patient_registry",
+      "type": "rust",
+      "dependencies": ["emr_registry"]
     }
   },
   "defaults": {
