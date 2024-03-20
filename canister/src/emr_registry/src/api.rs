@@ -2,6 +2,8 @@ use candid::CandidType;
 use canister_common::{ common::{ EmrId, ProviderId, RawEmr, UserId }, from };
 use serde::Deserialize;
 
+use crate::{ header::EmrHeader, registry::key };
+
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
     pub user_id: UserId,
@@ -10,8 +12,8 @@ pub struct ReadEmrByIdRequest {
 }
 
 impl ReadEmrByIdRequest {
-    pub fn to_read_key(self) -> crate::registry::key::EmrKey {
-        crate::registry::key::EmrKey
+    pub fn to_read_key(self) -> key::EmrKey {
+        key::EmrKey
             ::new()
             .with_user(self.user_id)
             .with_provider(self.provider_id)
@@ -26,4 +28,32 @@ pub struct ReadEmrByIdResponse {
 
 from!(ReadEmrByIdResponse: RawEmr as raw {
     emr : raw
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateEmrRequest {
+    pub user_id: UserId,
+    pub provider_id: ProviderId,
+    pub emr: RawEmr,
+}
+
+impl CreateEmrRequest {
+    pub fn to_args(self, emr_id: EmrId) -> (key::AddEmrKey, RawEmr) {
+        let key = key::AddEmrKey
+            ::new()
+            .with_user(self.user_id)
+            .with_provider(self.provider_id)
+            .with_emr_id(emr_id);
+
+        (key, self.emr)
+    }
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateEmrResponse {
+    header: EmrHeader,
+}
+
+from!(CreateEmrResponse: EmrHeader as header {
+    header : header
 });

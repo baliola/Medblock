@@ -29,6 +29,9 @@ use super::key::{
 pub enum CoreRegistryError {
     #[error("The EMR does not exist")]
     NotExist,
+
+    #[error("The EMR already exists")]
+    AlreadyExists,
 }
 
 pub type RegistryResult<T> = Result<T, CoreRegistryError>;
@@ -81,13 +84,30 @@ impl Debug for CoreEmrRegistry {
 }
 
 impl CoreEmrRegistry {
-    pub fn add(&mut self, key: AddEmrKey, emr: RawEmr) {
+    pub fn add(&mut self, key: AddEmrKey, emr: RawEmr) -> RegistryResult<EmrHeader> {
+        let exists_key_check = EmrKey::new()
+            .with_user(key.user_id.clone().into_inner())
+            .with_provider(key.provider_id.clone().into_inner())
+            .with_emr_id(key.emr_id.clone().into_inner());
+
+        if self.is_emr_exists(exists_key_check).is_ok() {
+            return Err(CoreRegistryError::AlreadyExists);
+        }
+
+        let header = EmrHeader::new(
+            key.user_id.clone().into_inner(),
+            key.emr_id.clone().into_inner(),
+            key.provider_id.clone().into_inner()
+        );
+
         for fragment in emr.into_iter() {
             let (k, v) = (fragment.key, fragment.value);
-            
+
             let emr_key = key.clone().with_records_key(k).build();
             self.0.insert(emr_key.into(), v);
         }
+
+        Ok(header)
     }
 
     pub fn is_emr_exists(&self, key: EmrKey) -> RegistryResult<()> {
@@ -241,14 +261,14 @@ mod tests {
         ];
         let emr = RawEmr::from(records);
 
-        registry.add(key.clone(), emr);
+        let header = registry.add(key.clone(), emr).unwrap();
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(user.clone().into())
-            .with_provider(provider.clone())
-            .with_emr_id(emr_id.clone());
+            .with_user(header.user_id.clone().into())
+            .with_provider(header.provider_id.clone())
+            .with_emr_id(header.emr_id.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_ok());
@@ -315,14 +335,14 @@ mod tests {
         ];
         let emr = RawEmr::from(records);
 
-        registry.add(key.clone(), emr);
+        let header  =registry.add(key.clone(), emr).unwrap();
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(user.into())
-            .with_provider(provider.clone())
-            .with_emr_id(emr_id.clone());
+            .with_user(header.user_id.into())
+            .with_provider(header.provider_id.clone())
+            .with_emr_id(header.emr_id.clone());
 
         let result = registry.is_emr_exists(key.clone());
 

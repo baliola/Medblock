@@ -10,6 +10,12 @@ pub struct EmrHeader {
     pub emr_id: EmrId,
     pub provider_id: ProviderId,
 }
+
+impl EmrHeader {
+    pub fn new(user_id: UserId, emr_id: EmrId, provider_id: ProviderId) -> Self {
+        Self { user_id, emr_id, provider_id }
+    }
+}
 impl From<CompositeKey> for EmrHeader {
     fn from(value: CompositeKey) -> Self {
         Self {

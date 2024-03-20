@@ -5,21 +5,37 @@ use candid::{self, CandidType, Deserialize, Principal, Encode, Decode};
 use ic_cdk::api::call::CallResult as Result;
 
 #[derive(CandidType, Deserialize)]
-pub struct ReadEmrByIdRequest {
+pub struct EmrFragment { pub key: String, pub value: String }
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateEmrRequest {
+  pub emr: Vec<EmrFragment>,
+  pub provider_id: String,
+  pub user_id: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct EmrHeader {
   pub provider_id: String,
   pub user_id: String,
   pub emr_id: String,
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct ReadEmrByIdResponse { pub emr: Vec<(String,String,)> }
+pub struct CreateEmrResponse { pub header: EmrHeader }
+
+#[derive(CandidType, Deserialize)]
+pub struct ReadEmrByIdResponse { pub emr: Vec<EmrFragment> }
 
 pub struct EmrRegistry(pub Principal);
 impl EmrRegistry {
+  pub async fn create_emr(&self, arg0: CreateEmrRequest) -> Result<
+    (CreateEmrResponse,)
+  > { ic_cdk::call(self.0, "create_emr", (arg0,)).await }
   pub async fn dummy(&self) -> Result<()> {
     ic_cdk::call(self.0, "dummy", ()).await
   }
-  pub async fn read_emr_by_id(&self, arg0: ReadEmrByIdRequest) -> Result<
+  pub async fn read_emr_by_id(&self, arg0: EmrHeader) -> Result<
     (ReadEmrByIdResponse,)
   > { ic_cdk::call(self.0, "read_emr_by_id", (arg0,)).await }
 }

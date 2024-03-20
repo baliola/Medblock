@@ -1,3 +1,4 @@
+use api::{ CreateEmrRequest, CreateEmrResponse, ReadEmrByIdRequest, ReadEmrByIdResponse };
 use canister_common::{
     common::{ self, RawEmr },
     id_generator::IdGenerator,
@@ -25,6 +26,13 @@ thread_local! {
 /// Precondition: the state is already initialized.
 pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
     STATE.with(|cell| f(cell.borrow().as_ref().expect("state not initialized")))
+}
+
+/// A helper method to read the id generator.
+///
+/// Precondition: the id generator is already initialized.
+pub fn with_id_generator_mut<R>(f: impl FnOnce(&mut IdGenerator<CanisterRandomSource>) -> R) -> R {
+    ID_GENERATOR.with(|cell| f(cell.borrow_mut().as_mut().expect("id generator not initialized")))
 }
 
 /// A helper method to mutate the state.
@@ -69,8 +77,18 @@ fn init() {
 }
 
 #[ic_cdk::query]
-fn read_emr_by_id(req: api::ReadEmrByIdRequest) -> api::ReadEmrByIdResponse {
+fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })
+}
+
+#[ic_cdk::update]
+fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
+    let id = with_id_generator_mut(|id_gen| id_gen.generate_id());
+    let (key, emr) = req.to_args(id);
+    
+    with_state_mut(|s| s.registry.add(key, emr))
+        .unwrap()
+        .into()
 }
 
 #[query]

@@ -116,10 +116,10 @@ pub struct CompositeKeyBuilder<
     UnknownEmrId = Unknown<EmrId>,
     UnknownRecordsKey = Unknown<RecordsKey>
 > {
-    user_id: UnknownUser,
-    provider_id: UnknownProvider,
-    emr_id: UnknownEmrId,
-    records_key: UnknownRecordsKey,
+    pub user_id: UnknownUser,
+    pub provider_id: UnknownProvider,
+    pub emr_id: UnknownEmrId,
+    pub records_key: UnknownRecordsKey,
     __marker: std::marker::PhantomData<Usage>,
 }
 
