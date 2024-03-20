@@ -1,1 +1,10 @@
-service : { dummy : () -> () query }
+type ReadEmrByIdRequest = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+};
+type ReadEmrByIdResponse = record { emr : vec record { text; text } };
+service : () -> {
+  dummy : () -> () query;
+  read_emr_by_id : (ReadEmrByIdRequest) -> (ReadEmrByIdResponse) query;
+}

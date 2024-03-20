@@ -82,7 +82,9 @@ impl Debug for CoreEmrRegistry {
 
 impl CoreEmrRegistry {
     pub fn add(&mut self, key: AddEmrKey, emr: RawEmr) {
-        for (k, v) in emr.into_iter() {
+        for fragment in emr.into_iter() {
+            let (k, v) = (fragment.key, fragment.value);
+            
             let emr_key = key.clone().with_records_key(k).build();
             self.0.insert(emr_key.into(), v);
         }

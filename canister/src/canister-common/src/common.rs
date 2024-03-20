@@ -558,20 +558,41 @@ mod deserialize_h256 {
 }
 
 #[derive(Debug, Deserialize, Clone, CandidType)]
-pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
+pub struct EmrFragment {
+    pub key: AsciiRecordsKey,
+    pub value: ArbitraryEmrValue,
+}
+
+impl EmrFragment {
+    pub fn new(key: AsciiRecordsKey, value: ArbitraryEmrValue) -> Self {
+        Self { key, value }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, CandidType)]
+pub struct RawEmr(Vec<EmrFragment>);
 
 impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
     fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
+        let records = records
+            .into_iter()
+            .map(|(k, v)| EmrFragment::new(k, v))
+            .collect::<Vec<_>>();
+
         Self(records)
     }
 }
 
 impl IntoIterator for RawEmr {
-    type Item = (AsciiRecordsKey, ArbitraryEmrValue);
+    type Item = EmrFragment;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.0
+            .into_iter()
+            // .map(|fragment| (fragment.key, fragment.value))
+            // .collect::<Vec<_>>()
+            // .into_iter()
     }
 }
 
