@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{ ArbitraryEmrValue, AsciiRecordsKey, Id, UserId, EmrId, ProviderId },
+    common::{ ArbitraryEmrValue, AsciiRecordsKey, Id, UserId, EmrId, ProviderId, RawEmr },
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
 };
@@ -200,24 +200,6 @@ impl CoreEmrRegistry {
         } else {
             Ok(RawEmr::from(records))
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
-
-impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
-    fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
-        Self(records)
-    }
-}
-
-impl IntoIterator for RawEmr {
-    type Item = (AsciiRecordsKey, ArbitraryEmrValue);
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
     }
 }
 

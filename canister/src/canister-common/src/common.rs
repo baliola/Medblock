@@ -4,7 +4,15 @@ use candid::{ CandidType, Principal };
 use ic_stable_structures::storable::Bound;
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, from, impl_max_size, impl_mem_bound, impl_range_bound, stable::MemBoundMarker };
+use crate::{
+    deref,
+    from,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
+    mmgr::MemoryManager,
+    stable::MemBoundMarker,
+};
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -265,7 +273,7 @@ mod deserialize {
             if s.len() > N {
                 return Err(serde::de::Error::custom(format!("key exceeded max length of {}", N)));
             }
-          
+
             let mut key = [0u8; N];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
@@ -546,5 +554,36 @@ mod deserialize_h256 {
         {
             serializer.serialize_text(self.as_str())
         }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, CandidType)]
+pub struct RawEmr(Vec<(AsciiRecordsKey, ArbitraryEmrValue)>);
+
+impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
+    fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
+        Self(records)
+    }
+}
+
+impl IntoIterator for RawEmr {
+    type Item = (AsciiRecordsKey, ArbitraryEmrValue);
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+pub struct State<Registry, Config, Threshold> {
+    pub registry: Registry,
+    pub config: Config,
+    pub freeze_threshold: Threshold,
+    pub memory_manager: MemoryManager,
+}
+
+impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
+    pub fn new(registry: Registry, config: Config, freeze_threshold: Threshold) -> Self {
+        Self { registry, config, freeze_threshold, memory_manager: MemoryManager::new() }
     }
 }
