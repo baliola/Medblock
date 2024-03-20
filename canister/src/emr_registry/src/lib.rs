@@ -1,6 +1,13 @@
-use api::{ CreateEmrRequest, CreateEmrResponse, ReadEmrByIdRequest, ReadEmrByIdResponse };
+use api::{
+    CreateEmrRequest,
+    CreateEmrResponse,
+    ReadEmrByIdRequest,
+    ReadEmrByIdResponse,
+    UpdateEmrRequest,
+    UpdateEmrResponse,
+};
 use canister_common::{
-    common::{ self, RawEmr },
+    common::{ self, EmrBody },
     id_generator::IdGenerator,
     mmgr::MemoryManager,
     random::CanisterRandomSource,
@@ -92,8 +99,10 @@ fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
 }
 
 #[ic_cdk::update]
-fn update_emr() {
-    // with_state_mut(|s| s.registry.update(key, value))
+fn update_emr(req: UpdateEmrRequest) -> UpdateEmrResponse {
+    with_state_mut(|s|
+        s.registry.update_batch(req.header.to_partial_update_key(), req.fields).unwrap().into()
+    )
 }
 
 #[query]

@@ -1,5 +1,5 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrId, ProviderId, RawEmr, UserId }, from };
+use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId }, from };
 use serde::Deserialize;
 
 use crate::{
@@ -46,11 +46,11 @@ impl From<CompositeKey> for EmrHeader {
 #[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
 pub struct EmrHeaderWithBody {
     pub header: EmrHeader,
-    pub body: RawEmr,
+    pub body: EmrBody,
 }
 
 impl EmrHeaderWithBody {
-    pub fn new(header: EmrHeader, body: RawEmr) -> Self {
+    pub fn new(header: EmrHeader, body: EmrBody) -> Self {
         Self { header, body }
     }
 
@@ -58,7 +58,7 @@ impl EmrHeaderWithBody {
         self.header
     }
 
-    pub fn into_inner_body(self) -> RawEmr {
+    pub fn into_inner_body(self) -> EmrBody {
         self.body
     }
 }

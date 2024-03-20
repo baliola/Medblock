@@ -10,7 +10,7 @@ use canister_common::{
         EmrId,
         Id,
         ProviderId,
-        RawEmr,
+        EmrBody,
         UserId,
     },
     mmgr::MemoryManager,
@@ -100,7 +100,7 @@ impl Debug for CoreEmrRegistry {
 }
 
 impl CoreEmrRegistry {
-    pub fn add(&mut self, key: AddEmrKey, emr: RawEmr) -> RegistryResult<EmrHeader> {
+    pub fn add(&mut self, key: AddEmrKey, emr: EmrBody) -> RegistryResult<EmrHeader> {
         let exists_key_check = EmrKey::new()
             .with_user(key.user_id.clone().into_inner())
             .with_provider(key.provider_id.clone().into_inner())
@@ -152,7 +152,7 @@ impl CoreEmrRegistry {
     pub fn update_batch(
         &mut self,
         key: PartialUpdateKey,
-        values: Vec<EmrFragment>
+        values: EmrBody
     ) -> RegistryResult<EmrHeader> {
         let check_key = EmrKey::new()
             .with_user(key.user_id.clone().into_inner())
@@ -273,7 +273,7 @@ impl CoreEmrRegistry {
             Err(CoreRegistryError::NotExist)
         } else {
             let header = EmrHeader::from(key.into_inner());
-            let body = RawEmr::from(records);
+            let body = EmrBody::from(records);
             Ok(EmrHeaderWithBody::new(header, body))
         }
     }
@@ -307,7 +307,7 @@ mod tests {
             (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
             (AsciiRecordsKey::new("key2").unwrap(), ArbitraryEmrValue::from("value2"))
         ];
-        let emr = RawEmr::from(records);
+        let emr = EmrBody::from(records);
 
         let header = registry.add(key.clone(), emr).unwrap();
 
@@ -381,7 +381,7 @@ mod tests {
             (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
             (AsciiRecordsKey::new("key4").unwrap(), ArbitraryEmrValue::from("value1"))
         ];
-        let emr = RawEmr::from(records);
+        let emr = EmrBody::from(records);
 
         let header = registry.add(key.clone(), emr).unwrap();
 
@@ -424,7 +424,7 @@ mod tests {
             (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
             (AsciiRecordsKey::new("key4").unwrap(), ArbitraryEmrValue::from("value1"))
         ];
-        let emr = RawEmr::from(records);
+        let emr = EmrBody::from(records);
 
         let header = registry.add(key.clone(), emr.clone()).unwrap();
 

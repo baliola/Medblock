@@ -578,16 +578,16 @@ impl EmrFragment {
 }
 
 #[derive(Debug, Deserialize, Clone, CandidType, PartialEq, Eq)]
-pub struct RawEmr(Vec<EmrFragment>);
+pub struct EmrBody(Vec<EmrFragment>);
 
-impl RawEmr {
+impl EmrBody {
     pub fn into_inner(self) -> Vec<EmrFragment>{
         self.0
     
     }
 }
 
-impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
+impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for EmrBody {
     fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
         let records = records
             .into_iter()
@@ -598,7 +598,7 @@ impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
     }
 }
 
-impl IntoIterator for RawEmr {
+impl IntoIterator for EmrBody {
     type Item = EmrFragment;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 

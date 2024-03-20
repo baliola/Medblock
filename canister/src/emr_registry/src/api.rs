@@ -1,5 +1,5 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrId, ProviderId, RawEmr, UserId }, from };
+use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId }, from };
 use serde::Deserialize;
 
 use crate::{ header::{ EmrHeader, EmrHeaderWithBody }, registry::key };
@@ -34,11 +34,11 @@ from!(ReadEmrByIdResponse: EmrHeaderWithBody as raw {
 pub struct CreateEmrRequest {
     pub user_id: UserId,
     pub provider_id: ProviderId,
-    pub emr: RawEmr,
+    pub emr: EmrBody,
 }
 
 impl CreateEmrRequest {
-    pub fn to_args(self, emr_id: EmrId) -> (key::AddEmrKey, RawEmr) {
+    pub fn to_args(self, emr_id: EmrId) -> (key::AddEmrKey, EmrBody) {
         let key = key::AddEmrKey
             ::new()
             .with_user(self.user_id)
@@ -55,5 +55,20 @@ pub struct CreateEmrResponse {
 }
 
 from!(CreateEmrResponse: EmrHeader as header {
+    header : header
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateEmrRequest {
+    pub header: EmrHeader,
+    pub fields: EmrBody,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateEmrResponse {
+    pub header: EmrHeader,
+}
+
+from!(UpdateEmrResponse: EmrHeader as header {
     header : header
 });
