@@ -16,10 +16,15 @@ fn get_workspace_root() -> PathBuf {
 }
 
 fn main() {
+    let link_flag = std::env::var("LINK").unwrap_or("true".to_string()).parse::<bool>().unwrap();
+    // workaround to determine if this is invoked by dfx as dfx automatically inject this env var
+    let candid_path_env = std::env::var("CANISTER_CANDID_PATH_PATIENT_REGISTRY").is_ok();
+    
     // dont run this script in test environment
-    if !std::env::var("LINK").unwrap_or("true".to_string()).parse::<bool>().unwrap() {
+    if !link_flag || !candid_path_env {
         return;
     }
+
     let result = catch_unwind(build_declaration);
     match  result{
         Ok(_) => (),
