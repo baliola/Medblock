@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use candid::{ CandidType, Principal };
-use ic_stable_structures::storable::Bound;
+use ic_stable_structures::{ memory_manager, storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
@@ -583,7 +583,12 @@ pub struct State<Registry, Config, Threshold> {
 }
 
 impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
-    pub fn new(registry: Registry, config: Config, freeze_threshold: Threshold) -> Self {
-        Self { registry, config, freeze_threshold, memory_manager: MemoryManager::new() }
+    pub fn new(
+        registry: Registry,
+        config: Config,
+        freeze_threshold: Threshold,
+        memory_manager: MemoryManager
+    ) -> Self {
+        Self { registry, config, freeze_threshold, memory_manager }
     }
 }

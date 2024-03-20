@@ -10,12 +10,10 @@ use canister_common::{
 use ic_principal::Principal;
 use registry::ProviderRegistry;
 
-
 mod declarations;
 mod registry;
 mod config;
 mod types;
-
 
 /// TODO: benchmark this
 const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
@@ -103,15 +101,19 @@ fn only_provider() -> Result<(), String> {
     })
 }
 
-async fn initialize_id_generator() {
-    let rng = CanisterRandomSource::new().await;
-    let id_generator = IdGenerator::new(rng);
+fn initialize_id_generator() {
+    ic_cdk_timers::set_timer(Duration::from_secs(3), || {
+        ic_cdk::spawn(async move {
+            let rng = CanisterRandomSource::new().await;
+            let id_generator = IdGenerator::new(rng);
 
-    ID_GENERATOR.with(|id_gen| {
-        *id_gen.borrow_mut() = Some(id_generator);
+            ID_GENERATOR.with(|id_gen| {
+                *id_gen.borrow_mut() = Some(id_generator);
+            });
+
+            ic_cdk::print("id generator initialized");
+        })
     });
-
-    ic_cdk::print("id generator initialized");
 }
 
 #[ic_cdk::init]
@@ -131,7 +133,7 @@ fn canister_init() {
         ic_cdk::print("state initialized");
     });
 
-    ic_cdk_timers::set_timer(Duration::from_secs(3), || ic_cdk::spawn(initialize_id_generator()));
+    initialize_id_generator()
 }
 
 #[ic_cdk::query]
@@ -154,7 +156,10 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
 
         let _limit = state.config.max_item_per_response().min(req.limit);
 
-        state.providers.get_issued(&provider, req.page, req.limit as u64).unwrap().into()
+        state.providers
+            .get_issued(&provider, req.page, req.limit as u64)
+            .unwrap()
+            .into()
     })
 }
 

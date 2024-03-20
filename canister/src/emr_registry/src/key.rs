@@ -16,7 +16,7 @@ const DEFAULT_KEY_LEN: usize = 32;
 pub(crate) type RecordsKey = canister_common::common::RecordsKey<DEFAULT_KEY_LEN>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
-pub struct CompositeKey(UserId, ProviderId, EmrId, RecordsKey);
+pub struct CompositeKey(pub UserId, pub ProviderId, pub EmrId, pub RecordsKey);
 
 impl RangeBounds<CompositeKey> for CompositeKey {
     fn start_bound(&self) -> core::ops::Bound<&CompositeKey> {
@@ -110,7 +110,7 @@ impl<T> Known<T> {
 
 #[derive(Debug, Clone, Default)]
 pub struct CompositeKeyBuilder<
-    Usage,
+    Usage = UnknownUsage,
     UnknownUser = Unknown<UserId>,
     UnknownProvider = Unknown<ProviderId>,
     UnknownEmrId = Unknown<EmrId>,
@@ -316,14 +316,6 @@ impl CompositeKeyBuilder<
 }
 
 impl CompositeKeyBuilder<UnknownUsage> {
-    pub fn new() -> CompositeKeyBuilder<UnknownUsage> {
-        CompositeKeyBuilder::<UnknownUsage>::default()
-    }
-
-    fn new_with_usage<Usage: Default>() -> CompositeKeyBuilder<Usage> {
-        CompositeKeyBuilder::<Usage>::default()
-    }
-
     pub fn user_batch(self) -> CompositeKeyBuilder<UserBatch> {
         Self::new_with_usage::<_>()
     }
@@ -338,6 +330,16 @@ impl CompositeKeyBuilder<UnknownUsage> {
 
     pub fn records_key(self) -> CompositeKeyBuilder<ByRecordsKey> {
         Self::new_with_usage::<_>()
+    }
+}
+
+impl<U: Default, V, B, N, M> CompositeKeyBuilder<U, V, B, N, M> {
+    pub fn new() -> CompositeKeyBuilder<U> {
+        Self::new_with_usage::<_>()
+    }
+
+    fn new_with_usage<Usage: Default>() -> CompositeKeyBuilder<Usage> {
+        CompositeKeyBuilder::<Usage>::default()
     }
 }
 

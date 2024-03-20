@@ -8,6 +8,10 @@ use canister_common::{
     stable::{ Memory, Stable, ToStable },
 };
 
+use crate::header::EmrHeader;
+
+use self::key::*;
+
 use super::key::{
     ByEmr,
     ByRecordsKey,
@@ -28,6 +32,33 @@ pub enum CoreRegistryError {
 }
 
 pub type RegistryResult<T> = Result<T, CoreRegistryError>;
+
+pub mod key {
+    use super::*;
+
+    pub type EmrKey = CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>;
+    pub type AddEmrKey = CompositeKeyBuilder<
+        ByRecordsKey,
+        Known<UserId>,
+        Known<ProviderId>,
+        Known<EmrId>
+    >;
+
+    pub type UpdateKey = CompositeKeyBuilder<
+        ByRecordsKey,
+        Known<UserId>,
+        Known<ProviderId>,
+        Known<EmrId>,
+        Known<RecordsKey>
+    >;
+
+    pub type UserBatchKey = CompositeKeyBuilder<UserBatch, Known<UserId>>;
+    pub type ProviderBatchKey = CompositeKeyBuilder<
+        ProviderBatch,
+        Unknown<UserId>,
+        Known<ProviderId>
+    >;
+}
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
 impl CoreEmrRegistry {
@@ -50,21 +81,14 @@ impl Debug for CoreEmrRegistry {
 }
 
 impl CoreEmrRegistry {
-    pub fn add(
-        &mut self,
-        key: CompositeKeyBuilder<ByRecordsKey, Known<UserId>, Known<ProviderId>, Known<EmrId>>,
-        emr: RawEmr
-    ) {
+    pub fn add(&mut self, key: AddEmrKey, emr: RawEmr) {
         for (k, v) in emr.into_iter() {
             let emr_key = key.clone().with_records_key(k).build();
             self.0.insert(emr_key.into(), v);
         }
     }
 
-    pub fn is_emr_exists(
-        &self,
-        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
-    ) -> RegistryResult<()> {
+    pub fn is_emr_exists(&self, key: EmrKey) -> RegistryResult<()> {
         let key = key.build().to_stable();
         match
             self.0
@@ -79,23 +103,14 @@ impl CoreEmrRegistry {
 
     pub fn update(
         &mut self,
-        key: CompositeKeyBuilder<
-            ByRecordsKey,
-            Known<UserId>,
-            Known<ProviderId>,
-            Known<EmrId>,
-            Known<RecordsKey>
-        >,
+        key: UpdateKey,
         value: ArbitraryEmrValue
     ) -> Option<ArbitraryEmrValue> {
         let key = key.build().into();
         self.0.insert(key, value)
     }
 
-    pub fn remove_record(
-        &mut self,
-        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
-    ) {
+    pub fn remove_record(&mut self, key: EmrKey) {
         let key = key.build().to_stable();
 
         let keys_to_remove: Vec<_> = self.0
@@ -110,12 +125,7 @@ impl CoreEmrRegistry {
     }
 
     /// Get the list of EMRs for a user, this will not filter by provider
-    pub fn get_user_list_batch(
-        &self,
-        page: u64,
-        limit: u64,
-        key: CompositeKeyBuilder<UserBatch, Known<UserId>>
-    ) -> Vec<EmrId> {
+    pub fn get_user_list_batch(&self, page: u64, limit: u64, key: UserBatchKey) -> Vec<EmrHeader> {
         let key = key.build().to_stable();
         self.get_list_batch::<UserId, UserBatch>(page, limit, &key)
     }
@@ -125,8 +135,8 @@ impl CoreEmrRegistry {
         &self,
         page: u64,
         limit: u64,
-        key: CompositeKeyBuilder<ProviderBatch, Unknown<UserId>, Known<ProviderId>>
-    ) -> Vec<EmrId> {
+        key: ProviderBatchKey
+    ) -> Vec<EmrHeader> {
         let key = key.build().to_stable();
         self.get_list_batch::<ProviderId, ProviderBatch>(page, limit, &key)
     }
@@ -136,7 +146,7 @@ impl CoreEmrRegistry {
         page: u64,
         limit: u64,
         key: &Stable<CompositeKey>
-    ) -> Vec<EmrId> {
+    ) -> Vec<EmrHeader> {
         let start = page * limit;
         let end = start + limit;
 
@@ -169,24 +179,20 @@ impl CoreEmrRegistry {
                 break;
             }
 
+            // Update the last seen emr_id and increment the index.
+            last_id = k.emr_id().clone();
+            index += 1;
+
             // If the current index has reached or exceeded the start of the page,
             // add the emr_id of the current key to the result. This ensures that we only start adding emr_ids to the result
             // once we've reached the start of the page.
             if index >= start {
-                result.push(k.emr_id().clone());
+                result.push(k.into_inner().into());
             }
-
-            // Update the last seen emr_id and increment the index.
-            last_id = k.emr_id().clone();
-            index += 1;
         }
         result
     }
-
-    pub fn read_by_id(
-        &self,
-        key: CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>
-    ) -> RegistryResult<RawEmr> {
+    pub fn read_by_id(&self, key: EmrKey) -> RegistryResult<RawEmr> {
         let key = key.build().to_stable();
 
         let records = self.0
@@ -205,6 +211,8 @@ impl CoreEmrRegistry {
 
 #[cfg(test)]
 mod tests {
+    use crate::key::UnknownUsage;
+
     use super::*;
     use canister_common::id;
 
@@ -218,7 +226,8 @@ mod tests {
         let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
         let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
 
-        let key = CompositeKeyBuilder::new()
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
             .records_key()
             .with_user(user.into())
             .with_provider(provider.clone())
@@ -232,25 +241,44 @@ mod tests {
 
         registry.add(key.clone(), emr);
 
-        let key = CompositeKeyBuilder::new()
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
             .emr()
-            .with_user(user.into())
+            .with_user(user.clone().into())
             .with_provider(provider.clone())
             .with_emr_id(emr_id.clone());
 
         let result = registry.read_by_id(key.clone());
         assert!(result.is_ok());
 
-        let key = CompositeKeyBuilder::new().user_batch().with_user(user.into());
+        let key = CompositeKeyBuilder::<UnknownUsage>::new().user_batch().with_user(user.into());
 
         let result = registry.get_user_list_batch(0, 10, key);
-        assert_eq!(result, vec![emr_id.clone()]);
+        assert_eq!(
+            result,
+            vec![EmrHeader {
+                user_id: user.into(),
+                emr_id: emr_id.clone(),
+                provider_id: provider.clone(),
+            }]
+        );
 
-        let key = CompositeKeyBuilder::new().provider_batch().with_provider(provider.clone());
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .provider_batch()
+            .with_provider(provider.clone());
         let result = registry.get_provider_batch(0, 10, key.clone());
-        assert_eq!(result, vec![emr_id.clone()]);
+        assert_eq!(
+            result,
+            vec![EmrHeader {
+                user_id: user.into(),
+                emr_id: emr_id.clone(),
+                provider_id: provider.clone(),
+            }]
+        );
 
-        let key = CompositeKeyBuilder::new()
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
             .emr()
             .with_user(user.into())
             .with_provider(provider.clone())
@@ -272,7 +300,8 @@ mod tests {
         let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
         let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
 
-        let key = CompositeKeyBuilder::new()
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
             .records_key()
             .with_user(user.into())
             .with_provider(provider.clone())
@@ -286,7 +315,8 @@ mod tests {
 
         registry.add(key.clone(), emr);
 
-        let key = CompositeKeyBuilder::new()
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
             .emr()
             .with_user(user.into())
             .with_provider(provider.clone())
