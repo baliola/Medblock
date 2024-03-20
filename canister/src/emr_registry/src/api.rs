@@ -2,7 +2,7 @@ use candid::CandidType;
 use canister_common::{ common::{ EmrId, ProviderId, RawEmr, UserId }, from };
 use serde::Deserialize;
 
-use crate::{ header::EmrHeader, registry::key };
+use crate::{ header::{ EmrHeader, EmrHeaderWithBody }, registry::key };
 
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
@@ -23,10 +23,10 @@ impl ReadEmrByIdRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdResponse {
-    pub emr: RawEmr,
+    pub emr: EmrHeaderWithBody,
 }
 
-from!(ReadEmrByIdResponse: RawEmr as raw {
+from!(ReadEmrByIdResponse: EmrHeaderWithBody as raw {
     emr : raw
 });
 

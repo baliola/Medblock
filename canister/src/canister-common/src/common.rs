@@ -91,6 +91,14 @@ pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
     len: u8,
 }
 
+impl<const N: usize> TryFrom<&str> for AsciiRecordsKey<N> {
+    type Error = AsciiKeyError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
 impl<const N: usize> MemBoundMarker for AsciiRecordsKey<N> {
     const BOUND: Bound = Bound::Bounded { max_size: Self::max_size() as u32, is_fixed_size: false };
 }
@@ -557,7 +565,7 @@ mod deserialize_h256 {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, CandidType)]
+#[derive(Debug, Deserialize, Clone, CandidType, PartialEq, Eq)]
 pub struct EmrFragment {
     pub key: AsciiRecordsKey,
     pub value: ArbitraryEmrValue,
@@ -569,8 +577,15 @@ impl EmrFragment {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, CandidType)]
+#[derive(Debug, Deserialize, Clone, CandidType, PartialEq, Eq)]
 pub struct RawEmr(Vec<EmrFragment>);
+
+impl RawEmr {
+    pub fn into_inner(self) -> Vec<EmrFragment>{
+        self.0
+    
+    }
+}
 
 impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for RawEmr {
     fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {

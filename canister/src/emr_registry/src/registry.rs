@@ -3,12 +3,21 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{ ArbitraryEmrValue, AsciiRecordsKey, Id, UserId, EmrId, ProviderId, RawEmr },
+    common::{
+        ArbitraryEmrValue,
+        AsciiRecordsKey,
+        EmrFragment,
+        EmrId,
+        Id,
+        ProviderId,
+        RawEmr,
+        UserId,
+    },
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
 };
 
-use crate::header::EmrHeader;
+use crate::header::{ EmrHeader, EmrHeaderWithBody };
 
 use self::key::*;
 
@@ -53,6 +62,13 @@ pub mod key {
         Known<ProviderId>,
         Known<EmrId>,
         Known<RecordsKey>
+    >;
+
+    pub type PartialUpdateKey = CompositeKeyBuilder<
+        ByRecordsKey,
+        Known<UserId>,
+        Known<ProviderId>,
+        Known<EmrId>
     >;
 
     pub type UserBatchKey = CompositeKeyBuilder<UserBatch, Known<UserId>>;
@@ -130,6 +146,35 @@ impl CoreEmrRegistry {
     ) -> Option<ArbitraryEmrValue> {
         let key = key.build().into();
         self.0.insert(key, value)
+    }
+
+    /// update given emr, will upsert if the the field does not exists.
+    pub fn update_batch(
+        &mut self,
+        key: PartialUpdateKey,
+        values: Vec<EmrFragment>
+    ) -> RegistryResult<EmrHeader> {
+        let check_key = EmrKey::new()
+            .with_user(key.user_id.clone().into_inner())
+            .with_provider(key.provider_id.clone().into_inner())
+            .with_emr_id(key.emr_id.clone().into_inner());
+
+        // ensure emr exists
+        self.is_emr_exists(check_key)?;
+
+        let header = EmrHeader::new(
+            key.user_id.clone().into_inner(),
+            key.emr_id.clone().into_inner(),
+            key.provider_id.clone().into_inner()
+        );
+
+        for fragment in values {
+            let (k, v) = (fragment.key, fragment.value);
+            let records_key = key.clone().with_records_key(k);
+            self.update(records_key, v);
+        }
+
+        Ok(header)
     }
 
     pub fn remove_record(&mut self, key: EmrKey) {
@@ -214,7 +259,8 @@ impl CoreEmrRegistry {
         }
         result
     }
-    pub fn read_by_id(&self, key: EmrKey) -> RegistryResult<RawEmr> {
+
+    pub fn read_by_id(&self, key: EmrKey) -> RegistryResult<EmrHeaderWithBody> {
         let key = key.build().to_stable();
 
         let records = self.0
@@ -226,7 +272,9 @@ impl CoreEmrRegistry {
         if records.is_empty() {
             Err(CoreRegistryError::NotExist)
         } else {
-            Ok(RawEmr::from(records))
+            let header = EmrHeader::from(key.into_inner());
+            let body = RawEmr::from(records);
+            Ok(EmrHeaderWithBody::new(header, body))
         }
     }
 }
@@ -335,7 +383,7 @@ mod tests {
         ];
         let emr = RawEmr::from(records);
 
-        let header  =registry.add(key.clone(), emr).unwrap();
+        let header = registry.add(key.clone(), emr).unwrap();
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
@@ -353,6 +401,56 @@ mod tests {
         let result = registry.is_emr_exists(key.clone());
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_upsert_emr() {
+        let memory_manager = MemoryManager::new();
+        let mut registry = CoreEmrRegistry::new(&memory_manager);
+
+        let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
+        let user = canister_common::test_utils::hash(user.as_bytes());
+        let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
+        let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
+
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .records_key()
+            .with_user(user.into())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let records = vec![
+            (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
+            (AsciiRecordsKey::new("key4").unwrap(), ArbitraryEmrValue::from("value1"))
+        ];
+        let emr = RawEmr::from(records);
+
+        let header = registry.add(key.clone(), emr.clone()).unwrap();
+
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .emr()
+            .with_user(header.user_id.clone())
+            .with_provider(header.provider_id.clone())
+            .with_emr_id(header.emr_id.clone());
+
+        let new_fields = vec![
+            EmrFragment::new("new_field_1".try_into().unwrap(), "new value 1".to_string()),
+            EmrFragment::new("new_field_2".try_into().unwrap(), "new value 2".to_string())
+        ];
+
+        let total_fields = [emr.clone().into_inner(), new_fields.clone()].concat();
+
+        let header = registry.update_batch(header.to_partial_update_key(), new_fields).unwrap();
+
+        let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
+
+        assert!(emrs.clone().into_inner().len() == total_fields.len());
+
+        for fragment in emrs {
+            assert!(total_fields.contains(&fragment));
+        }
     }
 }
 
