@@ -1,5 +1,5 @@
 mod registry;
-
+mod memory;
 #[ic_cdk::query]
 fn dummy() {}
 

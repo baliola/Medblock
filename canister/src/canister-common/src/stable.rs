@@ -1,9 +1,16 @@
 use std::{ borrow::Borrow, fmt::Debug, marker::PhantomData, ops::{ DerefMut, RangeBounds } };
 
 use candid::CandidType;
-use ic_stable_structures::{ storable::Bound, DefaultMemoryImpl, Storable };
+use ic_stable_structures::{
+    memory_manager::MemoryId,
+    storable::Bound,
+    DefaultMemoryImpl,
+    Storable,
+};
 use parity_scale_codec::{ Codec, Decode, Encode };
 use serde::{ de::DeserializeOwned };
+
+use crate::common::Get;
 
 use super::mmgr::MemoryManager;
 
@@ -312,8 +319,8 @@ impl<K, V> StableSet<K, V>
         self.0.len()
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> StableSet<K, V> {
-        let tree = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
+    pub fn new<M: Get<MemoryId>>(memory_manager: &MemoryManager) -> StableSet<K, V> {
+        let tree = memory_manager.get_memory::<_, M>(ic_stable_structures::BTreeMap::new);
         Self(tree)
     }
 
@@ -456,7 +463,7 @@ impl<K, V> StableSet<K, V>
 
 #[cfg(test)]
 mod set_test {
-    use crate::{ memory_manager, native_bound };
+    use crate::{ generate_memory_id, memory_manager, native_bound };
 
     use super::*;
 
@@ -464,9 +471,12 @@ mod set_test {
 
     #[test]
     fn test_stable_set() {
+        struct M;
+        generate_memory_id!(M);
+
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -487,9 +497,12 @@ mod set_test {
 
     #[test]
     fn test_paged_query() {
+        struct M;
+        generate_memory_id!(M);
+
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -507,9 +520,12 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_wrong_keys() {
+        struct M;
+        generate_memory_id!(M);
+
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -524,9 +540,12 @@ mod set_test {
 
     #[test]
     fn test_paged_query_with_mixed_keys() {
+        struct M;
+        generate_memory_id!(M);
+
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);

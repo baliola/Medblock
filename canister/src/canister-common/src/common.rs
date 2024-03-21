@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ marker::PhantomData, str::FromStr };
 
 use candid::{ CandidType, Principal };
 use ic_stable_structures::{ storable::Bound };
@@ -500,13 +500,42 @@ pub mod guard {
 }
 
 pub mod freeze {
+    use candid::CandidType;
+    use ic_stable_structures::{ memory_manager::MemoryId, Cell };
+    use serde::Deserialize;
+
+    use crate::{
+        impl_max_size,
+        impl_mem_bound,
+        mmgr::MemoryManager,
+        stable::{ Candid, Memory, Stable, ToStable },
+    };
+
+    use super::Get;
+
     pub enum AllowCallFlag {
         Enabled,
         Disabled,
     }
 
+    #[derive(CandidType, Deserialize)]
     pub struct FreezeThreshold {
         threshold: u128,
+    }
+
+    impl_max_size!(for FreezeThreshold: u128);
+    impl_mem_bound!(for FreezeThreshold: bounded; fixed_size: false);
+
+    impl FreezeThreshold {
+        pub fn init<M: Get<MemoryId>>(
+            threshold: u128,
+            memory_manager: &MemoryManager
+        ) -> Cell<Stable<Self, Candid>, Memory> {
+            // safe to unwrap, we're using layout version 1
+            memory_manager
+                .get_memory::<_, M>(|m| Cell::init(m, Self::new(threshold).to_stable()))
+                .unwrap()
+        }
     }
 
     impl FreezeThreshold {
@@ -730,4 +759,8 @@ impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
     ) -> Self {
         Self { registry, config, freeze_threshold, memory_manager }
     }
+}
+
+pub trait Get<T> {
+    fn get() -> T;
 }

@@ -1,9 +1,9 @@
 use candid::{ CandidType };
-use canister_common::{common::{EmrId, Id, UserId, H256}, mmgr::MemoryManager, stable::{Memory, Stable, StableSet, ToStable}};
-
-
-
-
+use canister_common::{
+    common::{ EmrId, Id, UserId, H256 },
+    mmgr::MemoryManager,
+    stable::{ Memory, Stable, StableSet, ToStable },
+};
 
 pub type NIK = H256;
 
@@ -55,7 +55,7 @@ impl OwnerMap {
     }
 
     pub fn new(memory_manager: &MemoryManager) -> Self {
-        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
     }
 
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
@@ -65,12 +65,11 @@ impl OwnerMap {
 
 #[cfg(test)]
 mod test_owner_map {
-
     use super::*;
 
     #[test]
     fn test_bind() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::new());
+        let mut owner_map = OwnerMap::new(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -83,7 +82,7 @@ mod test_owner_map {
 
     #[test]
     fn test_rebind() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::new());
+        let mut owner_map = OwnerMap::new(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -97,7 +96,7 @@ mod test_owner_map {
 
     #[test]
     fn test_revoke() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::new());
+        let mut owner_map = OwnerMap::new(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -108,7 +107,7 @@ mod test_owner_map {
 
     #[test]
     fn test_get_nik() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::new());
+        let mut owner_map = OwnerMap::new(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -122,7 +121,7 @@ mod test_owner_map {
 
     #[test]
     fn test_is_valid_owner() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::new());
+        let mut owner_map = OwnerMap::new(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -133,7 +132,6 @@ mod test_owner_map {
 }
 
 /// track emr issued for a particular user by storing it's emr id in this map. also used as blind index for emr search.
-/// we use hashed (SHA3-256) NIK as key and emr id as value.
 ///
 /// we don't use the principal directly because we want users to be able to change it's internet identity
 /// and still be able to own and access their emr.
@@ -143,7 +141,7 @@ pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
 
 impl EmrBindingMap {
     pub fn new(memory_manager: &MemoryManager) -> Self {
-        Self(StableSet::new(memory_manager))
+        Self(StableSet::new::<Self>(memory_manager))
     }
 
     pub fn is_owner_of(&self, nik: NIK, emr_id: EmrId) -> bool {
@@ -163,12 +161,11 @@ impl EmrBindingMap {
 
 #[cfg(test)]
 mod test_emr_binding_map {
-
     use super::*;
 
     #[test]
     fn test_issue_for() {
-        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::new());
+        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
 
         let mut random = [0u8; 10];
@@ -181,7 +178,7 @@ mod test_emr_binding_map {
 
     #[test]
     fn test_emr_list() {
-        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::new());
+        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
         let mut random = [0u8; 10];
         random.fill(0);
