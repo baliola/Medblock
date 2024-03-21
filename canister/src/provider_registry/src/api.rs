@@ -1,5 +1,5 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrBody, ProviderId, UserId }, from };
+use canister_common::{ common::{ AsciiRecordsKey, EmrBody, ProviderId, UserId }, from };
 use serde::Deserialize;
 
 use crate::declarations::emr_registry::{
@@ -51,4 +51,10 @@ impl From<CreateEmrResponse> for IssueEmrResponse {
 pub struct PingResult {
     pub emr_registry_status: bool,
     pub patient_registry_status: bool,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RegisternewProviderRequest {
+    pub provider_principal: ic_principal::Principal,
+    pub display_name: AsciiRecordsKey<64>,
 }
