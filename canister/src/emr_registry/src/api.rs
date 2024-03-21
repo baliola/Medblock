@@ -72,3 +72,23 @@ pub struct UpdateEmrResponse {
 from!(UpdateEmrResponse: EmrHeader as header {
     header : header
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct RemoveEmrRequest {
+    pub header: EmrHeader,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RemoveEmrResponse {
+    status: bool,
+}
+
+impl RemoveEmrResponse {
+    pub fn new(status: bool) -> Self {
+        Self { status }
+    }
+}
+
+from!(RemoveEmrResponse: bool as status {
+    status : status
+});

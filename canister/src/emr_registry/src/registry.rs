@@ -177,7 +177,7 @@ impl CoreEmrRegistry {
         Ok(header)
     }
 
-    pub fn remove_record(&mut self, key: EmrKey) {
+    pub fn remove_record(&mut self, key: EmrKey) -> RegistryResult<()> {
         let key = key.build().to_stable();
 
         let keys_to_remove: Vec<_> = self.0
@@ -186,9 +186,15 @@ impl CoreEmrRegistry {
             .map(|(k, _)| k.clone())
             .collect();
 
+        if keys_to_remove.is_empty() {
+            return Err(CoreRegistryError::NotExist);
+        }
+
         for key in keys_to_remove {
             self.0.remove(&key);
         }
+
+        Ok(())
     }
 
     /// Get the list of EMRs for a user, this will not filter by provider

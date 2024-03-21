@@ -3,6 +3,8 @@ use api::{
     CreateEmrResponse,
     ReadEmrByIdRequest,
     ReadEmrByIdResponse,
+    RemoveEmrRequest,
+    RemoveEmrResponse,
     UpdateEmrRequest,
     UpdateEmrResponse,
 };
@@ -18,7 +20,7 @@ use core::time::Duration;
 
 mod key;
 mod registry;
-mod api;
+pub mod api;
 mod header;
 
 type State = common::State<registry::CoreEmrRegistry, (), ()>;
@@ -105,7 +107,15 @@ fn update_emr(req: UpdateEmrRequest) -> UpdateEmrResponse {
     )
 }
 
-#[query]
-fn dummy() {}
+#[ic_cdk::update]
+fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
+    with_state_mut(|s|
+        s.registry
+            .remove_record(req.header.to_emr_key())
+            .map(|_| RemoveEmrResponse::new(true))
+            .unwrap()
+    )
+}
+
 
 ic_cdk::export_candid!();
