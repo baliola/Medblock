@@ -9,12 +9,12 @@ use api::{
     UpdateEmrResponse,
 };
 use canister_common::{
-    common::{ self, EmrBody },
+    common::{ self },
     id_generator::IdGenerator,
     mmgr::MemoryManager,
     random::CanisterRandomSource,
 };
-use ic_cdk::{ init, query };
+use ic_cdk::{ init };
 use std::cell::RefCell;
 use core::time::Duration;
 

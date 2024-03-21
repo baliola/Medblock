@@ -5,8 +5,6 @@ use ic_stable_structures::BTreeMap;
 use canister_common::{
     common::{
         ArbitraryEmrValue,
-        AsciiRecordsKey,
-        EmrFragment,
         EmrId,
         Id,
         ProviderId,
@@ -290,7 +288,7 @@ mod tests {
     use crate::key::UnknownUsage;
 
     use super::*;
-    use canister_common::id;
+    use canister_common::{common::{AsciiRecordsKey, EmrFragment}, id};
 
     #[test]
     fn test_core_emr_registry() {
@@ -448,7 +446,7 @@ mod tests {
 
         let total_fields = [emr.clone().into_inner(), new_fields.clone()].concat();
 
-        let header = registry.update_batch(header.to_partial_update_key(), new_fields).unwrap();
+        let header = registry.update_batch(header.to_partial_update_key(), new_fields.clone().into()).unwrap();
 
         let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
 

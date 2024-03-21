@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use candid::{ CandidType, Principal };
-use ic_stable_structures::{ memory_manager, storable::Bound };
+use ic_stable_structures::{ storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
 use crate::{
@@ -584,6 +584,12 @@ impl EmrBody {
     pub fn into_inner(self) -> Vec<EmrFragment>{
         self.0
     
+    }
+}
+
+impl From<Vec<EmrFragment>> for EmrBody {
+    fn from(records: Vec<EmrFragment>) -> Self {
+        Self(records)
     }
 }
 

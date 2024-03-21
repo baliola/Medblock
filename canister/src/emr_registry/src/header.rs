@@ -1,9 +1,9 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId }, from };
+use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId } };
 use serde::Deserialize;
 
 use crate::{
-    key::{ CompositeKey, CompositeKeyBuilder, Known },
+    key::{ CompositeKey },
     registry::key::{ EmrKey, PartialUpdateKey },
 };
 
