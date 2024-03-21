@@ -13,6 +13,7 @@ type RemoveEmrResponse = record { status : bool };
 type UpdateEmrRequest = record { fields : vec EmrFragment; header : EmrHeader };
 service : () -> {
   create_emr : (CreateEmrRequest) -> (CreateEmrResponse);
+  ping : () -> () query;
   read_emr_by_id : (EmrHeader) -> (ReadEmrByIdResponse) query;
   remove_emr : (RemoveEmrRequest) -> (RemoveEmrResponse);
   update_emr : (UpdateEmrRequest) -> (RemoveEmrRequest);

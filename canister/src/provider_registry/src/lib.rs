@@ -1,6 +1,6 @@
 use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
-use api::IssueEmrResponse;
+use api::{ IssueEmrResponse, PingResult };
 use canister_common::{
     common::freeze::FreezeThreshold,
     id_generator::IdGenerator,
@@ -8,7 +8,7 @@ use canister_common::{
     random::{ CallError, CanisterRandomSource },
     statistics::{ self, traits::OpaqueMetrics },
 };
-use declarations::emr_registry::emr_registry;
+use declarations::emr_registry::{ self, emr_registry };
 use ic_principal::Principal;
 use registry::ProviderRegistry;
 
@@ -181,6 +181,21 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
     ).unwrap();
 
     IssueEmrResponse::from(response)
+}
+
+#[ic_cdk::query(composite = true)]
+async fn ping() -> PingResult {
+    let emr_registry_status = match emr_registry.ping().await {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    // let patient_registry_status = api::ping().await;
+
+    PingResult {
+        emr_registry_status,
+        patient_registry_status: false,
+    }
 }
 
 ic_cdk::export_candid!();

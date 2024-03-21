@@ -50,6 +50,9 @@ impl EmrRegistry {
   pub async fn create_emr(&self, arg0: CreateEmrRequest) -> Result<
     (CreateEmrResponse,)
   > { ic_cdk::call(self.0, "create_emr", (arg0,)).await }
+  pub async fn ping(&self) -> Result<()> {
+    ic_cdk::call(self.0, "ping", ()).await
+  }
   pub async fn read_emr_by_id(&self, arg0: EmrHeader) -> Result<
     (ReadEmrByIdResponse,)
   > { ic_cdk::call(self.0, "read_emr_by_id", (arg0,)).await }

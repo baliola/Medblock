@@ -117,5 +117,11 @@ fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
     )
 }
 
+// this will serve as an synchronization function in the future, for now it's only for testing inter-canister calls successfully
+#[ic_cdk::query]
+fn ping(){
+    // no-op
+}
+
 
 ic_cdk::export_candid!();
