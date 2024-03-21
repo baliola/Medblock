@@ -22,6 +22,7 @@ mod key;
 mod registry;
 pub mod api;
 mod header;
+mod memory;
 
 type State = common::State<registry::CoreEmrRegistry, (), ()>;
 
@@ -69,7 +70,7 @@ fn initialize_id_generator() {
 #[init]
 fn init() {
     STATE.with(|s| {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let state = State::new(
             registry::CoreEmrRegistry::new(&memory_manager),
             (),

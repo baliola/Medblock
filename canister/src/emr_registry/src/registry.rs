@@ -3,14 +3,7 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{
-        ArbitraryEmrValue,
-        EmrId,
-        Id,
-        ProviderId,
-        EmrBody,
-        UserId,
-    },
+    common::{ ArbitraryEmrValue, EmrId, Id, ProviderId, EmrBody, UserId },
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
 };
@@ -80,7 +73,7 @@ pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Mem
 
 impl CoreEmrRegistry {
     pub fn new(memory_manager: &MemoryManager) -> Self {
-        let tree = memory_manager.get_memory(BTreeMap::new);
+        let tree = memory_manager.get_memory::<_, Self>(BTreeMap::new);
         Self(tree)
     }
 }
@@ -288,11 +281,11 @@ mod tests {
     use crate::key::UnknownUsage;
 
     use super::*;
-    use canister_common::{common::{AsciiRecordsKey, EmrFragment}, id};
+    use canister_common::{ common::{ AsciiRecordsKey, EmrFragment }, id };
 
     #[test]
     fn test_core_emr_registry() {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
@@ -366,7 +359,7 @@ mod tests {
 
     #[test]
     fn test_emr_exists() {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
@@ -409,7 +402,7 @@ mod tests {
 
     #[test]
     fn test_upsert_emr() {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let mut registry = CoreEmrRegistry::new(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
@@ -446,7 +439,9 @@ mod tests {
 
         let total_fields = [emr.clone().into_inner(), new_fields.clone()].concat();
 
-        let header = registry.update_batch(header.to_partial_update_key(), new_fields.clone().into()).unwrap();
+        let header = registry
+            .update_batch(header.to_partial_update_key(), new_fields.clone().into())
+            .unwrap();
 
         let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
 

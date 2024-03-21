@@ -5,45 +5,43 @@ use ic_stable_structures::{
     DefaultMemoryImpl,
 };
 
+use crate::common::Get;
+
 pub type CanisterVirtualMemory =
     ic_stable_structures::memory_manager::VirtualMemory<DefaultMemoryImpl>;
 pub struct MemoryManager {
     manager: RefCell<IcMemoryManager<DefaultMemoryImpl>>,
-    index: RefCell<u8>,
 }
 
 impl Default for MemoryManager {
     fn default() -> Self {
-        Self::new()
+        Self::init()
     }
 }
 
 impl MemoryManager {
-    pub fn get_memory<T>(&self, f: impl FnOnce(CanisterVirtualMemory) -> T) -> T {
+    pub fn get_memory<R, Memory: Get<MemoryId>>(
+        &self,
+        f: impl FnOnce(CanisterVirtualMemory) -> R
+    ) -> R {
 
-        let mut index = self.index.borrow_mut();
-
-        let mem = self.manager.borrow().get(MemoryId::new(*index));
+        let mem = self.manager.borrow().get(Memory::get());
         let result = f(mem);
-
-        *index += 1;
 
         result
     }
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         let mgr = IcMemoryManager::init(DefaultMemoryImpl::default());
 
         Self {
             manager: RefCell::new(mgr),
-            index: RefCell::new(0),
         }
     }
 }
 
-
 #[macro_export]
 macro_rules! memory_manager {
     () => {
-        $crate::mmgr::MemoryManager::new()
+        $crate::mmgr::MemoryManager::init()
     };
 }

@@ -71,7 +71,7 @@ impl Metrics<RegistryMetrics> for ProviderRegistry {
 }
 
 impl ProviderRegistry {
-    pub fn new(memory_manager: &MemoryManager) -> Self {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
         let providers = Providers::new(memory_manager);
         let providers_bindings = ProvidersBindings::new(memory_manager);
         let issued = Issued::new(memory_manager);
@@ -114,7 +114,10 @@ impl ProviderRegistry {
         }
     }
 
-    pub fn build_args_call_emr_canister(&self, req: IssueEmrRequest) -> ProviderRegistryResult<CreateEmrRequest> {
+    pub fn build_args_call_emr_canister(
+        &self,
+        req: IssueEmrRequest
+    ) -> ProviderRegistryResult<CreateEmrRequest> {
         // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
         let provider_principal = common::guard::verified_caller().unwrap();
         let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
@@ -317,7 +320,7 @@ impl Metrics<SetLength> for Issued {
 
 impl Issued {
     fn new(memory_manager: &MemoryManager) -> Self {
-        Self(StableSet::new(memory_manager))
+        Self(StableSet::new::<Self>(memory_manager))
     }
     fn provider_exists(&self, provider: InternalProviderId) -> bool {
         self.range_key_exists(&provider.to_stable())
@@ -454,7 +457,7 @@ impl ProvidersBindings {
     }
 
     pub fn new(memory_manager: &MemoryManager) -> Self {
-        Self(memory_manager.get_memory(ic_stable_structures::BTreeMap::new))
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
     }
 
     pub fn is_valid_owner(&self, provider: &ProviderPrincipal) -> bool {
@@ -546,7 +549,7 @@ impl Providers {
     }
 
     pub fn new(memory_manager: &MemoryManager) -> Self {
-        let mem = memory_manager.get_memory(ic_stable_structures::BTreeMap::new);
+        let mem = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new);
 
         Self { map: mem }
     }
@@ -565,7 +568,7 @@ mod provider_test {
 
     #[test]
     fn test_add_read_v1() {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];
@@ -588,7 +591,7 @@ mod provider_test {
 
     #[test]
     fn test_metrics() {
-        let memory_manager = MemoryManager::new();
+        let memory_manager = MemoryManager::init();
         let mut providers = Providers::new(&memory_manager);
 
         let mut id_bytes = [0; 10];

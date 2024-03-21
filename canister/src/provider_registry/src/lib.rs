@@ -6,16 +6,20 @@ use canister_common::{
     id_generator::IdGenerator,
     mmgr::MemoryManager,
     random::{ CallError, CanisterRandomSource },
+    stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
 use declarations::emr_registry::{ self, emr_registry };
 use ic_principal::Principal;
+use ic_stable_structures::Cell;
+use memory::FreezeThresholdMemory;
 use registry::ProviderRegistry;
 
 mod declarations;
 mod registry;
 mod config;
 mod types;
+mod memory;
 pub mod api;
 
 /// TODO: benchmark this
@@ -23,9 +27,9 @@ const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
 
 pub struct State {
     providers: ProviderRegistry,
-    config: config::CanisterConfig,
+    config: Cell<Stable<config::CanisterConfig, Candid>, Memory>,
     memory_manager: MemoryManager,
-    freeze_threshold: FreezeThreshold,
+    freeze_threshold: Cell<Stable<FreezeThreshold, Candid>, Memory>,
 }
 
 thread_local! {
@@ -50,7 +54,7 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 #[ic_cdk::inspect_message]
 fn inspect_message() {
     verified_caller().expect("caller is not verified");
-    with_state(|s| s.freeze_threshold.check());
+    with_state(|s| s.freeze_threshold.get().check());
 
     ic_cdk::api::call::accept_message()
 }
@@ -75,7 +79,7 @@ fn only_canister_owner() -> Result<(), String> {
 
         let caller = verified_caller()?;
 
-        if !state.config.is_canister_owner(&caller) {
+        if !state.config.get().is_canister_owner(&caller) {
             return Err("only canister owner can call this method".to_string());
         }
 
@@ -119,21 +123,34 @@ fn initialize_id_generator() {
     });
 }
 
+fn init_state() -> State {
+    let memory_manager = MemoryManager::init();
+    
+    // todo : isolate memory id
+    
+    State {
+        providers: ProviderRegistry::init(&memory_manager),
+        config: config::CanisterConfig::init(&memory_manager),
+        freeze_threshold: FreezeThreshold::init::<FreezeThresholdMemory>(CANISTER_CYCLE_THRESHOLD, &memory_manager),
+        memory_manager,
+    }
+}
+
+#[ic_cdk::post_upgrade]
+fn post_upgrade() {
+    let state = init_state();
+    STATE.replace(Some(state));
+    ic_cdk::print("canister state re-initialized");
+}
+
 #[ic_cdk::init]
 fn canister_init() {
     STATE.with(move |state| {
-        let memory_manager = MemoryManager::new();
-
-        let init = State {
-            providers: ProviderRegistry::new(&memory_manager),
-            config: config::CanisterConfig::default(),
-            memory_manager,
-            freeze_threshold: FreezeThreshold::new(CANISTER_CYCLE_THRESHOLD),
-        };
+        let init = init_state();
 
         *state.borrow_mut() = Some(init);
 
-        ic_cdk::print("state initialized");
+        ic_cdk::print("state initialized")
     });
 
     initialize_id_generator()
@@ -155,7 +172,7 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
     with_state(|state| {
         let provider = verified_caller().unwrap();
 
-        let limit = state.config.max_item_per_response().min(req.limit);
+        let limit = state.config.get().max_item_per_response().min(req.limit);
 
         state.providers
             .get_issued(&provider, req.page, limit as u64)

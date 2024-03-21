@@ -223,20 +223,36 @@ macro_rules! from {
 #[macro_export]
 macro_rules! generate_memory_id {
     (@internal $counter:expr,) => {
-        const TOTAL_MEMORY_ID_USED:u8 = $counter;
+        const TOTAL_MEMORY_ID_USED: u8 = $counter;
+    };
+
+    ($ident:ident) => {
+        impl $crate::common::Get<ic_stable_structures::memory_manager::MemoryId> for $ident {
+            fn get() -> ic_stable_structures::memory_manager::MemoryId {
+                ic_stable_structures::memory_manager::MemoryId::new(0)
+            }
+        }
     };
 
     ($first_ident:ident, $($rest:ident),*) => {
-        const $first_ident: ic_stable_structures::memory_manager::MemoryId = ic_stable_structures::memory_manager::MemoryId::new(0);
+
+        impl $crate::common::Get<ic_stable_structures::memory_manager::MemoryId> for $first_ident {
+            fn get() -> ic_stable_structures::memory_manager::MemoryId {
+                ic_stable_structures::memory_manager::MemoryId::new(0)
+            }
+        }
+
         generate_memory_id!(@internal 1_u8, $($rest,)*);
     };
 
-    // (@internal $counter:expr, $first_ident:ident) => {
-    //     const $first_ident: ic_stable_structures::memory_manager::MemoryId = ic_stable_structures::memory_manager::MemoryId::new($counter);
-    // };
-
     (@internal $counter:expr, $first_ident:ident, $($rest:ident,)*) => {
-        const $first_ident: ic_stable_structures::memory_manager::MemoryId = ic_stable_structures::memory_manager::MemoryId::new($counter);
+
+        impl $crate::common::Get<ic_stable_structures::memory_manager::MemoryId> for $first_ident {
+            fn get() -> ic_stable_structures::memory_manager::MemoryId {
+                ic_stable_structures::memory_manager::MemoryId::new($counter)
+            }
+        }
+
         generate_memory_id!(@internal $counter + 1_u8, $($rest,)*);
     };
 }
