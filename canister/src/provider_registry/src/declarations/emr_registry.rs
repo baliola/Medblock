@@ -2,6 +2,7 @@
 // You may want to manually adjust some of the types.
 #![allow(dead_code, unused_imports)]
 use candid::{self, CandidType, Deserialize, Principal, Encode, Decode};
+use canister_common::common::EmrBody;
 use ic_cdk::api::call::CallResult as Result;
 
 #[derive(CandidType, Deserialize)]
@@ -9,7 +10,7 @@ pub struct EmrFragment { pub key: String, pub value: String }
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateEmrRequest {
-  pub emr: Vec<EmrFragment>,
+  pub emr: EmrBody,
   pub provider_id: String,
   pub user_id: String,
 }

@@ -30,3 +30,4 @@ serde_json = { version = "1.0.108", features = [
 ], default-features = false }
 
 chrono = "0.4.19"
+serde_assert = "0.7.1" 

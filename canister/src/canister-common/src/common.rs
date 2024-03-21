@@ -214,6 +214,12 @@ impl CandidType for Id {
     }
 }
 
+impl ToString for Id {
+    fn to_string(&self) -> String {
+        Uuid::from_bytes_ref(&self.0).to_string()
+    }
+}
+
 /// max random bytes array len used to generate v7 uuid
 pub(crate) const UUID_MAX_SOURCE_LEN: usize = 10;
 
@@ -531,6 +537,36 @@ impl H256 {
     }
 }
 
+impl ToString for H256 {
+    fn to_string(&self) -> String {
+        hex::encode(&self.0)
+    }
+}
+
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum H256Error {
+    #[error(transparent)] HexError(#[from] hex::FromHexError),
+
+    #[error("invalid nik hash length")]
+    InvalidLength,
+}
+impl FromStr for H256 {
+    type Err = H256Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = hex::decode(s)?;
+
+        if s.len() != HASH_LEN {
+            return Err(H256Error::InvalidLength);
+        }
+
+        let mut key = [0u8; HASH_LEN];
+        key.copy_from_slice(&s);
+
+        Ok(Self(key))
+    }
+}
+
 mod deserialize_h256 {
     use super::*;
 
@@ -538,17 +574,12 @@ mod deserialize_h256 {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
-            let s = String::deserialize(deserializer)?;
-            let s = hex::decode(s).map_err(serde::de::Error::custom)?;
-
-            if s.len() != HASH_LEN {
-                return Err(serde::de::Error::custom("invalid nik hash length"));
-            }
-
-            let mut key = [0u8; HASH_LEN];
-            key[..s.len()].copy_from_slice(&s);
-
-            Ok(Self(key))
+            let s = String::deserialize(deserializer).map_err(|e|
+                serde::de::Error::custom(
+                    format!("error deserializing h256 from string with message  : {e}")
+                )
+            )?;
+            Ok(Self::from_str(&s).map_err(serde::de::Error::custom)?)
         }
     }
 
@@ -561,6 +592,59 @@ mod deserialize_h256 {
             where S: candid::types::Serializer
         {
             serializer.serialize_text(self.as_str())
+        }
+    }
+
+    #[cfg(test)]
+    mod deserialize_test {
+        use ic_cdk::println;
+        use serde_assert::Token;
+        use tiny_keccak::Hasher;
+
+        use super::*;
+
+        fn dummy_hash() -> String {
+            let mut out = [0_u8; 32];
+            let mut hasher = tiny_keccak::Keccak::v512();
+            hasher.update("1".repeat(15).as_bytes());
+            hasher.finalize(&mut out);
+
+            hex::encode(out)
+        }
+
+        #[test]
+        fn test_deserialize_h256() {
+            let hash = "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c";
+            let h256 = H256::from_str(&hash).unwrap();
+
+            let h256_str = h256.to_string();
+            println!("h256_str : {}", h256_str);
+
+            let mut deserializer = serde_assert::Deserializer
+                ::builder([Token::Str(hash.to_string())])
+                .build();
+
+            let h256_deserialized = H256::deserialize(&mut deserializer).unwrap();
+
+            assert_eq!(h256, h256_deserialized);
+        }
+
+        #[test]
+        fn test_wrong_hash() {
+            let hash = "51e04ecd372fbbd123dd842bc485b87db5c2a50e4ea83590108363c56ae38d";
+            let h256 = H256::from_str(&hash);
+
+            let Err(e) = h256 else { unreachable!() };
+            assert_eq!(e, H256Error::InvalidLength);
+
+            let mut deserializer = serde_assert::Deserializer
+                ::builder([Token::Str(hash.to_string())])
+                .build();
+
+            let h256_deserialized = H256::deserialize(&mut deserializer);
+            let Err(e) = h256_deserialized else { unreachable!() };
+
+            assert_eq!(e.to_string(), H256Error::InvalidLength.to_string());
         }
     }
 }
@@ -581,9 +665,8 @@ impl EmrFragment {
 pub struct EmrBody(Vec<EmrFragment>);
 
 impl EmrBody {
-    pub fn into_inner(self) -> Vec<EmrFragment>{
+    pub fn into_inner(self) -> Vec<EmrFragment> {
         self.0
-    
     }
 }
 
@@ -609,11 +692,10 @@ impl IntoIterator for EmrBody {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0
-            .into_iter()
-            // .map(|fragment| (fragment.key, fragment.value))
-            // .collect::<Vec<_>>()
-            // .into_iter()
+        self.0.into_iter()
+        // .map(|fragment| (fragment.key, fragment.value))
+        // .collect::<Vec<_>>()
+        // .into_iter()
     }
 }
 

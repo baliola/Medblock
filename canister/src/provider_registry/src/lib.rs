@@ -14,6 +14,7 @@ mod declarations;
 mod registry;
 mod config;
 mod types;
+pub mod api;
 
 /// TODO: benchmark this
 const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
@@ -147,20 +148,20 @@ fn metrics() -> String {
     })
 }
 
-#[ic_cdk::query(guard = "only_provider")]
-// TODO : fix anchor
-// TODO : move arguments to a candid struct
+// #[ic_cdk::query(guard = "only_provider")]
 fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProviderResponse {
     with_state(|state| {
         let provider = verified_caller().unwrap();
 
-        let _limit = state.config.max_item_per_response().min(req.limit);
+        let limit = state.config.max_item_per_response().min(req.limit);
 
         state.providers
-            .get_issued(&provider, req.page, req.limit as u64)
+            .get_issued(&provider, req.page, limit as u64)
             .unwrap()
             .into()
     })
 }
+
+// fn issue_emr(req);
 
 ic_cdk::export_candid!();

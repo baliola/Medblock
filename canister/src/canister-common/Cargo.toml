@@ -35,3 +35,7 @@ paste = { workspace = true }
 # for getting timestamp outside of canister execution environment
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 chrono = "0.4.19"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+serde_assert = { workspace = true }
