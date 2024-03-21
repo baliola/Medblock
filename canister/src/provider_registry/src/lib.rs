@@ -1,24 +1,22 @@
 use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
+use api::{ IssueEmrResponse, PingResult };
 use canister_common::{
-    common::{ freeze::FreezeThreshold },
+    common::freeze::FreezeThreshold,
     id_generator::IdGenerator,
     mmgr::MemoryManager,
-    random::CanisterRandomSource,
+    random::{ CallError, CanisterRandomSource },
     statistics::{ self, traits::OpaqueMetrics },
 };
+use declarations::emr_registry::{ self, emr_registry };
 use ic_principal::Principal;
 use registry::ProviderRegistry;
-
 
 mod declarations;
 mod registry;
 mod config;
 mod types;
-
-/// initial seed for the random source, this is insecure and only used for bootstraping the random source before it is reseeded again
-/// using true random bytes from ic.
-const INSECURE_INITIAL_SEED: u128 = 724361971;
+pub mod api;
 
 /// TODO: benchmark this
 const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
@@ -106,15 +104,19 @@ fn only_provider() -> Result<(), String> {
     })
 }
 
-async fn initialize_id_generator() {
-    let rng = CanisterRandomSource::new().await;
-    let id_generator = IdGenerator::new(rng);
+fn initialize_id_generator() {
+    ic_cdk_timers::set_timer(Duration::from_secs(3), || {
+        ic_cdk::spawn(async move {
+            let rng = CanisterRandomSource::new().await;
+            let id_generator = IdGenerator::new(rng);
 
-    ID_GENERATOR.with(|id_gen| {
-        *id_gen.borrow_mut() = Some(id_generator);
+            ID_GENERATOR.with(|id_gen| {
+                *id_gen.borrow_mut() = Some(id_generator);
+            });
+
+            ic_cdk::print("id generator initialized");
+        })
     });
-
-    ic_cdk::print("id generator initialized");
 }
 
 #[ic_cdk::init]
@@ -134,7 +136,7 @@ fn canister_init() {
         ic_cdk::print("state initialized");
     });
 
-    ic_cdk_timers::set_timer(Duration::from_secs(3), || ic_cdk::spawn(initialize_id_generator()));
+    initialize_id_generator()
 }
 
 #[ic_cdk::query]
@@ -148,43 +150,52 @@ fn metrics() -> String {
     })
 }
 
-// TODO
-// #[ic_cdk::update(guard = "only_provider")]
-// #[candid::candid_method(update)]
-// // TODO : move arguments to a candid struct
-// async fn create_emr_for_user(req: CreateEmrForUserRequest) {
-//     ic_cdk::eprintln!("create_emr_for_user: {}", req.emr_records.0);
-
-//     let records = Records::try_from(req.emr_records).unwrap();
-//     let id = generate_id().await.unwrap();
-
-//     STATE.with(|state| {
-//         let mut state = state.borrow_mut();
-//         let state = state.as_mut().unwrap();
-
-//         // change the emr version if upgrade happens
-//         let emr = emr::V001::new(id, records).into();
-
-//         let emr_id = state.emr_registry.register_emr(emr, req.owner).unwrap();
-
-//         let caller = verified_caller().unwrap();
-
-//         // increment session
-//         let _ =state.provider_registry.issue_emr(&caller, emr_id);
-//     })
-// }
-
 #[ic_cdk::query(guard = "only_provider")]
-// TODO : fix anchor
-// TODO : move arguments to a candid struct
 fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProviderResponse {
     with_state(|state| {
         let provider = verified_caller().unwrap();
 
-        let _limit = state.config.max_item_per_response().min(req.limit);
+        let limit = state.config.max_item_per_response().min(req.limit);
 
-        state.providers.get_issued(&provider, req.page, req.limit as u64).unwrap().into()
+        state.providers
+            .get_issued(&provider, req.page, limit as u64)
+            .unwrap()
+            .into()
     })
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
+    let args = with_state(|s| s.providers.build_args_call_emr_canister(req)).unwrap();
+
+    // safe to unwrap as the provider id comes from canister
+    let provider_principal = Principal::from_text(args.provider_id.clone()).unwrap();
+
+    let response = ProviderRegistry::issue_call_create_emr(args).await;
+
+    with_state_mut(|s|
+        s.providers.issue_emr(
+            response.header.emr_id.clone().try_into().unwrap(),
+            &provider_principal
+        )
+    ).unwrap();
+
+    IssueEmrResponse::from(response)
+}
+
+#[ic_cdk::query(composite = true)]
+async fn ping() -> PingResult {
+    let emr_registry_status = match emr_registry.ping().await {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    // let patient_registry_status = api::ping().await;
+
+    PingResult {
+        emr_registry_status,
+        patient_registry_status: false,
+    }
 }
 
 ic_cdk::export_candid!();

@@ -5,12 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/<executable file>",
-            "args": [],
-            "cwd": "${workspaceFolder}"
+          "type": "lldb",
+          "request": "launch",
+          "name": "Debug",
+          "program": "${workspaceFolder}/target/<executable file>",
+          "args": [],
+          "cwd": "${workspaceFolder}"
         }
     ]
 }

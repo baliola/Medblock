@@ -1,10 +1,18 @@
 use std::str::FromStr;
 
 use candid::{ CandidType, Principal };
-use ic_stable_structures::storable::Bound;
+use ic_stable_structures::{ storable::Bound };
 use parity_scale_codec::{ Decode, Encode };
 
-use crate::{ deref, from, impl_max_size, impl_mem_bound, impl_range_bound, stable::MemBoundMarker };
+use crate::{
+    deref,
+    from,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
+    mmgr::MemoryManager,
+    stable::MemBoundMarker,
+};
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
@@ -81,6 +89,14 @@ pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
     /// length of the key in bytes, used to exactly slice the correct bytes from the array and discard invalid bytes if exist
     // should probably make the check before initializing this struct so that it may be completely removed
     len: u8,
+}
+
+impl<const N: usize> TryFrom<&str> for AsciiRecordsKey<N> {
+    type Error = AsciiKeyError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
 }
 
 impl<const N: usize> MemBoundMarker for AsciiRecordsKey<N> {
@@ -186,6 +202,21 @@ impl Default for Id {
     }
 }
 
+impl FromStr for Id {
+    type Err = <Uuid as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(|s| s.into())
+    }
+}
+impl TryInto<Id> for String {
+    type Error = <Uuid as FromStr>::Err;
+
+    fn try_into(self) -> Result<Id, Self::Error> {
+        Uuid::from_str(&self).map(|s| s.into())
+    }
+}
+
 impl CandidType for Id {
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
         where S: candid::types::Serializer
@@ -195,6 +226,12 @@ impl CandidType for Id {
 
     fn _ty() -> candid::types::Type {
         candid::types::TypeInner::Text.into()
+    }
+}
+
+impl ToString for Id {
+    fn to_string(&self) -> String {
+        Uuid::from_bytes_ref(&self.0).to_string()
     }
 }
 
@@ -265,7 +302,7 @@ mod deserialize {
             if s.len() > N {
                 return Err(serde::de::Error::custom(format!("key exceeded max length of {}", N)));
             }
-          
+
             let mut key = [0u8; N];
             key[..s.len()].copy_from_slice(s.as_bytes());
 
@@ -515,6 +552,36 @@ impl H256 {
     }
 }
 
+impl ToString for H256 {
+    fn to_string(&self) -> String {
+        hex::encode(&self.0)
+    }
+}
+
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum H256Error {
+    #[error(transparent)] HexError(#[from] hex::FromHexError),
+
+    #[error("invalid nik hash length")]
+    InvalidLength,
+}
+impl FromStr for H256 {
+    type Err = H256Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = hex::decode(s)?;
+
+        if s.len() != HASH_LEN {
+            return Err(H256Error::InvalidLength);
+        }
+
+        let mut key = [0u8; HASH_LEN];
+        key.copy_from_slice(&s);
+
+        Ok(Self(key))
+    }
+}
+
 mod deserialize_h256 {
     use super::*;
 
@@ -522,17 +589,12 @@ mod deserialize_h256 {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where D: serde::Deserializer<'de>
         {
-            let s = String::deserialize(deserializer)?;
-            let s = hex::decode(s).map_err(serde::de::Error::custom)?;
-
-            if s.len() != HASH_LEN {
-                return Err(serde::de::Error::custom("invalid nik hash length"));
-            }
-
-            let mut key = [0u8; HASH_LEN];
-            key[..s.len()].copy_from_slice(&s);
-
-            Ok(Self(key))
+            let s = String::deserialize(deserializer).map_err(|e|
+                serde::de::Error::custom(
+                    format!("error deserializing h256 from string with message  : {e}")
+                )
+            )?;
+            Ok(Self::from_str(&s).map_err(serde::de::Error::custom)?)
         }
     }
 
@@ -546,5 +608,126 @@ mod deserialize_h256 {
         {
             serializer.serialize_text(self.as_str())
         }
+    }
+
+    #[cfg(test)]
+    mod deserialize_test {
+        use ic_cdk::println;
+        use serde_assert::Token;
+        use tiny_keccak::Hasher;
+
+        use super::*;
+
+        fn dummy_hash() -> String {
+            let mut out = [0_u8; 32];
+            let mut hasher = tiny_keccak::Keccak::v512();
+            hasher.update("1".repeat(15).as_bytes());
+            hasher.finalize(&mut out);
+
+            hex::encode(out)
+        }
+
+        #[test]
+        fn test_deserialize_h256() {
+            let hash = "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c";
+            let h256 = H256::from_str(&hash).unwrap();
+
+            let h256_str = h256.to_string();
+            println!("h256_str : {}", h256_str);
+
+            let mut deserializer = serde_assert::Deserializer
+                ::builder([Token::Str(hash.to_string())])
+                .build();
+
+            let h256_deserialized = H256::deserialize(&mut deserializer).unwrap();
+
+            assert_eq!(h256, h256_deserialized);
+        }
+
+        #[test]
+        fn test_wrong_hash() {
+            let hash = "51e04ecd372fbbd123dd842bc485b87db5c2a50e4ea83590108363c56ae38d";
+            let h256 = H256::from_str(&hash);
+
+            let Err(e) = h256 else { unreachable!() };
+            assert_eq!(e, H256Error::InvalidLength);
+
+            let mut deserializer = serde_assert::Deserializer
+                ::builder([Token::Str(hash.to_string())])
+                .build();
+
+            let h256_deserialized = H256::deserialize(&mut deserializer);
+            let Err(e) = h256_deserialized else { unreachable!() };
+
+            assert_eq!(e.to_string(), H256Error::InvalidLength.to_string());
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, CandidType, PartialEq, Eq)]
+pub struct EmrFragment {
+    pub key: AsciiRecordsKey,
+    pub value: ArbitraryEmrValue,
+}
+
+impl EmrFragment {
+    pub fn new(key: AsciiRecordsKey, value: ArbitraryEmrValue) -> Self {
+        Self { key, value }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, CandidType, PartialEq, Eq)]
+pub struct EmrBody(Vec<EmrFragment>);
+
+impl EmrBody {
+    pub fn into_inner(self) -> Vec<EmrFragment> {
+        self.0
+    }
+}
+
+impl From<Vec<EmrFragment>> for EmrBody {
+    fn from(records: Vec<EmrFragment>) -> Self {
+        Self(records)
+    }
+}
+
+impl From<Vec<(AsciiRecordsKey, ArbitraryEmrValue)>> for EmrBody {
+    fn from(records: Vec<(AsciiRecordsKey, ArbitraryEmrValue)>) -> Self {
+        let records = records
+            .into_iter()
+            .map(|(k, v)| EmrFragment::new(k, v))
+            .collect::<Vec<_>>();
+
+        Self(records)
+    }
+}
+
+impl IntoIterator for EmrBody {
+    type Item = EmrFragment;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+        // .map(|fragment| (fragment.key, fragment.value))
+        // .collect::<Vec<_>>()
+        // .into_iter()
+    }
+}
+
+pub struct State<Registry, Config, Threshold> {
+    pub registry: Registry,
+    pub config: Config,
+    pub freeze_threshold: Threshold,
+    pub memory_manager: MemoryManager,
+}
+
+impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
+    pub fn new(
+        registry: Registry,
+        config: Config,
+        freeze_threshold: Threshold,
+        memory_manager: MemoryManager
+    ) -> Self {
+        Self { registry, config, freeze_threshold, memory_manager }
     }
 }
