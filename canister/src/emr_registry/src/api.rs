@@ -51,7 +51,7 @@ impl CreateEmrRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateEmrResponse {
-    header: EmrHeader,
+    pub header: EmrHeader,
 }
 
 from!(CreateEmrResponse: EmrHeader as header {

@@ -2,7 +2,6 @@
 // You may want to manually adjust some of the types.
 #![allow(dead_code, unused_imports)]
 use candid::{self, CandidType, Deserialize, Principal, Encode, Decode};
-use canister_common::common::EmrBody;
 use ic_cdk::api::call::CallResult as Result;
 
 #[derive(CandidType, Deserialize)]
@@ -10,7 +9,7 @@ pub struct EmrFragment { pub key: String, pub value: String }
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateEmrRequest {
-  pub emr: EmrBody,
+  pub emr: Vec<EmrFragment>,
   pub provider_id: String,
   pub user_id: String,
 }
@@ -61,5 +60,5 @@ impl EmrRegistry {
     (RemoveEmrRequest,)
   > { ic_cdk::call(self.0, "update_emr", (arg0,)).await }
 }
-pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 4, 1, 1]); // br5f7-7uaaa-aaaaa-qaaca-cai
+pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 1, 1, 1]); // bkyz2-fmaaa-aaaaa-qaaaq-cai
 pub const emr_registry : EmrRegistry = EmrRegistry(CANISTER_ID);

@@ -202,6 +202,21 @@ impl Default for Id {
     }
 }
 
+impl FromStr for Id {
+    type Err = <Uuid as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(|s| s.into())
+    }
+}
+impl TryInto<Id> for String {
+    type Error = <Uuid as FromStr>::Err;
+
+    fn try_into(self) -> Result<Id, Self::Error> {
+        Uuid::from_str(&self).map(|s| s.into())
+    }
+}
+
 impl CandidType for Id {
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
         where S: candid::types::Serializer

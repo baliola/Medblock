@@ -1,11 +1,11 @@
-
 use std::ops::{ Add };
 
 use candid::{ CandidType };
 
+use canister_common::random::CallError;
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ EmrId, PrincipalBytes };
+use canister_common::common::{ self, EmrId, PrincipalBytes };
 use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -26,12 +26,16 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
+use crate::api::{ self, IssueEmrRequest };
+use crate::declarations::emr_registry::{ emr_registry, CreateEmrRequest, CreateEmrResponse };
+
 use self::provider::{ Provider, V1 };
 
-#[derive(thiserror::Error, Debug, CandidType, serde::Deserialize)]
+#[derive(thiserror::Error, Debug, CandidType)]
 pub enum RegistryError {
     #[error(transparent)] IssueMapError(#[from] IssueMapError),
     #[error(transparent)] ProviderBindingMapError(#[from] ProviderBindingMapError),
+    #[error("{0}")] ExternalCallError(#[from] CallError),
 }
 
 pub type ProviderRegistryResult<T = ()> = Result<T, RegistryError>;
@@ -90,7 +94,7 @@ impl ProviderRegistry {
         self.issued.is_issued_by(id.into_inner(), emr_id, canister_id)
     }
 
-    pub fn issue_emr(
+    fn populate_issue_map(
         &mut self,
         provider: &Principal,
         emr_id: Id,
@@ -108,6 +112,44 @@ impl ProviderRegistry {
             }
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
         }
+    }
+
+    pub fn build_args_call_emr_canister(&self, req: IssueEmrRequest) -> ProviderRegistryResult<CreateEmrRequest> {
+        // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
+        let provider_principal = common::guard::verified_caller().unwrap();
+        let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
+
+        // assemble args and call emr canister to issue emr
+        Ok(req.to_create_emr_args(provider.into_inner()))
+    }
+
+    pub async fn issue_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
+        let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
+
+        // trap explicitly if not succeeded
+        // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
+        match create_emr_response {
+            Ok((response,)) => {
+                return response;
+            }
+            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+        }
+    }
+
+    // TODO : add a test for this. can only be tested using ic specific testing framework, as this function does intercanister call
+    pub fn issue_emr(
+        &mut self,
+        emr_id: EmrId,
+        provider_principal: &Principal
+    ) -> ProviderRegistryResult<()> {
+        // TODO : handle if we're using multiple emr canister
+        self.populate_issue_map(
+            &provider_principal,
+            emr_id,
+            crate::declarations::emr_registry::CANISTER_ID
+        )?;
+
+        Ok(())
     }
 
     /// check a given principal is valid and registered as provider
@@ -433,9 +475,7 @@ impl std::fmt::Debug for Providers {
             .map(|(k, v)| (k.to_string(), v))
             .collect::<Vec<_>>();
 
-        f.debug_struct("Providers")
-            .field("map", &provider)
-            .finish()
+        f.debug_struct("Providers").field("map", &provider).finish()
     }
 }
 
@@ -574,7 +614,7 @@ mod provider_test {
 // impl max size -> impl mem bound -> add test_add_read, update the inserted version at registry
 pub mod provider {
     use super::*;
-    
+
     pub mod attr {
         use super::super::*;
 

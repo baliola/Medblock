@@ -4,8 +4,6 @@ use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 use tiny_keccak::Hasher;
 
-
-
 pub trait RandomSource {
     fn get_random_bytes(&mut self) -> [u8; 32];
 
@@ -31,6 +29,18 @@ type Reason = String;
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CallError(RejectionCode, Reason);
 
+impl CallError {
+    pub fn code(&self) -> RejectionCode {
+        self.0.clone()
+    }
+
+    pub fn reason(&self) -> Reason {
+        self.1.clone()
+    }
+}
+
+impl std::error::Error for CallError {}
+
 impl From<(RejectionCode, String)> for CallError {
     fn from((code, reason): (RejectionCode, String)) -> Self {
         Self(code, reason)
@@ -45,12 +55,7 @@ impl From<CallError> for String {
 
 impl Display for CallError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error while calling ic management canister with code : {:?} and reason : {} ",
-            self.0,
-            self.1
-        )
+        write!(f, "Error while calling canister with code : {:?} and reason : {} ", self.0, self.1)
     }
 }
 

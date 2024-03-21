@@ -60,5 +60,5 @@ impl EmrRegistry {
     (RemoveEmrRequest,)
   > { ic_cdk::call(self.0, "update_emr", (arg0,)).await }
 }
-pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 4, 1, 1]); // br5f7-7uaaa-aaaaa-qaaca-cai
+pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 1, 1, 1]); // bkyz2-fmaaa-aaaaa-qaaaq-cai
 pub const emr_registry : EmrRegistry = EmrRegistry(CANISTER_ID);

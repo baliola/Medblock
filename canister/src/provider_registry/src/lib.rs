@@ -1,12 +1,14 @@
 use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
+use api::IssueEmrResponse;
 use canister_common::{
-    common::{ freeze::FreezeThreshold },
+    common::freeze::FreezeThreshold,
     id_generator::IdGenerator,
     mmgr::MemoryManager,
-    random::CanisterRandomSource,
+    random::{ CallError, CanisterRandomSource },
     statistics::{ self, traits::OpaqueMetrics },
 };
+use declarations::emr_registry::emr_registry;
 use ic_principal::Principal;
 use registry::ProviderRegistry;
 
@@ -148,7 +150,7 @@ fn metrics() -> String {
     })
 }
 
-// #[ic_cdk::query(guard = "only_provider")]
+#[ic_cdk::query(guard = "only_provider")]
 fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProviderResponse {
     with_state(|state| {
         let provider = verified_caller().unwrap();
@@ -162,6 +164,23 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
     })
 }
 
-// fn issue_emr(req);
+#[ic_cdk::update(guard = "only_provider")]
+async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
+    let args = with_state(|s| s.providers.build_args_call_emr_canister(req)).unwrap();
+
+    // safe to unwrap as the provider id comes from canister
+    let provider_principal = Principal::from_text(args.provider_id.clone()).unwrap();
+
+    let response = ProviderRegistry::issue_call_create_emr(args).await;
+
+    with_state_mut(|s|
+        s.providers.issue_emr(
+            response.header.emr_id.clone().try_into().unwrap(),
+            &provider_principal
+        )
+    ).unwrap();
+
+    IssueEmrResponse::from(response)
+}
 
 ic_cdk::export_candid!();
