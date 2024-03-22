@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 canister-common = { path = "../canister-common" }
+emr_registry = { path = "../emr_registry" }
 ic-cdk = { workspace = true }
 candid = { workspace = true }
 ic-cdk-timers = { workspace = true }

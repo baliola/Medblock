@@ -46,6 +46,48 @@ pub struct ProviderRegistry {
     issued: Issued,
 }
 
+// update emr inter-canister call
+impl ProviderRegistry {
+    pub async fn do_call_update_emr(req: crate::api::UpdateEmrRequest) {
+        let args = req.to_args();
+
+        let result = emr_registry.update_emr(args).await.map_err(CallError::from);
+
+        match result {
+            Ok(_) => (),
+            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+        }
+    }
+}
+
+// issue emr inter-canister call
+impl ProviderRegistry {
+    pub fn build_args_call_emr_canister(
+        &self,
+        req: IssueEmrRequest
+    ) -> ProviderRegistryResult<CreateEmrRequest> {
+        // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
+        let provider_principal = common::guard::verified_caller().unwrap();
+        let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
+
+        // assemble args and call emr canister to issue emr
+        Ok(req.to_args(provider.into_inner()))
+    }
+
+    pub async fn do_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
+        let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
+
+        // trap explicitly if not succeeded
+        // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
+        match create_emr_response {
+            Ok((response,)) => {
+                return response;
+            }
+            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+        }
+    }
+}
+
 metrics!(ProviderRegistry: RegistryMetrics);
 
 impl Metrics<RegistryMetrics> for ProviderRegistry {
@@ -111,31 +153,6 @@ impl ProviderRegistry {
                 )?
             }
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
-        }
-    }
-
-    pub fn build_args_call_emr_canister(
-        &self,
-        req: IssueEmrRequest
-    ) -> ProviderRegistryResult<CreateEmrRequest> {
-        // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
-        let provider_principal = common::guard::verified_caller().unwrap();
-        let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
-
-        // assemble args and call emr canister to issue emr
-        Ok(req.to_create_emr_args(provider.into_inner()))
-    }
-
-    pub async fn issue_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
-        let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
-
-        // trap explicitly if not succeeded
-        // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
-        match create_emr_response {
-            Ok((response,)) => {
-                return response;
-            }
-            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
         }
     }
 

@@ -1,6 +1,6 @@
 use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
-use api::{ IssueEmrResponse, PingResult };
+use api::{ IssueEmrResponse, PingResult, RegisternewProviderRequest, RegisternewProviderResponse };
 use canister_common::{
     common::freeze::FreezeThreshold,
     id_generator::IdGenerator,
@@ -42,6 +42,13 @@ thread_local! {
 /// Precondition: the state is already initialized.
 pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
     STATE.with(|cell| f(cell.borrow().as_ref().expect("state not initialized")))
+}
+
+/// A helper method to read the id generator.
+///
+/// Precondition: the id generator is already initialized.
+pub fn with_id_generator_mut<R>(f: impl FnOnce(&mut IdGenerator<CanisterRandomSource>) -> R) -> R {
+    ID_GENERATOR.with(|cell| f(cell.borrow_mut().as_mut().expect("id generator not initialized")))
 }
 
 /// A helper method to mutate the state.
@@ -125,13 +132,16 @@ fn initialize_id_generator() {
 
 fn init_state() -> State {
     let memory_manager = MemoryManager::init();
-    
+
     // todo : isolate memory id
-    
+
     State {
         providers: ProviderRegistry::init(&memory_manager),
         config: config::CanisterConfig::init(&memory_manager),
-        freeze_threshold: FreezeThreshold::init::<FreezeThresholdMemory>(CANISTER_CYCLE_THRESHOLD, &memory_manager),
+        freeze_threshold: FreezeThreshold::init::<FreezeThresholdMemory>(
+            CANISTER_CYCLE_THRESHOLD,
+            &memory_manager
+        ),
         memory_manager,
     }
 }
@@ -150,7 +160,7 @@ fn canister_init() {
 
         *state.borrow_mut() = Some(init);
 
-        ic_cdk::print("state initialized")
+        ic_cdk::print("canister state initialized")
     });
 
     initialize_id_generator()
@@ -188,7 +198,7 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
     // safe to unwrap as the provider id comes from canister
     let provider_principal = Principal::from_text(args.provider_id.clone()).unwrap();
 
-    let response = ProviderRegistry::issue_call_create_emr(args).await;
+    let response = ProviderRegistry::do_call_create_emr(args).await;
 
     with_state_mut(|s|
         s.providers.issue_emr(
@@ -213,6 +223,32 @@ async fn ping() -> PingResult {
         emr_registry_status,
         patient_registry_status: false,
     }
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewProviderResponse {
+    let id = with_id_generator_mut(|g| g.generate_id());
+
+    let result = with_state_mut(|s|
+        s.providers.register_new_provider(req.provider_principal, req.display_name, id)
+    ).unwrap();
+
+    RegisternewProviderResponse {}
+}
+
+#[ic_cdk::update(guard = "only_provider")]
+async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrResponse {
+    let result = ProviderRegistry::do_call_update_emr(req).await;
+
+    crate::api::UpdateEmrResponse {}
+}
+
+fn register_patient() {
+    todo!()
+}
+
+fn rebind_patient() {
+    todo!()
 }
 
 ic_cdk::export_candid!();
