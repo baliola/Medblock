@@ -1,18 +1,1 @@
-type EmrFragment = record { key : text; value : text };
-type EmrHeader = record { provider_id : text; user_id : text; emr_id : text };
-type EmrListProviderRequest = record { page : nat64; limit : nat8 };
-type EmrListProviderResponse = record { ids : vec text };
-type IssueEmrRequest = record { emr : vec EmrFragment; user_id : text };
-type IssueEmrResponse = record { emr_header : EmrHeader };
-type PingResult = record {
-  patient_registry_status : bool;
-  emr_registry_status : bool;
-};
-service : () -> {
-  emr_list_provider : (EmrListProviderRequest) -> (
-      EmrListProviderResponse,
-    ) query;
-  issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
-  metrics : () -> (text) query;
-  ping : () -> (PingResult) composite_query;
-}
+service :{} 

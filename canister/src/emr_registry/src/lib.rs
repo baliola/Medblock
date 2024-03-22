@@ -21,7 +21,7 @@ use core::time::Duration;
 mod key;
 mod registry;
 pub mod api;
-mod header;
+pub mod header;
 mod memory;
 
 type State = common::State<registry::CoreEmrRegistry, (), ()>;

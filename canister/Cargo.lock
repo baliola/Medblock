@@ -1070,6 +1070,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "canister-common",
+ "emr_registry",
  "ic-cdk",
  "ic-cdk-bindgen",
  "ic-cdk-timers",

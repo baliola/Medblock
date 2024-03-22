@@ -4,6 +4,9 @@ use serde::Deserialize;
 
 use crate::{ header::{ EmrHeader, EmrHeaderWithBody }, registry::key };
 
+
+pub use crate::header;
+
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
     pub user_id: UserId,
