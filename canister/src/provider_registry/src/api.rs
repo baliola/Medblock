@@ -3,7 +3,6 @@ use canister_common::{
     common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId },
     from,
 };
-use ::emr_registry::api::header::EmrHeader;
 use serde::Deserialize;
 
 use crate::declarations::emr_registry::{ self, CreateEmrRequest, CreateEmrResponse };
@@ -69,7 +68,7 @@ pub struct RegisternewProviderResponse {
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrRequest {
     pub fields: Vec<EmrFragment>,
-    pub header: EmrHeader,
+    pub header: canister_common::common::EmrHeader,
 }
 
 impl UpdateEmrRequest {

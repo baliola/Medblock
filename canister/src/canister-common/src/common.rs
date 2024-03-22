@@ -764,3 +764,36 @@ impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
 pub trait Get<T> {
     fn get() -> T;
 }
+
+#[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
+pub struct EmrHeader {
+    pub user_id: UserId,
+    pub emr_id: EmrId,
+    pub provider_id: ProviderId,
+}
+
+impl EmrHeader {
+    pub fn new(user_id: UserId, emr_id: EmrId, provider_id: ProviderId) -> Self {
+        Self { user_id, emr_id, provider_id }
+    }
+}
+
+#[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
+pub struct EmrHeaderWithBody {
+    pub header: EmrHeader,
+    pub body: EmrBody,
+}
+
+impl EmrHeaderWithBody {
+    pub fn new(header: EmrHeader, body: EmrBody) -> Self {
+        Self { header, body }
+    }
+
+    pub fn to_header(self) -> EmrHeader {
+        self.header
+    }
+
+    pub fn into_inner_body(self) -> EmrBody {
+        self.body
+    }
+}
