@@ -86,6 +86,7 @@ fn init() {
     initialize_id_generator();
 }
 
+// TODO : add init state
 #[ic_cdk::query]
 fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })

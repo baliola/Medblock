@@ -114,6 +114,7 @@ fn only_provider() -> Result<(), String> {
         Ok(())
     })
 }
+// TODO : add global initialize method to be used in post upgrade and init
 
 fn initialize_id_generator() {
     ic_cdk_timers::set_timer(Duration::from_secs(3), || {
@@ -133,8 +134,6 @@ fn initialize_id_generator() {
 fn init_state() -> State {
     let memory_manager = MemoryManager::init();
 
-    // todo : isolate memory id
-
     State {
         providers: ProviderRegistry::init(&memory_manager),
         config: config::CanisterConfig::init(&memory_manager),
@@ -146,24 +145,21 @@ fn init_state() -> State {
     }
 }
 
-#[ic_cdk::post_upgrade]
-fn post_upgrade() {
+fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
-    ic_cdk::print("canister state re-initialized");
+    ic_cdk::print("canister state initialized");
+    initialize_id_generator()
+}
+
+#[ic_cdk::post_upgrade]
+fn post_upgrade() {
+    initialize()
 }
 
 #[ic_cdk::init]
 fn canister_init() {
-    STATE.with(move |state| {
-        let init = init_state();
-
-        *state.borrow_mut() = Some(init);
-
-        ic_cdk::print("canister state initialized")
-    });
-
-    initialize_id_generator()
+    initialize()
 }
 
 #[ic_cdk::query]
@@ -248,6 +244,13 @@ fn register_patient() {
 }
 
 fn rebind_patient() {
+    todo!()
+}
+fn suspend_provider() {
+    todo!()
+}
+
+fn unsuspend_provider() {
     todo!()
 }
 

@@ -1,12 +1,82 @@
+use std::ops::Deref;
+
 use candid::{ CandidType };
 use canister_common::{
     common::{ EmrId, Id, UserId, H256 },
+    deref,
     mmgr::MemoryManager,
+    random::CallError,
     stable::{ Memory, Stable, StableSet, ToStable },
 };
 
-pub type NIK = H256;
+use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry };
 
+pub struct PatientRegistry {
+    pub owner_map: OwnerMap,
+    pub emr_binding_map: EmrBindingMap,
+}
+
+impl PatientRegistry {
+    pub fn construct_args_read_emr(
+        &self,
+        arg: ReadEmrByIdRequest,
+        user_principal: &ic_principal::Principal
+    ) -> PatientBindingMapResult<crate::declarations::emr_registry::Header> {
+        let user_id = self.owner_map.get_nik(user_principal)?.into_inner().to_string();
+
+        Ok(crate::declarations::emr_registry::Header {
+            provider_id: arg.provider_id.to_string(),
+            emr_id: arg.emr_id.to_string(),
+            user_id,
+        })
+    }
+
+    pub async fn do_call_read_emr(
+        arg: crate::declarations::emr_registry::Header
+    ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
+        match emr_registry.read_emr_by_id(arg).await.map_err(CallError::from) {
+            Ok((response,)) => response,
+            Err(e) => {
+                ic_cdk::trap(&format!("ERROR: Error calling read_emr_by_id: {:?}", e));
+            }
+        }
+    }
+}
+
+impl PatientRegistry {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self {
+            owner_map: OwnerMap::init(memory_manager),
+            emr_binding_map: EmrBindingMap::init(memory_manager),
+        }
+    }
+}
+
+impl AsRef<OwnerMap> for PatientRegistry {
+    fn as_ref(&self) -> &OwnerMap {
+        &self.owner_map
+    }
+}
+
+impl AsMut<OwnerMap> for PatientRegistry {
+    fn as_mut(&mut self) -> &mut OwnerMap {
+        &mut self.owner_map
+    }
+}
+
+impl AsRef<EmrBindingMap> for PatientRegistry {
+    fn as_ref(&self) -> &EmrBindingMap {
+        &self.emr_binding_map
+    }
+}
+
+impl AsMut<EmrBindingMap> for PatientRegistry {
+    fn as_mut(&mut self) -> &mut EmrBindingMap {
+        &mut self.emr_binding_map
+    }
+}
+
+pub type NIK = H256;
 /// Principal to NIK Map. meant to enforce 1:1 relationship between principal and NIK.
 /// used to claim emrs ownership. This level of inderction is needed because principal that map to a particular BindingKey effectively owns
 /// all the emrs that it's BindingKey map to.
@@ -14,26 +84,26 @@ pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub enum PatientBindingMapError {
-    #[error("operation not permitted, user exists")]
+pub enum PatientRegistryError {
+    #[error("user exists")]
     UserExist,
-    #[error("operation not permitted, user does not exist")]
+    #[error("user does not exist")]
     UserDoesNotExist,
 }
 
-pub type PatientBindingMapResult<T = ()> = Result<T, PatientBindingMapError>;
+pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
 
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) -> PatientBindingMapResult {
         self.0
             .remove(owner)
             .map(|_| ())
-            .ok_or(PatientBindingMapError::UserDoesNotExist)
+            .ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
     pub fn bind(&mut self, owner: Owner, nik: NIK) -> PatientBindingMapResult {
         if self.get_nik(&owner).is_ok() {
-            return Err(PatientBindingMapError::UserExist);
+            return Err(PatientRegistryError::UserExist);
         }
 
         let _ = self.0.insert(owner, nik.to_stable());
@@ -42,7 +112,7 @@ impl OwnerMap {
 
     pub fn rebind(&mut self, owner: Owner, nik: NIK) -> PatientBindingMapResult {
         if self.get_nik(&owner).is_err() {
-            return Err(PatientBindingMapError::UserDoesNotExist);
+            return Err(PatientRegistryError::UserDoesNotExist);
         }
 
         let _ = self.0.insert(owner, nik.to_stable());
@@ -51,10 +121,10 @@ impl OwnerMap {
 
     /// will return an error if owner does not exists
     pub fn get_nik(&self, owner: &Owner) -> PatientBindingMapResult<Stable<UserId>> {
-        self.0.get(owner).ok_or(PatientBindingMapError::UserDoesNotExist)
+        self.0.get(owner).ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> Self {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
         Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
     }
 
@@ -69,26 +139,26 @@ mod test_owner_map {
 
     #[test]
     fn test_bind() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::init());
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(
             owner_map.bind(owner, nik.clone()).unwrap_err(),
-            PatientBindingMapError::UserExist
+            PatientRegistryError::UserExist
         );
     }
 
     #[test]
     fn test_rebind() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::init());
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
         assert_eq!(
             owner_map.rebind(owner, nik.clone()).unwrap_err(),
-            PatientBindingMapError::UserDoesNotExist
+            PatientRegistryError::UserDoesNotExist
         );
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.rebind(owner, nik.clone()).unwrap(), ());
@@ -96,32 +166,29 @@ mod test_owner_map {
 
     #[test]
     fn test_revoke() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::init());
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
-        assert_eq!(owner_map.revoke(&owner).unwrap_err(), PatientBindingMapError::UserDoesNotExist);
+        assert_eq!(owner_map.revoke(&owner).unwrap_err(), PatientRegistryError::UserDoesNotExist);
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.revoke(&owner).unwrap(), ());
     }
 
     #[test]
     fn test_get_nik() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::init());
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
-        assert_eq!(
-            owner_map.get_nik(&owner).unwrap_err(),
-            PatientBindingMapError::UserDoesNotExist
-        );
+        assert_eq!(owner_map.get_nik(&owner).unwrap_err(), PatientRegistryError::UserDoesNotExist);
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert_eq!(owner_map.get_nik(&owner).unwrap(), nik.to_stable());
     }
 
     #[test]
     fn test_is_valid_owner() {
-        let mut owner_map = OwnerMap::new(&MemoryManager::init());
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
         let owner = ic_principal::Principal::anonymous();
         let nik = NIK::from([0u8; 32]);
 
@@ -140,7 +207,7 @@ mod test_owner_map {
 pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
 
 impl EmrBindingMap {
-    pub fn new(memory_manager: &MemoryManager) -> Self {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
         Self(StableSet::new::<Self>(memory_manager))
     }
 
@@ -151,7 +218,7 @@ impl EmrBindingMap {
     pub fn emr_list(&self, nik: &NIK) -> PatientBindingMapResult<Vec<Stable<EmrId>>> {
         self.0
             .get_set_associated_by_key(&nik.clone().to_stable())
-            .ok_or(PatientBindingMapError::UserDoesNotExist)
+            .ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
     pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
@@ -165,7 +232,7 @@ mod test_emr_binding_map {
 
     #[test]
     fn test_issue_for() {
-        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::init());
+        let mut emr_binding_map = EmrBindingMap::init(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
 
         let mut random = [0u8; 10];
@@ -178,7 +245,7 @@ mod test_emr_binding_map {
 
     #[test]
     fn test_emr_list() {
-        let mut emr_binding_map = EmrBindingMap::new(&MemoryManager::init());
+        let mut emr_binding_map = EmrBindingMap::init(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
         let mut random = [0u8; 10];
         random.fill(0);

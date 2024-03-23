@@ -55,7 +55,7 @@ impl ProviderRegistry {
 
         match result {
             Ok(_) => (),
-            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+            Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
         }
     }
 }
