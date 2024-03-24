@@ -103,8 +103,8 @@ impl CoreEmrRegistry {
 
         let header = Header::new(
             key.user_id.clone().into_inner(),
-            key.emr_id.clone().into_inner(),
-            key.provider_id.clone().into_inner()
+            key.provider_id.clone().into_inner(),
+            key.emr_id.clone().into_inner()
         );
 
         for fragment in emr.into_iter() {
@@ -155,8 +155,8 @@ impl CoreEmrRegistry {
 
         let header = Header::new(
             key.user_id.clone().into_inner(),
-            key.emr_id.clone().into_inner(),
-            key.provider_id.clone().into_inner()
+            key.provider_id.clone().into_inner(),
+            key.emr_id.clone().into_inner()
         );
 
         for fragment in values {
@@ -328,7 +328,7 @@ mod tests {
             .provider_batch()
             .with_provider(provider.clone());
         let result = registry.get_provider_batch(0, 10, key.clone());
-        let header = EmrHeader::new(user.into(), emr_id.into(), provider.clone());
+        let header = EmrHeader::new(user.clone().into(), emr_id.clone().into(), provider.clone());
         assert_eq!(result, vec![Header(header)]);
 
         let key = CompositeKeyBuilder::<UnknownUsage>
@@ -372,7 +372,7 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(header.user_id.into())
+            .with_user(header.user_id.clone().into())
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
@@ -411,6 +411,7 @@ mod tests {
         let emr = EmrBody::from(records);
 
         let header = registry.add(key.clone(), emr.clone()).unwrap();
+        assert!(registry.add(key.clone(), emr.clone()).is_err());
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
@@ -430,6 +431,7 @@ mod tests {
             .update_batch(header.to_partial_update_key(), new_fields.clone().into())
             .unwrap();
 
+        println!("{:?}", registry);
         let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
 
         assert!(emrs.clone().into_inner().len() == total_fields.len());

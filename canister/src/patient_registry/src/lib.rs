@@ -105,7 +105,7 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
 }
 
 fn emr_list_patient() {
-    todo!()
+    // with_state(|s| s.registry.emr_binding_map.emr_list(nik))
 }
 fn notify_issued() {
     todo!()

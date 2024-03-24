@@ -111,7 +111,10 @@ impl<const N: usize> AsciiRecordsKey<N> {
 
 impl<const N: usize> Default for AsciiRecordsKey<N> {
     fn default() -> Self {
-        Self { key: [0_u8; N], len: Default::default() }
+        let mut key = [0_u8; N];
+        key.fill(0);
+        
+        Self { key, len: Default::default() }
     }
 }
 
@@ -765,7 +768,7 @@ pub trait Get<T> {
     fn get() -> T;
 }
 
-#[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
+#[derive(Debug, Deserialize, CandidType, PartialEq, Eq, Clone)]
 pub struct EmrHeader {
     pub user_id: UserId,
     pub emr_id: EmrId,

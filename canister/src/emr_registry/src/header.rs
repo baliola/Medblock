@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::{ key::{ CompositeKey }, registry::key::{ EmrKey, PartialUpdateKey } };
 
 #[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
-pub struct Header(EmrHeader);
+pub struct Header(pub(crate) EmrHeader);
 deref!(Header: EmrHeader);
 from!(Header: EmrHeader);
 impl Into<EmrHeader> for Header {
