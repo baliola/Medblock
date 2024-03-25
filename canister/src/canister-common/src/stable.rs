@@ -159,7 +159,7 @@ impl<Data, Encoding> Stable<Data, Encoding> where Data: MemBoundMarker, Encoding
 
 impl<Data, Encoding> Clone
     for Stable<Data, Encoding>
-    where Data: Clone + Encode + MemBoundMarker, Encoding: EncodingMarker
+    where Data: Clone +  MemBoundMarker, Encoding: EncodingMarker
 {
     fn clone(&self) -> Self {
         Stable(self.0.clone(), PhantomData)

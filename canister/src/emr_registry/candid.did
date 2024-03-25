@@ -6,7 +6,17 @@ type CreateEmrRequest = record {
 type CreateEmrResponse = record { header : Header };
 type EmrFragment = record { key : text; value : text };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : Header };
-type Header = record { provider_id : text; user_id : text; emr_id : text };
+type Header = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type ReadEmrByIdRequest = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+};
 type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
 type RemoveEmrRequest = record { header : Header };
 type RemoveEmrResponse = record { status : bool };
@@ -14,7 +24,7 @@ type UpdateEmrRequest = record { fields : vec EmrFragment; header : Header };
 service : () -> {
   create_emr : (CreateEmrRequest) -> (CreateEmrResponse);
   ping : () -> () query;
-  read_emr_by_id : (Header) -> (ReadEmrByIdResponse) query;
+  read_emr_by_id : (ReadEmrByIdRequest) -> (ReadEmrByIdResponse) query;
   remove_emr : (RemoveEmrRequest) -> (RemoveEmrResponse);
   update_emr : (UpdateEmrRequest) -> (RemoveEmrRequest);
 }

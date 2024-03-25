@@ -113,7 +113,7 @@ impl<const N: usize> Default for AsciiRecordsKey<N> {
     fn default() -> Self {
         let mut key = [0_u8; N];
         key.fill(0);
-        
+
         Self { key, len: Default::default() }
     }
 }
@@ -448,6 +448,14 @@ impl PrincipalBytes {
         bytes[..principal_bytes.len()].copy_from_slice(principal_bytes);
         Self(bytes)
     }
+
+    pub fn from_principal(principal: Principal) -> Self {
+        Self::new(principal)
+    }
+
+    pub fn to_principal(self) -> Principal {
+        self.into()
+    }
 }
 
 impl From<Principal> for PrincipalBytes {
@@ -570,8 +578,18 @@ pub const HASH_LEN: usize = 32;
 /// generap purpose 256 bit arbitrary hex encoded hash, could be used as index.
 /// currently we make no assumption of the hash method used, as this should generally be
 /// generated offchain and only deserialized onchain.
-#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode, Default)]
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
 pub struct H256([u8; HASH_LEN]);
+
+impl Default for H256 {
+    fn default() -> Self {
+        let mut buf = [0u8; HASH_LEN];
+        buf.fill(0);
+
+        Self(buf)
+    }
+}
+
 impl_max_size!(for H256: 32);
 impl_mem_bound!(for H256: bounded; fixed_size: true);
 deref!(H256: [u8; HASH_LEN]);
@@ -657,6 +675,14 @@ mod deserialize_h256 {
             hasher.finalize(&mut out);
 
             hex::encode(out)
+        }
+
+        #[test]
+        fn test_from_str() {
+            let hash = dummy_hash();
+            let h256 = H256::from_str(&hash).unwrap();
+
+            assert_eq!(h256.to_string(), hash);
         }
 
         #[test]
@@ -768,16 +794,63 @@ pub trait Get<T> {
     fn get() -> T;
 }
 
-#[derive(Debug, Deserialize, CandidType, PartialEq, Eq, Clone)]
+#[derive(
+    Debug,
+    Deserialize,
+    CandidType,
+    PartialEq,
+    Eq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Default,
+    Encode,
+    Decode
+)]
 pub struct EmrHeader {
-    pub user_id: UserId,
     pub emr_id: EmrId,
     pub provider_id: ProviderId,
+    pub user_id: UserId,
+    pub registry_id: PrincipalBytes,
 }
 
+// 64 x 1.5 = 96~ bytes, account for serialization overhead using candid
+impl_max_size!(for EmrHeader: 96);
+impl_mem_bound!(for EmrHeader: bounded; fixed_size: true);
+impl_range_bound!(EmrHeader);
+
 impl EmrHeader {
-    pub fn new(user_id: UserId, emr_id: EmrId, provider_id: ProviderId) -> Self {
-        Self { user_id, emr_id, provider_id }
+    pub fn new(
+        user_id: UserId,
+        emr_id: EmrId,
+        provider_id: ProviderId,
+        registry_id: Principal
+    ) -> Self {
+        Self { user_id, emr_id, provider_id, registry_id: PrincipalBytes::from(registry_id) }
+    }
+}
+
+#[cfg(test)]
+mod header_test {
+    use super::*;
+
+    #[test]
+    fn test_len_encoded() {
+        use candid::{ Encode, Decode };
+
+        let header = EmrHeader::new(
+            UserId::default(),
+            EmrId::default(),
+            ProviderId::default(),
+            Principal::anonymous()
+        );
+
+        let mut encoded = header.encode();
+        println!("{:?}", encoded.len());
+
+        let decoded = <EmrHeader as parity_scale_codec::Decode>::decode(&mut &*encoded).unwrap();
+
+        assert_eq!(decoded, header);
     }
 }
 
@@ -798,5 +871,18 @@ impl EmrHeaderWithBody {
 
     pub fn into_inner_body(self) -> EmrBody {
         self.body
+    }
+}
+
+/// get canister id, will return [Principal::anonymous] if not running on the ic
+pub fn canister_id() -> Principal {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Principal::anonymous()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        ic_cdk::api::id()
     }
 }

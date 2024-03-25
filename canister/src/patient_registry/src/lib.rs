@@ -1,18 +1,29 @@
-use std::{cell::RefCell, time::Duration};
+use std::{ cell::RefCell, time::Duration };
 
-use api::ReadEmrByIdRequest;
+use api::{ EmrListPatientRequest, ReadEmrByIdRequest };
 use canister_common::{
-    common::guard::verified_caller, id_generator::IdGenerator, mmgr::MemoryManager, random::CanisterRandomSource
+    common::guard::verified_caller,
+    id_generator::IdGenerator,
+    mmgr::MemoryManager,
+    random::CanisterRandomSource,
+    stable::{ Candid, Memory, Stable },
 };
+use config::CanisterConfig;
 use declarations::emr_registry::ReadEmrByIdResponse;
+use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
 mod registry;
 mod memory;
 mod declarations;
 mod api;
+mod config;
 
-type State = canister_common::common::State<registry::PatientRegistry, (), ()>;
+type State = canister_common::common::State<
+    registry::PatientRegistry,
+    Cell<Stable<CanisterConfig, Candid>, Memory>,
+    ()
+>;
 
 thread_local! {
     static STATE: RefCell<Option<State>> = RefCell::new(None);
@@ -60,7 +71,7 @@ fn init_state() -> State {
 
     State {
         registry: PatientRegistry::init(&memory_manager),
-        config: (),
+        config: CanisterConfig::init(&memory_manager),
         freeze_threshold: (),
         memory_manager,
     }
@@ -100,12 +111,16 @@ fn canister_init() {
 async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     let user = verified_caller().unwrap();
     let args = with_state(|s| s.registry.construct_args_read_emr(req, &user)).unwrap();
-    
+
     PatientRegistry::do_call_read_emr(args).await
 }
 
-fn emr_list_patient() {
-    // with_state(|s| s.registry.emr_binding_map.emr_list(nik))
+fn emr_list_patient(req: EmrListPatientRequest) {
+    let caller = verified_caller().unwrap();
+    let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    let result = with_state(move |s|
+        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
+    );
 }
 fn notify_issued() {
     todo!()

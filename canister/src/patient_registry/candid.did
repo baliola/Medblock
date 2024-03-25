@@ -1,7 +1,16 @@
 type EmrFragment = record { key : text; value : text };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : Header };
-type Header = record { provider_id : text; user_id : text; emr_id : text };
-type ReadEmrByIdRequest = record { provider_id : text; emr_id : text };
+type Header = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type ReadEmrByIdRequest = record {
+  provider_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
 type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
 service : () -> {
   read_emr_by_id : (ReadEmrByIdRequest) -> (

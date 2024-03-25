@@ -2,11 +2,11 @@ use std::ops::Deref;
 
 use candid::{ CandidType };
 use canister_common::{
-    common::{ EmrId, Id, UserId, H256 },
+    common::{ EmrHeader, EmrId, Id, UserId, H256 },
     deref,
     mmgr::MemoryManager,
     random::CallError,
-    stable::{ Memory, Stable, StableSet, ToStable },
+    stable::{ Candid, Memory, Stable, StableSet, ToStable },
 };
 
 use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry };
@@ -21,10 +21,10 @@ impl PatientRegistry {
         &self,
         arg: ReadEmrByIdRequest,
         user_principal: &ic_principal::Principal
-    ) -> PatientBindingMapResult<crate::declarations::emr_registry::Header> {
+    ) -> PatientBindingMapResult<crate::declarations::emr_registry::ReadEmrByIdRequest> {
         let user_id = self.owner_map.get_nik(user_principal)?.into_inner().to_string();
 
-        Ok(crate::declarations::emr_registry::Header {
+        Ok(crate::declarations::emr_registry::ReadEmrByIdRequest {
             provider_id: arg.provider_id.to_string(),
             emr_id: arg.emr_id.to_string(),
             user_id,
@@ -32,7 +32,7 @@ impl PatientRegistry {
     }
 
     pub async fn do_call_read_emr(
-        arg: crate::declarations::emr_registry::Header
+        arg: crate::declarations::emr_registry::ReadEmrByIdRequest
     ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
         match emr_registry.read_emr_by_id(arg).await.map_err(CallError::from) {
             Ok((response,)) => response,
@@ -204,30 +204,38 @@ mod test_owner_map {
 /// and still be able to own and access their emr.
 ///
 /// NIK MUST be hashed offchain before being used as key.
-pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<Id>>);
+pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<EmrHeader, Candid>>);
 
 impl EmrBindingMap {
     pub fn init(memory_manager: &MemoryManager) -> Self {
         Self(StableSet::new::<Self>(memory_manager))
     }
 
-    pub fn is_owner_of(&self, nik: NIK, emr_id: EmrId) -> bool {
-        self.0.contains_key(nik.to_stable(), emr_id.to_stable())
+    pub fn is_owner_of(&self, nik: NIK, header: EmrHeader) -> bool {
+        self.0.contains_key(nik.to_stable(), header.to_stable())
     }
 
-    pub fn emr_list(&self, nik: &NIK) -> PatientBindingMapResult<Vec<Stable<EmrId>>> {
+    pub fn emr_list(
+        &self,
+        nik: &NIK,
+        page: u8,
+        limit: u8
+    ) -> PatientBindingMapResult<Vec<Stable<EmrHeader,Candid>>> {
         self.0
-            .get_set_associated_by_key(&nik.clone().to_stable())
+            .get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64)
             .ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
-    pub fn issue_for(&mut self, nik: NIK, emr_id: EmrId) {
-        self.0.insert(nik.to_stable(), emr_id.to_stable());
+    pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) {
+        self.0.insert(nik.to_stable(), header.to_stable());
     }
 }
 
 #[cfg(test)]
 mod test_emr_binding_map {
+    use candid::{Encode, Principal};
+    use canister_common::id;
+
     use super::*;
 
     #[test]
@@ -235,23 +243,30 @@ mod test_emr_binding_map {
         let mut emr_binding_map = EmrBindingMap::init(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
 
-        let mut random = [0u8; 10];
-        random.fill(0);
-        let emr_id = EmrId::new(&random);
+        let emr_id = id!("92fa73e0-0450-4b73-9cc2-dbd703b99f56");
+        let provider_id = id!("92fa73e0-0450-4b73-9cc2-dbd703b99f56");
+        let user_id = UserId::default();
 
-        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
-        assert!(emr_binding_map.is_owner_of(nik.clone(), emr_id.clone()));
+        let header = EmrHeader::new(user_id, emr_id, provider_id, Principal::anonymous());
+
+        let a = Encode!(&header).unwrap();
+        println!("{:?}", a.len());
+        emr_binding_map.issue_for(nik.clone(), header.clone());
+        assert!(emr_binding_map.is_owner_of(nik.clone(), header.clone()));
     }
 
     #[test]
     fn test_emr_list() {
         let mut emr_binding_map = EmrBindingMap::init(&MemoryManager::init());
         let nik = NIK::from([0u8; 32]);
-        let mut random = [0u8; 10];
-        random.fill(0);
-        let emr_id = EmrId::new(&random);
 
-        emr_binding_map.issue_for(nik.clone(), emr_id.clone());
-        assert_eq!(emr_binding_map.emr_list(&nik).unwrap(), vec![emr_id.to_stable()]);
+        let emr_id = id!("92fa73e0-0450-4b73-9cc2-dbd703b99f56");
+        let provider_id = id!("92fa73e0-0450-4b73-9cc2-dbd703b99f56");
+        let user_id = UserId::default();
+
+        let header = EmrHeader::new(user_id, emr_id, provider_id, Principal::anonymous());
+
+        emr_binding_map.issue_for(nik.clone(), header.clone());
+        assert_eq!(emr_binding_map.emr_list(&nik, 0, 3).unwrap(), vec![header.to_stable()]);
     }
 }

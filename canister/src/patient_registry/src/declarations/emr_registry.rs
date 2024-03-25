@@ -19,10 +19,18 @@ pub struct Header {
   pub provider_id: String,
   pub user_id: String,
   pub emr_id: String,
+  pub registry_id: Principal,
 }
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateEmrResponse { pub header: Header }
+
+#[derive(CandidType, Deserialize)]
+pub struct ReadEmrByIdRequest {
+  pub provider_id: String,
+  pub user_id: String,
+  pub emr_id: String,
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct EmrHeaderWithBody { pub body: Vec<EmrFragment>, pub header: Header }
@@ -47,7 +55,7 @@ impl EmrRegistry {
   pub async fn ping(&self) -> Result<()> {
     ic_cdk::call(self.0, "ping", ()).await
   }
-  pub async fn read_emr_by_id(&self, arg0: Header) -> Result<
+  pub async fn read_emr_by_id(&self, arg0: ReadEmrByIdRequest) -> Result<
     (ReadEmrByIdResponse,)
   > { ic_cdk::call(self.0, "read_emr_by_id", (arg0,)).await }
   pub async fn remove_emr(&self, arg0: RemoveEmrRequest) -> Result<

@@ -308,10 +308,11 @@ pub struct Emr {
     id: EmrId,
 }
 impl_max_size!(for Emr: EmrId, Principal);
-impl_mem_bound!(for Emr: bounded; fixed_size: true);
+impl_mem_bound!(for Emr: bounded; fixed_size: false);
 impl_range_bound!(Emr);
 
 pub type IssueMapResult<T> = Result<T, IssueMapError>;
+// TODO : change to emr header
 /// Issued emr map. used to track emr issued by a particular provider.
 pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<Emr>>);
 deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<Emr>>);

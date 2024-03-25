@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{ ArbitraryEmrValue, EmrBody, EmrHeaderWithBody, EmrId, Id, ProviderId, UserId },
+    common::{ canister_id, ArbitraryEmrValue, EmrBody, EmrHeaderWithBody, EmrId, Id, ProviderId, UserId },
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
 };
@@ -104,7 +104,8 @@ impl CoreEmrRegistry {
         let header = Header::new(
             key.user_id.clone().into_inner(),
             key.provider_id.clone().into_inner(),
-            key.emr_id.clone().into_inner()
+            key.emr_id.clone().into_inner(),
+            canister_id()
         );
 
         for fragment in emr.into_iter() {
@@ -156,7 +157,8 @@ impl CoreEmrRegistry {
         let header = Header::new(
             key.user_id.clone().into_inner(),
             key.provider_id.clone().into_inner(),
-            key.emr_id.clone().into_inner()
+            key.emr_id.clone().into_inner(),
+            canister_id()
         );
 
         for fragment in values {
@@ -277,6 +279,7 @@ mod tests {
 
     use super::*;
     use canister_common::{ common::{ AsciiRecordsKey, EmrFragment, EmrHeader }, id };
+    use ic_principal::Principal;
 
     #[test]
     fn test_core_emr_registry() {
@@ -320,6 +323,7 @@ mod tests {
             user_id: user.into(),
             emr_id: emr_id.clone(),
             provider_id: provider.clone(),
+            registry_id: Principal::anonymous().into(),
         };
         assert_eq!(result, vec![Header::from(header.clone())]);
 
@@ -328,7 +332,12 @@ mod tests {
             .provider_batch()
             .with_provider(provider.clone());
         let result = registry.get_provider_batch(0, 10, key.clone());
-        let header = EmrHeader::new(user.clone().into(), emr_id.clone().into(), provider.clone());
+        let header = EmrHeader::new(
+            user.clone().into(),
+            emr_id.clone().into(),
+            provider.clone(),
+            Principal::anonymous()
+        );
         assert_eq!(result, vec![Header(header)]);
 
         let key = CompositeKeyBuilder::<UnknownUsage>
