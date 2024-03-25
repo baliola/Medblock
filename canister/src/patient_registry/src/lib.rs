@@ -1,6 +1,8 @@
 use std::{ cell::RefCell, time::Duration };
 
-use api::{ EmrListPatientRequest, ReadEmrByIdRequest };
+use api::{
+    EmrListPatientRequest, EmrListPatientResponse, PingResult, ReadEmrByIdRequest, RegisterPatientRequest
+};
 use canister_common::{
     common::guard::verified_caller,
     id_generator::IdGenerator,
@@ -9,7 +11,7 @@ use canister_common::{
     stable::{ Candid, Memory, Stable },
 };
 use config::CanisterConfig;
-use declarations::emr_registry::ReadEmrByIdResponse;
+use declarations::{emr_registry::{ self, ReadEmrByIdResponse }, provider_registry::provider_registry};
 use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
@@ -27,7 +29,9 @@ type State = canister_common::common::State<
 
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
-    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const { RefCell::new(None) };
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
+        RefCell::new(None)
+    };
 }
 
 /// A helper method to read the state.
@@ -115,21 +119,37 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     PatientRegistry::do_call_read_emr(args).await
 }
 
-fn emr_list_patient(req: EmrListPatientRequest) {
+fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-    let _result = with_state(move |s|
-        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
-    );
+
+    with_state(move |s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
+        .unwrap()
+        .into()
 }
+
 fn notify_issued() {
     todo!()
 }
+
 fn authorized_canisters() {
     todo!()
 }
-fn register_patient() {
-    todo!()
+
+fn register_patient(req: RegisterPatientRequest) {
+    let owner = verified_caller().unwrap();
+    with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
+}
+
+async fn ping() -> PingResult {
+    let emr_registry_status = emr_registry::emr_registry.ping().await.is_ok();
+
+    // let provider_registry_status = provider_registry
+
+    PingResult {
+        emr_registry_status,
+        patient_registry_status: false,
+    }
 }
 
 ic_cdk::export_candid!();

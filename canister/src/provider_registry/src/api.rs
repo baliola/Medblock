@@ -36,7 +36,7 @@ pub struct IssueEmrResponse {
     // it's fine to use the auto generated types for this as we dont use it for anyhting else, also
     // because eventually candid intrepret this as a text record, so doing serialization again just introduce
     // unnecessary overhead.
-    pub emr_header: crate::declarations::emr_registry::EmrHeader,
+    pub emr_header: crate::declarations::emr_registry::Header,
 }
 
 impl From<CreateEmrResponse> for IssueEmrResponse {
@@ -80,10 +80,11 @@ impl UpdateEmrRequest {
             })
             .collect::<Vec<_>>();
 
-        let header = crate::declarations::emr_registry::EmrHeader {
+        let header = crate::declarations::emr_registry::Header {
             provider_id: self.header.provider_id.to_string(),
             user_id: self.header.user_id.to_string(),
             emr_id: self.header.emr_id.to_string(),
+            registry_id: self.header.registry_id.to_principal(),
         };
 
         crate::declarations::emr_registry::UpdateEmrRequest {

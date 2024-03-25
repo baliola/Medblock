@@ -1,6 +1,6 @@
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ EmrHeader, EmrId, ProviderId, UserId },
+    common::{ EmrHeader, EmrId, ProviderId, UserId, H256 },
     stable::{ Candid, Stable },
 };
 use serde::Deserialize;
@@ -33,8 +33,8 @@ pub struct EmrListPatientResponse {
     emrs: Vec<EmrHeader>,
 }
 
-impl From<Vec<Stable<EmrHeader, Candid>>> for EmrListPatientResponse {
-    fn from(value: Vec<Stable<EmrHeader, Candid>>) -> Self {
+impl From<Vec<Stable<EmrHeader>>> for EmrListPatientResponse {
+    fn from(value: Vec<Stable<EmrHeader>>) -> Self {
         Self {
             emrs: value
                 .into_iter()
@@ -42,4 +42,20 @@ impl From<Vec<Stable<EmrHeader, Candid>>> for EmrListPatientResponse {
                 .collect(),
         }
     }
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RegisterPatientRequest {
+    pub nik: H256,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RegisterProviderResponse {
+    // empty for now
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct PingResult {
+    pub emr_registry_status: bool,
+    pub patient_registry_status: bool,
 }
