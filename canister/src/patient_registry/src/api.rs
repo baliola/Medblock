@@ -1,7 +1,6 @@
 use candid::{ CandidType, Principal };
 use canister_common::{
     common::{ EmrHeader, EmrId, ProviderId, UserId },
-    from,
     stable::{ Candid, Stable },
 };
 use serde::Deserialize;

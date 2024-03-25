@@ -1,11 +1,10 @@
 use candid::CandidType;
 use canister_common::{
     common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId },
-    from,
 };
 use serde::Deserialize;
 
-use crate::declarations::emr_registry::{ self, CreateEmrRequest, CreateEmrResponse };
+use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
 
 #[derive(CandidType, Deserialize)]
 pub struct IssueEmrRequest {

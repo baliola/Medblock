@@ -27,8 +27,8 @@ mod memory;
 type State = common::State<registry::CoreEmrRegistry, (), ()>;
 
 thread_local! {
-    static STATE: RefCell<Option<State>> = RefCell::new(None);
-    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = RefCell::new(None);
+    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const { RefCell::new(None) };
 }
 
 /// A helper method to read the state.

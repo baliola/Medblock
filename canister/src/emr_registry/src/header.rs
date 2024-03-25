@@ -1,5 +1,5 @@
 use candid::{ CandidType, Principal };
-use canister_common::{ common::{ EmrBody, EmrHeader, EmrId, ProviderId, UserId }, deref, from };
+use canister_common::{ common::{ EmrHeader, EmrId, ProviderId, UserId }, deref, from };
 use serde::Deserialize;
 
 use crate::{ key::{ CompositeKey }, registry::key::{ EmrKey, PartialUpdateKey } };
@@ -8,9 +8,9 @@ use crate::{ key::{ CompositeKey }, registry::key::{ EmrKey, PartialUpdateKey } 
 pub struct Header(pub(crate) EmrHeader);
 deref!(Header: EmrHeader);
 from!(Header: EmrHeader);
-impl Into<EmrHeader> for Header {
-    fn into(self) -> EmrHeader {
-        self.0
+impl From<Header> for EmrHeader {
+    fn from(val: Header) -> Self {
+        val.0
     }
 }
 

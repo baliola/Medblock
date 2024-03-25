@@ -26,7 +26,7 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
-use crate::api::{ self, IssueEmrRequest };
+use crate::api::{ IssueEmrRequest };
 use crate::declarations::emr_registry::{ emr_registry, CreateEmrRequest, CreateEmrResponse };
 
 use self::provider::{ Provider, V1 };
@@ -81,7 +81,7 @@ impl ProviderRegistry {
         // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
         match create_emr_response {
             Ok((response,)) => {
-                return response;
+                response
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
         }
@@ -164,7 +164,7 @@ impl ProviderRegistry {
     ) -> ProviderRegistryResult<()> {
         // TODO : handle if we're using multiple emr canister
         self.populate_issue_map(
-            &provider_principal,
+            provider_principal,
             emr_id,
             crate::declarations::emr_registry::CANISTER_ID
         )?;

@@ -1,4 +1,4 @@
-use std::{ marker::PhantomData, str::FromStr };
+use std::{ str::FromStr };
 
 use candid::{ CandidType, Principal };
 use ic_stable_structures::{ storable::Bound };
@@ -604,7 +604,7 @@ impl H256 {
 
 impl ToString for H256 {
     fn to_string(&self) -> String {
-        hex::encode(&self.0)
+        hex::encode(self.0)
     }
 }
 
@@ -644,7 +644,7 @@ mod deserialize_h256 {
                     format!("error deserializing h256 from string with message  : {e}")
                 )
             )?;
-            Ok(Self::from_str(&s).map_err(serde::de::Error::custom)?)
+            Self::from_str(&s).map_err(serde::de::Error::custom)
         }
     }
 
@@ -688,7 +688,7 @@ mod deserialize_h256 {
         #[test]
         fn test_deserialize_h256() {
             let hash = "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c";
-            let h256 = H256::from_str(&hash).unwrap();
+            let h256 = H256::from_str(hash).unwrap();
 
             let h256_str = h256.to_string();
             println!("h256_str : {}", h256_str);
@@ -705,7 +705,7 @@ mod deserialize_h256 {
         #[test]
         fn test_wrong_hash() {
             let hash = "51e04ecd372fbbd123dd842bc485b87db5c2a50e4ea83590108363c56ae38d";
-            let h256 = H256::from_str(&hash);
+            let h256 = H256::from_str(hash);
 
             let Err(e) = h256 else { unreachable!() };
             assert_eq!(e, H256Error::InvalidLength);
@@ -811,11 +811,12 @@ pub struct EmrHeader {
     pub emr_id: EmrId,
     pub provider_id: ProviderId,
     pub user_id: UserId,
+    /// reserved for future use of multiple emr registry canister
     pub registry_id: PrincipalBytes,
 }
 
-// 64 x 1.5 = 96~ bytes, account for serialization overhead using candid
-impl_max_size!(for EmrHeader: 96);
+
+impl_max_size!(for EmrHeader: EmrHeader);
 impl_mem_bound!(for EmrHeader: bounded; fixed_size: true);
 impl_range_bound!(EmrHeader);
 
@@ -836,7 +837,7 @@ mod header_test {
 
     #[test]
     fn test_len_encoded() {
-        use candid::{ Encode, Decode };
+        
 
         let header = EmrHeader::new(
             UserId::default(),
@@ -845,7 +846,7 @@ mod header_test {
             Principal::anonymous()
         );
 
-        let mut encoded = header.encode();
+        let encoded = header.encode();
         println!("{:?}", encoded.len());
 
         let decoded = <EmrHeader as parity_scale_codec::Decode>::decode(&mut &*encoded).unwrap();

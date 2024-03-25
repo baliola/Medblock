@@ -26,8 +26,8 @@ type State = canister_common::common::State<
 >;
 
 thread_local! {
-    static STATE: RefCell<Option<State>> = RefCell::new(None);
-    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = RefCell::new(None);
+    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const { RefCell::new(None) };
 }
 
 /// A helper method to read the state.
@@ -53,7 +53,7 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
-    return Ok(());
+    Ok(())
 }
 
 // guard function
@@ -118,7 +118,7 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
 fn emr_list_patient(req: EmrListPatientRequest) {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-    let result = with_state(move |s|
+    let _result = with_state(move |s|
         s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
     );
 }

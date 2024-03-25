@@ -1,5 +1,5 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrBody, EmrHeader, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
+use canister_common::{ common::{ EmrBody, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
 use serde::Deserialize;
 
 use crate::registry::key;

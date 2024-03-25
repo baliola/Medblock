@@ -309,7 +309,7 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(header.user_id.clone().into())
+            .with_user(header.user_id.clone())
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
@@ -333,8 +333,8 @@ mod tests {
             .with_provider(provider.clone());
         let result = registry.get_provider_batch(0, 10, key.clone());
         let header = EmrHeader::new(
-            user.clone().into(),
-            emr_id.clone().into(),
+            user.into(),
+            emr_id.clone(),
             provider.clone(),
             Principal::anonymous()
         );
@@ -381,7 +381,7 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(header.user_id.clone().into())
+            .with_user(header.user_id.clone())
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
@@ -422,7 +422,7 @@ mod tests {
         let header = registry.add(key.clone(), emr.clone()).unwrap();
         assert!(registry.add(key.clone(), emr.clone()).is_err());
 
-        let key = CompositeKeyBuilder::<UnknownUsage>
+        let _key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
             .with_user(header.user_id.clone())

@@ -1,12 +1,11 @@
-use std::ops::Deref;
+
 
 use candid::{ CandidType };
 use canister_common::{
-    common::{ EmrHeader, EmrId, Id, UserId, H256 },
-    deref,
+    common::{ EmrHeader, UserId, H256 },
     mmgr::MemoryManager,
     random::CallError,
-    stable::{ Candid, Memory, Stable, StableSet, ToStable },
+    stable::{ Memory, Stable, StableSet, ToStable },
 };
 
 use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry };
@@ -204,7 +203,7 @@ mod test_owner_map {
 /// and still be able to own and access their emr.
 ///
 /// NIK MUST be hashed offchain before being used as key.
-pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<EmrHeader, Candid>>);
+pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<EmrHeader>>);
 
 impl EmrBindingMap {
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -220,7 +219,7 @@ impl EmrBindingMap {
         nik: &NIK,
         page: u8,
         limit: u8
-    ) -> PatientBindingMapResult<Vec<Stable<EmrHeader,Candid>>> {
+    ) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
         self.0
             .get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64)
             .ok_or(PatientRegistryError::UserDoesNotExist)
@@ -233,7 +232,7 @@ impl EmrBindingMap {
 
 #[cfg(test)]
 mod test_emr_binding_map {
-    use candid::{Encode, Principal};
+    use candid::{Principal};
     use canister_common::id;
 
     use super::*;
@@ -249,8 +248,6 @@ mod test_emr_binding_map {
 
         let header = EmrHeader::new(user_id, emr_id, provider_id, Principal::anonymous());
 
-        let a = Encode!(&header).unwrap();
-        println!("{:?}", a.len());
         emr_binding_map.issue_for(nik.clone(), header.clone());
         assert!(emr_binding_map.is_owner_of(nik.clone(), header.clone()));
     }
