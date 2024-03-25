@@ -6,14 +6,21 @@ type Header = record {
   emr_id : text;
   registry_id : principal;
 };
+type PingResult = record {
+  provider_registry_status : bool;
+  emr_registry_status : bool;
+};
 type ReadEmrByIdRequest = record {
   provider_id : text;
   emr_id : text;
   registry_id : principal;
 };
 type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
+type RegisterPatientRequest = record { nik : text };
 service : () -> {
+  ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (
       ReadEmrByIdResponse,
     ) composite_query;
+  register_patient : (RegisterPatientRequest) -> ();
 }

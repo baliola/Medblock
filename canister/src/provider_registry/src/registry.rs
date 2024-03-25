@@ -114,9 +114,9 @@ impl Metrics<RegistryMetrics> for ProviderRegistry {
 
 impl ProviderRegistry {
     pub fn init(memory_manager: &MemoryManager) -> Self {
-        let providers = Providers::new(memory_manager);
-        let providers_bindings = ProvidersBindings::new(memory_manager);
-        let issued = Issued::new(memory_manager);
+        let providers = Providers::init(memory_manager);
+        let providers_bindings = ProvidersBindings::init(memory_manager);
+        let issued = Issued::init(memory_manager);
 
         Self { providers, providers_bindings, issued }
     }
@@ -337,8 +337,8 @@ impl Metrics<SetLength> for Issued {
 }
 
 impl Issued {
-    fn new(memory_manager: &MemoryManager) -> Self {
-        Self(StableSet::new::<Self>(memory_manager))
+    fn init(memory_manager: &MemoryManager) -> Self {
+        Self(StableSet::init::<Self>(memory_manager))
     }
     fn provider_exists(&self, provider: InternalProviderId) -> bool {
         self.range_key_exists(&provider.to_stable())
@@ -474,8 +474,8 @@ impl ProvidersBindings {
         self.0.get(provider).ok_or(ProviderBindingMapError::ProviderDoesNotExist)
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
     pub fn is_valid_owner(&self, provider: &ProviderPrincipal) -> bool {
@@ -566,8 +566,8 @@ impl Providers {
         self.map.contains_key(&provider.to_stable())
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        let mem = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new);
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let mem = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init);
 
         Self { map: mem }
     }
@@ -587,7 +587,7 @@ mod provider_test {
     #[test]
     fn test_add_read_v1() {
         let memory_manager = MemoryManager::init();
-        let mut providers = Providers::new(&memory_manager);
+        let mut providers = Providers::init(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);
@@ -610,7 +610,7 @@ mod provider_test {
     #[test]
     fn test_metrics() {
         let memory_manager = MemoryManager::init();
-        let mut providers = Providers::new(&memory_manager);
+        let mut providers = Providers::init(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);

@@ -124,7 +124,7 @@ impl OwnerMap {
     }
 
     pub fn init(memory_manager: &MemoryManager) -> Self {
-        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
@@ -207,7 +207,7 @@ pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<EmrHeader>>);
 
 impl EmrBindingMap {
     pub fn init(memory_manager: &MemoryManager) -> Self {
-        Self(StableSet::new::<Self>(memory_manager))
+        Self(StableSet::init::<Self>(memory_manager))
     }
 
     pub fn is_owner_of(&self, nik: NIK, header: EmrHeader) -> bool {

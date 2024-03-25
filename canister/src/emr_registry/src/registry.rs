@@ -72,8 +72,8 @@ pub mod key {
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
 
 impl CoreEmrRegistry {
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        let tree = memory_manager.get_memory::<_, Self>(BTreeMap::new);
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let tree = memory_manager.get_memory::<_, Self>(BTreeMap::init);
         Self(tree)
     }
 }
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn test_core_emr_registry() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn test_emr_exists() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());
@@ -399,7 +399,7 @@ mod tests {
     #[test]
     fn test_upsert_emr() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());

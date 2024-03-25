@@ -2,14 +2,9 @@ use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
 use api::{ IssueEmrResponse, PingResult, RegisternewProviderRequest, RegisternewProviderResponse };
 use canister_common::{
-    common::freeze::FreezeThreshold,
-    id_generator::IdGenerator,
-    mmgr::MemoryManager,
-    random::{ CanisterRandomSource },
-    stable::{ Candid, Memory, Stable },
-    statistics::{ self, traits::OpaqueMetrics },
+    common::freeze::FreezeThreshold, id_generator::IdGenerator, log, mmgr::MemoryManager, random::CanisterRandomSource, register_log, stable::{ Candid, Memory, Stable }, statistics::{ self, traits::OpaqueMetrics }
 };
-use declarations::emr_registry::{ emr_registry };
+use declarations::{ emr_registry::emr_registry, patient_registry::patient_registry };
 use ic_principal::Principal;
 use ic_stable_structures::Cell;
 use memory::FreezeThresholdMemory;
@@ -32,9 +27,12 @@ pub struct State {
     freeze_threshold: Cell<Stable<FreezeThreshold, Candid>, Memory>,
 }
 
+register_log!("provider registry");
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
-    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const { RefCell::new(None) };
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
+        RefCell::new(None)
+    };
 }
 
 /// A helper method to read the state.
@@ -126,7 +124,7 @@ fn initialize_id_generator() {
                 *id_gen.borrow_mut() = Some(id_generator);
             });
 
-            ic_cdk::print("id generator initialized");
+            log!("id generator initialized");
         })
     });
 }
@@ -148,7 +146,7 @@ fn init_state() -> State {
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
-    ic_cdk::print("canister state initialized");
+    log!("canister state initialized");
     initialize_id_generator()
 }
 
@@ -192,7 +190,7 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
     let args = with_state(|s| s.providers.build_args_call_emr_canister(req)).unwrap();
 
     // safe to unwrap as the provider id comes from canister
-    let provider_principal = Principal::from_text(args.provider_id.clone()).unwrap();
+    let provider_principal = verified_caller().unwrap();
 
     let response = ProviderRegistry::do_call_create_emr(args).await;
 
@@ -210,11 +208,11 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
 async fn ping() -> PingResult {
     let emr_registry_status = emr_registry.ping().await.is_ok();
 
-    // let patient_registry_status = api::ping().await;
+    let patient_registry_status = patient_registry.ping().await.is_ok();
 
     PingResult {
         emr_registry_status,
-        patient_registry_status: false,
+        patient_registry_status,
     }
 }
 

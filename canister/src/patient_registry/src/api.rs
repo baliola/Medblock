@@ -57,5 +57,4 @@ pub struct RegisterProviderResponse {
 #[derive(CandidType, Deserialize)]
 pub struct PingResult {
     pub emr_registry_status: bool,
-    pub patient_registry_status: bool,
 }

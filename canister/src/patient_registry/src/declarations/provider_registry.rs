@@ -83,5 +83,5 @@ impl ProviderRegistry {
     (UpdateEmrRet,)
   > { ic_cdk::call(self.0, "update_emr", (arg0,)).await }
 }
-pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 2, 1, 1]); // bd3sg-teaaa-aaaaa-qaaba-cai
+pub const CANISTER_ID : Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 3, 1, 1]); // be2us-64aaa-aaaaa-qaabq-cai
 pub const provider_registry : ProviderRegistry = ProviderRegistry(CANISTER_ID);

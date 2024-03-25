@@ -32,7 +32,6 @@ fn main() {
         return;
     }
     let a = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").unwrap();
-    println!("candid path :{a}");
 
     hardcode_set_provider_registry_candid_path();
 

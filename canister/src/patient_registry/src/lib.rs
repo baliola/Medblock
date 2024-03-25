@@ -1,17 +1,20 @@
 use std::{ cell::RefCell, time::Duration };
 
 use api::{
-    EmrListPatientRequest, EmrListPatientResponse, PingResult, ReadEmrByIdRequest, RegisterPatientRequest
+    EmrListPatientRequest,
+    EmrListPatientResponse,
+    PingResult,
+    ReadEmrByIdRequest,
+    RegisterPatientRequest,
 };
 use canister_common::{
-    common::guard::verified_caller,
-    id_generator::IdGenerator,
-    mmgr::MemoryManager,
-    random::CanisterRandomSource,
-    stable::{ Candid, Memory, Stable },
+    common::guard::verified_caller, id_generator::IdGenerator, log, mmgr::MemoryManager, random::CanisterRandomSource, register_log, stable::{ Candid, Memory, Stable }
 };
 use config::CanisterConfig;
-use declarations::{emr_registry::{ self, ReadEmrByIdResponse }, provider_registry::provider_registry};
+use declarations::{
+    emr_registry::{ self, ReadEmrByIdResponse },
+    provider_registry::provider_registry,
+};
 use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
@@ -26,6 +29,8 @@ type State = canister_common::common::State<
     Cell<Stable<CanisterConfig, Candid>, Memory>,
     ()
 >;
+
+register_log!("patient registry");
 
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
@@ -89,7 +94,7 @@ fn initialize_id_generator() {
 
             ID_GENERATOR.replace(Some(id_generator));
 
-            ic_cdk::print("id generator initialized");
+            log!("id generator initialized");
         })
     });
 }
@@ -97,7 +102,7 @@ fn initialize_id_generator() {
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
-    ic_cdk::print("canister state initialized");
+    log!("canister state initialized");
     initialize_id_generator()
 }
 
@@ -136,19 +141,18 @@ fn authorized_canisters() {
     todo!()
 }
 
+#[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) {
     let owner = verified_caller().unwrap();
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 
+#[ic_cdk::query(composite = true)]
 async fn ping() -> PingResult {
     let emr_registry_status = emr_registry::emr_registry.ping().await.is_ok();
 
-    // let provider_registry_status = provider_registry
-
     PingResult {
         emr_registry_status,
-        patient_registry_status: false,
     }
 }
 

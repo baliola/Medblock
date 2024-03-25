@@ -434,7 +434,6 @@ mod tests {
     PartialEq,
     Eq,
     Serialize,
-    Deserialize,
     PartialOrd,
     Ord,
     Default
@@ -467,6 +466,15 @@ impl From<Principal> for PrincipalBytes {
 impl From<PrincipalBytes> for Principal {
     fn from(principal_bytes: PrincipalBytes) -> Self {
         Principal::from_slice(&principal_bytes.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for PrincipalBytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        let principal = Principal::deserialize(deserializer)?;
+        Ok(Self::new(principal))
     }
 }
 
@@ -596,12 +604,6 @@ deref!(H256: [u8; HASH_LEN]);
 impl_range_bound!(H256);
 from!(H256: [u8; HASH_LEN]);
 
-impl H256 {
-    pub fn as_str(&self) -> &str {
-        std::str::from_utf8(&self.0).expect("key must be ascii")
-    }
-}
-
 impl ToString for H256 {
     fn to_string(&self) -> String {
         hex::encode(self.0)
@@ -656,7 +658,7 @@ mod deserialize_h256 {
         fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
             where S: candid::types::Serializer
         {
-            serializer.serialize_text(self.as_str())
+            serializer.serialize_text(&self.to_string())
         }
     }
 

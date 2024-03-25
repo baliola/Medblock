@@ -319,8 +319,8 @@ impl<K, V> StableSet<K, V>
         self.0.len()
     }
 
-    pub fn new<M: Get<MemoryId>>(memory_manager: &MemoryManager) -> StableSet<K, V> {
-        let tree = memory_manager.get_memory::<_, M>(ic_stable_structures::BTreeMap::new);
+    pub fn init<M: Get<MemoryId>>(memory_manager: &MemoryManager) -> StableSet<K, V> {
+        let tree = memory_manager.get_memory::<_, M>(ic_stable_structures::BTreeMap::init);
         Self(tree)
     }
 
@@ -476,7 +476,7 @@ mod set_test {
 
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::init::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -502,7 +502,7 @@ mod set_test {
 
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::init::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -525,7 +525,7 @@ mod set_test {
 
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::init::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);
@@ -545,7 +545,7 @@ mod set_test {
 
         let memor_manager = memory_manager!();
 
-        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::new::<M>(&memor_manager);
+        let mut set = StableSet::<Stable<Nativeu8>, Stable<Nativeu8>>::init::<M>(&memor_manager);
 
         let value = [Nativeu8(10), Nativeu8(20), Nativeu8(30), Nativeu8(40)].to_vec();
         let key = Nativeu8(10);

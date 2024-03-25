@@ -21,10 +21,10 @@ if [ -z "$canister" ]; then
 fi
 
 cd $root
-echo inserting placeholder candid
-echo "$dummy_did" >$emr_registry_did_path
 echo "Building emr registry"
 dfx build $emr_canister >/dev/null 2>&1
+echo inserting placeholder candid
+echo "$dummy_did" >$emr_registry_did_path
 
 echo done
 
@@ -40,10 +40,10 @@ fi
 
 # build canister
 
-echo inserting placeholder candid
-echo "$dummy_did" >$canister_did_path
 echo building $canister canister
 dfx build $canister >/dev/null 2>&1
+echo inserting placeholder candid
+echo "$dummy_did" >$canister_did_path
 echo done
 
 echo extracting $canister candid from wasm
