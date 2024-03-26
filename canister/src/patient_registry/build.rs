@@ -54,8 +54,8 @@ fn get_config(canister: &str) -> Config {
 }
 
 fn build_declaration() {
-    let configs = [get_config("emr_registry"), get_config("provider_registry")];
-
+    let configs = [get_config("emr_registry")];
+    
     let mut builder = Builder::new();
 
     for config in configs {

@@ -3,18 +3,24 @@ use std::{ cell::RefCell, time::Duration };
 use api::{
     EmrListPatientRequest,
     EmrListPatientResponse,
+    IssueRequest,
     PingResult,
     ReadEmrByIdRequest,
     RegisterPatientRequest,
 };
 use canister_common::{
-    common::guard::verified_caller, id_generator::IdGenerator, log, mmgr::MemoryManager, random::CanisterRandomSource, register_log, stable::{ Candid, Memory, Stable }
+    common::guard::verified_caller,
+    id_generator::IdGenerator,
+    log,
+    mmgr::MemoryManager,
+    opaque_metrics,
+    random::CanisterRandomSource,
+    register_log,
+    stable::{ Candid, Memory, Stable },
+    statistics::{ self, traits::OpaqueMetrics },
 };
 use config::CanisterConfig;
-use declarations::{
-    emr_registry::{ self, ReadEmrByIdResponse },
-    provider_registry::provider_registry,
-};
+use declarations::emr_registry::{ self, ReadEmrByIdResponse };
 use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
@@ -30,7 +36,7 @@ type State = canister_common::common::State<
     ()
 >;
 
-register_log!("patient registry");
+register_log!("patient");
 
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
@@ -133,8 +139,9 @@ fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
         .into()
 }
 
-fn notify_issued() {
-    todo!()
+ #[ic_cdk::update]
+fn notify_issued(req: IssueRequest) {
+    with_state_mut(|s| s.registry.emr_binding_map.issue_for(req.header.user_id.clone(), req.header)).unwrap();
 }
 
 fn authorized_canisters() {
@@ -154,6 +161,18 @@ async fn ping() -> PingResult {
     PingResult {
         emr_registry_status,
     }
+}
+
+#[ic_cdk::query]
+fn metrics() -> String {
+    with_state(|s| {
+        [
+            opaque_metrics!(s.registry),
+            OpaqueMetrics::measure(&**s.config.get()),
+            statistics::canister::BlockchainMetrics::measure(),
+            statistics::canister::MemoryStatistics::measure(),
+        ].join("\n")
+    })
 }
 
 ic_cdk::export_candid!();

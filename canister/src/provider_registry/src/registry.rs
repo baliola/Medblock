@@ -28,6 +28,7 @@ use canister_common::{
 
 use crate::api::{ IssueEmrRequest };
 use crate::declarations::emr_registry::{ emr_registry, CreateEmrRequest, CreateEmrResponse };
+use crate::declarations::patient_registry::patient_registry;
 
 use self::provider::{ Provider, V1 };
 
@@ -74,14 +75,38 @@ impl ProviderRegistry {
         Ok(req.to_args(provider.into_inner()))
     }
 
+    fn to_issue_request(
+        req: &CreateEmrResponse
+    ) -> crate::declarations::patient_registry::IssueRequest {
+        let provider_id = req.header.provider_id.to_owned();
+        let user_id = req.header.user_id.to_owned();
+        let emr_id = req.header.emr_id.to_owned();
+        let registry_id = req.header.registry_id.to_owned();
+
+        crate::declarations::patient_registry::IssueRequest {
+            header: crate::declarations::patient_registry::EmrHeader {
+                provider_id,
+                user_id,
+                emr_id,
+                registry_id,
+            },
+        }
+    }
+
     pub async fn do_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
         let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
 
         // trap explicitly if not succeeded
+
         // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
         match create_emr_response {
             Ok((response,)) => {
-                response
+                let issue_request = Self::to_issue_request(&response);
+
+                match patient_registry.notify_issued(issue_request).await.map_err(CallError::from) {
+                    Ok(_) => response,
+                    Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+                }
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
         }

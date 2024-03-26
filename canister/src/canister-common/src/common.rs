@@ -160,7 +160,7 @@ impl<const N: usize> AsciiRecordsKey<N> {
     pub fn to_ascii_str(&self) -> &str {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
-        std::str::from_utf8(buffer_ref).expect("key must be ascii")
+        std::str::from_utf8(buffer_ref).expect("key should be ascii")
     }
 }
 
@@ -507,6 +507,7 @@ pub mod guard {
     use ic_principal::Principal;
 
     /// doesn't allow calls from anonymous principal
+    #[inline(always)]
     pub fn verified_caller() -> Result<Principal, String> {
         let caller = ic_cdk::caller();
 

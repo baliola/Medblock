@@ -23,5 +23,5 @@ dist/
 # environment variables
 .env
 
-
 misc
+src/*/declarations

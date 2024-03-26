@@ -2,8 +2,10 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     impl_max_size,
     impl_mem_bound,
+    metrics,
     mmgr::MemoryManager,
     stable::{ Candid, Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 use ic_stable_structures::Cell;
 use serde::Deserialize;
@@ -13,6 +15,43 @@ pub struct CanisterConfig {
     owner: Principal,
     // TODO: make this configurable
     max_item_per_response: u8,
+}
+metrics!(CanisterConfig: Owners,MaxItem);
+
+impl Metrics<Owners> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "canister"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "owner"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.owner.to_string()
+    }
+}
+
+impl Metrics<MaxItem> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "canister"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "max_item_per_response"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.max_item_per_response.to_string()
+    }
 }
 
 impl_max_size!(for CanisterConfig: Principal, u8);

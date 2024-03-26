@@ -3,9 +3,20 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{ canister_id, ArbitraryEmrValue, EmrBody, EmrHeaderWithBody, EmrId, Id, ProviderId, UserId },
+    common::{
+        canister_id,
+        ArbitraryEmrValue,
+        EmrBody,
+        EmrHeaderWithBody,
+        EmrId,
+        Id,
+        ProviderId,
+        UserId,
+    },
+    metrics,
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 
 use crate::header::Header;
@@ -70,6 +81,25 @@ pub mod key {
     >;
 }
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
+metrics!(CoreEmrRegistry: TotalKeys);
+
+impl Metrics<TotalKeys> for CoreEmrRegistry {
+    fn metrics_name() -> &'static str {
+        "total_emr_keys"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
 
 impl CoreEmrRegistry {
     pub fn init(memory_manager: &MemoryManager) -> Self {

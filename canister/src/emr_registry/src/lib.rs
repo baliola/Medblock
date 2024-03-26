@@ -13,8 +13,10 @@ use canister_common::{
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
+    opaque_metrics,
     random::CanisterRandomSource,
     register_log,
+    statistics,
 };
 use ic_cdk::{ init };
 use std::cell::RefCell;
@@ -27,7 +29,7 @@ pub mod header;
 mod memory;
 
 type State = common::State<registry::CoreEmrRegistry, (), ()>;
-register_log!("emr registry");
+register_log!("emr");
 
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
@@ -139,6 +141,17 @@ fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
 #[ic_cdk::query]
 fn ping() {
     // no-op
+}
+
+#[ic_cdk::query]
+fn metrics() -> String {
+    with_state(|s| {
+        [
+            opaque_metrics!(s.registry),
+            statistics::canister::BlockchainMetrics::measure(),
+            statistics::canister::MemoryStatistics::measure(),
+        ].join("\n")
+    })
 }
 
 ic_cdk::export_candid!();

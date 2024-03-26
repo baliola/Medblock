@@ -1,11 +1,12 @@
-
-
 use candid::{ CandidType };
 use canister_common::{
     common::{ EmrHeader, UserId, H256 },
+    metrics,
     mmgr::MemoryManager,
+    opaque_metrics,
     random::CallError,
     stable::{ Memory, Stable, StableSet, ToStable },
+    statistics::traits::{ Metrics, OpaqueMetrics },
 };
 
 use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry };
@@ -13,6 +14,16 @@ use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry }
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub emr_binding_map: EmrBindingMap,
+}
+
+impl OpaqueMetrics for PatientRegistry {
+    fn update(&self) {
+        // no-op
+    }
+
+    fn measure(&self) -> String {
+        [opaque_metrics!(self.emr_binding_map), opaque_metrics!(self.owner_map)].join("\n")
+    }
 }
 
 impl PatientRegistry {
@@ -81,6 +92,25 @@ pub type NIK = H256;
 /// all the emrs that it's BindingKey map to.
 pub type Owner = ic_principal::Principal;
 pub struct OwnerMap(ic_stable_structures::BTreeMap<Owner, Stable<NIK>, Memory>);
+metrics!(OwnerMap: Owners);
+
+impl Metrics<Owners> for OwnerMap {
+    fn metrics_name() -> &'static str {
+        "owner_map"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
 
 #[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PatientRegistryError {
@@ -88,6 +118,8 @@ pub enum PatientRegistryError {
     UserExist,
     #[error("user does not exist")]
     UserDoesNotExist,
+    #[error("emr exists")]
+    EmrExists,
 }
 
 pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
@@ -204,6 +236,25 @@ mod test_owner_map {
 ///
 /// NIK MUST be hashed offchain before being used as key.
 pub struct EmrBindingMap(StableSet<Stable<NIK>, Stable<EmrHeader>>);
+metrics!(EmrBindingMap: EmrsIssued);
+
+impl Metrics<EmrsIssued> for EmrBindingMap {
+    fn metrics_name() -> &'static str {
+        "issued_emrs"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
 
 impl EmrBindingMap {
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -225,14 +276,18 @@ impl EmrBindingMap {
             .ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
-    pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) {
-        self.0.insert(nik.to_stable(), header.to_stable());
+    pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult<()> {
+        if self.is_owner_of(nik.clone(), header.clone()) {
+            return Err(PatientRegistryError::EmrExists);
+        }
+
+        Ok(self.0.insert(nik.to_stable(), header.to_stable()))
     }
 }
 
 #[cfg(test)]
 mod test_emr_binding_map {
-    use candid::{Principal};
+    use candid::{ Principal };
     use canister_common::id;
 
     use super::*;

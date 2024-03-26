@@ -27,7 +27,7 @@ pub struct State {
     freeze_threshold: Cell<Stable<FreezeThreshold, Candid>, Memory>,
 }
 
-register_log!("provider registry");
+register_log!("provider");
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
     static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
@@ -234,13 +234,6 @@ async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrR
     crate::api::UpdateEmrResponse {}
 }
 
-fn register_patient() {
-    todo!()
-}
-
-fn rebind_patient() {
-    todo!()
-}
 fn suspend_provider() {
     todo!()
 }

@@ -5,6 +5,8 @@ use canister_common::{
 };
 use serde::Deserialize;
 
+use crate::registry::NIK;
+
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
     pub provider_id: ProviderId,
@@ -57,4 +59,9 @@ pub struct RegisterProviderResponse {
 #[derive(CandidType, Deserialize)]
 pub struct PingResult {
     pub emr_registry_status: bool,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct IssueRequest {
+    pub header: EmrHeader,
 }
