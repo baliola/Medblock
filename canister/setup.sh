@@ -2,6 +2,18 @@
 
 ROOT=$(git rev-parse --show-toplevel)/canister
 
+echo "checking required dependencies"
+
+if ! command -v dfx &>/dev/null; then
+    echo "dfx could not be found, please install it"
+    exit
+fi
+
+if ! command -v candid-extractor &>/dev/null; then
+    echo "candid-extractor could not be found, installing.."
+    cargo install candid-extractor
+fi
+
 echo "starting ic replica in the background"
 dfx stop >/dev/null 2>&1
 dfx start --background --clean
