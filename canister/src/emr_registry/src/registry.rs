@@ -3,12 +3,23 @@ use std::fmt::Debug;
 use ic_stable_structures::BTreeMap;
 
 use canister_common::{
-    common::{ ArbitraryEmrValue, EmrId, Id, ProviderId, EmrBody, UserId },
+    common::{
+        canister_id,
+        ArbitraryEmrValue,
+        EmrBody,
+        EmrHeaderWithBody,
+        EmrId,
+        Id,
+        ProviderId,
+        UserId,
+    },
+    metrics,
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 
-use crate::header::{ EmrHeader, EmrHeaderWithBody };
+use crate::header::Header;
 
 use self::key::*;
 
@@ -70,10 +81,29 @@ pub mod key {
     >;
 }
 pub struct CoreEmrRegistry(BTreeMap<Stable<CompositeKey>, ArbitraryEmrValue, Memory>);
+metrics!(CoreEmrRegistry: TotalKeys);
+
+impl Metrics<TotalKeys> for CoreEmrRegistry {
+    fn metrics_name() -> &'static str {
+        "total_emr_keys"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
 
 impl CoreEmrRegistry {
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        let tree = memory_manager.get_memory::<_, Self>(BTreeMap::new);
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let tree = memory_manager.get_memory::<_, Self>(BTreeMap::init);
         Self(tree)
     }
 }
@@ -91,7 +121,7 @@ impl Debug for CoreEmrRegistry {
 }
 
 impl CoreEmrRegistry {
-    pub fn add(&mut self, key: AddEmrKey, emr: EmrBody) -> RegistryResult<EmrHeader> {
+    pub fn add(&mut self, key: AddEmrKey, emr: EmrBody) -> RegistryResult<Header> {
         let exists_key_check = EmrKey::new()
             .with_user(key.user_id.clone().into_inner())
             .with_provider(key.provider_id.clone().into_inner())
@@ -101,10 +131,11 @@ impl CoreEmrRegistry {
             return Err(CoreRegistryError::AlreadyExists);
         }
 
-        let header = EmrHeader::new(
+        let header = Header::new(
             key.user_id.clone().into_inner(),
+            key.provider_id.clone().into_inner(),
             key.emr_id.clone().into_inner(),
-            key.provider_id.clone().into_inner()
+            canister_id()
         );
 
         for fragment in emr.into_iter() {
@@ -144,7 +175,7 @@ impl CoreEmrRegistry {
         &mut self,
         key: PartialUpdateKey,
         values: EmrBody
-    ) -> RegistryResult<EmrHeader> {
+    ) -> RegistryResult<Header> {
         let check_key = EmrKey::new()
             .with_user(key.user_id.clone().into_inner())
             .with_provider(key.provider_id.clone().into_inner())
@@ -153,10 +184,11 @@ impl CoreEmrRegistry {
         // ensure emr exists
         self.is_emr_exists(check_key)?;
 
-        let header = EmrHeader::new(
+        let header = Header::new(
             key.user_id.clone().into_inner(),
+            key.provider_id.clone().into_inner(),
             key.emr_id.clone().into_inner(),
-            key.provider_id.clone().into_inner()
+            canister_id()
         );
 
         for fragment in values {
@@ -189,18 +221,13 @@ impl CoreEmrRegistry {
     }
 
     /// Get the list of EMRs for a user, this will not filter by provider
-    pub fn get_user_list_batch(&self, page: u64, limit: u64, key: UserBatchKey) -> Vec<EmrHeader> {
+    pub fn get_user_list_batch(&self, page: u64, limit: u64, key: UserBatchKey) -> Vec<Header> {
         let key = key.build().to_stable();
         self.get_list_batch::<UserId, UserBatch>(page, limit, &key)
     }
 
     /// Get the list of EMRs for a provider, this will not filter by user
-    pub fn get_provider_batch(
-        &self,
-        page: u64,
-        limit: u64,
-        key: ProviderBatchKey
-    ) -> Vec<EmrHeader> {
+    pub fn get_provider_batch(&self, page: u64, limit: u64, key: ProviderBatchKey) -> Vec<Header> {
         let key = key.build().to_stable();
         self.get_list_batch::<ProviderId, ProviderBatch>(page, limit, &key)
     }
@@ -210,7 +237,7 @@ impl CoreEmrRegistry {
         page: u64,
         limit: u64,
         key: &Stable<CompositeKey>
-    ) -> Vec<EmrHeader> {
+    ) -> Vec<Header> {
         let start = page * limit;
         let end = start + limit;
 
@@ -269,9 +296,9 @@ impl CoreEmrRegistry {
         if records.is_empty() {
             Err(CoreRegistryError::NotExist)
         } else {
-            let header = EmrHeader::from(key.into_inner());
+            let header = Header::from(key.into_inner());
             let body = EmrBody::from(records);
-            Ok(EmrHeaderWithBody::new(header, body))
+            Ok(EmrHeaderWithBody::new(header.into(), body))
         }
     }
 }
@@ -281,12 +308,13 @@ mod tests {
     use crate::key::UnknownUsage;
 
     use super::*;
-    use canister_common::{ common::{ AsciiRecordsKey, EmrFragment }, id };
+    use canister_common::{ common::{ AsciiRecordsKey, EmrFragment, EmrHeader }, id };
+    use ic_principal::Principal;
 
     #[test]
     fn test_core_emr_registry() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());
@@ -311,7 +339,7 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(header.user_id.clone().into())
+            .with_user(header.user_id.clone())
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
@@ -321,28 +349,26 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>::new().user_batch().with_user(user.into());
 
         let result = registry.get_user_list_batch(0, 10, key);
-        assert_eq!(
-            result,
-            vec![EmrHeader {
-                user_id: user.into(),
-                emr_id: emr_id.clone(),
-                provider_id: provider.clone(),
-            }]
-        );
+        let header = EmrHeader {
+            user_id: user.into(),
+            emr_id: emr_id.clone(),
+            provider_id: provider.clone(),
+            registry_id: Principal::anonymous().into(),
+        };
+        assert_eq!(result, vec![Header::from(header.clone())]);
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .provider_batch()
             .with_provider(provider.clone());
         let result = registry.get_provider_batch(0, 10, key.clone());
-        assert_eq!(
-            result,
-            vec![EmrHeader {
-                user_id: user.into(),
-                emr_id: emr_id.clone(),
-                provider_id: provider.clone(),
-            }]
+        let header = EmrHeader::new(
+            user.into(),
+            emr_id.clone(),
+            provider.clone(),
+            Principal::anonymous()
         );
+        assert_eq!(result, vec![Header(header)]);
 
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
@@ -360,7 +386,7 @@ mod tests {
     #[test]
     fn test_emr_exists() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());
@@ -385,7 +411,7 @@ mod tests {
         let key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
-            .with_user(header.user_id.into())
+            .with_user(header.user_id.clone())
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
@@ -403,7 +429,7 @@ mod tests {
     #[test]
     fn test_upsert_emr() {
         let memory_manager = MemoryManager::init();
-        let mut registry = CoreEmrRegistry::new(&memory_manager);
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
 
         let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
         let user = canister_common::test_utils::hash(user.as_bytes());
@@ -424,8 +450,9 @@ mod tests {
         let emr = EmrBody::from(records);
 
         let header = registry.add(key.clone(), emr.clone()).unwrap();
+        assert!(registry.add(key.clone(), emr.clone()).is_err());
 
-        let key = CompositeKeyBuilder::<UnknownUsage>
+        let _key = CompositeKeyBuilder::<UnknownUsage>
             ::new()
             .emr()
             .with_user(header.user_id.clone())
@@ -443,6 +470,7 @@ mod tests {
             .update_batch(header.to_partial_update_key(), new_fields.clone().into())
             .unwrap();
 
+        println!("{:?}", registry);
         let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
 
         assert!(emrs.clone().into_inner().len() == total_fields.len());

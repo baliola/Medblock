@@ -4,7 +4,7 @@
       "candid": "src/provider_registry/candid.did",
       "package": "provider_registry",
       "type": "rust",
-      "dependencies": ["emr_registry"]
+      "dependencies": ["emr_registry", "patient_registry"]
     },
     "emr_registry": {
       "candid": "src/emr_registry/candid.did",

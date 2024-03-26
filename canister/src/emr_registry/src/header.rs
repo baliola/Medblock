@@ -1,64 +1,65 @@
-use candid::CandidType;
-use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId } };
+use candid::{ CandidType, Principal };
+use canister_common::{ common::{ EmrHeader, EmrId, ProviderId, UserId }, deref, from };
 use serde::Deserialize;
 
-use crate::{
-    key::{ CompositeKey },
-    registry::key::{ EmrKey, PartialUpdateKey },
-};
+use crate::{ key::{ CompositeKey }, registry::key::{ EmrKey, PartialUpdateKey } };
 
 #[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
-pub struct EmrHeader {
-    pub user_id: UserId,
-    pub emr_id: EmrId,
-    pub provider_id: ProviderId,
+pub struct Header(pub(crate) EmrHeader);
+deref!(Header: EmrHeader);
+from!(Header: EmrHeader);
+impl From<Header> for EmrHeader {
+    fn from(val: Header) -> Self {
+        val.0
+    }
 }
 
-impl EmrHeader {
-    pub fn new(user_id: UserId, emr_id: EmrId, provider_id: ProviderId) -> Self {
-        Self { user_id, emr_id, provider_id }
+impl Header {
+    pub fn into_inner(self) -> EmrHeader {
+        self.0
+    }
+
+    pub fn new(
+        user_id: UserId,
+        provider_id: ProviderId,
+        emr_id: EmrId,
+        registry_id: Principal
+    ) -> Self {
+        Header(EmrHeader {
+            user_id,
+            provider_id,
+            emr_id,
+            registry_id: registry_id.into(),
+        })
     }
 
     pub fn to_emr_key(self) -> EmrKey {
         EmrKey::new()
-            .with_user(self.user_id)
-            .with_provider(self.provider_id)
-            .with_emr_id(self.emr_id)
+            .with_user(self.0.user_id)
+            .with_provider(self.0.provider_id)
+            .with_emr_id(self.0.emr_id)
     }
 
     pub fn to_partial_update_key(self) -> PartialUpdateKey {
         PartialUpdateKey::new()
-            .with_user(self.user_id)
-            .with_provider(self.provider_id)
-            .with_emr_id(self.emr_id)
-    }
-}
-impl From<CompositeKey> for EmrHeader {
-    fn from(value: CompositeKey) -> Self {
-        Self {
-            user_id: value.0,
-            provider_id: value.1,
-            emr_id: value.2,
-        }
+            .with_user(self.0.user_id)
+            .with_provider(self.0.provider_id)
+            .with_emr_id(self.0.emr_id)
     }
 }
 
-#[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
-pub struct EmrHeaderWithBody {
-    pub header: EmrHeader,
-    pub body: EmrBody,
-}
+impl From<CompositeKey> for Header {
+    fn from(key: CompositeKey) -> Self {
+        Header(EmrHeader {
+            #[cfg(target_arch = "wasm32")]
+            registry_id: ic_cdk::id().into(),
+          
+            #[cfg(not(target_arch = "wasm32"))]
+            registry_id: Principal::anonymous().into(),
 
-impl EmrHeaderWithBody {
-    pub fn new(header: EmrHeader, body: EmrBody) -> Self {
-        Self { header, body }
-    }
-
-    pub fn to_header(self) -> EmrHeader {
-        self.header
-    }
-
-    pub fn into_inner_body(self) -> EmrBody {
-        self.body
+            user_id: UserId::from(key.0),
+            provider_id: ProviderId::from(key.1),
+            emr_id: EmrId::from(key.2),
+        })
     }
 }

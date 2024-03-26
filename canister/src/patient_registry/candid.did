@@ -1,1 +1,26 @@
-service : { dummy : () -> () query }
+type EmrFragment = record { key : text; value : text };
+type EmrHeader = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type IssueRequest = record { header : EmrHeader };
+type PingResult = record { emr_registry_status : bool };
+type ReadEmrByIdRequest = record {
+  provider_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
+type RegisterPatientRequest = record { nik : text };
+service : () -> {
+  metrics : () -> (text) query;
+  notify_issued : (IssueRequest) -> ();
+  ping : () -> (PingResult) composite_query;
+  read_emr_by_id : (ReadEmrByIdRequest) -> (
+      ReadEmrByIdResponse,
+    ) composite_query;
+  register_patient : (RegisterPatientRequest) -> ();
+}

@@ -1,1 +1,36 @@
-service :{} 
+type EmrFragment = record { key : text; value : text };
+type EmrHeader = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type EmrListProviderRequest = record { page : nat64; limit : nat8 };
+type EmrListProviderResponse = record { ids : vec text };
+type Header = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type IssueEmrRequest = record { emr : vec EmrFragment; user_id : text };
+type IssueEmrResponse = record { emr_header : Header };
+type PingResult = record {
+  patient_registry_status : bool;
+  emr_registry_status : bool;
+};
+type RegisternewProviderRequest = record {
+  provider_principal : principal;
+  display_name : text;
+};
+type UpdateEmrRequest = record { fields : vec EmrFragment; header : EmrHeader };
+service : () -> {
+  emr_list_provider : (EmrListProviderRequest) -> (
+      EmrListProviderResponse,
+    ) query;
+  issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
+  metrics : () -> (text) query;
+  ping : () -> (PingResult) composite_query;
+  register_new_provider : (RegisternewProviderRequest) -> (record {});
+  update_emr : (UpdateEmrRequest) -> (record {});
+}

@@ -1,11 +1,13 @@
 use candid::CandidType;
-use canister_common::{ common::{ EmrId, ProviderId, EmrBody, UserId }, from };
+use canister_common::{ common::{ EmrBody, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
 use serde::Deserialize;
 
-use crate::{ header::{ EmrHeader, EmrHeaderWithBody }, registry::key };
+use crate::registry::key;
 
 
 pub use crate::header;
+
+use self::header::Header;
 
 #[derive(CandidType, Deserialize)]
 pub struct ReadEmrByIdRequest {
@@ -54,31 +56,31 @@ impl CreateEmrRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateEmrResponse {
-    pub header: EmrHeader,
+    pub header: Header,
 }
 
-from!(CreateEmrResponse: EmrHeader as header {
+from!(CreateEmrResponse: Header as header {
     header : header
 });
 
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrRequest {
-    pub header: EmrHeader,
+    pub header: Header,
     pub fields: EmrBody,
 }
 
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrResponse {
-    pub header: EmrHeader,
+    pub header: Header,
 }
 
-from!(UpdateEmrResponse: EmrHeader as header {
+from!(UpdateEmrResponse: Header as header {
     header : header
 });
 
 #[derive(CandidType, Deserialize)]
 pub struct RemoveEmrRequest {
-    pub header: EmrHeader,
+    pub header: Header,
 }
 
 #[derive(CandidType, Deserialize)]

@@ -195,14 +195,12 @@ macro_rules! native_bound {
 /// will emit a `value` variable that can be used to reference members of `$from`
 #[macro_export]
 macro_rules! from {
-    ($ty:ty: $($from:ty),*) => {
-        $(
+    ($ty:ty: $from:ty) => {
             impl From<$from> for $ty {
                 fn from(value: $from) -> Self {
                     Self(value)
                 }
             }
-        )*
     };
 
     ($ty:ty: $($from:ty as $var:ident { $($k:ident: $v:ident)* }),*) => {
@@ -255,4 +253,26 @@ macro_rules! generate_memory_id {
 
         generate_memory_id!(@internal $counter + 1_u8, $($rest,)*);
     };
+}
+#[macro_export]
+macro_rules! register_log {
+    ($lit:literal) => {
+        pub(crate) const __INTERNAL_LOG_IDENTIFIDER: &'static str = $lit;
+    };
+}
+
+#[macro_export]
+macro_rules! log {
+    ($fmt:expr) => (
+        let args = format!("[{}]: {}", __INTERNAL_LOG_IDENTIFIDER, $fmt);
+        ic_cdk::println!("{}", args)
+    );
+    
+    (
+        $fmt:expr,
+        $($arg:tt)*
+    ) => (
+        let args = format!("[{}]: {}", __INTERNAL_LOG_IDENTIFIDER, format!($fmt, $($arg)*));
+        ic_cdk::println!("{}", args)
+    );
 }

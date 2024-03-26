@@ -26,9 +26,9 @@ impl MemoryManager {
     ) -> R {
 
         let mem = self.manager.borrow().get(Memory::get());
-        let result = f(mem);
+        
 
-        result
+        f(mem)
     }
     pub fn init() -> Self {
         let mgr = IcMemoryManager::init(DefaultMemoryImpl::default());

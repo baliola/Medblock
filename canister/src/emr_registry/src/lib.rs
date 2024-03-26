@@ -9,10 +9,14 @@ use api::{
     UpdateEmrResponse,
 };
 use canister_common::{
-    common::{ self },
+    common,
     id_generator::IdGenerator,
+    log,
     mmgr::MemoryManager,
+    opaque_metrics,
     random::CanisterRandomSource,
+    register_log,
+    statistics,
 };
 use ic_cdk::{ init };
 use std::cell::RefCell;
@@ -25,10 +29,13 @@ pub mod header;
 mod memory;
 
 type State = common::State<registry::CoreEmrRegistry, (), ()>;
+register_log!("emr");
 
 thread_local! {
-    static STATE: RefCell<Option<State>> = RefCell::new(None);
-    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = RefCell::new(None);
+    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+    static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
+        RefCell::new(None)
+    };
 }
 
 /// A helper method to read the state.
@@ -52,6 +59,8 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
     STATE.with(|cell| f(cell.borrow_mut().as_mut().expect("state not initialized")))
 }
 
+// TODO : add init method
+
 fn initialize_id_generator() {
     ic_cdk_timers::set_timer(Duration::from_secs(3), || {
         ic_cdk::spawn(async move {
@@ -62,30 +71,40 @@ fn initialize_id_generator() {
                 *id_gen.borrow_mut() = Some(id_generator);
             });
 
-            ic_cdk::print("id generator initialized");
+            log!("id generator initialized");
         })
     });
+}
+fn init_state() -> self::State {
+    let memory_manager = MemoryManager::init();
+    let state = State::new(
+        registry::CoreEmrRegistry::init(&memory_manager),
+        (),
+        (),
+        memory_manager
+    );
+
+    state
+}
+
+fn initialize() {
+    let state = init_state();
+    STATE.replace(Some(state));
+    log!("state initialized");
+    initialize_id_generator()
 }
 
 #[init]
 fn init() {
-    STATE.with(|s| {
-        let memory_manager = MemoryManager::init();
-        let state = State::new(
-            registry::CoreEmrRegistry::new(&memory_manager),
-            (),
-            (),
-            memory_manager
-        );
-
-        s.replace(Some(state));
-
-        ic_cdk::print("state initialized");
-    });
-
-    initialize_id_generator();
+    initialize();
 }
 
+#[ic_cdk::post_upgrade]
+fn post_upgrade() {
+    initialize();
+}
+
+// TODO : add init state
 #[ic_cdk::query]
 fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })
@@ -120,9 +139,19 @@ fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
 
 // this will serve as an synchronization function in the future, for now it's only for testing inter-canister calls successfully
 #[ic_cdk::query]
-fn ping(){
+fn ping() {
     // no-op
 }
 
+#[ic_cdk::query]
+fn metrics() -> String {
+    with_state(|s| {
+        [
+            opaque_metrics!(s.registry),
+            statistics::canister::BlockchainMetrics::measure(),
+            statistics::canister::MemoryStatistics::measure(),
+        ].join("\n")
+    })
+}
 
 ic_cdk::export_candid!();

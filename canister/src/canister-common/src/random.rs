@@ -31,7 +31,7 @@ pub struct CallError(RejectionCode, Reason);
 
 impl CallError {
     pub fn code(&self) -> RejectionCode {
-        self.0.clone()
+        self.0
     }
 
     pub fn reason(&self) -> Reason {

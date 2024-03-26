@@ -1,5 +1,5 @@
 use canister_common::generate_memory_id;
 
-use crate::registry::{ EmrBindingMap, OwnerMap };
+use crate::{config::CanisterConfig, registry::{ EmrBindingMap, OwnerMap }};
 
-generate_memory_id!(EmrBindingMap, OwnerMap);
+generate_memory_id!(EmrBindingMap, OwnerMap, CanisterConfig);

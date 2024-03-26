@@ -26,8 +26,9 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
-use crate::api::{ self, IssueEmrRequest };
+use crate::api::{ IssueEmrRequest };
 use crate::declarations::emr_registry::{ emr_registry, CreateEmrRequest, CreateEmrResponse };
+use crate::declarations::patient_registry::patient_registry;
 
 use self::provider::{ Provider, V1 };
 
@@ -55,7 +56,7 @@ impl ProviderRegistry {
 
         match result {
             Ok(_) => (),
-            Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+            Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
         }
     }
 }
@@ -74,14 +75,38 @@ impl ProviderRegistry {
         Ok(req.to_args(provider.into_inner()))
     }
 
+    fn to_issue_request(
+        req: &CreateEmrResponse
+    ) -> crate::declarations::patient_registry::IssueRequest {
+        let provider_id = req.header.provider_id.to_owned();
+        let user_id = req.header.user_id.to_owned();
+        let emr_id = req.header.emr_id.to_owned();
+        let registry_id = req.header.registry_id.to_owned();
+
+        crate::declarations::patient_registry::IssueRequest {
+            header: crate::declarations::patient_registry::EmrHeader {
+                provider_id,
+                user_id,
+                emr_id,
+                registry_id,
+            },
+        }
+    }
+
     pub async fn do_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
         let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
 
         // trap explicitly if not succeeded
+
         // TODO : further handle the error, to cover sys transient error described in : https://internetcomputer.org/docs/current/references/ic-interface-spec#reject-codes
         match create_emr_response {
             Ok((response,)) => {
-                return response;
+                let issue_request = Self::to_issue_request(&response);
+
+                match patient_registry.notify_issued(issue_request).await.map_err(CallError::from) {
+                    Ok(_) => response,
+                    Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+                }
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
         }
@@ -114,9 +139,9 @@ impl Metrics<RegistryMetrics> for ProviderRegistry {
 
 impl ProviderRegistry {
     pub fn init(memory_manager: &MemoryManager) -> Self {
-        let providers = Providers::new(memory_manager);
-        let providers_bindings = ProvidersBindings::new(memory_manager);
-        let issued = Issued::new(memory_manager);
+        let providers = Providers::init(memory_manager);
+        let providers_bindings = ProvidersBindings::init(memory_manager);
+        let issued = Issued::init(memory_manager);
 
         Self { providers, providers_bindings, issued }
     }
@@ -164,7 +189,7 @@ impl ProviderRegistry {
     ) -> ProviderRegistryResult<()> {
         // TODO : handle if we're using multiple emr canister
         self.populate_issue_map(
-            &provider_principal,
+            provider_principal,
             emr_id,
             crate::declarations::emr_registry::CANISTER_ID
         )?;
@@ -308,10 +333,11 @@ pub struct Emr {
     id: EmrId,
 }
 impl_max_size!(for Emr: EmrId, Principal);
-impl_mem_bound!(for Emr: bounded; fixed_size: true);
+impl_mem_bound!(for Emr: bounded; fixed_size: false);
 impl_range_bound!(Emr);
 
 pub type IssueMapResult<T> = Result<T, IssueMapError>;
+// TODO : change to emr header
 /// Issued emr map. used to track emr issued by a particular provider.
 pub struct Issued(StableSet<Stable<InternalProviderId>, Stable<Emr>>);
 deref!(mut Issued: StableSet<Stable<InternalProviderId>, Stable<Emr>>);
@@ -336,8 +362,8 @@ impl Metrics<SetLength> for Issued {
 }
 
 impl Issued {
-    fn new(memory_manager: &MemoryManager) -> Self {
-        Self(StableSet::new::<Self>(memory_manager))
+    fn init(memory_manager: &MemoryManager) -> Self {
+        Self(StableSet::init::<Self>(memory_manager))
     }
     fn provider_exists(&self, provider: InternalProviderId) -> bool {
         self.range_key_exists(&provider.to_stable())
@@ -473,8 +499,8 @@ impl ProvidersBindings {
         self.0.get(provider).ok_or(ProviderBindingMapError::ProviderDoesNotExist)
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new))
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
     pub fn is_valid_owner(&self, provider: &ProviderPrincipal) -> bool {
@@ -565,8 +591,8 @@ impl Providers {
         self.map.contains_key(&provider.to_stable())
     }
 
-    pub fn new(memory_manager: &MemoryManager) -> Self {
-        let mem = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new);
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let mem = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init);
 
         Self { map: mem }
     }
@@ -586,7 +612,7 @@ mod provider_test {
     #[test]
     fn test_add_read_v1() {
         let memory_manager = MemoryManager::init();
-        let mut providers = Providers::new(&memory_manager);
+        let mut providers = Providers::init(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);
@@ -609,7 +635,7 @@ mod provider_test {
     #[test]
     fn test_metrics() {
         let memory_manager = MemoryManager::init();
-        let mut providers = Providers::new(&memory_manager);
+        let mut providers = Providers::init(&memory_manager);
 
         let mut id_bytes = [0; 10];
         id_bytes.fill(0);

@@ -1,4 +1,4 @@
-use canister_common::{ common::{ freeze::FreezeThreshold, Get }, generate_memory_id };
+use canister_common::{ generate_memory_id };
 
 use crate::{ config::CanisterConfig, registry::{ Issued, Providers, ProvidersBindings } };
 

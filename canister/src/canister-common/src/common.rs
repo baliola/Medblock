@@ -1,4 +1,4 @@
-use std::{ marker::PhantomData, str::FromStr };
+use std::{ str::FromStr };
 
 use candid::{ CandidType, Principal };
 use ic_stable_structures::{ storable::Bound };
@@ -111,7 +111,10 @@ impl<const N: usize> AsciiRecordsKey<N> {
 
 impl<const N: usize> Default for AsciiRecordsKey<N> {
     fn default() -> Self {
-        Self { key: [0_u8; N], len: Default::default() }
+        let mut key = [0_u8; N];
+        key.fill(0);
+
+        Self { key, len: Default::default() }
     }
 }
 
@@ -157,7 +160,7 @@ impl<const N: usize> AsciiRecordsKey<N> {
     pub fn to_ascii_str(&self) -> &str {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
-        std::str::from_utf8(buffer_ref).expect("key must be ascii")
+        std::str::from_utf8(buffer_ref).expect("key should be ascii")
     }
 }
 
@@ -431,7 +434,6 @@ mod tests {
     PartialEq,
     Eq,
     Serialize,
-    Deserialize,
     PartialOrd,
     Ord,
     Default
@@ -445,6 +447,14 @@ impl PrincipalBytes {
         bytes[..principal_bytes.len()].copy_from_slice(principal_bytes);
         Self(bytes)
     }
+
+    pub fn from_principal(principal: Principal) -> Self {
+        Self::new(principal)
+    }
+
+    pub fn to_principal(self) -> Principal {
+        self.into()
+    }
 }
 
 impl From<Principal> for PrincipalBytes {
@@ -456,6 +466,15 @@ impl From<Principal> for PrincipalBytes {
 impl From<PrincipalBytes> for Principal {
     fn from(principal_bytes: PrincipalBytes) -> Self {
         Principal::from_slice(&principal_bytes.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for PrincipalBytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        let principal = Principal::deserialize(deserializer)?;
+        Ok(Self::new(principal))
     }
 }
 
@@ -488,6 +507,7 @@ pub mod guard {
     use ic_principal::Principal;
 
     /// doesn't allow calls from anonymous principal
+    #[inline(always)]
     pub fn verified_caller() -> Result<Principal, String> {
         let caller = ic_cdk::caller();
 
@@ -567,23 +587,27 @@ pub const HASH_LEN: usize = 32;
 /// generap purpose 256 bit arbitrary hex encoded hash, could be used as index.
 /// currently we make no assumption of the hash method used, as this should generally be
 /// generated offchain and only deserialized onchain.
-#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode, Default)]
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
 pub struct H256([u8; HASH_LEN]);
+
+impl Default for H256 {
+    fn default() -> Self {
+        let mut buf = [0u8; HASH_LEN];
+        buf.fill(0);
+
+        Self(buf)
+    }
+}
+
 impl_max_size!(for H256: 32);
 impl_mem_bound!(for H256: bounded; fixed_size: true);
 deref!(H256: [u8; HASH_LEN]);
 impl_range_bound!(H256);
 from!(H256: [u8; HASH_LEN]);
 
-impl H256 {
-    pub fn as_str(&self) -> &str {
-        std::str::from_utf8(&self.0).expect("key must be ascii")
-    }
-}
-
 impl ToString for H256 {
     fn to_string(&self) -> String {
-        hex::encode(&self.0)
+        hex::encode(self.0)
     }
 }
 
@@ -623,7 +647,7 @@ mod deserialize_h256 {
                     format!("error deserializing h256 from string with message  : {e}")
                 )
             )?;
-            Ok(Self::from_str(&s).map_err(serde::de::Error::custom)?)
+            Self::from_str(&s).map_err(serde::de::Error::custom)
         }
     }
 
@@ -635,7 +659,7 @@ mod deserialize_h256 {
         fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
             where S: candid::types::Serializer
         {
-            serializer.serialize_text(self.as_str())
+            serializer.serialize_text(&self.to_string())
         }
     }
 
@@ -657,9 +681,17 @@ mod deserialize_h256 {
         }
 
         #[test]
+        fn test_from_str() {
+            let hash = dummy_hash();
+            let h256 = H256::from_str(&hash).unwrap();
+
+            assert_eq!(h256.to_string(), hash);
+        }
+
+        #[test]
         fn test_deserialize_h256() {
             let hash = "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c";
-            let h256 = H256::from_str(&hash).unwrap();
+            let h256 = H256::from_str(hash).unwrap();
 
             let h256_str = h256.to_string();
             println!("h256_str : {}", h256_str);
@@ -676,7 +708,7 @@ mod deserialize_h256 {
         #[test]
         fn test_wrong_hash() {
             let hash = "51e04ecd372fbbd123dd842bc485b87db5c2a50e4ea83590108363c56ae38d";
-            let h256 = H256::from_str(&hash);
+            let h256 = H256::from_str(hash);
 
             let Err(e) = h256 else { unreachable!() };
             assert_eq!(e, H256Error::InvalidLength);
@@ -763,4 +795,98 @@ impl<Registry, Config, Threshold> State<Registry, Config, Threshold> {
 
 pub trait Get<T> {
     fn get() -> T;
+}
+
+#[derive(
+    Debug,
+    Deserialize,
+    CandidType,
+    PartialEq,
+    Eq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Default,
+    Encode,
+    Decode
+)]
+pub struct EmrHeader {
+    pub emr_id: EmrId,
+    pub provider_id: ProviderId,
+    pub user_id: UserId,
+    /// reserved for future use of multiple emr registry canister
+    pub registry_id: PrincipalBytes,
+}
+
+
+impl_max_size!(for EmrHeader: EmrHeader);
+impl_mem_bound!(for EmrHeader: bounded; fixed_size: true);
+impl_range_bound!(EmrHeader);
+
+impl EmrHeader {
+    pub fn new(
+        user_id: UserId,
+        emr_id: EmrId,
+        provider_id: ProviderId,
+        registry_id: Principal
+    ) -> Self {
+        Self { user_id, emr_id, provider_id, registry_id: PrincipalBytes::from(registry_id) }
+    }
+}
+
+#[cfg(test)]
+mod header_test {
+    use super::*;
+
+    #[test]
+    fn test_len_encoded() {
+        
+
+        let header = EmrHeader::new(
+            UserId::default(),
+            EmrId::default(),
+            ProviderId::default(),
+            Principal::anonymous()
+        );
+
+        let encoded = header.encode();
+        println!("{:?}", encoded.len());
+
+        let decoded = <EmrHeader as parity_scale_codec::Decode>::decode(&mut &*encoded).unwrap();
+
+        assert_eq!(decoded, header);
+    }
+}
+
+#[derive(Debug, Deserialize, CandidType, PartialEq, Eq)]
+pub struct EmrHeaderWithBody {
+    pub header: EmrHeader,
+    pub body: EmrBody,
+}
+
+impl EmrHeaderWithBody {
+    pub fn new(header: EmrHeader, body: EmrBody) -> Self {
+        Self { header, body }
+    }
+
+    pub fn to_header(self) -> EmrHeader {
+        self.header
+    }
+
+    pub fn into_inner_body(self) -> EmrBody {
+        self.body
+    }
+}
+
+/// get canister id, will return [Principal::anonymous] if not running on the ic
+pub fn canister_id() -> Principal {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Principal::anonymous()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        ic_cdk::api::id()
+    }
 }
