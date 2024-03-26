@@ -24,4 +24,4 @@ dist/
 .env
 
 misc
-src/*/declarations
+src/*/*/declarations/

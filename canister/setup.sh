@@ -2,8 +2,8 @@
 
 ROOT=$(git rev-parse --show-toplevel)/canister
 
-echo $ROOT
 echo "starting ic replica in the background"
+dfx stop >/dev/null 2>&1
 dfx start --background --clean
 
 echo "creating canisters"
