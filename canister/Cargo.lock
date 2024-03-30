@@ -979,6 +979,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "canister-common",
+ "hex",
  "ic-cdk",
  "ic-cdk-bindgen",
  "ic-cdk-timers",

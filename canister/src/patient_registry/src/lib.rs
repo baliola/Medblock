@@ -29,6 +29,7 @@ mod memory;
 mod declarations;
 mod api;
 mod config;
+mod encryption;
 
 type State = canister_common::common::State<
     registry::PatientRegistry,
