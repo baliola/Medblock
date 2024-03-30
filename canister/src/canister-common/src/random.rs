@@ -4,8 +4,12 @@ use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 use tiny_keccak::Hasher;
 
+use crate::deref;
+
 pub trait RandomSource {
     fn get_random_bytes(&mut self) -> [u8; 32];
+
+    fn raw_random_u64(&mut self) -> u64;
 
     #[allow(async_fn_in_trait)]
     async fn reseed(&mut self) {}
@@ -22,6 +26,11 @@ impl RandomSource for CanisterRandomSource {
 
     async fn reseed(&mut self) {
         self.reseed().await;
+    }
+
+    fn raw_random_u64(&mut self) -> u64 {
+        // to ensure that the random number is more than 6 digit
+        self.rng.rand_range(1_000_000_000_u64..u64::MAX)
     }
 }
 

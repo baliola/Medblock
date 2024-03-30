@@ -30,6 +30,7 @@ mod declarations;
 mod api;
 mod config;
 mod encryption;
+mod consent;
 
 type State = canister_common::common::State<
     registry::PatientRegistry,
