@@ -1,3 +1,14 @@
+type ClaimConsentRequest = record { code : text };
+type ClaimConsentResponse = record { session_id : text };
+type CreateConsentRequest = record { allowed : vec EmrHeader };
+type DeriveSecretKeyRequest = record {
+  session_id : text;
+  transport_key : vec nat8;
+};
+type DeriveSecretKeyResponse = record {
+  hex_encoded_encrypted_secret_key : text;
+};
+type DeriveVerificationKeyResponse = record { hex_encoded_public_key : text };
 type EmrFragment = record { key : text; value : text };
 type EmrHeader = record {
   provider_id : text;
@@ -6,6 +17,7 @@ type EmrHeader = record {
   registry_id : principal;
 };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type EmrListPatientResponse = record { emrs : vec EmrHeader };
 type IssueRequest = record { header : EmrHeader };
 type PingResult = record { emr_registry_status : bool };
 type ReadEmrByIdRequest = record {
@@ -14,13 +26,33 @@ type ReadEmrByIdRequest = record {
   registry_id : principal;
 };
 type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
+type ReadEmrSessionRequest = record {
+  session_id : text;
+  args : ReadEmrByIdRequest;
+};
 type RegisterPatientRequest = record { nik : text };
 service : () -> {
+  claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
+  create_consent : (CreateConsentRequest) -> (ClaimConsentRequest);
+  derive_encryption_key_with_session : (DeriveSecretKeyRequest) -> (
+      DeriveSecretKeyResponse,
+    );
+  derive_encryption_verification_key_with_session : (ClaimConsentResponse) -> (
+      DeriveVerificationKeyResponse,
+    );
+  emr_list_with_session : (ClaimConsentResponse) -> (
+      EmrListPatientResponse,
+    ) query;
+  finish_session : (ClaimConsentResponse) -> ();
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
   ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (
       ReadEmrByIdResponse,
     ) composite_query;
+  read_emr_with_session : (ReadEmrSessionRequest) -> (
+      ReadEmrByIdResponse,
+    ) composite_query;
   register_patient : (RegisterPatientRequest) -> ();
+  revoke_consent : (ClaimConsentRequest) -> ();
 }

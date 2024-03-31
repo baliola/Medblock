@@ -41,6 +41,7 @@ impl PatientRegistry {
         })
     }
 
+
     pub async fn do_call_read_emr(
         arg: crate::declarations::emr_registry::ReadEmrByIdRequest
     ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {

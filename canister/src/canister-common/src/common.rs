@@ -590,12 +590,24 @@ pub const HASH_LEN: usize = 32;
 #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
 pub struct H256([u8; HASH_LEN]);
 
+impl H256 {
+    pub fn as_bytes(&self) -> &[u8; HASH_LEN] {
+        &self.0
+    }
+}
+
 impl Default for H256 {
     fn default() -> Self {
         let mut buf = [0u8; HASH_LEN];
         buf.fill(0);
 
         Self(buf)
+    }
+}
+
+impl AsRef<[u8]> for H256 {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 

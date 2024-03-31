@@ -20,6 +20,8 @@ parity-scale-codec = { workspace = true, default-features = false, features = [
 ] }
 ic-stable-structures = { workspace = true }
 thiserror = { workspace = true }
+tiny-keccak = { workspace = true }
+hex = { workspace = true }
 ic_principal = { workspace = true }
 
 [dev-dependencies]

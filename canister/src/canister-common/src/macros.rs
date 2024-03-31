@@ -264,15 +264,19 @@ macro_rules! register_log {
 #[macro_export]
 macro_rules! log {
     ($fmt:expr) => (
-        let args = format!("[{}]: {}", __INTERNAL_LOG_IDENTIFIDER, $fmt);
+        let ident = crate::__INTERNAL_LOG_IDENTIFIDER;
+    
+        let args = format!("[{}]: {}", ident, $fmt);
         ic_cdk::println!("{}", args)
     );
-    
+
     (
         $fmt:expr,
         $($arg:tt)*
     ) => (
-        let args = format!("[{}]: {}", __INTERNAL_LOG_IDENTIFIDER, format!($fmt, $($arg)*));
+        let ident = crate::__INTERNAL_LOG_IDENTIFIDER;
+
+        let args = format!("[{}]: {}", ident, format!($fmt, $($arg)*));
         ic_cdk::println!("{}", args)
     );
 }
