@@ -186,7 +186,7 @@ impl EncryptionApi {
     }
 
     /// retrieve encryption key that will be used to encrypt and decrypt EMR with specified transport key
-    pub async fn encrypted_symmetric_key_for_caller(
+    pub async fn encrypted_emr_decryption_key(
         transport_key_public_key: Vec<u8>,
         user: &NIK
     ) -> HexEncodedSecretKey {

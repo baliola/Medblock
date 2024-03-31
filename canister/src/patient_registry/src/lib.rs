@@ -1,12 +1,26 @@
 use std::{ cell::RefCell, time::Duration };
 
 use api::{
+    ClaimConsentRequest,
+    ClaimConsentResponse,
+    CreateConsentRequest,
+    CreateConsentResponse,
+    DeriveSecretKeyRequest,
+    DeriveSecretKeyResponse,
+    DeriveVerificationKeyRequest,
+    DeriveVerificationKeyResponse,
+    EmrListConsentRequest,
+    EmrListConsentResponse,
     EmrListPatientRequest,
     EmrListPatientResponse,
+    FinishSessionRequest,
     IssueRequest,
     PingResult,
     ReadEmrByIdRequest,
+    ReadEmrSessionRequest,
+    ReadEmrSessionResponse,
     RegisterPatientRequest,
+    RevokeConsentRequest,
 };
 use canister_common::{
     common::guard::verified_caller,
@@ -21,6 +35,7 @@ use canister_common::{
 };
 use config::CanisterConfig;
 use declarations::emr_registry::{ self, ReadEmrByIdResponse };
+use encryption::vetkd;
 use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
@@ -182,8 +197,61 @@ fn metrics() -> String {
     })
 }
 
-async fn create_consent() {}
-async fn read_emr_by_consent() {}
-async fn get_emr_list_with_consent() {}
+#[ic_cdk::update(guard = "only_patient")]
+async fn create_consent(req: CreateConsentRequest) -> CreateConsentResponse {
+    let owner = verified_caller().unwrap();
+    let owner = with_state(|s| s.registry.owner_map.get_nik(&owner))
+        .unwrap()
+        .into_inner();
+
+    ConsentsApi::generate_consent(owner, req.allowed).into()
+}
+
+#[ic_cdk::query(composite = true)]
+async fn read_emr_with_session(
+    req: ReadEmrSessionRequest
+) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
+    ConsentsApi::read_emr_with_session(&req.session_id, req.args).await.unwrap()
+}
+
+#[ic_cdk::query]
+async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResponse {
+    ConsentsApi::emr_list_with_session(&req.session_id).unwrap().into()
+}
+
+#[ic_cdk::update]
+/// Derive the encryption key with the session id securely transported by encrypting the decryption key, used to decrypt emr
+async fn derive_encryption_key_with_session(
+    req: DeriveSecretKeyRequest
+) -> DeriveSecretKeyResponse {
+    let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
+    vetkd::EncryptionApi::encrypted_emr_decryption_key(req.transport_key, &consent.nik).await.into()
+}
+
+#[ic_cdk::update]
+/// Derive the encryption verification key with the session id, used to verify the encrypted emr decryption key
+async fn derive_encryption_verification_key_with_session(
+    req: DeriveVerificationKeyRequest
+) -> DeriveVerificationKeyResponse {
+    let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
+    vetkd::EncryptionApi::verification_key_for(&consent.nik).await.into()
+}
+
+#[ic_cdk::update]
+fn revoke_consent(req: RevokeConsentRequest) {
+    ConsentsApi::revoke_consent(&req.code);
+}
+
+#[ic_cdk::update]
+fn finish_session(req: FinishSessionRequest) {
+    ConsentsApi::finish_sesion(&req.session_id)
+}
+
+#[ic_cdk::update]
+fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
+    ConsentsApi::claim_consent(&req.code)
+        .expect("consent already claimed or does not exists")
+        .into()
+}
 
 ic_cdk::export_candid!();
