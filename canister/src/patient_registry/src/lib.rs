@@ -24,6 +24,8 @@ use declarations::emr_registry::{ self, ReadEmrByIdResponse };
 use ic_stable_structures::Cell;
 use registry::PatientRegistry;
 
+use crate::consent::ConsentsApi;
+
 mod registry;
 mod memory;
 mod declarations;
@@ -111,7 +113,8 @@ fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
     log!("canister state initialized");
-    initialize_id_generator()
+    initialize_id_generator();
+    ConsentsApi::init();
 }
 
 #[ic_cdk::post_upgrade]
@@ -124,7 +127,7 @@ fn canister_init() {
     initialize()
 }
 
-#[ic_cdk::query(composite = true)]
+#[ic_cdk::query(composite = true, guard = "only_patient")]
 async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     let user = verified_caller().unwrap();
     let args = with_state(|s| s.registry.construct_args_read_emr(req, &user)).unwrap();
@@ -141,9 +144,11 @@ fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
         .into()
 }
 
- #[ic_cdk::update]
+#[ic_cdk::update]
 fn notify_issued(req: IssueRequest) {
-    with_state_mut(|s| s.registry.emr_binding_map.issue_for(req.header.user_id.clone(), req.header)).unwrap();
+    with_state_mut(|s|
+        s.registry.emr_binding_map.issue_for(req.header.user_id.clone(), req.header)
+    ).unwrap();
 }
 
 fn authorized_canisters() {
@@ -176,5 +181,9 @@ fn metrics() -> String {
         ].join("\n")
     })
 }
+
+async fn create_consent() {}
+async fn read_emr_by_consent() {}
+async fn get_emr_list_with_consent() {}
 
 ic_cdk::export_candid!();

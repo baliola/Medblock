@@ -2,20 +2,29 @@ use core::str;
 use std::{ str::FromStr, time::Duration };
 
 use candid::CandidType;
-use canister_common::{ common::Id, log, random::{ CanisterRandomSource, RandomSource } };
+use canister_common::{
+    common::{ EmrHeader, Id },
+    log,
+    random::{ CanisterRandomSource, RandomSource },
+};
 use serde::Deserialize;
 
 use crate::registry::NIK;
 
 thread_local! {
-    pub static CONSENTS: std::cell::RefCell<Option<Consents>> = std::cell::RefCell::new(None);
+    pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = std::cell::RefCell::new(None);
 }
 
-pub fn with_consent_mut<R>(f: impl FnOnce(&mut Consents) -> R) -> R {
+pub fn with_consent_mut<R>(f: impl FnOnce(&mut ConsentMap) -> R) -> R {
     CONSENTS.with(|cell| f(&mut cell.borrow_mut().as_mut().expect("consents not initialized")))
 }
+
+pub fn with_consent<R>(f: impl FnOnce(&ConsentMap) -> R) -> R {
+    CONSENTS.with(|cell| f(&cell.borrow().as_ref().expect("consents not initialized")))
+}
+
 // change this if you want to change the expiry time of the consent code
-const EXPIRY: Duration = Duration::from_secs(60 * 5); // 5 minutes
+const EXPIRY: Duration = Duration::from_secs(60 * 60); // 1 hour
 
 // change this if you want to change the length of the consent code
 const CODE_LEN: usize = 6;
@@ -152,39 +161,82 @@ impl ConsentsApi {
         });
     }
 
-    pub fn generate_consent_code(nik: NIK) -> ConsentCode {
-        let code = with_consent_mut(|consents| { consents.add_consent(nik) });
+    pub fn generate_consent(nik: NIK, allowed: Vec<EmrHeader>) -> ConsentCode {
+        let partial = PartialConsent::new(nik, allowed);
+        let code = with_consent_mut(|consents| { consents.add_consent(partial) });
         Self::remove_after_expiry(code);
         code
+    }
+
+    pub fn revoke_consent(code: &ConsentCode) {
+        with_consent_mut(|consents| consents.remove_consent(code));
+    }
+
+    pub fn ensure_allowed(code: &ConsentCode, header: &EmrHeader) -> bool {
+        with_consent(|consents| consents.ensure_allowed(code, header))
+    }
+
+    /// call this function in the init method of the canister
+    pub fn init() {
+        ConsentMap::init();
+    }
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Consent {
+    code: ConsentCode,
+    nik: NIK,
+    allowed_headers: Vec<EmrHeader>,
+}
+
+impl Consent {
+    pub fn from_partial(partial: PartialConsent, code: ConsentCode) -> Self {
+        Consent {
+            code,
+            nik: partial.nik,
+            allowed_headers: partial.allowed_headers,
+        }
+    }
+}
+
+#[derive(CandidType, Debug, Deserialize, Clone)]
+pub struct PartialConsent {
+    nik: NIK,
+    allowed_headers: Vec<EmrHeader>,
+}
+
+impl PartialConsent {
+    pub fn new(nik: NIK, allowed_headers: Vec<EmrHeader>) -> Self {
+        Self { nik, allowed_headers }
     }
 }
 
 // we intentionally use heap memory here as we dont need the persistance of stable memory here.
-struct Consents {
-    map: std::collections::HashMap<ConsentCode, NIK>,
+struct ConsentMap {
+    inner: std::collections::HashMap<ConsentCode, Consent>,
     rng: CanisterRandomSource,
 }
 
-impl Consents {
+impl ConsentMap {
     pub fn new_with_seed(seed: u128) -> Self {
-        Consents {
-            map: std::collections::HashMap::new(),
+        ConsentMap {
+            inner: std::collections::HashMap::new(),
             rng: CanisterRandomSource::new_with_seed(seed),
         }
     }
 
     pub async fn new() -> Self {
-        Consents {
-            map: std::collections::HashMap::new(),
+        ConsentMap {
+            inner: std::collections::HashMap::new(),
             rng: CanisterRandomSource::new().await,
         }
     }
 
     /// call every canister initialization
-    pub async fn init() {
+    pub fn init() {
         ic_cdk_timers::set_timer(Duration::from_secs(3), || {
             ic_cdk::spawn(async move {
-                let new_cell = Consents::new().await;
+                let new_cell = ConsentMap::new().await;
 
                 CONSENTS.replace(Some(new_cell));
 
@@ -193,23 +245,30 @@ impl Consents {
         });
     }
 
-    pub fn add_consent(&mut self, nik: NIK) -> ConsentCode {
+    pub fn add_consent(&mut self, partial: PartialConsent) -> ConsentCode {
         let random = self.rng.raw_random_u64();
 
         let code = ConsentCode::from_u64(random);
+        let consent = Consent::from_partial(partial, code.clone());
 
-        assert!(self.map.insert(code.clone(), nik).is_none());
+        assert!(self.inner.insert(code, consent).is_none());
 
         code
     }
 
-    // get consent and remove it from the map, just better sematics than the remove_consent
-    pub fn get_consent(&mut self, code: &ConsentCode) -> Option<NIK> {
-        self.map.remove(code)
+    pub fn ensure_allowed(&self, code: &ConsentCode, header: &EmrHeader) -> bool {
+        match self.inner.get(code) {
+            Some(consent) => consent.allowed_headers.contains(header),
+            None => false,
+        }
+    }
+
+    pub fn get_consent(&self, code: &ConsentCode) -> Option<&Consent> {
+        self.inner.get(code)
     }
 
     pub fn remove_consent(&mut self, code: &ConsentCode) {
-        self.map.remove(code);
+        self.inner.remove(code);
     }
 }
 
@@ -219,13 +278,17 @@ mod tests {
 
     #[test]
     fn test_consent() {
-        let mut consents = Consents::new_with_seed(0);
+        let mut consents = ConsentMap::new_with_seed(0);
 
-        let nik = NIK::from_str(&"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()).unwrap();
+        let nik = NIK::from_str(
+            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+        ).unwrap();
 
-        let code = consents.add_consent(nik.clone());
+        let partial = PartialConsent::new(nik.clone(), vec![]);
 
-        assert_eq!(consents.get_consent(&code), Some(nik.clone()));
+        let code = consents.add_consent(partial.clone());
+
+        assert_eq!(consents.get_consent(&code).unwrap().nik, nik);
 
         consents.remove_consent(&code);
 
