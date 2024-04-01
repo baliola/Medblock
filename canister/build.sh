@@ -32,6 +32,14 @@ echo done
 
 echo "Extracting emr registry candid"
 candid-extractor $wasm_dir/$emr_canister.wasm >$emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    metadata candid:service -v public -f $emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    shrink
 echo done
 
 if [ "$canister" == "$emr_canister" ]; then
@@ -48,4 +56,12 @@ echo done
 
 echo extracting $canister candid from wasm
 candid-extractor $canister_wasm >$canister_did_path
+
+ic-wasm "$canister_wasm" \
+    -o "$canister_wasm" \
+    metadata candid:service -v public -f $canister_did_path
+
+ic-wasm "$canister_wasm" \
+    -o "$canister_wasm" \
+    shrink
 echo done
