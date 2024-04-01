@@ -87,7 +87,9 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
-    ic_cdk::api::is_controller(&verified_caller()?)
+    let caller = verified_caller()?;
+    ic_cdk::api::is_controller(&caller);
+    Ok(())
 }
 
 // guard function

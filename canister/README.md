@@ -13,6 +13,7 @@ Make sure you have the following tools installed
 - dfx (refer to [dfinity docs](https://internetcomputer.org/docs/current/developer-docs/getting-started/install/))
 - candid-extractor (to install run `cargo install candid-extractor`)
 - rust wasm32 target (to install run `rustup target add wasm32-unknown-unknown`)
+- `ic-wasm` (to install run `cargo install ic-wasm`)
 
 For the first time, run the `setup.sh` script, this will do a few things 
 - check installations of required tools

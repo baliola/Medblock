@@ -9,7 +9,7 @@ use api::{
     UpdateEmrResponse,
 };
 use canister_common::{
-    common,
+    common::{self, guard::verified_caller},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -89,7 +89,9 @@ fn init_state() -> self::State {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
-    ic_cdk::api::is_controller(&verified_caller()?)
+    let caller = verified_caller()?;
+    ic_cdk::api::is_controller(&caller);
+    Ok(())
 }
 
 fn initialize() {
