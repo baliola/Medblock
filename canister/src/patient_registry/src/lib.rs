@@ -138,6 +138,16 @@ fn initialize() {
     ConsentsApi::init();
 }
 
+#[ic_cdk::inspect_message]
+fn inspect_message() {
+    verified_caller().expect("caller is not verified");
+
+    match only_canister_owner().is_ok() || only_patient().is_ok() {
+        true => ic_cdk::api::call::accept_message(),
+        false => ic_cdk::api::call::reject("unauthorized"),
+    }
+}
+
 #[ic_cdk::post_upgrade]
 fn post_upgrade() {
     initialize()
@@ -253,9 +263,9 @@ async fn derive_encryption_verification_key_with_session(
 fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
-        
-        config.update_emr_registry_principal(req.principal);
-        
+
+        config.update_default_emr_registry_principal(req.principal);
+
         match s.config.set(config) {
             Ok(_) => (),
             Err(e) => ic_cdk::trap(&format!("failed to update emr registry principal: {:?}", e)),

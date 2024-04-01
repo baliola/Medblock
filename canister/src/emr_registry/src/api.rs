@@ -97,3 +97,9 @@ impl RemoveEmrResponse {
 from!(RemoveEmrResponse: bool as status {
     status : status
 });
+
+
+#[derive(CandidType, Deserialize)]
+pub struct AddAuthorizedCallerRequest{
+    pub caller: Principal,
+}

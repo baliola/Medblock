@@ -16,7 +16,9 @@ pub struct CanisterConfig {
     // TODO: make this configurable
     max_item_per_response: u8,
 
-    emr_registry: Principal,
+    default_emr_registry: Principal,
+    emr_registries: Vec<Principal>,
+    
 }
 metrics!(CanisterConfig: Owners, MaxItem);
 
@@ -78,8 +80,12 @@ impl Default for CanisterConfig {
     fn default() -> Self {
         Self {
             max_item_per_response: Self::INITIAL_MAX_EMR_RESPONSE,
+            
             owner: ic_cdk::caller(),
-            emr_registry: crate::declarations::emr_registry::CANISTER_ID,
+            // intentionally anonymous so that we can change and test it later, because if not then only the local
+            // deployments would guaranteed to work properly
+            default_emr_registry: Principal::anonymous(),
+            emr_registries: vec![Principal::anonymous()],
         }
     }
 }
@@ -99,11 +105,27 @@ impl CanisterConfig {
     }
 
     pub fn emr_registry(&self) -> crate::declarations::emr_registry::EmrRegistry{
-        crate::declarations::emr_registry::EmrRegistry(self.emr_registry)
+        crate::declarations::emr_registry::EmrRegistry(self.default_emr_registry)
     }
 
-    pub fn update_emr_registry_principal(&mut self, principal: Principal) {
-        self.emr_registry = principal;
+    pub fn update_default_emr_registry_principal(&mut self, principal: Principal) {
+        let prev_default =  self.default_emr_registry;
+
+        self.default_emr_registry = principal;
+        
+        self.emr_registries.iter_mut().for_each(|emr_registry| {
+            if *emr_registry == prev_default {
+                *emr_registry = principal;
+            }
+        });
+    }
+
+    pub fn add_emr_registry(&mut self, principal: Principal) {
+        if self.emr_registries.contains(&principal) {
+            return;
+        }
+
+        self.emr_registries.push(principal);
     }
 
     pub fn is_canister_owner(&self, principal: &Principal) -> bool {

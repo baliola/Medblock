@@ -76,7 +76,10 @@ fn inspect_message() {
     verified_caller().expect("caller is not verified");
     with_state(|s| s.freeze_threshold.get().check());
 
-    ic_cdk::api::call::accept_message()
+    match only_canister_owner().is_ok() || only_provider().is_ok() {
+        true => ic_cdk::api::call::accept_message(),
+        false => ic_cdk::api::call::reject("unauthorized"),
+    }
 }
 
 fn verified_caller() -> Result<Principal, String> {
@@ -253,7 +256,7 @@ fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
 
-        config.update_emr_registry_principal(req.principal);
+        config.update_default_emr_registry_principal(req.principal);
 
         match s.config.set(config) {
             Ok(_) => (),
@@ -267,7 +270,7 @@ fn update_patient_registry_principal(req: UpdatePatientRegistryRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
 
-        config.update_emr_registry_principal(req.principal);
+        config.update_default_emr_registry_principal(req.principal);
 
         match s.config.set(config) {
             Ok(_) => (),

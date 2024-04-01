@@ -1,4 +1,5 @@
 use api::{
+    AddAuthorizedCallerRequest,
     CreateEmrRequest,
     CreateEmrResponse,
     ReadEmrByIdRequest,
@@ -16,9 +17,12 @@ use canister_common::{
     opaque_metrics,
     random::CanisterRandomSource,
     register_log,
+    stable::{ Candid, Memory, Stable },
     statistics,
 };
+use config::CanisterConfig;
 use ic_cdk::{ init };
+use ic_stable_structures::{ Cell };
 use std::cell::RefCell;
 use core::time::Duration;
 
@@ -27,8 +31,13 @@ mod registry;
 pub mod api;
 pub mod header;
 mod memory;
+mod config;
 
-type State = common::State<registry::CoreEmrRegistry, (), ()>;
+type State = common::State<
+    registry::CoreEmrRegistry,
+    Cell<Stable<CanisterConfig, Candid>, Memory>,
+    ()
+>;
 register_log!("emr");
 
 thread_local! {
@@ -79,7 +88,7 @@ fn init_state() -> self::State {
     let memory_manager = MemoryManager::init();
     let state = State::new(
         registry::CoreEmrRegistry::init(&memory_manager),
-        (),
+        CanisterConfig::init(&memory_manager),
         (),
         memory_manager
     );
@@ -97,11 +106,34 @@ fn only_canister_owner() -> Result<(), String> {
     }
 }
 
+// guard function
+fn only_authorized_caller() -> Result<(), String> {
+    let caller = verified_caller()?;
+
+    with_state(|s| {
+        if !s.config.get().is_authorized_caller(&caller) {
+            return Err("only authorized caller can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
     log!("state initialized");
     initialize_id_generator()
+}
+
+#[ic_cdk::inspect_message]
+fn inspect_message() {
+    verified_caller().expect("caller is not verified");
+
+    match only_canister_owner().is_ok() || only_authorized_caller().is_ok() {
+        true => ic_cdk::api::call::accept_message(),
+        false => ic_cdk::api::call::reject("unauthorized"),
+    };
 }
 
 #[init]
@@ -114,8 +146,19 @@ fn post_upgrade() {
     initialize();
 }
 
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn add_authorized_caller(req: AddAuthorizedCallerRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.add_authorized_caller(req.caller);
+
+        s.config.set(config);
+    });
+}
+
 // TODO : add init state
-#[ic_cdk::query]
+#[ic_cdk::query(guard = "only_authorized_caller")]
 fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })
 }
