@@ -87,7 +87,7 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
-    Ok(())
+    ic_cdk::api::is_controller(&verified_caller()?)
 }
 
 // guard function
@@ -219,6 +219,7 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
     ConsentsApi::emr_list_with_session(&req.session_id).unwrap().into()
 }
 
+#[cfg(feature = "vetkd")]
 #[ic_cdk::update]
 /// Derive the encryption key with the session id securely transported by encrypting the decryption key, used to decrypt emr
 async fn derive_encryption_key_with_session(
@@ -228,6 +229,7 @@ async fn derive_encryption_key_with_session(
     vetkd::EncryptionApi::encrypted_emr_decryption_key(req.transport_key, &consent.nik).await.into()
 }
 
+#[cfg(feature = "vetkd")]
 #[ic_cdk::update]
 /// Derive the encryption verification key with the session id, used to verify the encrypted emr decryption key
 async fn derive_encryption_verification_key_with_session(

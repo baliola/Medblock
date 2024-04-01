@@ -2,7 +2,14 @@ use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
 use api::{ IssueEmrResponse, PingResult, RegisternewProviderRequest, RegisternewProviderResponse };
 use canister_common::{
-    common::freeze::FreezeThreshold, id_generator::IdGenerator, log, mmgr::MemoryManager, random::CanisterRandomSource, register_log, stable::{ Candid, Memory, Stable }, statistics::{ self, traits::OpaqueMetrics }
+    common::freeze::FreezeThreshold,
+    id_generator::IdGenerator,
+    log,
+    mmgr::MemoryManager,
+    random::CanisterRandomSource,
+    register_log,
+    stable::{ Candid, Memory, Stable },
+    statistics::{ self, traits::OpaqueMetrics },
 };
 use declarations::{ emr_registry::emr_registry, patient_registry::patient_registry };
 use ic_principal::Principal;
@@ -77,19 +84,7 @@ fn verified_caller() -> Result<Principal, String> {
 
 // guard function
 fn only_canister_owner() -> Result<(), String> {
-    return Ok(());
-    STATE.with(|state| {
-        let state = state.borrow();
-        let state = state.as_ref().unwrap();
-
-        let caller = verified_caller()?;
-
-        if !state.config.get().is_canister_owner(&caller) {
-            return Err("only canister owner can call this method".to_string());
-        }
-
-        Ok(())
-    })
+    ic_cdk::api::is_controller(&verified_caller()?)
 }
 
 // guard function

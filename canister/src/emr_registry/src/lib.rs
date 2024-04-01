@@ -87,6 +87,11 @@ fn init_state() -> self::State {
     state
 }
 
+// guard function
+fn only_canister_owner() -> Result<(), String> {
+    ic_cdk::api::is_controller(&verified_caller()?)
+}
+
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
