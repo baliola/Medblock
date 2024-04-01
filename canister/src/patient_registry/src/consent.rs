@@ -6,7 +6,10 @@ use canister_common::{
     common::{ EmrHeader, Id },
     id_generator::IdGenerator,
     log,
+    metrics,
+    opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
+    statistics::traits::{ Metrics, OpaqueMetrics },
 };
 use serde::Deserialize;
 
@@ -163,6 +166,11 @@ mod tests_code {
 pub struct ConsentsApi;
 
 impl ConsentsApi {
+    pub fn metrics() -> String {
+        ensure_initialized();
+        with_consent(|consents| opaque_metrics!(consents))
+    }
+
     pub fn resolve_session(session_id: &SessionId) -> Option<Consent> {
         ensure_initialized();
         with_consent_mut(|consents| consents.resolve_session(session_id))
@@ -289,10 +297,34 @@ impl PartialConsent {
 }
 
 // we intentionally use heap memory here as we dont need the persistance of stable memory here.
-struct ConsentMap {
+pub struct ConsentMap {
     inner: std::collections::HashMap<ConsentCode, Consent>,
     sessions: std::collections::HashMap<SessionId, ConsentCode>,
     rng: CanisterRandomSource,
+}
+
+mod metrics {
+    use super::*;
+
+    metrics!(ConsentMap: OngoingSession);
+
+    impl Metrics<OngoingSession> for ConsentMap {
+        fn metrics_name() -> &'static str {
+            "consent_map"
+        }
+
+        fn metrics_measurements() -> &'static str {
+            "ongoing_session"
+        }
+
+        fn update_measurements(&self) {
+            // no-op
+        }
+
+        fn get_measurements(&self) -> String {
+            self.sessions.len().to_string()
+        }
+    }
 }
 
 impl ConsentMap {

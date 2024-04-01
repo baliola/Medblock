@@ -191,6 +191,7 @@ async fn ping() -> PingResult {
 fn metrics() -> String {
     with_state(|s| {
         [
+            ConsentsApi::metrics(),
             opaque_metrics!(s.registry),
             OpaqueMetrics::measure(&**s.config.get()),
             statistics::canister::BlockchainMetrics::measure(),

@@ -16,7 +16,7 @@ pub struct CanisterConfig {
     // TODO: make this configurable
     max_item_per_response: u8,
 }
-metrics!(CanisterConfig: Owners,MaxItem);
+metrics!(CanisterConfig: Owners, MaxItem);
 
 impl Metrics<Owners> for CanisterConfig {
     fn metrics_name() -> &'static str {

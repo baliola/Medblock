@@ -38,6 +38,10 @@ macro_rules! opaque_metrics {
     ($s:ident.$ident:ident) => {
         $crate::statistics::traits::OpaqueMetrics::measure(&$s.$ident)
     };
+
+    ($s:ident) => {
+        $crate::statistics::traits::OpaqueMetrics::measure(&$s)
+    }
 }
 
 pub mod traits {
