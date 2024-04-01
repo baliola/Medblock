@@ -40,7 +40,7 @@ macro_rules! opaque_metrics {
     };
 
     ($s:ident) => {
-        $crate::statistics::traits::OpaqueMetrics::measure(&$s)
+        $crate::statistics::traits::OpaqueMetrics::measure($s)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{ cell::RefCell, time::Duration };
+use std::{ borrow::BorrowMut, cell::RefCell, time::Duration };
 
 use api::{
     ClaimConsentRequest,
@@ -21,6 +21,7 @@ use api::{
     ReadEmrSessionResponse,
     RegisterPatientRequest,
     RevokeConsentRequest,
+    UpdateEmrRegistryRequest,
 };
 use canister_common::{
     common::guard::verified_caller,
@@ -88,8 +89,11 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 // guard function
 fn only_canister_owner() -> Result<(), String> {
     let caller = verified_caller()?;
-    ic_cdk::api::is_controller(&caller);
-    Ok(())
+
+    match ic_cdk::api::is_controller(&caller) {
+        true => Ok(()),
+        false => Err("only canister controller can call this method".to_string()),
+    }
 }
 
 // guard function
@@ -240,6 +244,17 @@ async fn derive_encryption_verification_key_with_session(
 ) -> DeriveVerificationKeyResponse {
     let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
     vetkd::EncryptionApi::verification_key_for(&consent.nik).await.into()
+}
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+        config.update_emr_registry_principal(req.principal);
+        match s.config.set(config) {
+            Ok(_) => (),
+            Err(e) => ic_cdk::trap(&format!("failed to update emr registry principal: {:?}", e)),
+        }
+    })
 }
 
 #[ic_cdk::update]

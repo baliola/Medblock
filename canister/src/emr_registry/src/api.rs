@@ -1,4 +1,4 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use canister_common::{ common::{ EmrBody, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
 use serde::Deserialize;
 

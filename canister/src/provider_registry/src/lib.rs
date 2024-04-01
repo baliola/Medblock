@@ -85,8 +85,11 @@ fn verified_caller() -> Result<Principal, String> {
 // guard function
 fn only_canister_owner() -> Result<(), String> {
     let caller = verified_caller()?;
-    ic_cdk::api::is_controller(&caller);
-    Ok(())
+    
+    match ic_cdk::api::is_controller(&caller) {
+        true => Ok(()),
+        false => Err("only canister controller can call this method".to_string()),
+    }
 }
 
 // guard function
