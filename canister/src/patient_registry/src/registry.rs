@@ -41,11 +41,11 @@ impl PatientRegistry {
         })
     }
 
-
     pub async fn do_call_read_emr(
-        arg: crate::declarations::emr_registry::ReadEmrByIdRequest
+        arg: crate::declarations::emr_registry::ReadEmrByIdRequest,
+        registry: crate::declarations::emr_registry::EmrRegistry
     ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
-        match emr_registry.read_emr_by_id(arg).await.map_err(CallError::from) {
+        match registry.read_emr_by_id(arg).await.map_err(CallError::from) {
             Ok((response,)) => response,
             Err(e) => {
                 ic_cdk::trap(&format!("ERROR: Error calling read_emr_by_id: {:?}", e));

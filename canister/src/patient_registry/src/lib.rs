@@ -153,7 +153,8 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     let user = verified_caller().unwrap();
     let args = with_state(|s| s.registry.construct_args_read_emr(req, &user)).unwrap();
 
-    PatientRegistry::do_call_read_emr(args).await
+    let registry = with_state(|s| s.config.get().emr_registry());
+    PatientRegistry::do_call_read_emr(args, registry).await
 }
 
 fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
@@ -184,7 +185,8 @@ fn register_patient(req: RegisterPatientRequest) {
 
 #[ic_cdk::query(composite = true)]
 async fn ping() -> PingResult {
-    let emr_registry_status = emr_registry::emr_registry.ping().await.is_ok();
+    let emr_registry = with_state(|s| s.config.get().emr_registry());
+    let emr_registry_status = emr_registry.ping().await.is_ok();
 
     PingResult {
         emr_registry_status,
@@ -218,7 +220,8 @@ async fn create_consent(req: CreateConsentRequest) -> CreateConsentResponse {
 async fn read_emr_with_session(
     req: ReadEmrSessionRequest
 ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
-    ConsentsApi::read_emr_with_session(&req.session_id, req.args).await.unwrap()
+    let registry = with_state(|s| s.config.get().emr_registry());
+    ConsentsApi::read_emr_with_session(&req.session_id, req.args, registry).await.unwrap()
 }
 
 #[ic_cdk::query]
@@ -245,6 +248,7 @@ async fn derive_encryption_verification_key_with_session(
     let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
     vetkd::EncryptionApi::verification_key_for(&consent.nik).await.into()
 }
+
 #[ic_cdk::update(guard = "only_canister_owner")]
 fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
     with_state_mut(|s| {

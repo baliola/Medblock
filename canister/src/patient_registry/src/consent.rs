@@ -243,13 +243,15 @@ impl ConsentsApi {
 
     pub async fn read_emr_with_session(
         session_id: &SessionId,
-        req: crate::api::ReadEmrByIdRequest
+        req: crate::api::ReadEmrByIdRequest,
+        registry: crate::declarations::emr_registry::EmrRegistry
     ) -> Result<crate::declarations::emr_registry::ReadEmrByIdResponse, String> {
         ensure_initialized();
         let consent = with_consent_mut(|consents| { consents.resolve_session(session_id) });
 
         match consent {
-            Some(consent) => Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik)).await),
+            Some(consent) =>
+                Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await),
             None => {
                 return Err("invalid session".to_string());
             }
