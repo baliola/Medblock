@@ -24,4 +24,4 @@ For the first time, run the `setup.sh` script, this will do a few things
 note that this process might take a while depending on the specs of your machine.
 
 # Development Workflow
-If you are developing a feature for a canister, make sure to use the `build.sh` scripts, as it will automatically regenerate candid interface of the canister you're using, it'll try to recompile `emr registry` canister each time it's been called, this is necesarry as the two other crates depend on the emr registry. If you alreadty run the setup script then this step should not be time consuming. 
+If you are developing a feature for a canister, make sure to use the `build.sh` scripts, as it will automatically regenerate candid interface of the canister you're using, it'll try to recompile `emr registry` canister each time it's been called, this is necesarry as the two other crates depend on the emr registry. If you alreadty run the setup script then this step should not be time consuming. Notably, pass `--all` flag to the script if you want to rebuild all canister simultaneously.

@@ -23,6 +23,7 @@ type RegisternewProviderRequest = record {
   provider_principal : principal;
   display_name : text;
 };
+type SuspendRequest = record { "principal" : principal };
 type UpdateEmrRequest = record { fields : vec EmrFragment; header : EmrHeader };
 service : () -> {
   emr_list_provider : (EmrListProviderRequest) -> (
@@ -32,5 +33,9 @@ service : () -> {
   metrics : () -> (text) query;
   ping : () -> (PingResult) composite_query;
   register_new_provider : (RegisternewProviderRequest) -> (record {});
+  suspend_provider : (SuspendRequest) -> ();
+  unsuspend_provider : (SuspendRequest) -> ();
   update_emr : (UpdateEmrRequest) -> (record {});
+  update_emr_registry_principal : (SuspendRequest) -> ();
+  update_patient_registry_principal : (SuspendRequest) -> ();
 }

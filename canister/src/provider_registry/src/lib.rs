@@ -78,7 +78,7 @@ fn inspect_message() {
 
     match only_canister_owner().is_ok() || only_provider().is_ok() {
         true => ic_cdk::api::call::accept_message(),
-        false => ic_cdk::api::call::reject("unauthorized"),
+        false => ic_cdk::trap("unauthorized"),
     }
 }
 

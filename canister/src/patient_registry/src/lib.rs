@@ -130,6 +130,7 @@ fn initialize_id_generator() {
     });
 }
 
+// TODO : implement scope guard for inter-canister calls
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
@@ -144,7 +145,7 @@ fn inspect_message() {
 
     match only_canister_owner().is_ok() || only_patient().is_ok() {
         true => ic_cdk::api::call::accept_message(),
-        false => ic_cdk::api::call::reject("unauthorized"),
+        false => ic_cdk::trap("unauthorized"),
     }
 }
 

@@ -1,3 +1,4 @@
+type AddAuthorizedCallerRequest = record { caller : principal };
 type CreateEmrRequest = record {
   emr : vec EmrFragment;
   provider_id : text;
@@ -22,6 +23,7 @@ type RemoveEmrRequest = record { header : Header };
 type RemoveEmrResponse = record { status : bool };
 type UpdateEmrRequest = record { fields : vec EmrFragment; header : Header };
 service : () -> {
+  add_authorized_caller : (AddAuthorizedCallerRequest) -> ();
   create_emr : (CreateEmrRequest) -> (CreateEmrResponse);
   metrics : () -> (text) query;
   ping : () -> () query;

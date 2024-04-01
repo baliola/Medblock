@@ -23,6 +23,7 @@ type ReadEmrSessionRequest = record {
   args : ReadEmrByIdRequest;
 };
 type RegisterPatientRequest = record { nik : text };
+type UpdateEmrRegistryRequest = record { "principal" : principal };
 service : () -> {
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
   create_consent : (CreateConsentRequest) -> (ClaimConsentRequest);
@@ -41,4 +42,5 @@ service : () -> {
     ) composite_query;
   register_patient : (RegisterPatientRequest) -> ();
   revoke_consent : (ClaimConsentRequest) -> ();
+  update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
 }

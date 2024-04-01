@@ -12,6 +12,15 @@ emr_canister="emr_registry"
 provider_canister="provider_registry"
 patient_canister="patient_registry"
 
+# if the first args is --all, build all canister
+if [ "$canister" == "--all" ]; then
+    echo "Building all canisters"
+    bash $root/build.sh $emr_canister
+    bash $root/build.sh $provider_canister
+    bash $root/build.sh $patient_canister
+    exit 0
+fi
+
 # build emr registry
 if [ -z "$canister" ]; then
     echo "Usage: $0 <canister_name> 
