@@ -8,11 +8,14 @@ use canister_common::{
 use ic_stable_structures::Cell;
 use serde::Deserialize;
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct CanisterConfig {
     owner: Principal,
     // TODO: make this configurable
     max_item_per_response: u8,
+
+    emr_registry: Principal,
+    patient_registry: Principal,
 }
 
 impl_max_size!(for CanisterConfig: Principal, u8);
@@ -38,6 +41,8 @@ impl Default for CanisterConfig {
         Self {
             max_item_per_response: Self::INITIAL_MAX_EMR_RESPONSE,
             owner: ic_cdk::caller(),
+            emr_registry: crate::declarations::emr_registry::CANISTER_ID,
+            patient_registry: crate::declarations::patient_registry::CANISTER_ID,
         }
     }
 }
@@ -54,6 +59,22 @@ impl CanisterConfig {
             owner,
             ..Default::default()
         }
+    }
+
+    pub fn emr_registry(&self) -> crate::declarations::emr_registry::EmrRegistry {
+        crate::declarations::emr_registry::EmrRegistry(self.emr_registry)
+    }
+
+    pub fn patient_registry(&self) -> crate::declarations::patient_registry::PatientRegistry {
+        crate::declarations::patient_registry::PatientRegistry(self.patient_registry)
+    }
+
+    pub fn update_emr_registry_principal(&mut self, principal: Principal) {
+        self.emr_registry = principal;
+    }
+
+    pub fn update_patient_registry_principal(&mut self, principal: Principal) {
+        self.patient_registry = principal;
     }
 
     pub fn is_canister_owner(&self, principal: &Principal) -> bool {

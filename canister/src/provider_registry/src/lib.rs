@@ -1,6 +1,15 @@
 use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
-use api::{ IssueEmrResponse, PingResult, RegisternewProviderRequest, RegisternewProviderResponse };
+use api::{
+    IssueEmrResponse,
+    PingResult,
+    RegisternewProviderRequest,
+    RegisternewProviderResponse,
+    SuspendRequest,
+    UnSuspendRequest,
+    UpdateEmrRegistryRequest,
+    UpdatePatientRegistryRequest,
+};
 use canister_common::{
     common::freeze::FreezeThreshold,
     id_generator::IdGenerator,
@@ -11,7 +20,6 @@ use canister_common::{
     stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
-use declarations::{ emr_registry::emr_registry, patient_registry::patient_registry };
 use ic_principal::Principal;
 use ic_stable_structures::Cell;
 use memory::FreezeThresholdMemory;
@@ -85,7 +93,7 @@ fn verified_caller() -> Result<Principal, String> {
 // guard function
 fn only_canister_owner() -> Result<(), String> {
     let caller = verified_caller()?;
-    
+
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
         false => Err("only canister controller can call this method".to_string()),
@@ -192,7 +200,10 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
     // safe to unwrap as the provider id comes from canister
     let provider_principal = verified_caller().unwrap();
 
-    let response = ProviderRegistry::do_call_create_emr(args).await;
+    let emr_registry = with_state(|s| s.config.get().emr_registry());
+    let patient_registry = with_state(|s| s.config.get().patient_registry());
+
+    let response = ProviderRegistry::do_call_create_emr(args, emr_registry, patient_registry).await;
 
     with_state_mut(|s|
         s.providers.issue_emr(
@@ -206,8 +217,10 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
 
 #[ic_cdk::query(composite = true)]
 async fn ping() -> PingResult {
+    let emr_registry = with_state(|s| s.config.get().emr_registry());
     let emr_registry_status = emr_registry.ping().await.is_ok();
 
+    let patient_registry = with_state(|s| s.config.get().patient_registry());
     let patient_registry_status = patient_registry.ping().await.is_ok();
 
     PingResult {
@@ -229,17 +242,49 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrResponse {
-    let _result = ProviderRegistry::do_call_update_emr(req).await;
+    let registry = with_state(|s| s.config.get().emr_registry());
+    let _result = ProviderRegistry::do_call_update_emr(req, registry).await;
 
     crate::api::UpdateEmrResponse {}
 }
 
-fn suspend_provider() {
-    todo!()
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.update_emr_registry_principal(req.principal);
+
+        match s.config.set(config) {
+            Ok(_) => (),
+            Err(e) => ic_cdk::trap(&format!("failed to update emr registry principal: {:?}", e)),
+        }
+    })
 }
 
-fn unsuspend_provider() {
-    todo!()
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn update_patient_registry_principal(req: UpdatePatientRegistryRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.update_emr_registry_principal(req.principal);
+
+        match s.config.set(config) {
+            Ok(_) => (),
+            Err(e) =>
+                ic_cdk::trap(&format!("failed to update patient registry principal: {:?}", e)),
+        }
+    })
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn suspend_provider(req: SuspendRequest) {
+    with_state_mut(|s| s.providers.suspend_provider(req.principal)).unwrap()
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn unsuspend_provider(req: UnSuspendRequest) {
+    with_state_mut(|s| s.providers.unsuspend_provider(&req.principal)).unwrap()
 }
 
 ic_cdk::export_candid!();

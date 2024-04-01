@@ -1,7 +1,5 @@
-use candid::CandidType;
-use canister_common::{
-    common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId },
-};
+use candid::{ CandidType, Principal };
+use canister_common::{ common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId } };
 use serde::Deserialize;
 
 use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
@@ -97,4 +95,24 @@ impl UpdateEmrRequest {
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrResponse {
     // empty for now
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateEmrRegistryRequest {
+    pub principal: Principal,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdatePatientRegistryRequest {
+    pub principal: Principal,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct SuspendRequest {
+    pub principal: Principal,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UnSuspendRequest {
+    pub principal: Principal,
 }

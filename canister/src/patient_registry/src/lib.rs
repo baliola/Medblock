@@ -253,7 +253,9 @@ async fn derive_encryption_verification_key_with_session(
 fn update_emr_registry_principal(req: UpdateEmrRegistryRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
+        
         config.update_emr_registry_principal(req.principal);
+        
         match s.config.set(config) {
             Ok(_) => (),
             Err(e) => ic_cdk::trap(&format!("failed to update emr registry principal: {:?}", e)),
