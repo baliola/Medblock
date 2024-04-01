@@ -31,3 +31,19 @@ serde_json = { version = "1.0.108", features = [
 
 chrono = "0.4.19"
 serde_assert = "0.7.1" 
+
+[profile.release.canister-common]
+opt-level = "s"
+lto = true
+
+[profile.release.provider_registry]
+opt-level = "s"
+lto = true
+
+[profile.release.emr_registry]
+opt-level = "s"
+lto = true
+
+[profile.release.patient_registry]
+opt-level = "s"
+lto = true
