@@ -21,6 +21,8 @@ parity-scale-codec = { workspace = true, default-features = false, features = [
 ic-stable-structures = { workspace = true }
 thiserror = { workspace = true }
 ic_principal = { workspace = true }
+http = { workspace = true }
+canistergeek_ic_rust = { workspace = true }
 
 [dev-dependencies]
 uuid = { workspace = true, default-features = false, features = [

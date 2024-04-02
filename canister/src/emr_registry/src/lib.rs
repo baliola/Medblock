@@ -9,8 +9,9 @@ use api::{
     UpdateEmrRequest,
     UpdateEmrResponse,
 };
+use candid::{ Decode, Encode };
 use canister_common::{
-    common::{ self, guard::verified_caller },
+    common::{ self, guard::verified_caller, Get },
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -20,10 +21,12 @@ use canister_common::{
     stable::{ Candid, Memory, Stable },
     statistics,
 };
+use canistergeek_ic_rust::monitor::data_type::DayData;
 use config::CanisterConfig;
-use ic_cdk::{ init };
-use ic_stable_structures::{ Cell };
-use std::cell::RefCell;
+use ic_cdk::{ api::management_canister::http_request, init };
+use ic_stable_structures::{ memory_manager::MemoryId, Cell };
+use memory::UpgradeMemory;
+use std::{ cell::RefCell, io::Write };
 use core::time::Duration;
 
 mod key;
@@ -126,6 +129,66 @@ fn initialize() {
     initialize_id_generator()
 }
 
+#[ic_cdk::pre_upgrade]
+fn pre_upgrade() {
+    serialize_canister_metrics();
+}
+
+fn serialize_canister_metrics() {
+    let monitor_stable_data = canistergeek_ic_rust::monitor::pre_upgrade_stable_data();
+    let logger_stable_data = canistergeek_ic_rust::logger::pre_upgrade_stable_data();
+
+    let mut mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
+    let Ok(encoded) = Encode!(&monitor_stable_data, &logger_stable_data) else {
+        return;
+    };
+
+    let encoded_len = encoded.len();
+    let mut writer = ic_stable_structures::writer::Writer::new(&mut mem, 0);
+
+    let write = writer.write(&encoded_len.to_le_bytes());
+    match write {
+        Ok(_) => {
+            log!("encoded canister metrics length written successfully : {} bytes", encoded_len);
+        }
+        
+        Err(e) => {
+            log!("OOM ERROR: failed to write encoded canister metrics length {:?}", e);
+        }
+    }
+
+    let write = writer.write(&encoded);
+    match write {
+        Ok(_) => {
+            log!("encoded canister metrics written");
+        }
+        Err(e) => {
+            log!("OOM ERROR: failed to write encoded canister metrics {:?}", e);
+        }
+    }
+}
+
+fn deserialize_canister_metrics() {
+    let mut mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
+
+    let mut reader = ic_stable_structures::reader::Reader::new(&mem, 0);
+
+    let mut len_buf = [0; 4];
+    let read_len = reader.read(&mut len_buf).unwrap();
+    log!("encoded canister metrics length: {:?} bytes", read_len);
+
+    let mut state_buf = vec![0; u32::from_le_bytes(len_buf) as usize];
+    let read_len = reader.read(&mut state_buf).unwrap();
+    log!("readed encoded canister metrics length: {:?} bytes", read_len);
+
+    let (monitor_stable_data, logger_stable_data) =
+        Decode!(&state_buf, (u8, std::collections::BTreeMap<u32, DayData>), (u8, canistergeek_ic_rust::logger::LogMessageStorage)).unwrap();
+
+
+    canistergeek_ic_rust::monitor::post_upgrade_stable_data(monitor_stable_data);
+    canistergeek_ic_rust::logger::post_upgrade_stable_data(logger_stable_data);
+}
+
 #[ic_cdk::inspect_message]
 fn inspect_message() {
     verified_caller().expect("caller is not verified");
@@ -144,6 +207,7 @@ fn init() {
 #[ic_cdk::post_upgrade]
 fn post_upgrade() {
     initialize();
+    deserialize_canister_metrics();
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
