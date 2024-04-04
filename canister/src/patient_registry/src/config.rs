@@ -10,13 +10,19 @@ use canister_common::{
 use ic_stable_structures::Cell;
 use serde::Deserialize;
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct CanisterConfig {
     owner: Principal,
     // TODO: make this configurable
     max_item_per_response: u8,
+
+    default_emr_registry: Principal,
+    emr_registries: Vec<Principal>,
+    authorized_metrics_collectors: Vec<Principal>,
+    provider_registry: Principal,
 }
-metrics!(CanisterConfig: Owners,MaxItem);
+
+metrics!(CanisterConfig: Owners, MaxItem);
 
 impl Metrics<Owners> for CanisterConfig {
     fn metrics_name() -> &'static str {
@@ -76,7 +82,14 @@ impl Default for CanisterConfig {
     fn default() -> Self {
         Self {
             max_item_per_response: Self::INITIAL_MAX_EMR_RESPONSE,
+
             owner: ic_cdk::caller(),
+            // intentionally anonymous so that we can change and test it later, because if not then only the local
+            // deployments would guaranteed to work properly
+            default_emr_registry: Principal::anonymous(),
+            emr_registries: vec![Principal::anonymous()],
+            authorized_metrics_collectors: vec![],
+            provider_registry: Principal::anonymous(),
         }
     }
 }
@@ -95,11 +108,59 @@ impl CanisterConfig {
         }
     }
 
+    pub fn emr_registry(&self) -> crate::declarations::emr_registry::EmrRegistry {
+        crate::declarations::emr_registry::EmrRegistry(self.default_emr_registry)
+    }
+
+    pub fn update_default_emr_registry_principal(&mut self, principal: Principal) {
+        let prev_default = self.default_emr_registry;
+
+        self.default_emr_registry = principal;
+
+        self.emr_registries.iter_mut().for_each(|emr_registry| {
+            if *emr_registry == prev_default {
+                *emr_registry = principal;
+            }
+        });
+    }
+
+    pub fn add_emr_registry(&mut self, principal: Principal) {
+        if self.emr_registries.contains(&principal) {
+            return;
+        }
+
+        self.emr_registries.push(principal);
+    }
+
     pub fn is_canister_owner(&self, principal: &Principal) -> bool {
         self.owner.eq(principal)
     }
 
     pub fn max_item_per_response(&self) -> u8 {
         self.max_item_per_response
+    }
+
+    pub fn add_authorized_metrics_collector(&mut self, collector: Principal) {
+        if self.authorized_metrics_collectors.contains(&collector) {
+            return;
+        }
+
+        self.authorized_metrics_collectors.push(collector);
+    }
+
+    pub fn remove_authorized_metrics_collector(&mut self, collector: Principal) {
+        self.authorized_metrics_collectors.retain(|c| c != &collector);
+    }
+
+    pub fn is_authorized_metrics_collector(&self, collector: &Principal) -> bool {
+        self.authorized_metrics_collectors.contains(collector)
+    }
+
+    pub fn update_provider_registry_principal(&mut self, principal: Principal) {
+        self.provider_registry = principal;
+    }
+
+    pub fn is_provider_registry(&self, principal: &Principal) -> bool {
+        self.provider_registry.eq(principal)
     }
 }

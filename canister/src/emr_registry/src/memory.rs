@@ -1,5 +1,6 @@
 use canister_common::generate_memory_id;
 
-use crate::registry::CoreEmrRegistry;
+use crate::{ config::CanisterConfig, registry::CoreEmrRegistry };
 
-generate_memory_id!(CoreEmrRegistry);
+pub struct UpgradeMemory;
+generate_memory_id!(UpgradeMemory, CoreEmrRegistry, CanisterConfig);

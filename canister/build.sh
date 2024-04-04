@@ -12,6 +12,15 @@ emr_canister="emr_registry"
 provider_canister="provider_registry"
 patient_canister="patient_registry"
 
+# if the first args is --all, build all canister
+if [ "$canister" == "--all" ]; then
+    echo "Building all canisters"
+    bash $root/build.sh $emr_canister
+    bash $root/build.sh $provider_canister
+    bash $root/build.sh $patient_canister
+    exit 0
+fi
+
 # build emr registry
 if [ -z "$canister" ]; then
     echo "Usage: $0 <canister_name> 
@@ -32,6 +41,14 @@ echo done
 
 echo "Extracting emr registry candid"
 candid-extractor $wasm_dir/$emr_canister.wasm >$emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    metadata candid:service -v public -f $emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    shrink
 echo done
 
 if [ "$canister" == "$emr_canister" ]; then
@@ -48,4 +65,26 @@ echo done
 
 echo extracting $canister candid from wasm
 candid-extractor $canister_wasm >$canister_did_path
+
+ic-wasm "$canister_wasm" \
+    -o "$canister_wasm" \
+    metadata candid:service -v public -f $canister_did_path
+
+ic-wasm "$canister_wasm" \
+    -o "$canister_wasm" \
+    shrink
+echo done
+
+
+
+echo "shrinking wasm size"
+candid-extractor $wasm_dir/$emr_canister.wasm >$emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    metadata candid:service -v public -f $emr_registry_did_path
+
+ic-wasm "$wasm_dir/$emr_canister.wasm" \
+    -o "$wasm_dir/$emr_canister.wasm" \
+    shrink
 echo done

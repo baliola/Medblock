@@ -221,7 +221,7 @@ macro_rules! from {
 #[macro_export]
 macro_rules! generate_memory_id {
     (@internal $counter:expr,) => {
-        const TOTAL_MEMORY_ID_USED: u8 = $counter;
+       pub const TOTAL_MEMORY_ID_USED: u8 = $counter;
     };
 
     ($ident:ident) => {
@@ -263,20 +263,16 @@ macro_rules! register_log {
 
 #[macro_export]
 macro_rules! log {
-    ($fmt:expr) => (
+    ($fmt:expr) => {
         let ident = crate::__INTERNAL_LOG_IDENTIFIDER;
-    
-        let args = format!("[{}]: {}", ident, $fmt);
-        ic_cdk::println!("{}", args)
-    );
+        ic_cdk::println!("{}", format!("[{}]: {}", ident, $fmt));
+    };
 
     (
         $fmt:expr,
         $($arg:tt)*
-    ) => (
+    ) => {
         let ident = crate::__INTERNAL_LOG_IDENTIFIDER;
-
-        let args = format!("[{}]: {}", ident, format!($fmt, $($arg)*));
-        ic_cdk::println!("{}", args)
-    );
+        ic_cdk::println!("{}", format!("[{}]: {}", ident, format!($fmt, $($arg)*)));
+    };
 }

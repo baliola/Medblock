@@ -2,22 +2,42 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     impl_max_size,
     impl_mem_bound,
+    metrics,
     mmgr::MemoryManager,
     stable::{ Candid, Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 use ic_stable_structures::Cell;
 use serde::Deserialize;
 
 #[derive(CandidType, Deserialize, Clone)]
 pub struct CanisterConfig {
-    owner: Principal,
-    // TODO: make this configurable
-    max_item_per_response: u8,
-
-    default_emr_registry: Principal,
-    patient_registry: Principal,
-    emr_registries: Vec<Principal>,
+    authorized_callers: Vec<Principal>,
     authorized_metrics_collectors: Vec<Principal>,
+}
+
+metrics!(CanisterConfig: AuthorizedCallers);
+
+impl Metrics<AuthorizedCallers> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "authorized_callers"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        ""
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.authorized_callers
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>()
+            .join(", ")
+    }
 }
 
 impl_max_size!(for CanisterConfig: Principal, u8);
@@ -41,60 +61,41 @@ impl Default for CanisterConfig {
     /// use `CanisterConfig::new` instead.
     fn default() -> Self {
         Self {
-            max_item_per_response: Self::INITIAL_MAX_EMR_RESPONSE,
-            owner: ic_cdk::caller(),
-            default_emr_registry: Principal::anonymous(),
-            patient_registry: Principal::anonymous(),
-            emr_registries: vec![Principal::anonymous()],
+            authorized_callers: vec![],
             authorized_metrics_collectors: vec![],
         }
     }
 }
 
 impl CanisterConfig {
-    /// constant values to implement pagination,
-    /// this values will be used to limit the number of emrs returned. to account for 2MB response limit.
-    ///
-    /// initially set to 10.
-    const INITIAL_MAX_EMR_RESPONSE: u8 = 10;
-
-    pub fn new(owner: Principal) -> Self {
+    pub fn new() -> Self {
         Self {
-            owner,
             ..Default::default()
         }
     }
 
-    pub fn emr_registry(&self) -> crate::declarations::emr_registry::EmrRegistry {
-        crate::declarations::emr_registry::EmrRegistry(self.default_emr_registry)
+    pub fn is_authorized_caller(&self, caller: &Principal) -> bool {
+        self.authorized_callers.contains(caller)
     }
 
-    pub fn patient_registry(&self) -> crate::declarations::patient_registry::PatientRegistry {
-        crate::declarations::patient_registry::PatientRegistry(self.patient_registry)
+    pub fn add_authorized_caller(&mut self, caller: Principal) {
+        if self.authorized_callers.contains(&caller) {
+            return;
+        }
+
+        self.authorized_callers.push(caller);
     }
 
-    pub fn update_default_emr_registry_principal(&mut self, principal: Principal) {
-        let prev_default = self.default_emr_registry;
-
-        self.default_emr_registry = principal;
-
-        self.emr_registries.iter_mut().for_each(|emr_registry| {
-            if *emr_registry == prev_default {
-                *emr_registry = principal;
-            }
-        });
+    pub fn remove_authorized_caller(&mut self, caller: Principal) {
+        self.authorized_callers.retain(|c| c != &caller);
     }
 
-    pub fn update_patient_registry_principal(&mut self, principal: Principal) {
-        self.patient_registry = principal;
+    pub fn get_authorized_callers(&self) -> Vec<Principal> {
+        self.authorized_callers.clone()
     }
 
-    pub fn is_canister_owner(&self, principal: &Principal) -> bool {
-        self.owner.eq(principal)
-    }
-
-    pub fn max_item_per_response(&self) -> u8 {
-        self.max_item_per_response
+    pub fn get_authorized_metrics_collectors(&self) -> Vec<Principal> {
+        self.authorized_metrics_collectors.clone()
     }
 
     pub fn add_authorized_metrics_collector(&mut self, collector: Principal) {

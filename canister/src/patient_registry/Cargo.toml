@@ -23,6 +23,7 @@ thiserror = { workspace = true }
 tiny-keccak = { workspace = true }
 hex = { workspace = true }
 ic_principal = { workspace = true }
+canistergeek_ic_rust = { workspace = true }
 
 [dev-dependencies]
 uuid = { workspace = true, default-features = false, features = [
@@ -30,9 +31,12 @@ uuid = { workspace = true, default-features = false, features = [
     "v4",
 ] }
 tiny-keccak = { workspace = true }
-canister-common = { path = "../canister-common" , features = ["test-utils"]}
+canister-common = { path = "../canister-common", features = ["test-utils"] }
 
+
+[features]
+default = []
+vetkd = []
 
 [build-dependencies]
 ic-cdk-bindgen = { workspace = true }
-

@@ -151,3 +151,14 @@ pub type RevokeConsentRequest = ClaimConsentRequest;
 pub struct FinishSessionRequest {
     pub session_id: SessionId,
 }
+
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateEmrRegistryRequest{
+    pub principal: Principal
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct AuthorizedCallerRequest{
+    pub caller: Principal,
+}

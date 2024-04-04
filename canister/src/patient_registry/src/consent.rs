@@ -1,12 +1,15 @@
 use core::str;
 use std::{ str::FromStr, time::Duration };
 
-use candid::CandidType;
+use candid::{ CandidType, Principal };
 use canister_common::{
     common::{ EmrHeader, Id },
     id_generator::IdGenerator,
     log,
+    metrics,
+    opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
+    statistics::traits::{ Metrics, OpaqueMetrics },
 };
 use serde::Deserialize;
 
@@ -163,9 +166,14 @@ mod tests_code {
 pub struct ConsentsApi;
 
 impl ConsentsApi {
-    pub fn resolve_session(session_id: &SessionId) -> Option<Consent> {
+    pub fn metrics() -> String {
         ensure_initialized();
-        with_consent_mut(|consents| consents.resolve_session(session_id))
+        with_consent(|consents| opaque_metrics!(consents))
+    }
+
+    pub fn resolve_session(session_id: &SessionId, session_user: &Principal) -> Option<Consent> {
+        ensure_initialized();
+        with_consent_mut(|consents| consents.resolve_session(session_id, session_user))
     }
 
     fn remove_consent_after_expiry(code: ConsentCode) {
@@ -177,7 +185,8 @@ impl ConsentsApi {
             };
 
             match consent.session_id {
-                Some(ref session) => with_consent_mut(|consent| consent.finish_session(session)),
+                Some(ref session) =>
+                    with_consent_mut(|consent| consent.finish_session_unchecked(session)),
                 None => (),
             }
         });
@@ -211,16 +220,21 @@ impl ConsentsApi {
         with_consent(|consents| consents.ensure_session_allowed(code, session_id))
     }
 
-    pub fn claim_consent(code: &ConsentCode) -> Option<SessionId> {
+    pub fn claim_consent(code: &ConsentCode, session_user: Principal) -> Option<SessionId> {
         ensure_initialized();
-        let session = with_consent_mut(|consents| consents.claim_consent(code));
+        let session = with_consent_mut(|consents| consents.claim_consent(code, session_user));
 
         session
     }
 
-    pub fn emr_list_with_session(session_id: &Id) -> Result<Vec<EmrHeader>, String> {
+    pub fn emr_list_with_session(
+        session_id: &Id,
+        session_user: &Principal
+    ) -> Result<Vec<EmrHeader>, String> {
         ensure_initialized();
-        let consent = with_consent_mut(|consents| { consents.resolve_session(session_id) });
+        let consent = with_consent_mut(|consents| {
+            consents.resolve_session(session_id, session_user)
+        });
 
         match consent {
             Some(consent) => Ok(consent.allowed_headers),
@@ -228,20 +242,25 @@ impl ConsentsApi {
         }
     }
 
-    pub fn finish_sesion(session_id: &Id) {
+    pub fn finish_sesion(session_id: &Id, session_user: &Principal) {
         ensure_initialized();
-        with_consent_mut(|consents| consents.finish_session(session_id));
+        with_consent_mut(|consents| consents.finish_session(session_id, session_user));
     }
 
     pub async fn read_emr_with_session(
         session_id: &SessionId,
-        req: crate::api::ReadEmrByIdRequest
+        req: crate::api::ReadEmrByIdRequest,
+        registry: crate::declarations::emr_registry::EmrRegistry,
+        session_user: &Principal
     ) -> Result<crate::declarations::emr_registry::ReadEmrByIdResponse, String> {
         ensure_initialized();
-        let consent = with_consent_mut(|consents| { consents.resolve_session(session_id) });
+        let consent = with_consent_mut(|consents| {
+            consents.resolve_session(session_id, session_user)
+        });
 
         match consent {
-            Some(consent) => Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik)).await),
+            Some(consent) =>
+                Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await),
             None => {
                 return Err("invalid session".to_string());
             }
@@ -262,6 +281,7 @@ pub struct Consent {
     pub allowed_headers: Vec<EmrHeader>,
     pub claimed: bool,
     pub session_id: Option<SessionId>,
+    pub session_user: Option<Principal>,
 }
 
 impl Consent {
@@ -272,6 +292,7 @@ impl Consent {
             code,
             nik: partial.nik,
             allowed_headers: partial.allowed_headers,
+            session_user: None,
         }
     }
 }
@@ -289,10 +310,34 @@ impl PartialConsent {
 }
 
 // we intentionally use heap memory here as we dont need the persistance of stable memory here.
-struct ConsentMap {
+pub struct ConsentMap {
     inner: std::collections::HashMap<ConsentCode, Consent>,
     sessions: std::collections::HashMap<SessionId, ConsentCode>,
     rng: CanisterRandomSource,
+}
+
+mod metrics {
+    use super::*;
+
+    metrics!(ConsentMap: OngoingSession);
+
+    impl Metrics<OngoingSession> for ConsentMap {
+        fn metrics_name() -> &'static str {
+            "consent_map"
+        }
+
+        fn metrics_measurements() -> &'static str {
+            "ongoing_session"
+        }
+
+        fn update_measurements(&self) {
+            // no-op
+        }
+
+        fn get_measurements(&self) -> String {
+            self.sessions.len().to_string()
+        }
+    }
 }
 
 impl ConsentMap {
@@ -370,15 +415,55 @@ impl ConsentMap {
         Ok(consent.allowed_headers.clone())
     }
 
-    pub fn get_consent(&self, code: &ConsentCode) -> Option<&Consent> {
+    pub fn get_consent_uncheked(&self, code: &ConsentCode) -> Option<&Consent> {
         self.inner.get(code)
+    }
+
+    pub fn safe_get_consent_for(
+        &self,
+        code: &ConsentCode,
+        session_user: &Principal
+    ) -> Option<&Consent> {
+        let consent = self.get_consent_uncheked(code);
+
+        match consent {
+            Some(consent) => {
+                if consent.session_user.as_ref().eq(&Some(session_user)) {
+                    return Some(consent);
+                }
+            }
+            None => (),
+        }
+
+        None
     }
 
     pub fn remove_consent(&mut self, code: &ConsentCode) -> Option<Consent> {
         self.inner.remove(code)
     }
 
-    pub fn finish_session(&mut self, session_id: &SessionId) {
+    pub fn ensure_correct_session_owner(&self, session_id: &Id, session_user: &Principal) -> bool {
+        match self.sessions.get(session_id) {
+            Some(consent) => {
+                match self.inner.get(consent) {
+                    Some(consent) => consent.session_user.as_ref().eq(&Some(session_user)),
+                    None => false,
+                }
+            }
+            None => false,
+        }
+    }
+
+    /// finish a session, will remove the session if the consent is already removed, panic if session is not owned by the user
+    pub fn finish_session(&mut self, session_id: &SessionId, session_user: &Principal) {
+        if !self.ensure_correct_session_owner(session_id, session_user) {
+            ic_cdk::trap("invalid session owner");
+        }
+
+        self.finish_session_unchecked(session_id)
+    }
+
+    pub fn finish_session_unchecked(&mut self, session_id: &SessionId) {
         let code = self.sessions.remove(session_id);
 
         // remove the consent if the session is finished, no-op if the consent is already removed
@@ -388,7 +473,11 @@ impl ConsentMap {
     }
 
     /// wil return none if consent is already claimed or does not exist
-    pub fn claim_consent(&mut self, code: &ConsentCode) -> Option<SessionId> {
+    pub fn claim_consent(
+        &mut self,
+        code: &ConsentCode,
+        session_user: Principal
+    ) -> Option<SessionId> {
         let Some(consent) = self.inner.get_mut(code) else {
             return None;
         };
@@ -404,6 +493,7 @@ impl ConsentMap {
 
         consent.claimed = true;
         consent.session_id = Some(session_id.clone());
+        consent.session_user = Some(session_user);
 
         assert!(self.sessions.get(&session_id).is_none(), "session id already exists");
         assert!(self.sessions.insert(session_id.clone(), code.to_owned()).is_none());
@@ -413,7 +503,11 @@ impl ConsentMap {
 
     /// resolve a given session id to consent if it has been claimed,
     /// will remove the session if the consent is already removed.
-    pub fn resolve_session(&mut self, session_id: &SessionId) -> Option<Consent> {
+    pub fn resolve_session(
+        &mut self,
+        session_id: &SessionId,
+        session_user: &Principal
+    ) -> Option<Consent> {
         let code = self.sessions.get(session_id);
 
         let Some(code) = code else {
@@ -421,7 +515,7 @@ impl ConsentMap {
         };
 
         // return the consent if it exists
-        self.inner.get(code).cloned()
+        self.safe_get_consent_for(code, session_user).cloned()
     }
 }
 
@@ -444,11 +538,11 @@ mod tests {
 
         let code = consents.add_consent(partial.clone());
 
-        assert_eq!(consents.get_consent(&code).unwrap().nik, nik);
+        assert_eq!(consents.get_consent_uncheked(&code).unwrap().nik, nik);
 
         consents.remove_consent(&code);
 
-        assert_eq!(consents.get_consent(&code), None);
+        assert_eq!(consents.get_consent_uncheked(&code), None);
     }
 
     #[test]
@@ -463,11 +557,14 @@ mod tests {
 
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code).unwrap();
+        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
-        assert_eq!(consents.get_consent(&code).unwrap().session_id.as_ref().unwrap(), &session_id);
+        assert_eq!(
+            consents.get_consent_uncheked(&code).unwrap().session_id.as_ref().unwrap(),
+            &session_id
+        );
 
-        assert!(consents.claim_consent(&code).is_none());
+        assert!(consents.claim_consent(&code, Principal::anonymous()).is_none());
     }
 
     #[test]
@@ -489,7 +586,7 @@ mod tests {
 
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code).unwrap();
+        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         assert!(consents.ensure_header_exists_and_allowed(&code, &header, &session_id));
     }
@@ -511,7 +608,7 @@ mod tests {
         let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code).unwrap();
+        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         let header = EmrHeader {
             user_id: nik.clone(),
@@ -541,14 +638,41 @@ mod tests {
         let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code).unwrap();
+        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         assert!(consents.ensure_session_allowed(&code, &session_id));
 
-        consents.finish_session(&session_id);
+        consents.finish_session_unchecked(&session_id);
 
         assert!(!consents.ensure_session_allowed(&code, &session_id));
-        assert!(consents.resolve_session(&session_id).is_none());
-        assert!(consents.get_consent(&code).is_none());
+        assert!(consents.resolve_session(&session_id, &Principal::anonymous()).is_none());
+        assert!(consents.get_consent_uncheked(&code).is_none());
+    }
+
+    #[test]
+    #[should_panic]
+    fn panic_wrong_session_user() {
+        let mut consents = ConsentMap::new_with_seed(0);
+
+        let nik = NIK::from_str(
+            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+        ).unwrap();
+
+        let header = EmrHeader {
+            user_id: nik.clone(),
+            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
+            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
+            registry_id: Principal::anonymous().into(),
+        };
+
+        let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
+        let code = consents.add_consent(partial.clone());
+
+        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
+
+        consents.finish_session(
+            &session_id,
+            &Principal::from_text("s55qq-oqaaa-aaaaa-aaakq-cai").unwrap()
+        );
     }
 }

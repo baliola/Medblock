@@ -1,4 +1,4 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use canister_common::{ common::{ EmrBody, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
 use serde::Deserialize;
 
@@ -97,3 +97,9 @@ impl RemoveEmrResponse {
 from!(RemoveEmrResponse: bool as status {
     status : status
 });
+
+
+#[derive(CandidType, Deserialize)]
+pub struct AuthorizedCallerRequest{
+    pub caller: Principal,
+}

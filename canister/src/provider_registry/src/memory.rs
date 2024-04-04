@@ -4,4 +4,12 @@ use crate::{ config::CanisterConfig, registry::{ Issued, Providers, ProvidersBin
 
 /// needed since the module is imported
 pub struct FreezeThresholdMemory;
-generate_memory_id!(Providers, ProvidersBindings, Issued, FreezeThresholdMemory, CanisterConfig);
+pub struct UpgradeMemory;
+generate_memory_id!(
+    UpgradeMemory,
+    Providers,
+    ProvidersBindings,
+    Issued,
+    FreezeThresholdMemory,
+    CanisterConfig
+);

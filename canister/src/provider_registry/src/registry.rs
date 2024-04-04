@@ -27,8 +27,7 @@ use canister_common::{
 };
 
 use crate::api::{ IssueEmrRequest };
-use crate::declarations::emr_registry::{ emr_registry, CreateEmrRequest, CreateEmrResponse };
-use crate::declarations::patient_registry::patient_registry;
+use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
 
 use self::provider::{ Provider, V1 };
 
@@ -49,10 +48,13 @@ pub struct ProviderRegistry {
 
 // update emr inter-canister call
 impl ProviderRegistry {
-    pub async fn do_call_update_emr(req: crate::api::UpdateEmrRequest) {
+    pub async fn do_call_update_emr(
+        req: crate::api::UpdateEmrRequest,
+        registry: crate::declarations::emr_registry::EmrRegistry
+    ) {
         let args = req.to_args();
 
-        let result = emr_registry.update_emr(args).await.map_err(CallError::from);
+        let result = registry.update_emr(args).await.map_err(CallError::from);
 
         match result {
             Ok(_) => (),
@@ -93,7 +95,11 @@ impl ProviderRegistry {
         }
     }
 
-    pub async fn do_call_create_emr(args: CreateEmrRequest) -> CreateEmrResponse {
+    pub async fn do_call_create_emr(
+        args: CreateEmrRequest,
+        emr_registry: crate::declarations::emr_registry::EmrRegistry,
+        patient_registry: crate::declarations::patient_registry::PatientRegistry
+    ) -> CreateEmrResponse {
         let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
 
         // trap explicitly if not succeeded
