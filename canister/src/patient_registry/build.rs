@@ -31,7 +31,7 @@ fn main() {
     if !candid_path_env || !link_flag {
         return;
     }
-    let a = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").unwrap();
+    let _a = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").unwrap();
 
     hardcode_set_provider_registry_candid_path();
 

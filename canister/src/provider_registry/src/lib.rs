@@ -22,12 +22,8 @@ use canister_common::{
     stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
-use ic_cdk::api::management_canister::main::{
-    CanisterIdRecord,
-    CanisterSettings,
-    UpdateSettingsArgument,
-};
-use ic_principal::Principal;
+
+
 use ic_stable_structures::Cell;
 use memory::{ FreezeThresholdMemory, UpgradeMemory };
 use registry::ProviderRegistry;
@@ -190,7 +186,7 @@ fn start_collect_metrics_job() {
 }
 
 fn deserialize_canister_metrics() {
-    let mut mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
+    let mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
 
     let mut reader = ic_stable_structures::reader::Reader::new(&mem, 0);
 
@@ -292,7 +288,7 @@ pub async fn canister_geek_metrics(
 )]
 pub async fn update_canistergeek_information(
     request: canistergeek_ic_rust::api_type::UpdateInformationRequest
-) -> () {
+) {
     canistergeek_ic_rust::update_information(request);
 }
 

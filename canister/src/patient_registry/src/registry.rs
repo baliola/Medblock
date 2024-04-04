@@ -9,7 +9,7 @@ use canister_common::{
     statistics::traits::{ Metrics, OpaqueMetrics },
 };
 
-use crate::{ api::ReadEmrByIdRequest, declarations::emr_registry::emr_registry };
+use crate::{ api::ReadEmrByIdRequest };
 
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
@@ -282,7 +282,8 @@ impl EmrBindingMap {
             return Err(PatientRegistryError::EmrExists);
         }
 
-        Ok(self.0.insert(nik.to_stable(), header.to_stable()))
+        self.0.insert(nik.to_stable(), header.to_stable());
+        Ok(())
     }
 }
 

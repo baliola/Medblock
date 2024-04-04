@@ -24,15 +24,11 @@ use canister_common::{
 use canistergeek_ic_rust::{ api_type::UpdateInformationRequest, monitor::data_type::DayData };
 use config::CanisterConfig;
 use ic_cdk::{
-    api::management_canister::{
-        http_request,
-        main::{ CanisterIdRecord, CanisterSettings, UpdateSettingsArgument },
-    },
     init,
     query,
     update,
 };
-use ic_stable_structures::{ memory_manager::MemoryId, Cell };
+use ic_stable_structures::{ Cell };
 use memory::UpgradeMemory;
 use std::{ cell::RefCell, io::Write };
 use core::time::Duration;
@@ -99,14 +95,14 @@ fn initialize_id_generator() {
 }
 fn init_state() -> self::State {
     let memory_manager = MemoryManager::init();
-    let state = State::new(
+    
+
+    State::new(
         registry::CoreEmrRegistry::init(&memory_manager),
         CanisterConfig::init(&memory_manager),
         (),
         memory_manager
-    );
-
-    state
+    )
 }
 
 // guard function
@@ -205,7 +201,7 @@ fn start_collect_metrics_job() {
 }
 
 fn deserialize_canister_metrics() {
-    let mut mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
+    let mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
 
     let mut reader = ic_stable_structures::reader::Reader::new(&mem, 0);
 
@@ -234,7 +230,7 @@ pub async fn canister_geek_metrics(
 #[update(guard = "only_authorized_metrics_collector", name = "updateCanistergeekInformation")]
 pub async fn update_canistergeek_information(
     request: canistergeek_ic_rust::api_type::UpdateInformationRequest
-) -> () {
+) {
     canistergeek_ic_rust::update_information(request);
 }
 

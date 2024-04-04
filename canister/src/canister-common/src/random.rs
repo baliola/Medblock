@@ -4,7 +4,7 @@ use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
 use tiny_keccak::Hasher;
 
-use crate::deref;
+
 
 pub trait RandomSource {
     fn get_random_bytes(&mut self) -> [u8; 32];
