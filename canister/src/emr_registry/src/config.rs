@@ -13,6 +13,7 @@ use serde::Deserialize;
 #[derive(CandidType, Deserialize, Clone)]
 pub struct CanisterConfig {
     authorized_callers: Vec<Principal>,
+    authorized_metrics_collectors: Vec<Principal>,
 }
 
 metrics!(CanisterConfig: AuthorizedCallers);
@@ -61,6 +62,7 @@ impl Default for CanisterConfig {
     fn default() -> Self {
         Self {
             authorized_callers: vec![],
+            authorized_metrics_collectors: vec![],
         }
     }
 }
@@ -80,8 +82,35 @@ impl CanisterConfig {
         if self.authorized_callers.contains(&caller) {
             return;
         }
-        
+
         self.authorized_callers.push(caller);
     }
 
+    pub fn remove_authorized_caller(&mut self, caller: Principal) {
+        self.authorized_callers.retain(|c| c != &caller);
+    }
+
+    pub fn get_authorized_callers(&self) -> Vec<Principal> {
+        self.authorized_callers.clone()
+    }
+
+    pub fn get_authorized_metrics_collectors(&self) -> Vec<Principal> {
+        self.authorized_metrics_collectors.clone()
+    }
+
+    pub fn add_authorized_metrics_collector(&mut self, collector: Principal) {
+        if self.authorized_metrics_collectors.contains(&collector) {
+            return;
+        }
+
+        self.authorized_metrics_collectors.push(collector);
+    }
+
+    pub fn remove_authorized_metrics_collector(&mut self, collector: Principal) {
+        self.authorized_metrics_collectors.retain(|c| c != &collector);
+    }
+
+    pub fn is_authorized_metrics_collector(&self, collector: &Principal) -> bool {
+        self.authorized_metrics_collectors.contains(collector)
+    }
 }

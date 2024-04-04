@@ -426,18 +426,7 @@ mod tests {
     }
 }
 
-#[derive(
-    Encode,
-    Debug,
-    Decode,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    PartialOrd,
-    Ord,
-    Default
-)]
+#[derive(Encode, Debug, Decode, Clone, PartialEq, Eq, Serialize, PartialOrd, Ord, Default)]
 pub struct PrincipalBytes([u8; Principal::MAX_LENGTH_IN_BYTES]);
 
 impl PrincipalBytes {
@@ -470,9 +459,7 @@ impl From<PrincipalBytes> for Principal {
 }
 
 impl<'de> Deserialize<'de> for PrincipalBytes {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: serde::Deserializer<'de>
-    {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
         let principal = Principal::deserialize(deserializer)?;
         Ok(Self::new(principal))
     }
@@ -511,8 +498,10 @@ pub mod guard {
     pub fn verified_caller() -> Result<Principal, String> {
         let caller = ic_cdk::caller();
 
-        if caller.ne(&Principal::anonymous()) {
-            return Err(String::from("anonymous caller is not allowed"));
+        if caller.eq(&Principal::anonymous()) {
+            return Err(
+                format!("caller is anonymous, not allowed to call this method. caller : {}", caller)
+            );
         }
 
         Ok(caller)
@@ -830,7 +819,6 @@ pub struct EmrHeader {
     pub registry_id: PrincipalBytes,
 }
 
-
 impl_max_size!(for EmrHeader: EmrHeader);
 impl_mem_bound!(for EmrHeader: bounded; fixed_size: true);
 impl_range_bound!(EmrHeader);
@@ -852,8 +840,6 @@ mod header_test {
 
     #[test]
     fn test_len_encoded() {
-        
-
         let header = EmrHeader::new(
             UserId::default(),
             EmrId::default(),

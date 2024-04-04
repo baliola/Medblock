@@ -116,3 +116,9 @@ pub struct SuspendRequest {
 pub struct UnSuspendRequest {
     pub principal: Principal,
 }
+
+
+#[derive(CandidType, Deserialize)]
+pub struct AuthorizedCallerRequest{
+    pub caller: Principal,
+}

@@ -157,3 +157,8 @@ pub struct FinishSessionRequest {
 pub struct UpdateEmrRegistryRequest{
     pub principal: Principal
 }
+
+#[derive(CandidType, Deserialize)]
+pub struct AuthorizedCallerRequest{
+    pub caller: Principal,
+}

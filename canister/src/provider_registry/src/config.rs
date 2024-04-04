@@ -17,6 +17,7 @@ pub struct CanisterConfig {
     default_emr_registry: Principal,
     patient_registry: Principal,
     emr_registries: Vec<Principal>,
+    authorized_metrics_collectors: Vec<Principal>,
 }
 
 impl_max_size!(for CanisterConfig: Principal, u8);
@@ -45,6 +46,7 @@ impl Default for CanisterConfig {
             default_emr_registry: Principal::anonymous(),
             patient_registry: Principal::anonymous(),
             emr_registries: vec![Principal::anonymous()],
+            authorized_metrics_collectors: vec![],
         }
     }
 }
@@ -93,5 +95,21 @@ impl CanisterConfig {
 
     pub fn max_item_per_response(&self) -> u8 {
         self.max_item_per_response
+    }
+
+    pub fn add_authorized_metrics_collector(&mut self, collector: Principal) {
+        if self.authorized_metrics_collectors.contains(&collector) {
+            return;
+        }
+
+        self.authorized_metrics_collectors.push(collector);
+    }
+
+    pub fn remove_authorized_metrics_collector(&mut self, collector: Principal) {
+        self.authorized_metrics_collectors.retain(|c| c != &collector);
+    }
+
+    pub fn is_authorized_metrics_collector(&self, collector: &Principal) -> bool {
+        self.authorized_metrics_collectors.contains(collector)
     }
 }

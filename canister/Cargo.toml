@@ -35,17 +35,17 @@ http = "1.1.0"
 canistergeek_ic_rust = "0.4.3"  
 
 [profile.release.canister-common]
-opt-level = "s"
+opt-level = "z"
 lto = true
 
 [profile.release.provider_registry]
-opt-level = "s"
+opt-level = "z"
 lto = true
 
 [profile.release.emr_registry]
-opt-level = "s"
+opt-level = "z"
 lto = true
 
 [profile.release.patient_registry]
-opt-level = "s"
+opt-level = "z"
 lto = true

@@ -1,5 +1,6 @@
 use canister_common::generate_memory_id;
 
-use crate::{config::CanisterConfig, registry::{ EmrBindingMap, OwnerMap }};
+use crate::{ config::CanisterConfig, registry::{ EmrBindingMap, OwnerMap } };
 
-generate_memory_id!(EmrBindingMap, OwnerMap, CanisterConfig);
+pub struct UpgradeMemory;
+generate_memory_id!(UpgradeMemory, EmrBindingMap, OwnerMap, CanisterConfig);

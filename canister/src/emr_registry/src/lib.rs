@@ -1,5 +1,5 @@
 use api::{
-    AddAuthorizedCallerRequest,
+    AuthorizedCallerRequest,
     CreateEmrRequest,
     CreateEmrResponse,
     ReadEmrByIdRequest,
@@ -21,9 +21,17 @@ use canister_common::{
     stable::{ Candid, Memory, Stable },
     statistics,
 };
-use canistergeek_ic_rust::monitor::data_type::DayData;
+use canistergeek_ic_rust::{ api_type::UpdateInformationRequest, monitor::data_type::DayData };
 use config::CanisterConfig;
-use ic_cdk::{ api::management_canister::http_request, init };
+use ic_cdk::{
+    api::management_canister::{
+        http_request,
+        main::{ CanisterIdRecord, CanisterSettings, UpdateSettingsArgument },
+    },
+    init,
+    query,
+    update,
+};
 use ic_stable_structures::{ memory_manager::MemoryId, Cell };
 use memory::UpgradeMemory;
 use std::{ cell::RefCell, io::Write };
@@ -49,6 +57,8 @@ thread_local! {
         RefCell::new(None)
     };
 }
+// change this if you want to change the interval of the metrics collection
+const METRICS_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 minutes
 
 /// A helper method to read the state.
 ///
@@ -122,11 +132,25 @@ fn only_authorized_caller() -> Result<(), String> {
     })
 }
 
+// guard function
+fn only_authorized_metrics_collector() -> Result<(), String> {
+    let caller = verified_caller()?;
+
+    with_state(|s| {
+        if !s.config.get().is_authorized_metrics_collector(&caller) {
+            return Err("only authorized metrics collector can call this method".to_string());
+        }
+
+        Ok(())
+    })
+}
+
 fn initialize() {
     let state = init_state();
     STATE.replace(Some(state));
     log!("state initialized");
-    initialize_id_generator()
+    initialize_id_generator();
+    start_collect_metrics_job();
 }
 
 #[ic_cdk::pre_upgrade]
@@ -151,7 +175,7 @@ fn serialize_canister_metrics() {
         Ok(_) => {
             log!("encoded canister metrics length written successfully : {} bytes", encoded_len);
         }
-        
+
         Err(e) => {
             log!("OOM ERROR: failed to write encoded canister metrics length {:?}", e);
         }
@@ -166,6 +190,18 @@ fn serialize_canister_metrics() {
             log!("OOM ERROR: failed to write encoded canister metrics {:?}", e);
         }
     }
+}
+
+fn start_collect_metrics_job() {
+    ic_cdk_timers::set_timer_interval(METRICS_INTERVAL, || {
+        log!("updating metrics");
+
+        canistergeek_ic_rust::update_information(UpdateInformationRequest {
+            metrics: Some(canistergeek_ic_rust::api_type::CollectMetricsRequestType::force),
+        });
+
+        log!("metrics updated");
+    });
 }
 
 fn deserialize_canister_metrics() {
@@ -184,9 +220,22 @@ fn deserialize_canister_metrics() {
     let (monitor_stable_data, logger_stable_data) =
         Decode!(&state_buf, (u8, std::collections::BTreeMap<u32, DayData>), (u8, canistergeek_ic_rust::logger::LogMessageStorage)).unwrap();
 
-
     canistergeek_ic_rust::monitor::post_upgrade_stable_data(monitor_stable_data);
     canistergeek_ic_rust::logger::post_upgrade_stable_data(logger_stable_data);
+}
+
+#[query(guard = "only_authorized_metrics_collector", name = "getCanistergeekInformation")]
+pub async fn canister_geek_metrics(
+    request: canistergeek_ic_rust::api_type::GetInformationRequest
+) -> canistergeek_ic_rust::api_type::GetInformationResponse<'static> {
+    canistergeek_ic_rust::get_information(request)
+}
+
+#[update(guard = "only_authorized_metrics_collector", name = "updateCanistergeekInformation")]
+pub async fn update_canistergeek_information(
+    request: canistergeek_ic_rust::api_type::UpdateInformationRequest
+) -> () {
+    canistergeek_ic_rust::update_information(request);
 }
 
 #[ic_cdk::inspect_message]
@@ -211,11 +260,44 @@ fn post_upgrade() {
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
-fn add_authorized_caller(req: AddAuthorizedCallerRequest) {
+fn add_authorized_caller(req: AuthorizedCallerRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
 
         config.add_authorized_caller(req.caller);
+
+        s.config.set(config);
+    });
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn remove_authorized_caller(req: AuthorizedCallerRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.remove_authorized_caller(req.caller);
+
+        s.config.set(config);
+    });
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn add_authorized_metrics_collector(req: AuthorizedCallerRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.add_authorized_metrics_collector(req.caller);
+
+        s.config.set(config);
+    });
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn remove_authorized_metrics_collector(req: AuthorizedCallerRequest) {
+    with_state_mut(|s| {
+        let mut config = s.config.get().to_owned();
+
+        config.remove_authorized_metrics_collector(req.caller);
 
         s.config.set(config);
     });
@@ -227,7 +309,7 @@ fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })
 }
 
-#[ic_cdk::update]
+#[ic_cdk::update(guard = "only_authorized_caller")]
 fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
     let id = with_id_generator_mut(|id_gen| id_gen.generate_id());
     let (key, emr) = req.to_args(id);
@@ -237,14 +319,14 @@ fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
         .into()
 }
 
-#[ic_cdk::update]
+#[ic_cdk::update(guard = "only_authorized_caller")]
 fn update_emr(req: UpdateEmrRequest) -> UpdateEmrResponse {
     with_state_mut(|s|
         s.registry.update_batch(req.header.to_partial_update_key(), req.fields).unwrap().into()
     )
 }
 
-#[ic_cdk::update]
+#[ic_cdk::update(guard = "only_authorized_caller")]
 fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
     with_state_mut(|s|
         s.registry
@@ -255,12 +337,12 @@ fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
 }
 
 // this will serve as an synchronization function in the future, for now it's only for testing inter-canister calls successfully
-#[ic_cdk::query]
+#[ic_cdk::query(guard = "only_authorized_caller")]
 fn ping() {
     // no-op
 }
 
-#[ic_cdk::query]
+#[ic_cdk::query(guard = "only_authorized_metrics_collector")]
 fn metrics() -> String {
     with_state(|s| {
         [

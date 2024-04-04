@@ -4,5 +4,8 @@
   },
   "patient_registry": {
     "staging": "t3t27-byaaa-aaaak-akn5a-cai"
+  },
+  "provider_registry": {
+    "staging": "tawg2-3aaaa-aaaak-akn7q-cai"
   }
 }

@@ -100,6 +100,6 @@ from!(RemoveEmrResponse: bool as status {
 
 
 #[derive(CandidType, Deserialize)]
-pub struct AddAuthorizedCallerRequest{
+pub struct AuthorizedCallerRequest{
     pub caller: Principal,
 }
