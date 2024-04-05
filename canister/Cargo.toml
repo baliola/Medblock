@@ -1,6 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["src/canister-common", "src/provider_registry", "src/emr_registry", "src/patient_registry"]
+members = [
+    "src/canister-common",
+    "src/provider_registry",
+    "src/emr_registry",
+    "src/patient_registry",
+]
+exclude = [
+    "tests/integration-tests"
+]
 
 [workspace.dependencies]
 ic-cdk = "0.13.1"
@@ -20,7 +28,6 @@ hex = "0.4.3"
 thiserror = "1.0.50"
 ic-cdk-bindgen = "0.1.3"
 uuid = { default-features = false, version = "1.6.1" }
-pocket-ic = "2.2.0" 
 
 ic-cdk-timers = "0.7.0"
 
@@ -30,9 +37,9 @@ serde_json = { version = "1.0.108", features = [
 ], default-features = false }
 
 chrono = "0.4.19"
-serde_assert = "0.7.1" 
-http = "1.1.0"                   
-canistergeek_ic_rust = "0.4.3"  
+serde_assert = "0.7.1"
+http = "1.1.0"
+canistergeek_ic_rust = "0.4.3"
 
 [profile.release.canister-common]
 opt-level = "z"
@@ -49,3 +56,4 @@ lto = true
 [profile.release.patient_registry]
 opt-level = "z"
 lto = true
+ 

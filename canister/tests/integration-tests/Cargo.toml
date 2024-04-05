@@ -1,0 +1,21 @@
+[package]
+name = "integration-tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+canister-common = { path = "../../src/canister-common" }
+# emr_registry = { path = "../src/emr_registry" }
+# provider_registry = { path = "../src/provider_registry" }
+# patient_registry = { path = "../src/patient_registry" }
+pocket-ic = "2.2.0"
+ic-cdk = { version = "0.12.0" }
+ic_principal = { version = "0.1.1" }
+lazy_static = "1.4.0"
+serde = "1.0.197"
+candid = "0.10.2"
+
+[build-dependencies]
+ic-cdk-bindgen = "0.1.3"
