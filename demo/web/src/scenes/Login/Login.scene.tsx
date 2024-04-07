@@ -46,7 +46,7 @@ const LoginPage: NextPageWithLayout = () => {
         <img
           src={hospitalImage}
           alt=""
-          className="absolute max-w-[300px] right-24  w-full"
+          className="absolute max-w-[300px] right-24 -top-4 w-full"
         />
         <img
           src={healthMinisterImage}
