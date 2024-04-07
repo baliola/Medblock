@@ -9,6 +9,10 @@ module.exports = {
     transparent: 'transparent',
     current: 'currentColor',
     extend: {
+      backgroundImage: {
+        'hero-background': "url('/assets/background.svg')",
+        // 'footer-texture': "url('/img/footer-texture.png')",
+      },
       colors: {
         // light mode
         tremor: {
