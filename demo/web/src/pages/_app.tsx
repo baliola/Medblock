@@ -7,6 +7,7 @@ import CommonLayout from '@/layouts/CommonLayout';
 import { NextPageWithLayout } from '@/types';
 import EmptyLayout from '@/layouts/EmptyLayout';
 import { ToastContainer } from 'react-toastify';
+import PatientLayout from '@/layouts/PatientLayout';
 
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -15,8 +16,12 @@ export type AppPropsWithLayout = AppProps & {
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? CommonLayout;
   const getEmptyLayout = Component.getLayout ?? EmptyLayout;
+  const getPatientLayout = Component.getLayout ?? PatientLayout;
+
   if (Component.disableLayout) {
     return <> {getEmptyLayout(<Component {...pageProps} />)}</>;
+  } else if (Component.patientLayout) {
+    return <> {getPatientLayout(<Component {...pageProps} />)}</>;
   }
   return (
     <>
