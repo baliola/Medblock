@@ -1,18 +1,19 @@
 use std::{ path::Path, process::Command };
 
-use candid::Encode;
+use candid::{ CandidType, Encode };
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
 use integration_tests::declarations;
+use pocket_ic::UserError;
 
 const PROVIDER_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../target/wasm32-unknown-unknown/release/provider_registry.wasm"
+    "../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm"
 );
 const PATIENT_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../target/wasm32-unknown-unknown/release/patient_registry.wasm"
+    "../../../../target/wasm32-unknown-unknown/release/patient_registry.wasm"
 );
 const EMR_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../target/wasm32-unknown-unknown/release/emr_registry.wasm"
+    "../../../../target/wasm32-unknown-unknown/release/emr_registry.wasm"
 );
 
 const POCKET_IC_PATH: Option<&'static str> = std::option_env!("POCKET_IC_BIN");
@@ -212,8 +213,9 @@ pub fn prepare_env() -> Registries {
     resolve_pocket_ic_path();
 
     let server = pocket_ic::PocketIcBuilder::new().with_application_subnet().build();
-
     let controller = Principal::from_text("rrkah-fqaaa-aaaaa-aaaaq-cai").unwrap();
+
+    let id = Principal::anonymous();
 
     let provider = setup_provider_registry(&server, controller.clone());
     let patient = setup_patient_registry(&server, controller.clone());

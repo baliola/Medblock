@@ -1,6 +1,7 @@
 {
   "rust-analyzer.linkedProjects": [
     "${workspaceFolder}${pathSeparator}canister${pathSeparator}Cargo.toml",
-    "${workspaceFolder}${pathSeparator}canister${pathSeparator}tests${pathSeparator}integration-tests${pathSeparator}Cargo.toml"
+    "${workspaceFolder}${pathSeparator}canister${pathSeparator}tests${pathSeparator}integration-tests${pathSeparator}Cargo.toml",
+    "${workspaceFolder}${pathSeparator}canister${pathSeparator}tests${pathSeparator}pocket-ic-bindgen${pathSeparator}Cargo.toml"
   ]
 }

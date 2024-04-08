@@ -289,6 +289,7 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     PatientRegistry::do_call_read_emr(args, registry).await
 }
 
+#[ic_cdk::query(guard = "only_patient")]
 fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();

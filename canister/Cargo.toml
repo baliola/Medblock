@@ -6,11 +6,11 @@ members = [
     "src/emr_registry",
     "src/patient_registry",
 ]
-exclude = [
-    "tests/integration-tests"
-]
+# exclude because currently the pocket-ic does not have a compatible ic-cdk version with the rest of the project
+exclude = ["tests/integration-tests", "tests/pocket-ic-bindgen"]
 
 [workspace.dependencies]
+
 ic-cdk = "0.13.1"
 candid = "0.10.4"
 ic-stable-memory = "0.4"
@@ -56,4 +56,3 @@ lto = true
 [profile.release.patient_registry]
 opt-level = "z"
 lto = true
- 
