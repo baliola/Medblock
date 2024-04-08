@@ -12,10 +12,12 @@ import useMedicalRecordMock, {
 import dateFormatter from '@/lib/dateFormatter';
 import { Health, SearchNormal1 } from 'iconsax-react';
 import { PlusIcon } from '@heroicons/react/20/solid';
+import { useRouter } from 'next/router';
 // import Datepicker from 'react-tailwindcss-datepicker';
 
 const DetailPatient: NextPageWithLayout = () => {
   const { generateMockMedicalRecords } = useMedicalRecordMock();
+  const router = useRouter();
 
   const [dateValue, setDateValue] = useState({
     startDate: new Date(),
@@ -67,9 +69,9 @@ const DetailPatient: NextPageWithLayout = () => {
               size="24"
               color="#3E48D6"
               className="cursor-pointer"
-              //   onClick={() => {
-              //     router.push(`/emr/${info.row.original.id}`);
-              //   }}
+              onClick={() => {
+                router.push(`/medical-record/${info.row.original.id}`);
+              }}
             />
           </div>
         ),
@@ -98,7 +100,9 @@ const DetailPatient: NextPageWithLayout = () => {
             <div className="flex w-full justify-end">
               <button
                 className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
-                //   onClick={toggleModal}
+                onClick={() => {
+                  router.push(`/medical-record/add`);
+                }}
               >
                 {/* <img src={} alt="" /> */}
                 <PlusIcon width={16} />
