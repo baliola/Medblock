@@ -49,7 +49,7 @@ function Sidebar() {
           <Image
             src={logo}
             alt="User"
-            width={120}
+            width={160}
             height={36}
             // className="rounded-full"
           />
@@ -70,7 +70,7 @@ function Sidebar() {
               } hover:px-8 duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
               <Element3 variant="Outline" size={16} />
-              Dashboard
+              Patient
             </Link>
           </div>
 

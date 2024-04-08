@@ -21,7 +21,6 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
       transition={{ duration: 0.5 }}
       className={`${isSidebarOpen ? 'overflow-hidden' : ''} h-screen`}
     >
-      {/* backdrop */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
@@ -33,7 +32,6 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
         )}
       </AnimatePresence>
 
-      {/* mobile sidebar */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
