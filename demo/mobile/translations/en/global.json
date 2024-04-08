@@ -1,3 +1,11 @@
 {
-   
+    "label": {
+        "username": "Username",
+        "continueEmail": "Continue With Email",
+        "orContinue": "OR CONTINUE WITH",
+        "continuePassKey": "Continue With Passkey",
+        "otherSign": "Other Sign Option",
+        "terms": "Terms of Service",
+        "privacyPolicy": "Privacy Policy"
+    }
 }

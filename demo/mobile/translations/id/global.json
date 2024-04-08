@@ -1,3 +1,11 @@
 {
-   
+    "label": {
+        "username": "Nama pengguna",
+        "continueEmail": "Lanjutkan Dengan Email",
+        "orContinue": "ATAU LANJUTKAN DENGAN",
+        "continuePassKey": "Lanjutkan Dengan Kunci Sandi",
+        "otherSign": "Opsi Masuk Lainnya",
+        "terms": "Ketentuan Layanan",
+        "privacyPolicy": "Kebijakan Privasi"
+    }
 }

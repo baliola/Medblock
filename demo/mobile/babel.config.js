@@ -24,6 +24,7 @@ module.exports = {
           '@repositories': './src/data/repositories',
           '@constants': './src/constants',
           '@components': './src/presentation/components',
+          '@navigations': './src/presentation/navigations',
           '@layouts': './src/presentation/layouts',
           '@screens': './src/presentation/modules/',
           '@utils': './src/utils/',

@@ -1,6 +1,6 @@
 class Colors {
-  static readonly primary_normal: string = '#863DEB';
-  static readonly secondary_normal: string = '#2FC9BF';
+  static readonly primary_normal: string = '#242DA8';
+  static readonly secondary_normal: string = '#D30837';
   static readonly white: string = '#FFFFFF';
   static readonly slate: string = '#E9EDFF';
   static readonly gray: string = '#8E9FAF';
