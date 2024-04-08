@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
 module.exports = {
+  darkMode: 'class', // Enable dark mode using class
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     './node_modules/@tremor/**/*.{js,ts,jsx,tsx}',
@@ -9,6 +10,10 @@ module.exports = {
     transparent: 'transparent',
     current: 'currentColor',
     extend: {
+      backgroundImage: {
+        'hero-background': "url('/assets/background.svg')",
+        // 'footer-texture': "url('/img/footer-texture.png')",
+      },
       colors: {
         // light mode
         tremor: {

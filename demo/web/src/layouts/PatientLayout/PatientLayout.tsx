@@ -2,16 +2,16 @@ import Image from 'next/image';
 import { FC, ReactElement } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import styles from './CommonLayout.module.css';
 import { useCentralStore } from '@/Store';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Navbar from '@/components/Navbar/Navbar';
+import PatientInfo from '@/scenes/Detail/component/PatientInfo';
 
-interface CommonLayoutProps {
+interface PatientLayoutProps {
   children: ReactElement;
 }
 
-export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
+export const PatientLayout: FC<PatientLayoutProps> = ({ children }) => {
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useCentralStore();
 
   return (
@@ -48,7 +48,7 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
 
       <div className="grid md:grid-cols-[240px_1fr] w-screen overflow-x-hidden">
         <div className="hidden md:block">
-          <Sidebar />
+          <PatientInfo />
         </div>
         <div className="flex">
           <div className="w-full overflow-x-auto max-w-[1440px] mx-auto">
@@ -61,6 +61,6 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
   );
 };
 
-const getLayout = (page: ReactElement) => <CommonLayout>{page}</CommonLayout>;
+const getLayout = (page: ReactElement) => <PatientLayout>{page}</PatientLayout>;
 
 export default getLayout;
