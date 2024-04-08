@@ -12,6 +12,8 @@ import { NFID } from '@nfid/embed';
 import { NFIDConfig } from '@nfid/embed/src/lib/types';
 import { eidLogo, googleIcon, line, passkeyIcon } from '@/lib/assets';
 import { AuthClient } from '@dfinity/auth-client';
+import { EyeDropperIcon, EyeIcon } from '@heroicons/react/20/solid';
+import { Eye, EyeSlash } from 'iconsax-react';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -159,6 +161,48 @@ const LoginForm: FC<LoginFormProps> = ({
 
               {/* <ErrorMessage name="email" component="div" /> */}
             </label>
+            <div className={`flex flex-col gap-2`}>
+              <div className="grid grid-cols-2">
+                <label htmlFor="">
+                  {' '}
+                  <span className="block text-sm font-normal text-slate-600">
+                    {titlePassword}{' '}
+                  </span>
+                </label>
+                <div className="flex justify-end text-sm text-tremor-background-purple">
+                  <a
+                    className="items-center flex cursor-pointer px-1 rounded-md hover:bg-blue-100 transition ease-in duration-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeSlash width={18} height={18} className="mr-1" />
+                    ) : (
+                      <Eye width={18} height={18} className="mr-1" />
+                    )}
+                    {showPassword ? (
+                      <label className="cursor-pointer">Hide</label>
+                    ) : (
+                      <label className="cursor-pointer">Show</label>
+                    )}
+                  </a>
+                </div>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder={placeholderPassword}
+                onChange={handleChange('password')}
+                className={
+                  errors?.password
+                    ? 'flex flex-row min-w-full text-sm border py-2.5 px-4 rounded border-rose-500 focus:outline-none focus:border-rose-500 focus:border-b-[1px]'
+                    : 'flex flex-row min-w-full text-sm border py-2.5 px-4  rounded-md border-slate-300 focus:outline-none focus:border-purple-500 focus:border-b-[1px]'
+                }
+              />
+              {errors?.password && (
+                <p className="text-sm text-rose-500">{errors.password}</p>
+              )}
+            </div>{' '}
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
               title="Sign in"
