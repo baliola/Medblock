@@ -44,12 +44,12 @@ function Sidebar() {
     <div className="fixed w-60 shrink-0 md:block h-screen  top-0 overflow-hidden">
       <div className="w-full h-full bg-white border-r">
         {/* logo */}
-        <div className="p-4 md:p-6 flex cursor-pointer group items-center gap-2">
+        <div className="justify-center p-4 md:p-6 flex cursor-pointer group items-center gap-2">
           {/* <div className="h-10 outline outline-violet-300 w-10 flex items-center bg-gradient-to-br justify-center rounded-full from-violet-500 to-violet-400 text-white"> */}
           <Image
             src={logo}
             alt="User"
-            width={189}
+            width={120}
             height={36}
             // className="rounded-full"
           />

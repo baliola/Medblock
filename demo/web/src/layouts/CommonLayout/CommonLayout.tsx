@@ -54,7 +54,7 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
         </div>
         <div className="flex">
           <div className="w-full overflow-x-auto max-w-[1440px] mx-auto">
-            <Navbar isOpen={isSidebarOpen} sidebarChange={toggleSidebar} />
+            {/* <Navbar isOpen={isSidebarOpen} sidebarChange={toggleSidebar} /> */}
             {children}
           </div>
         </div>

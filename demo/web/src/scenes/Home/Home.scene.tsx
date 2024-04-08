@@ -1,6 +1,9 @@
 'use client';
 
+import Table from '@/components/Tables/Table';
+import usePatientMock, { MockPatients } from '@/lib/MockData/mockData';
 import { PlusIcon } from '@heroicons/react/20/solid';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   Card,
   Grid,
@@ -13,10 +16,47 @@ import {
   Title,
 } from '@tremor/react';
 import { SearchNormal1 } from 'iconsax-react';
+import { useMemo } from 'react';
 
 export default function DashboardExample() {
+  const { generateMockPatients } = usePatientMock();
+  const patientColumn = useMemo<ColumnDef<MockPatients>[]>(
+    () => [
+      {
+        header: 'Patient ID',
+        cell: (info) => <p className="font-medium">{info.row.original.id}</p>,
+      },
+      {
+        header: 'First Name',
+        cell: (info) => (
+          <p className="font-normal">{info.row.original.firstName}</p>
+        ),
+      },
+      {
+        header: 'Date of Birth',
+        cell: (info) => (
+          <p className="font-normal">
+            {info.row.original.dob.toLocaleDateString()}
+          </p>
+        ), // Format the date as needed
+      },
+      {
+        header: 'Place of Birth',
+        cell: (info) => <p className="font-normal">{info.row.original.pob}</p>,
+      },
+      {
+        header: 'Address',
+        cell: (info) => (
+          <p className="font-normal">{info.row.original.address}</p>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="flex flex-col p-4 md:p-6 gap-4">
+      {/* HEADER */}
       <p className="text-xl font-medium text-gray-800 w-auto">
         Medblock Patient Management
       </p>
@@ -46,6 +86,19 @@ export default function DashboardExample() {
           </button>
         </div>
       </div>
+      {/* Content */}
+      <Card className="flex flex-col gap-2 mt-4">
+        <Table
+          columns={patientColumn}
+          data={generateMockPatients}
+          isLoading={false}
+          currentPage={0}
+          // setCurrentPage={setCurrentPageAccountType}
+          totalPage={10}
+          limitPage={10}
+          isCommon={true}
+        />
+      </Card>
     </div>
   );
 }
