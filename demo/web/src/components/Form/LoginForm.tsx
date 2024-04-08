@@ -11,6 +11,7 @@ import { testNFID } from '@/interface/nfid.interface';
 import { NFID } from '@nfid/embed';
 import { NFIDConfig } from '@nfid/embed/src/lib/types';
 import { eidLogo, googleIcon, line, passkeyIcon } from '@/lib/assets';
+import { AuthClient } from '@dfinity/auth-client';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -47,27 +48,61 @@ const LoginForm: FC<LoginFormProps> = ({
   });
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authClient, setAuthClient] = useState<AuthClient | null>(null);
+  const router = useRouter();
 
   const targetCanisterIds = 'tvrxx-2iaaa-aaaak-akn4a-cai';
+
+  useEffect(() => {
+    async function initializeAuthClient() {
+      const client = await AuthClient.create();
+      setAuthClient(client);
+    }
+    initializeAuthClient();
+  }, []);
+
+  function handleSuccess() {
+    const principalId = authClient?.getIdentity().getPrincipal().toText();
+    console.log('--------------');
+
+    console.log('PRINCIPAL ID', principalId);
+    router.push('/');
+    console.log('--------------');
+  }
 
   const handleLogin = async () => {
     console.log('running submit login');
     const targets = targetCanisterIds.length ? [targetCanisterIds] : undefined;
 
     try {
-      const nfid = await NFID.init({
-        application: {
-          name: 'My Sweet App',
-          logo: 'https://dev.nfid.one/static/media/id.300eb72f3335b50f5653a7d6ad5467b3.svg',
-        },
-      } as NFIDConfig);
-      // const identity: Identity = nfid.getIdentity();
-      const identity = await nfid.getDelegation({
-        targets: targets,
-        // You can add other optional properties here if needed
+      if (!authClient) throw new Error('AuthClient not initialized');
+
+      const APP_NAME = 'NFID example';
+      const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
+      const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
+
+      const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
+
+      authClient.login({
+        identityProvider,
+        onSuccess: handleSuccess,
       });
-      console.log('response', identity);
-      console.log('response nfid', nfid);
+      // const nfid = await NFID.init({
+      //   application: {
+      //     name: 'My Sweet App',
+      //     logo: 'https://dev.nfid.one/static/media/id.300eb72f3335b50f5653a7d6ad5467b3.svg',
+      //   },
+      // } as NFIDConfig);
+      // // const identity: Identity = nfid.getIdentity();
+      // const identity = await nfid.getDelegation({
+      //   targets: targets,
+      //   // You can add other optional properties here if needed
+      // });
+      // const address: Identity = await nfid.getIdentity();
+
+      // console.log('response', identity);
+      // console.log('response nfid', nfid);
+      // console.log('response address', address);
     } catch (error) {
       console.log('error', error);
     }
@@ -126,7 +161,7 @@ const LoginForm: FC<LoginFormProps> = ({
             </label>
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
-              title="Continue With Email"
+              title="Sign in"
               onSubmit={handleSubmit}
               disable={false}
               color="#242DA8"
