@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 
 root=$(git rev-parse --show-toplevel)/canister
 canister=$1
@@ -74,8 +73,6 @@ ic-wasm "$canister_wasm" \
     -o "$canister_wasm" \
     shrink
 echo done
-
-
 
 echo "shrinking wasm size"
 candid-extractor $wasm_dir/$emr_canister.wasm >$emr_registry_did_path
