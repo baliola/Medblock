@@ -5,19 +5,30 @@ import GeneralImage from '@components/image/GeneralImage';
 import InputText from '@components/input/InputText';
 import TextPrimary from '@components/text/TextPrimary';
 import Images from '@constants/images';
+import {RootStackParamList} from '@constants/routes';
 import Strings from '@constants/strings';
 import Scaffold from '@layouts/Scaffold';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {styled} from 'nativewind';
 import React from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
 
 const StyledView = styled(View);
+const StyledScrollView = styled(ScrollView);
 
 const LoginScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const handleLogin = () => {
+    navigation.navigate('Unverified');
+  };
+
   return (
     <Scaffold>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <StyledView className="w-screen pt-8 flex flex-col justify-between">
+      <StyledScrollView showsVerticalScrollIndicator={false}>
+        <StyledView className="w-screen min-h-screen  pt-8 flex flex-col justify-between">
           <StyledView className="w-screen items-center">
             <GeneralImage size={180} url={Images.logo2} classStyle="mt-8" />
             <StyledView className="w-full p-6">
@@ -29,7 +40,9 @@ const LoginScreen = () => {
               />
               <PrimaryButton
                 label={Strings.label.continueEmail}
-                onPress={() => {}}
+                onPress={() => {
+                  handleLogin();
+                }}
                 classStyle="mt-4"
               />
 
@@ -80,7 +93,7 @@ const LoginScreen = () => {
               />
             </StyledView>
           </StyledView>
-          <StyledView className="flex flex-row justify-between px-8 w-full mt-28 items-center">
+          <StyledView className="flex flex-row justify-between px-8 w-full items-center absolute bottom-0">
             <StyledView className="flex flex-row space-x-4">
               <TextButton
                 label={Strings.label.terms}
@@ -96,7 +109,7 @@ const LoginScreen = () => {
             <GeneralImage size={40} url={Images.nfid} />
           </StyledView>
         </StyledView>
-      </ScrollView>
+      </StyledScrollView>
     </Scaffold>
   );
 };

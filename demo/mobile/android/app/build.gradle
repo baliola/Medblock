@@ -115,6 +115,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.25")
+    implementation project(':react-native-vector-icons')
+    implementation project(':react-native-view-pdf')
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

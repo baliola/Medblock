@@ -6,4 +6,8 @@ export default class Images {
   static readonly passkey = require('../../assets/images/passkey.png');
   static readonly nfid = require('../../assets/images/nfid.png');
   static readonly dummyProfile = require('../../assets/images/dummy_profile.png');
+  static readonly idCard = require('../../assets/images/id_card.png');
+  static readonly uploadFile = require('../../assets/images/upload_file.png');
+  static readonly camera = require('../../assets/images/camera.png');
+  static readonly check = require('../../assets/images/check.png');
 }

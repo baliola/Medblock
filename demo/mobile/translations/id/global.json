@@ -6,6 +6,27 @@
         "continuePassKey": "Lanjutkan Dengan Kunci Sandi",
         "otherSign": "Opsi Masuk Lainnya",
         "terms": "Ketentuan Layanan",
-        "privacyPolicy": "Kebijakan Privasi"
+        "privacyPolicy": "Kebijakan Privasi",
+        "welcome": "Selamat Datang",
+        "verifyYourId": "Verifikasi ID Anda",
+        "fullname": "Nama Lengkap",
+        "validIdNumber": "Nomor Identitas yang Valid",
+        "address": "Alamat",
+        "phoneNumber": "Nomor Telepon",
+        "uploadYourIdCard": "Unggah Kartu Identitas Anda",
+        "submit": "Kirim",
+        "takePhoto": "Ambil Gambar",
+        "uploadFile": "Unggah Berkas",
+        "loading": "Memuat...",
+        "continue": "Lanjutkan",
+        "yourAccVerified": "Akun Anda sudah terverifikasi!"
+    },
+    "message": {
+        "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
+        "agreeTerm": "Saya Setuju dengan ketentuan layanan Medblock dan semua informasinya",
+        "yourAccVerified": "Sekarang Anda dapat membagikan dan mengontrol rekam medis Anda ke rumah sakit."
+    },
+    "validation": {
+        "fileMax2Mb": "Berkas maksimal 2MB!"
     }
 }

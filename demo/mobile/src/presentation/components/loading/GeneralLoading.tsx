@@ -25,7 +25,8 @@ const GeneralLoading: React.FC<GeneralLoadingProps> = ({loading}) => {
         <StyledView className="h-20 w-20 mr-2">
           <StyledImage
             source={parseInt(Images.logo, 10)}
-            className="h-full w-full object-contain"
+            className="h-full w-full"
+            style={{objectFit: 'scale-down'}}
           />
         </StyledView>
       </StyledView>

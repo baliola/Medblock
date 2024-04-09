@@ -6,6 +6,8 @@ buildscript {
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
         kotlinVersion = "1.8.0"
+        pdfViewerVersion = "3.2.0-beta.1"
+        pdfViewerRepo = "com.github.mhiew"
     }
     repositories {
         google()

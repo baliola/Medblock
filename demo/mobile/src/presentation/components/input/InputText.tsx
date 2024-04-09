@@ -30,6 +30,7 @@ interface InputTextProps {
   enable?: boolean;
   autoFocus?: boolean;
   outlined?: boolean;
+  numberOfLine?: number;
 }
 
 const InputText: React.FC<InputTextProps> = ({
@@ -47,6 +48,7 @@ const InputText: React.FC<InputTextProps> = ({
   autoFocus = false,
   onChange,
   outlined = false,
+  numberOfLine,
 }) => {
   const [secure, setSecure] = useState<boolean>(true);
   const {t} = useTranslation('global');
@@ -59,13 +61,13 @@ const InputText: React.FC<InputTextProps> = ({
       <StyledView
         style={{borderWidth: outlined ? 1 : 0}}
         className={
-          'py-1 px-3 rounded-2xl flex flex-row justify-between items-center p-3 ' +
+          'py-1 px-3 rounded-2xl flex flex-row justify-between p-3 ' +
           `${outlined ? 'border-gray-200' : 'bg-slate-200'}`
         }>
         {prefix}
         <StyledTextInput
           id={id}
-          className={'text-black flex-1 p-0 items-center'}
+          className={'text-black flex-1 p-0'}
           cursorColor={Colors.primary_normal}
           placeholder={t(placeholder as string)}
           placeholderTextColor={Colors.gray}
@@ -74,6 +76,8 @@ const InputText: React.FC<InputTextProps> = ({
           autoFocus={autoFocus}
           editable={enable}
           onChangeText={onChange as any}
+          numberOfLines={numberOfLine}
+          textAlignVertical={(numberOfLine ?? 0) >= 5 ? 'top' : 'center'}
           secureTextEntry={isSecure === true && secure}
           style={{fontFamily: 'Ubuntu-Regular', fontSize: 14}}
         />

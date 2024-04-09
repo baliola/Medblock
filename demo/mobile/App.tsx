@@ -9,6 +9,7 @@ import {QueryClient, QueryClientProvider} from 'react-query';
 import {PersistGate} from 'redux-persist/integration/react';
 import GeneralLoading from '@components/loading/GeneralLoading';
 import AppNavigation from '@navigations/AppNavigation';
+import {SnackbarProvider} from '@components/snackbar/SnackBar';
 import {StatusBar} from 'react-native';
 
 const queryClient = new QueryClient();
@@ -20,16 +21,18 @@ function App(): React.JSX.Element {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <NavigationContainer>
-        <StatusBar backgroundColor="transparent" translucent={true} />
-        <QueryClientProvider client={queryClient}>
-          <Provider store={store}>
-            <PersistGate loading={<GeneralLoading />} persistor={persistor}>
-              <AppNavigation />
-            </PersistGate>
-          </Provider>
-        </QueryClientProvider>
-      </NavigationContainer>
+      <SnackbarProvider>
+        <NavigationContainer>
+          <StatusBar backgroundColor="transparent" translucent={true} />
+          <QueryClientProvider client={queryClient}>
+            <Provider store={store}>
+              <PersistGate loading={<GeneralLoading />} persistor={persistor}>
+                <AppNavigation />
+              </PersistGate>
+            </Provider>
+          </QueryClientProvider>
+        </NavigationContainer>
+      </SnackbarProvider>
     </I18nextProvider>
   );
 }

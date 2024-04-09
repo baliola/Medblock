@@ -6,6 +6,28 @@
         "continuePassKey": "Continue With Passkey",
         "otherSign": "Other Sign Option",
         "terms": "Terms of Service",
-        "privacyPolicy": "Privacy Policy"
+        "privacyPolicy": "Privacy Policy",
+        "welcome": "Welcome",
+        "verifyYourId": "Verify Your ID",
+        "fullname": "Full Name",
+        "validIdNumber": "Valid Identity Number",
+        "address": "Address",
+        "phoneNumber": "Phone Number",
+        "uploadYourIdCard": "Upload Your Id Card",
+        "submit": "Submit",
+        "takePhoto": "Take Photo",
+        "uploadFile": "Upload File",
+        "loading": "Loading...",
+        "continue": "Continue",
+        "yourAccVerified": "Your account is verified!"
+
+    },
+    "message": {
+        "verifyYourId": "Verify your ID, Please fill  the information below",
+        "agreeTerm": "I Agree to term of service’s Medblock and all of information",
+        "yourAccVerified": "Now you can share and control your medical record to hospital."
+    },
+    "validation": {
+        "fileMax2Mb": "File is maximum 2MB!"
     }
 }
