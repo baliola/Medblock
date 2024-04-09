@@ -18,7 +18,7 @@ const VerifiedScreen = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleVerifyId = () => {
-    navigation.navigate('FillPersonalInformation');
+    navigation.navigate('MainNavigation');
   };
 
   return (

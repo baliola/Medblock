@@ -20,6 +20,8 @@ export default class Strings {
     loading: 'label.loading',
     continue: 'label.continue',
     yourAccVerified: 'label.yourAccVerified',
+    emrId: 'label.emrId',
+    shareCode: 'label.shareCode',
   };
 
   static readonly message = {
@@ -30,5 +32,12 @@ export default class Strings {
 
   static readonly validation = {
     fileMax2Mb: 'validation.fileMax2Mb',
+  };
+
+  static readonly navigation = {
+    home: 'navigation.home',
+    file: 'navigation.file',
+    history: 'navigation.history',
+    setting: 'navigation.setting',
   };
 }

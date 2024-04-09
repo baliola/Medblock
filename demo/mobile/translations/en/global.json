@@ -19,8 +19,9 @@
         "uploadFile": "Upload File",
         "loading": "Loading...",
         "continue": "Continue",
-        "yourAccVerified": "Your account is verified!"
-
+        "yourAccVerified": "Your account is verified!",
+        "emrId": "EMR ID : {{id}}",
+        "shareCode": "Share Code"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",
@@ -29,5 +30,11 @@
     },
     "validation": {
         "fileMax2Mb": "File is maximum 2MB!"
+    },
+    "navigation": {
+        "home": "Home",
+        "file": "File",
+        "history": "History",
+        "setting": "Setting"
     }
 }

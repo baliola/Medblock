@@ -1,6 +1,7 @@
 export default class Images {
   static readonly logo = require('../../assets/images/logo.png');
   static readonly logo2 = require('../../assets/images/logo2.png');
+  static readonly logo3 = require('../../assets/images/logo3.png');
   static readonly google = require('../../assets/images/google.png');
   static readonly eid = require('../../assets/images/eid.png');
   static readonly passkey = require('../../assets/images/passkey.png');
@@ -10,4 +11,14 @@ export default class Images {
   static readonly uploadFile = require('../../assets/images/upload_file.png');
   static readonly camera = require('../../assets/images/camera.png');
   static readonly check = require('../../assets/images/check.png');
+  static readonly home = require('../../assets/images/home.png');
+  static readonly file = require('../../assets/images/file.png');
+  static readonly history = require('../../assets/images/history.png');
+  static readonly setting = require('../../assets/images/setting.png');
+  static readonly emrEmpty = require('../../assets/images/emr_empty.png');
+  static readonly emr = require('../../assets/images/emr.png');
+  static readonly email = require('../../assets/images/email.png');
+  static readonly notif = require('../../assets/images/notif.png');
+  static readonly male = require('../../assets/images/male.png');
+  static readonly share = require('../../assets/images/share.png');
 }

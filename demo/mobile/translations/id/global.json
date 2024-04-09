@@ -19,7 +19,9 @@
         "uploadFile": "Unggah Berkas",
         "loading": "Memuat...",
         "continue": "Lanjutkan",
-        "yourAccVerified": "Akun Anda sudah terverifikasi!"
+        "yourAccVerified": "Akun Anda sudah terverifikasi!",
+        "emrId": "EMR ID : {{id}}",
+        "shareCode": "Bagi Kode"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
@@ -28,5 +30,11 @@
     },
     "validation": {
         "fileMax2Mb": "Berkas maksimal 2MB!"
+    },
+    "navigation": {
+        "home": "Beranda",
+        "file": "Berkas",
+        "history": "Riwayat",
+        "setting": "Pengaturan"
     }
 }

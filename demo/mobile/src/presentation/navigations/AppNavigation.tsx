@@ -1,11 +1,11 @@
 import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from '@constants/routes';
-import HomeScreen from '@screens/home/Home.scene';
 import LoginScreen from '@screens/auth/screens/Login.scene';
 import UnverifiedScreen from '@screens/verification/screens/Unverified.scene';
 import FillPersonalInformationScreen from '@screens/verification/screens/FillPersonalInformation.scene';
 import VerifiedScreen from '@screens/verification/screens/Verified.scene';
+import MainNavigation from './MainNavigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -40,7 +40,13 @@ const AppNavigation = () => {
           headerShown: false,
         }}
       />
-      <Stack.Screen name={'Home'} component={HomeScreen} />
+      <Stack.Screen
+        name={'MainNavigation'}
+        component={MainNavigation}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 };
