@@ -52,6 +52,9 @@ export default class Strings {
     no: 'label.no',
     alert: 'label.alert',
     logout: 'label.logout',
+    notification: 'label.notification',
+    filter: 'label.filter',
+    sort: 'label.sort',
   };
 
   static readonly message = {

@@ -1,6 +1,7 @@
 import PrimaryButton from '@components/button/PrimaryButton';
 import GeneralImage from '@components/image/GeneralImage';
 import TextPrimary from '@components/text/TextPrimary';
+import AppBarWithIcon from '@components/top_bar/AppBarWithIcon';
 import ProfileBar from '@components/top_bar/ProfileBar';
 import Images from '@constants/images';
 import {RootStackParamList} from '@constants/routes';
@@ -11,13 +12,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {styled} from 'nativewind';
 import React, {useState} from 'react';
 
-import {
-  FlatList,
-  ScrollView,
-  StatusBar,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {FlatList, ScrollView, TouchableOpacity, View} from 'react-native';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -50,10 +45,15 @@ const HomeScreen = () => {
   return (
     <Scaffold
       topBar={
-        <ProfileBar
-          style={{marginTop: (StatusBar.currentHeight as number) + 20}}
-          onPressTrailing={() => {}}
-          trailingButton={<GeneralImage url={Images.notif} size={32} />}
+        <AppBarWithIcon
+          child={
+            <ProfileBar
+              onPressTrailing={() => {
+                navigation.navigate('Notification');
+              }}
+              trailingButton={<GeneralImage url={Images.notif} size={32} />}
+            />
+          }
         />
       }
       bottomChild={

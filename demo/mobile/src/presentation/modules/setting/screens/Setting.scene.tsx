@@ -34,10 +34,10 @@ const SettingScreen = () => {
           <SecondaryButton
             child={
               <StyledView className="flex flex-row justify-center space-x-2 items-center">
-                <GeneralImage url={Images.logout} size={24} />
+                <GeneralImage url={Images.logout} size={24} tintColor="white" />
                 <TextPrimary
                   text={Strings.label.logout}
-                  classStyle="text-gray-800"
+                  classStyle="text-white"
                   isBold
                 />
               </StyledView>

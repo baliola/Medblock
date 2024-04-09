@@ -27,4 +27,5 @@ export type RootStackParamList = {
   EmrDetail: undefined;
   ProfileInformation: undefined;
   RevokeAccess: undefined;
+  Notification: undefined;
 };

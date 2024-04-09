@@ -51,7 +51,10 @@
         "yes": "Yes",
         "no": "No",
         "alert": "Alert",
-        "logout": "Log Out"
+        "logout": "Log Out",
+        "notification": "Notification",
+        "filter": "Filter",
+        "sort": "Sort"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",

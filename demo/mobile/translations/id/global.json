@@ -51,7 +51,10 @@
         "yes": "Ya",
         "no": "Tidak",
         "alert": "Peringatan",
-        "logout": "Keluar"
+        "logout": "Keluar",
+        "notification": "Pemberitahuan",
+        "filter": "Saring",
+        "sort": "Urutkan"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",

@@ -41,4 +41,8 @@ export default class Images {
   static readonly error = require('../../assets/images/error.png');
   static readonly person = require('../../assets/images/person.png');
   static readonly logout = require('../../assets/images/logout.png');
+  static readonly filter = require('../../assets/images/filter.png');
+  static readonly sort = require('../../assets/images/sort.png');
+  static readonly success = require('../../assets/images/success.png');
+  static readonly medicalProgress = require('../../assets/images/medical_process.png');
 }
