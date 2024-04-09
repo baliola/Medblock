@@ -1,7 +1,7 @@
 #! bash
 root=$(git rev-parse --show-toplevel)
 
-# bash $root/canister/setup.sh
+bash $root/canister/setup.sh
 # This script deploys the canister locally.
 FE_PORT=4943
 lsof -i tcp:${FE_PORT} | awk 'NR!=1 {print $2}' | xargs kill || true
