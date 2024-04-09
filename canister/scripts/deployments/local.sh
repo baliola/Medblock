@@ -8,6 +8,8 @@ lsof -i tcp:${FE_PORT} | awk 'NR!=1 {print $2}' | xargs kill || true
 
 dfx start --background
 dfx canister install emr_registry --wasm $root/canister/target/wasm32-unknown-unknown/release/emr_registry.wasm --mode=install -y
+# idk why but the candid ui wont load unless we rebuild patient registry
+bash $root/canister/build.sh patient_registry
 dfx canister install patient_registry --wasm $root/canister/target/wasm32-unknown-unknown/release/patient_registry.wasm --mode=install -y
 dfx canister install provider_registry --wasm $root/canister/target/wasm32-unknown-unknown/release/provider_registry.wasm --mode=install -y
 
