@@ -46,6 +46,7 @@ type EmrHeader = record {
   registry_id : principal;
 };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type EmrListPatientRequest = record { page : nat8; limit : nat8 };
 type EmrListPatientResponse = record { emrs : vec EmrHeader };
 type GetInformationRequest = record {
   status : opt StatusRequest;
@@ -128,6 +129,7 @@ service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
   create_consent : (CreateConsentRequest) -> (ClaimConsentRequest);
+  emr_list_patient : (EmrListPatientRequest) -> (EmrListPatientResponse) query;
   emr_list_with_session : (ClaimConsentResponse) -> (
       EmrListPatientResponse,
     ) query;
