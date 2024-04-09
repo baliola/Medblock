@@ -11,11 +11,17 @@ import React from 'react';
 import {ScrollView, View} from 'react-native';
 import MetaItem from '../components/MetaItem';
 import VisitSummaryItem from '../components/VisitSummaryItem';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '@constants/routes';
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 
 const EmrDetailScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
     <Scaffold
       topBar={
@@ -47,7 +53,9 @@ const EmrDetailScreen = () => {
         <HeaderButton
           icon={Images.profile}
           label={Strings.label.profileInfo}
-          onPress={() => {}}
+          onPress={() => {
+            navigation.navigate('ProfileInformation');
+          }}
           classStyle="mb-6"
         />
         <HeaderButton

@@ -27,4 +27,13 @@ export default class Images {
   static readonly close = require('../../assets/images/close.png');
   static readonly profile = require('../../assets/images/profile.png');
   static readonly hospital = require('../../assets/images/hospital.png');
+  static readonly address = require('../../assets/images/address.png');
+  static readonly phone = require('../../assets/images/phone.png');
+  static readonly birthDate = require('../../assets/images/birthdate.png');
+  static readonly ethnic = require('../../assets/images/ethnic.png');
+  static readonly language = require('../../assets/images/language.png');
+  static readonly hindu = require('../../assets/images/hindu.png');
+  static readonly martialStatus = require('../../assets/images/martial_status.png');
+  static readonly guard = require('../../assets/images/guard.png');
+  static readonly tedy = require('../../assets/images/tedy.png');
 }

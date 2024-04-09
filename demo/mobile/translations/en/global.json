@@ -34,7 +34,18 @@
         "reasonVisit": "Reason to visit",
         "diagnosis": "Diagnosis",
         "planning": "Planning",
-        "medication": "Medication"
+        "medication": "Medication",
+        "personalInfo": "Personal Infomration",
+        "socialStatus": "Social Status",
+        "homeAddress": "Home Address",
+        "birthDate": "Birthdate & Place",
+        "ethnicity": "Ethnicity",
+        "language": "Language",
+        "religion": "Religion",
+        "martialStatus": "Martial Status",
+        "partner": "Partner/Guardian",
+        "children": "Children"
+
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",

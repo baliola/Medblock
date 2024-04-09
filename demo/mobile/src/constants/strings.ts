@@ -35,6 +35,16 @@ export default class Strings {
     diagnosis: 'label.diagnosis',
     planning: 'label.planning',
     medication: 'label.medication',
+    personalInfo: 'label.personalInfo',
+    socialStatus: 'label.socialStatus',
+    homeAddress: 'label.homeAddress',
+    birthDate: 'label.birthDate',
+    ethnicity: 'label.ethnicity',
+    language: 'label.language',
+    religion: 'label.religion',
+    martialStatus: 'label.martialStatus',
+    partner: 'label.partner',
+    children: 'label.children',
   };
 
   static readonly message = {

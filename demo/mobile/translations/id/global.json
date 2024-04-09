@@ -34,7 +34,17 @@
         "reasonVisit": "Alasan untuk berkunjung",
         "diagnosis": "Diagnosis",
         "planning": "Perencanaan",
-        "medication": "Obat"
+        "medication": "Obat",
+        "personalInfo": "Informasi Pribadi",
+        "socialStatus": "Status Sosial",
+        "homeAddress": "Alamat Rumah",
+        "birthDate": "Tanggal Lahir & Tempat",
+        "ethnicity": "Etnis",
+        "language": "Bahasa",
+        "relogion": "Agama",
+        "martialStatus": "Status Bela Diri",
+        "partner": "Mitra/Wali",
+        "children": "Anak-anak"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
