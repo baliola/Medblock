@@ -50,7 +50,8 @@
         "revokeEmr": "Cabut EMR saya",
         "yes": "Ya",
         "no": "Tidak",
-        "alert": "Peringatan"
+        "alert": "Peringatan",
+        "logout": "Keluar"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
@@ -60,7 +61,8 @@
         "shareConsentCode": "Bagikan Kode Persetujuan ini ke Layanan Medis",
         "findAndRevoke": "Temukan dan pilih rumah sakit yang ingin Anda cabut akses EMRnya",
         "closeEmr": "Tutup akses EMR ke rumah sakit yang dipilih?",
-        "emrClosed": "Akses EMR Anda ke rumah sakit yang dipilih ditutup."
+        "emrClosed": "Akses EMR Anda ke rumah sakit yang dipilih ditutup.",
+        "logout": "Anda yakin ingin keluar?"
     },
     "validation": {
         "fileMax2Mb": "Berkas maksimal 2MB!"

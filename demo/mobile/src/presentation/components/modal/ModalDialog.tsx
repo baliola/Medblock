@@ -12,7 +12,7 @@ const StyledView = styled(View);
 interface ModalDialogProps {
   show: boolean;
   title?: string;
-  child: React.ReactElement<any, any>;
+  child?: React.ReactElement<any, any>;
   onClose: () => void;
   labelRight?: string;
   labelCancel?: string;

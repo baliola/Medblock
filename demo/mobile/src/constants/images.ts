@@ -39,4 +39,6 @@ export default class Images {
   static readonly search = require('../../assets/images/search.png');
   static readonly clear = require('../../assets/images/clear.png');
   static readonly error = require('../../assets/images/error.png');
+  static readonly person = require('../../assets/images/person.png');
+  static readonly logout = require('../../assets/images/logout.png');
 }

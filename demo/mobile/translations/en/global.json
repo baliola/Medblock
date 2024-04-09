@@ -50,7 +50,8 @@
         "revokeEmr": "Revoke my EMR",
         "yes": "Yes",
         "no": "No",
-        "alert": "Alert"
+        "alert": "Alert",
+        "logout": "Log Out"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",
@@ -60,7 +61,8 @@
         "shareConsentCode": "Share this Consent Code to Medical Services",
         "findAndRevoke": "Find and select hospital that you want to revoke your EMR access",
         "closeEmr": "Close EMR Access to selected hospital?",
-        "emrClosed": "Your EMR access to selected hospital is closed. "
+        "emrClosed": "Your EMR access to selected hospital is closed.",
+        "logout": "Are You Sure to quit?"
     },
     "validation": {
         "fileMax2Mb": "File is maximum 2MB!"

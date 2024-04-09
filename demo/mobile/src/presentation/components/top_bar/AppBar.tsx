@@ -52,13 +52,15 @@ const AppBar: React.FC<AppBarProps> = ({
         'px-4 pt-6 flex flex-row justify-between items-center w-full ' +
         classStyle
       }>
-      <StyledTouchableOpacity onPress={handleGoBack} className="h-7 w-7">
-        <StyledImage
-          tintColor={inverse ? Colors.white : Colors.gray_dark}
-          source={parseInt(Images.arrowLeft, 10)}
-          className="h-full w-full"
-        />
-      </StyledTouchableOpacity>
+      {title ? (
+        <StyledTouchableOpacity onPress={handleGoBack} className="h-7 w-7">
+          <StyledImage
+            tintColor={inverse ? Colors.white : Colors.gray_dark}
+            source={parseInt(Images.arrowLeft, 10)}
+            className="h-full w-full"
+          />
+        </StyledTouchableOpacity>
+      ) : null}
 
       <StyledView className="flex-1 pl-4">{title}</StyledView>
       <StyledView className="px-2">{trailing}</StyledView>

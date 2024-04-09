@@ -51,6 +51,7 @@ export default class Strings {
     yes: 'label.yes',
     no: 'label.no',
     alert: 'label.alert',
+    logout: 'label.logout',
   };
 
   static readonly message = {
@@ -62,6 +63,7 @@ export default class Strings {
     findAndRevoke: 'message.findAndRevoke',
     closeEmr: 'message.closeEmr',
     emrClosed: 'message.emrClosed',
+    logout: 'message.logout',
   };
 
   static readonly validation = {

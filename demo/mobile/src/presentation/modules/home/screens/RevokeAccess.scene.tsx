@@ -7,6 +7,7 @@ import BasicModal from '@components/modal/BasicModal';
 import ModalDialog from '@components/modal/ModalDialog';
 import TextPrimary from '@components/text/TextPrimary';
 import AppBar from '@components/top_bar/AppBar';
+import AppBarWithIcon from '@components/top_bar/AppBarWithIcon';
 import {WIDTH} from '@constants/dimensions';
 import Images from '@constants/images';
 import {RootStackParamList} from '@constants/routes';
@@ -91,41 +92,30 @@ const RevokeAccessScreen = () => {
   return (
     <Scaffold
       topBar={
-        <StyledView className="flex flex-col">
-          <GeneralImage
-            url={Images.logo3}
-            size={WIDTH}
-            classStyle="absolute -top-28"
-          />
-          <AppBar
-            style={{marginTop: 100}}
-            title={
-              <TextPrimary
-                text={Strings.message.findAndRevoke}
-                classStyle="text-gray-800"
-              />
-            }
-          />
-          <InputText
-            value=""
-            classStyle="w-full px-6 mt-4"
-            prefix={
-              <GeneralImage
-                url={Images.search}
-                size={18}
-                classStyle="self-center mr-4"
-              />
-            }
-            suffix={
-              <IconButton
-                classStyle="self-center"
-                icon={<GeneralImage url={Images.clear} size={18} />}
-                onPress={() => {}}
-              />
-            }
-            placeholder={Strings.placeholder.search}
-          />
-        </StyledView>
+        <AppBarWithIcon
+          title={Strings.message.findAndRevoke}
+          child={
+            <InputText
+              value=""
+              classStyle="w-full px-6 mt-4"
+              prefix={
+                <GeneralImage
+                  url={Images.search}
+                  size={18}
+                  classStyle="self-center mr-4"
+                />
+              }
+              suffix={
+                <IconButton
+                  classStyle="self-center"
+                  icon={<GeneralImage url={Images.clear} size={18} />}
+                  onPress={() => {}}
+                />
+              }
+              placeholder={Strings.placeholder.search}
+            />
+          }
+        />
       }
       bottomChild={
         <StyledView className="p-6">
