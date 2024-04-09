@@ -6,9 +6,9 @@ use file::Source;
 mod test_data;
 
 const MODULE_SPLIT_IDENTIFIER: &'static str = "pub mod pocket_ic_bindings";
-pub struct PocketIcBindGen;
+pub struct Builder;
 
-impl PocketIcBindGen {
+impl Builder {
     pub fn build(declaration_folder: PathBuf) {
         let raw = file::Fs::find_and_read(declaration_folder);
         let fragments = parser::Parser::parse(
@@ -319,7 +319,7 @@ mod parser {
             let method_name = name.to_string();
 
             quote::quote! {
-                pub async fn #name(
+                pub fn #name(
                     &self,  
                     server: &pocket_ic::PocketIc,
                     sender: ic_principal::Principal,
@@ -572,6 +572,6 @@ mod test {
     fn example() {
         let dir = std::env::current_dir().unwrap();
         let path = dir.join("src/test_data");
-        PocketIcBindGen::build(path);
+        Builder::build(path);
     }
 }

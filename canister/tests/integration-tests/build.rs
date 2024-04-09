@@ -24,7 +24,7 @@ fn hardcode_set_registry_candid_path() {
     std::env::set_var("CANISTER_CANDID_PATH_EMR_REGISTRY", "src/emr_registry/candid.did");
     // workaround, we dont currenly use it
     std::env::set_var("CANISTER_ID_EMR_REGISTRY", "be2us-64aaa-aaaaa-qaabq-cai");
-    
+
     std::env::set_var("CANISTER_CANDID_PATH_PATIENT_REGISTRY", "src/patient_registry/candid.did");
     // workaround, we dont currenly use it
     std::env::set_var("CANISTER_ID_PATIENT_REGISTRY", "be2us-64aaa-aaaaa-qaabq-cai");
@@ -35,7 +35,6 @@ fn main() {
 
     // workaround to determine if this is invoked by dfx as dfx automatically inject this env var
     let candid_path_env = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").is_ok();
-
 
     hardcode_set_registry_candid_path();
 
@@ -62,8 +61,8 @@ fn build_declaration() {
     for config in configs {
         builder.add(config);
     }
-    let out = get_workspace_root().join("integration-tests/src/declarations");
-    println!("cargo:outdir={}", out.to_str().unwrap());
-
-    builder.build(Some(out));
+    let out = get_workspace_root().join("tests/integration-tests/src/declarations");
+    builder.build(Some(out.clone()));
+    
+    pocket_ic_bindgen::Builder::build(out.clone())
 }

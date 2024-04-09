@@ -1,5 +1,5 @@
 [package]
-name = "method-exporter"
+name = "pocket-ic-bindgen"
 version = "0.1.0"
 edition = "2021"
 

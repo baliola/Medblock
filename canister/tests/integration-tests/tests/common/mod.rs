@@ -203,10 +203,11 @@ fn bind_canisters(
 }
 
 pub struct Registries {
-    ic: pocket_ic::PocketIc,
-    emr: Principal,
-    patient: Principal,
-    provider: Principal,
+    pub ic: pocket_ic::PocketIc,
+    pub emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry,
+    pub patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry,
+    pub provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry,
+    pub controller: Principal,
 }
 
 pub fn prepare_env() -> Registries {
@@ -225,8 +226,13 @@ pub fn prepare_env() -> Registries {
 
     Registries {
         ic: server,
-        emr,
-        patient,
-        provider,
+        emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry(emr),
+        patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
+            patient
+        ),
+        provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
+            provider
+        ),
+        controller,
     }
 }

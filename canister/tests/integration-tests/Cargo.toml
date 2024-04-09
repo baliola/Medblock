@@ -7,15 +7,14 @@ edition = "2021"
 
 [dependencies]
 canister-common = { path = "../../src/canister-common" }
-# emr_registry = { path = "../src/emr_registry" }
-# provider_registry = { path = "../src/provider_registry" }
-# patient_registry = { path = "../src/patient_registry" }
 pocket-ic = "2.2.0"
 ic-cdk = { version = "0.12.0" }
 ic_principal = { version = "0.1.1" }
 lazy_static = "1.4.0"
 serde = "1.0.197"
 candid = "0.10.2"
+tokio = { version = "1.0.1", features = ["macros", "rt"]}
 
 [build-dependencies]
 ic-cdk-bindgen = "0.1.3"
+pocket-ic-bindgen = { path = "../pocket-ic-bindgen" }
