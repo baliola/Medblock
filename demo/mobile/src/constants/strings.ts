@@ -22,12 +22,18 @@ export default class Strings {
     yourAccVerified: 'label.yourAccVerified',
     emrId: 'label.emrId',
     shareCode: 'label.shareCode',
+    emptyEmr: 'label.emptyEmr',
+    refreshCode: 'label.refreshCode',
+    getNewCode: 'label.getNewCode',
+    back: 'label.back',
   };
 
   static readonly message = {
     verifyYourId: 'message.verifyYourId',
     agreeTerm: 'message.agreeTerm',
     yourAccVerified: 'message.yourAccVerified',
+    emptyEmr: 'message.emptyEmr',
+    shareConsentCode: 'message.shareConsentCode',
   };
 
   static readonly validation = {

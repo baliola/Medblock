@@ -8,7 +8,7 @@ import Colors from '@constants/colors';
 import Strings from '@constants/strings';
 import {useTranslation} from 'react-i18next';
 import AppRoutes from '@constants/routes';
-import HomeScreen from '@screens/home/Home.scene';
+import HomeScreen from '@screens/home/screens/Home.scene';
 import FileScreen from '@screens/file/screens/File.scene';
 import HistoryScreen from '@screens/history/screens/History.scene';
 import SettingScreen from '@screens/setting/screens/Setting.scene';

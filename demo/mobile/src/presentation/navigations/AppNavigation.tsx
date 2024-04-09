@@ -6,6 +6,7 @@ import UnverifiedScreen from '@screens/verification/screens/Unverified.scene';
 import FillPersonalInformationScreen from '@screens/verification/screens/FillPersonalInformation.scene';
 import VerifiedScreen from '@screens/verification/screens/Verified.scene';
 import MainNavigation from './MainNavigation';
+import ConsentCodeScreen from '@screens/home/screens/ConsentCode.scene';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -43,6 +44,13 @@ const AppNavigation = () => {
       <Stack.Screen
         name={'MainNavigation'}
         component={MainNavigation}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name={'ConsentCode'}
+        component={ConsentCodeScreen}
         options={{
           headerShown: false,
         }}

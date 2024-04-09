@@ -21,12 +21,18 @@
         "continue": "Continue",
         "yourAccVerified": "Your account is verified!",
         "emrId": "EMR ID : {{id}}",
-        "shareCode": "Share Code"
+        "shareCode": "Share Code",
+        "emptyEmr": "You don’t Have Medical Record Yet",
+        "refreshCode": "Refresh the code in {{second}} second",
+        "getNewCode": "Get new code",
+        "back": "Back"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",
         "agreeTerm": "I Agree to term of service’s Medblock and all of information",
-        "yourAccVerified": "Now you can share and control your medical record to hospital."
+        "yourAccVerified": "Now you can share and control your medical record to hospital.",
+        "emptyEmr": "You can only share your Profile Information",
+        "shareConsentCode": "Share this Consent Code to Medical Services"
     },
     "validation": {
         "fileMax2Mb": "File is maximum 2MB!"

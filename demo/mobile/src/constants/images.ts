@@ -21,4 +21,5 @@ export default class Images {
   static readonly notif = require('../../assets/images/notif.png');
   static readonly male = require('../../assets/images/male.png');
   static readonly share = require('../../assets/images/share.png');
+  static readonly consentCode = require('../../assets/images/consent_code.png');
 }

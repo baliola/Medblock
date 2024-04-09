@@ -21,12 +21,18 @@
         "continue": "Lanjutkan",
         "yourAccVerified": "Akun Anda sudah terverifikasi!",
         "emrId": "EMR ID : {{id}}",
-        "shareCode": "Bagi Kode"
+        "shareCode": "Bagi Kode",
+        "emptyEmr": "Anda Belum Memiliki Rekam Medis",
+        "refreshCode": "Refresh kode dalam {{second}} detik",
+        "getNewCode": "Dapatkan kode baru",
+        "back": "Kembali"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
         "agreeTerm": "Saya Setuju dengan ketentuan layanan Medblock dan semua informasinya",
-        "yourAccVerified": "Sekarang Anda dapat membagikan dan mengontrol rekam medis Anda ke rumah sakit."
+        "yourAccVerified": "Sekarang Anda dapat membagikan dan mengontrol rekam medis Anda ke rumah sakit.",
+        "emptyEmr": "Anda hanya dapat membagikan Informasi Profil Anda",
+        "shareConsentCode": "Bagikan Kode Persetujuan ini ke Layanan Medis"
     },
     "validation": {
         "fileMax2Mb": "Berkas maksimal 2MB!"
