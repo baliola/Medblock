@@ -2,14 +2,13 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     common::{ EmrHeader, EmrId, ProviderId, UserId, H256 },
     from,
-    stable::{ Candid, Stable },
+    stable::{ Stable },
 };
 use serde::Deserialize;
 
 use crate::{
     consent::{ ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
-    registry::NIK,
 };
 
 #[derive(CandidType, Deserialize)]

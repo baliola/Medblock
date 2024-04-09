@@ -6,10 +6,6 @@ use api::{
     ClaimConsentResponse,
     CreateConsentRequest,
     CreateConsentResponse,
-    DeriveSecretKeyRequest,
-    DeriveSecretKeyResponse,
-    DeriveVerificationKeyRequest,
-    DeriveVerificationKeyResponse,
     EmrListConsentRequest,
     EmrListConsentResponse,
     EmrListPatientRequest,
@@ -19,7 +15,6 @@ use api::{
     PingResult,
     ReadEmrByIdRequest,
     ReadEmrSessionRequest,
-    ReadEmrSessionResponse,
     RegisterPatientRequest,
     RevokeConsentRequest,
     UpdateEmrRegistryRequest,
@@ -37,9 +32,9 @@ use canister_common::{
     statistics::{ self, traits::OpaqueMetrics },
 };
 use config::CanisterConfig;
-use declarations::emr_registry::{ self, ReadEmrByIdResponse };
-use encryption::vetkd;
-use ic_cdk::api::management_canister::main::{CanisterIdRecord, CanisterSettings, UpdateSettingsArgument};
+use declarations::emr_registry::{ ReadEmrByIdResponse };
+
+
 use ic_stable_structures::Cell;
 use memory::UpgradeMemory;
 use registry::PatientRegistry;
@@ -200,7 +195,7 @@ fn start_collect_metrics_job() {
 }
 
 fn deserialize_canister_metrics() {
-    let mut mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
+    let mem = with_state(|s| s.memory_manager.get_memory::<_, UpgradeMemory>(|mem| mem));
 
     let mut reader = ic_stable_structures::reader::Reader::new(&mem, 0);
 
@@ -294,6 +289,7 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     PatientRegistry::do_call_read_emr(args, registry).await
 }
 
+#[ic_cdk::query(guard = "only_patient")]
 fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
@@ -354,7 +350,7 @@ pub async fn canister_geek_metrics(
 )]
 pub async fn update_canistergeek_information(
     request: canistergeek_ic_rust::api_type::UpdateInformationRequest
-) -> () {
+) {
     canistergeek_ic_rust::update_information(request);
 }
 

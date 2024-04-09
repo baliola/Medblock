@@ -25,3 +25,6 @@ dist/
 
 misc
 src/*/*/declarations/
+integration-tests/src/declarations/
+!integration-tests/.env
+**/.DS_Store

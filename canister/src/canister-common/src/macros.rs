@@ -262,6 +262,7 @@ macro_rules! register_log {
 }
 
 #[macro_export]
+#[allow(clippy::crate_in_macro_def)]
 macro_rules! log {
     ($fmt:expr) => {
         let ident = crate::__INTERNAL_LOG_IDENTIFIDER;

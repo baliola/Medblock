@@ -9,19 +9,19 @@ use canister_common::{
     metrics,
     opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
-    statistics::traits::{ Metrics, OpaqueMetrics },
+    statistics::traits::{ Metrics },
 };
 use serde::Deserialize;
 
 use crate::registry::{ PatientRegistry, NIK };
 
 thread_local! {
-    pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = std::cell::RefCell::new(None);
-    pub static INIT_FLAG: std::cell::Cell<bool> = std::cell::Cell::new(false);
+    pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = const { std::cell::RefCell::new(None) };
+    pub static INIT_FLAG: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 pub fn with_consent_mut<R>(f: impl FnOnce(&mut ConsentMap) -> R) -> R {
-    CONSENTS.with(|cell| f(&mut cell.borrow_mut().as_mut().expect("consents not initialized")))
+    CONSENTS.with(|cell| f(cell.borrow_mut().as_mut().expect("consents not initialized")))
 }
 
 pub fn ensure_initialized() {
@@ -31,7 +31,7 @@ pub fn ensure_initialized() {
 }
 
 pub fn with_consent<R>(f: impl FnOnce(&ConsentMap) -> R) -> R {
-    CONSENTS.with(|cell| f(&cell.borrow().as_ref().expect("consents not initialized")))
+    CONSENTS.with(|cell| f(cell.borrow().as_ref().expect("consents not initialized")))
 }
 
 // change this if you want to change the expiry time of the consent code
@@ -98,7 +98,7 @@ impl ConsentCode {
 impl<'de> Deserialize<'de> for ConsentCode {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
         let s = String::deserialize(deserializer)?;
-        Ok(ConsentCode::from_str(&s).map_err(serde::de::Error::custom)?)
+        ConsentCode::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -222,9 +222,9 @@ impl ConsentsApi {
 
     pub fn claim_consent(code: &ConsentCode, session_user: Principal) -> Option<SessionId> {
         ensure_initialized();
-        let session = with_consent_mut(|consents| consents.claim_consent(code, session_user));
+        
 
-        session
+        with_consent_mut(|consents| consents.claim_consent(code, session_user))
     }
 
     pub fn emr_list_with_session(
@@ -262,7 +262,7 @@ impl ConsentsApi {
             Some(consent) =>
                 Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await),
             None => {
-                return Err("invalid session".to_string());
+                Err("invalid session".to_string())
             }
         }
     }
@@ -376,7 +376,7 @@ impl ConsentMap {
         let random = self.rng.raw_random_u64();
 
         let code = ConsentCode::from_u64(random);
-        let consent = Consent::from_partial(partial, code.clone());
+        let consent = Consent::from_partial(partial, code);
 
         assert!(self.inner.insert(code, consent).is_none());
 
@@ -468,7 +468,7 @@ impl ConsentMap {
 
         // remove the consent if the session is finished, no-op if the consent is already removed
         if let Some(ref code) = code {
-            self.remove_consent(&code);
+            self.remove_consent(code);
         }
     }
 
@@ -531,7 +531,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let partial = PartialConsent::new(nik.clone(), vec![]);
@@ -550,7 +550,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let partial = PartialConsent::new(nik.clone(), vec![]);
@@ -572,7 +572,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let header = EmrHeader {
@@ -595,7 +595,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let header = EmrHeader {
@@ -625,7 +625,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let header = EmrHeader {
@@ -655,7 +655,7 @@ mod tests {
         let mut consents = ConsentMap::new_with_seed(0);
 
         let nik = NIK::from_str(
-            &"9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c".to_string()
+            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
         let header = EmrHeader {

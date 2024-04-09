@@ -16,33 +16,29 @@ fn get_workspace_root() -> PathBuf {
 }
 
 // workaround for setting provider registry candid path because we run into circular issues.
-fn hardcode_set_provider_registry_candid_path() {
+fn hardcode_set_registry_candid_path() {
     std::env::set_var("CANISTER_CANDID_PATH_PROVIDER_REGISTRY", "src/provider_registry/candid.did");
+    // workaround, we dont currenly use it
+    std::env::set_var("CANISTER_ID_PROVIDER_REGISTRY", "be2us-64aaa-aaaaa-qaabq-cai");
+
+    std::env::set_var("CANISTER_CANDID_PATH_EMR_REGISTRY", "src/emr_registry/candid.did");
+    // workaround, we dont currenly use it
+    std::env::set_var("CANISTER_ID_EMR_REGISTRY", "be2us-64aaa-aaaaa-qaabq-cai");
+
+    std::env::set_var("CANISTER_CANDID_PATH_PATIENT_REGISTRY", "src/patient_registry/candid.did");
+    // workaround, we dont currenly use it
+    std::env::set_var("CANISTER_ID_PATIENT_REGISTRY", "be2us-64aaa-aaaaa-qaabq-cai");
 }
 
 fn main() {
     println!("cargo:rerun-if-changed=NULL");
 
-    let link_flag = std::env::var("LINK").unwrap_or("true".to_string()).parse::<bool>().unwrap();
     // workaround to determine if this is invoked by dfx as dfx automatically inject this env var
     let candid_path_env = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").is_ok();
 
-    // dont run this script in test environment
-    if !candid_path_env || !link_flag {
-        return;
-    }
-    let _a = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").unwrap();
+    hardcode_set_registry_candid_path();
 
-    hardcode_set_provider_registry_candid_path();
-
-    let result = catch_unwind(build_declaration);
-    match result {
-        Ok(_) => (),
-        Err(_) =>
-            panic!(
-                "\nERROR: failed to generate foreign canister binding, are you running tests?\nNOTE: run with `LINK=false` to disable this i.e for test/linting, etc.."
-            ),
-    }
+    build_declaration();
 }
 fn get_config(canister: &str) -> Config {
     let mut config = Config::new(canister);
@@ -54,13 +50,19 @@ fn get_config(canister: &str) -> Config {
 }
 
 fn build_declaration() {
-    let configs = [get_config("emr_registry")];
-    
+    let configs = [
+        get_config("emr_registry"),
+        get_config("patient_registry"),
+        get_config("provider_registry"),
+    ];
+
     let mut builder = Builder::new();
 
     for config in configs {
         builder.add(config);
     }
-
-    builder.build(Some(get_workspace_root().join("src/patient_registry/src/declarations")));
+    let out = get_workspace_root().join("tests/integration-tests/src/declarations");
+    builder.build(Some(out.clone()));
+    
+    pocket_ic_bindgen::Builder::build(out.clone())
 }

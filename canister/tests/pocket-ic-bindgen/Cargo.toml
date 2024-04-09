@@ -1,0 +1,19 @@
+[package]
+name = "pocket-ic-bindgen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+syn = { version = "2.0.58", features = ["full"] }
+quote = "1.0.35"
+proc-macro2 = "1.0.79"
+
+[dev-dependencies]
+ic-cdk = { version = "0.12.0" }
+serde = "1.0.197"
+candid = "0.10.2"
+pocket-ic = "2.2.0"
+ic_principal = { version = "0.1.1" }
