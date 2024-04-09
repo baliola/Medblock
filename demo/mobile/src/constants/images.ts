@@ -36,4 +36,7 @@ export default class Images {
   static readonly martialStatus = require('../../assets/images/martial_status.png');
   static readonly guard = require('../../assets/images/guard.png');
   static readonly tedy = require('../../assets/images/tedy.png');
+  static readonly search = require('../../assets/images/search.png');
+  static readonly clear = require('../../assets/images/clear.png');
+  static readonly error = require('../../assets/images/error.png');
 }

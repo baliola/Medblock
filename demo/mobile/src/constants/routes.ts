@@ -26,4 +26,5 @@ export type RootStackParamList = {
   ConsentCode: undefined;
   EmrDetail: undefined;
   ProfileInformation: undefined;
+  RevokeAccess: undefined;
 };

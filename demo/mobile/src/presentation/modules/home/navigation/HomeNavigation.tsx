@@ -4,6 +4,7 @@ import React from 'react';
 import HomeScreen from '../screens/Home.scene';
 import EmrDetailScreen from '../screens/EmrDetail.scene';
 import ProfileInformationScreen from '../screens/ProfileInformation.scene';
+import RevokeAccessScreen from '../screens/RevokeAccess.scene';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -27,6 +28,13 @@ const HomeNavigation = () => {
       <Stack.Screen
         name={'ProfileInformation'}
         component={ProfileInformationScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name={'RevokeAccess'}
+        component={RevokeAccessScreen}
         options={{
           headerShown: false,
         }}

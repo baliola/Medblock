@@ -5,7 +5,14 @@ import {StackActions, useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {styled} from 'nativewind';
 import React from 'react';
-import {Image, StatusBar, TouchableOpacity, View} from 'react-native';
+import {
+  Image,
+  StatusBar,
+  StyleProp,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -15,9 +22,17 @@ interface AppBarProps {
   title?: React.ReactElement<any, any>;
   inverse?: boolean;
   trailing?: React.ReactElement<any, any>;
+  classStyle?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-const AppBar: React.FC<AppBarProps> = ({title, inverse, trailing}) => {
+const AppBar: React.FC<AppBarProps> = ({
+  title,
+  inverse,
+  trailing,
+  classStyle,
+  style = {marginTop: StatusBar.currentHeight},
+}) => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -32,8 +47,11 @@ const AppBar: React.FC<AppBarProps> = ({title, inverse, trailing}) => {
 
   return (
     <StyledView
-      style={{marginTop: StatusBar.currentHeight}}
-      className="px-4 pt-6 flex flex-row justify-between items-center w-full">
+      style={style}
+      className={
+        'px-4 pt-6 flex flex-row justify-between items-center w-full ' +
+        classStyle
+      }>
       <StyledTouchableOpacity onPress={handleGoBack} className="h-7 w-7">
         <StyledImage
           tintColor={inverse ? Colors.white : Colors.gray_dark}

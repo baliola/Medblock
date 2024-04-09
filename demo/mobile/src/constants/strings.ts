@@ -45,6 +45,12 @@ export default class Strings {
     martialStatus: 'label.martialStatus',
     partner: 'label.partner',
     children: 'label.children',
+    lastVisited: 'label.lastVisited',
+    physician: 'label.physician',
+    revokeEmr: 'label.revokeEmr',
+    yes: 'label.yes',
+    no: 'label.no',
+    alert: 'label.alert',
   };
 
   static readonly message = {
@@ -53,6 +59,9 @@ export default class Strings {
     yourAccVerified: 'message.yourAccVerified',
     emptyEmr: 'message.emptyEmr',
     shareConsentCode: 'message.shareConsentCode',
+    findAndRevoke: 'message.findAndRevoke',
+    closeEmr: 'message.closeEmr',
+    emrClosed: 'message.emrClosed',
   };
 
   static readonly validation = {
@@ -64,5 +73,9 @@ export default class Strings {
     file: 'navigation.file',
     history: 'navigation.history',
     setting: 'navigation.setting',
+  };
+
+  static readonly placeholder = {
+    search: 'placeholder.search',
   };
 }

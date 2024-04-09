@@ -44,15 +44,23 @@
         "religion": "Religion",
         "martialStatus": "Martial Status",
         "partner": "Partner/Guardian",
-        "children": "Children"
-
+        "children": "Children",
+        "lastVisited": "Last Visited: {{date}}",
+        "physician": "Physician {{physician}}",
+        "revokeEmr": "Revoke my EMR",
+        "yes": "Yes",
+        "no": "No",
+        "alert": "Alert"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",
         "agreeTerm": "I Agree to term of service’s Medblock and all of information",
         "yourAccVerified": "Now you can share and control your medical record to hospital.",
         "emptyEmr": "You can only share your Profile Information",
-        "shareConsentCode": "Share this Consent Code to Medical Services"
+        "shareConsentCode": "Share this Consent Code to Medical Services",
+        "findAndRevoke": "Find and select hospital that you want to revoke your EMR access",
+        "closeEmr": "Close EMR Access to selected hospital?",
+        "emrClosed": "Your EMR access to selected hospital is closed. "
     },
     "validation": {
         "fileMax2Mb": "File is maximum 2MB!"
@@ -62,5 +70,8 @@
         "file": "File",
         "history": "History",
         "setting": "Setting"
+    },
+    "placeholder": {
+        "search": "Search"
     }
 }

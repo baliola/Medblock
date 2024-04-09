@@ -36,7 +36,9 @@ const EmrDetailScreen = () => {
             }
           />
           <ProfileBar
-            onPressTrailing={() => {}}
+            onPressTrailing={() => {
+              navigation.navigate('RevokeAccess');
+            }}
             trailingButton={
               <StyledView className="flex flex-col rounded-xl bg-secondary-light py-3 px-2 items-center w-20">
                 <GeneralImage url={Images.close} size={28} />

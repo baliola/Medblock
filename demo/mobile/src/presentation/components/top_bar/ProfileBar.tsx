@@ -44,6 +44,7 @@ const ProfileBar: React.FC<ProfileBarProps> = ({
             text={t(Strings.label.emrId, {
               id: '234564213478',
             })}
+            classStyle="text-gray-800"
           />
         </StyledView>
       </StyledView>
