@@ -14,6 +14,7 @@ import { eidLogo, googleIcon, line, passkeyIcon } from '@/lib/assets';
 import { AuthClient } from '@dfinity/auth-client';
 import { EyeDropperIcon, EyeIcon } from '@heroicons/react/20/solid';
 import { Eye, EyeSlash } from 'iconsax-react';
+import { useCentralStore } from '@/Store';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -52,13 +53,15 @@ const LoginForm: FC<LoginFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
   const router = useRouter();
+  const { setClient, setUserPrincipal } = useCentralStore();
 
-  const targetCanisterIds = 'tvrxx-2iaaa-aaaak-akn4a-cai';
+  const targetCanisterIds = process.env.CANISTER_ID;
 
   useEffect(() => {
     async function initializeAuthClient() {
       const client = await AuthClient.create();
       setAuthClient(client);
+      setClient(client);
     }
     initializeAuthClient();
   }, []);
@@ -66,15 +69,17 @@ const LoginForm: FC<LoginFormProps> = ({
   function handleSuccess() {
     const principalId = authClient?.getIdentity().getPrincipal().toText();
     console.log('--------------');
-
-    console.log('PRINCIPAL ID', principalId);
-    router.push('/');
+    setUserPrincipal(principalId);
+    toast.success('Login successfully');
+    setTimeout(() => {
+      router.push('/');
+    }, 3000);
     console.log('--------------');
   }
 
   const handleLogin = async () => {
     console.log('running submit login');
-    const targets = targetCanisterIds.length ? [targetCanisterIds] : undefined;
+    const targets = targetCanisterIds?.length ? [targetCanisterIds] : undefined;
 
     try {
       if (!authClient) throw new Error('AuthClient not initialized');
@@ -84,7 +89,6 @@ const LoginForm: FC<LoginFormProps> = ({
       const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
 
       const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
-
       authClient.login({
         identityProvider,
         onSuccess: handleSuccess,
@@ -138,30 +142,7 @@ const LoginForm: FC<LoginFormProps> = ({
             </div>
           )}
           <div className="flex flex-col w-full px-[16px] gap-4">
-            {/* EMAIL FORM INPUT */}
-            <label htmlFor="email" className="flex flex-col w-[100%]">
-              <span className="block text-[14px] font-normal text-[#454768]">
-                {titleEmail}
-              </span>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder={placeholderEmail}
-                value={values.email}
-                onChange={handleChange('email')}
-                autoComplete="off"
-                className={
-                  'rounded-2xl bg-[#E7E7E7]  mt-[6px] flex flex-row min-w-full h-[56px] rounde text-[14px] border px-4  border-[#B4BAC6] focus:outline-none focus:border-[#397BFF] focus:border-b-[1px]'
-                }
-              />
-              {errors?.email && (
-                <p className="text-[#F04438] mt-0.5">{errors.email}</p>
-              )}
-
-              {/* <ErrorMessage name="email" component="div" /> */}
-            </label>
-            <div className={`flex flex-col gap-2`}>
+            {/* <div className={`flex flex-col gap-2`}>
               <div className="grid grid-cols-2">
                 <label htmlFor="">
                   {' '}
@@ -194,15 +175,13 @@ const LoginForm: FC<LoginFormProps> = ({
                 placeholder={placeholderPassword}
                 onChange={handleChange('password')}
                 className={
-                  errors?.password
-                    ? 'flex flex-row min-w-full text-sm border py-2.5 px-4 rounded border-rose-500 focus:outline-none focus:border-rose-500 focus:border-b-[1px]'
-                    : 'flex flex-row min-w-full text-sm border py-2.5 px-4  rounded-md border-slate-300 focus:outline-none focus:border-purple-500 focus:border-b-[1px]'
+                  'rounded-2xl bg-[#E7E7E7]  mt-[6px] flex flex-row min-w-full h-[56px] rounde text-[14px] border px-4  border-[#B4BAC6] focus:outline-none focus:border-[#397BFF] focus:border-b-[1px]'
                 }
               />
               {errors?.password && (
                 <p className="text-sm text-rose-500">{errors.password}</p>
               )}
-            </div>{' '}
+            </div>{' '} */}
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
               title="Sign in"

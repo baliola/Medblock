@@ -30,11 +30,34 @@ import { useCentralStore } from '@/Store';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
+import { AuthClient } from '@dfinity/auth-client';
 
 function Sidebar() {
   const router = useRouter();
   const { pathname } = router;
-  const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
+  const {
+    setIsSidebarOpen,
+    isSidebarOpen,
+    client,
+    setUserPrincipal,
+    setClient,
+  } = useCentralStore();
+  async function initializeAuthClient() {
+    console.log('handle logout running...');
+
+    const client = await AuthClient.create();
+    setClient(client);
+  }
+  const logout = () => {
+    console.log('handle logout running...');
+    if (!client) {
+      console.log('client null');
+      initializeAuthClient();
+    }
+    client?.logout({
+      returnTo: '/auth/login',
+    });
+  };
 
   // useEffect(() => {
   //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
@@ -77,10 +100,12 @@ function Sidebar() {
           </div>
 
           <div>
-            <div className="text-gray-500 text-xs font-medium md:px-2">
+            <div className="text-gray-500 text-xs font-medium md:px-2 mb-48">
+              <hr className="bg-gray-400 mx-2 my-4" />
+
               <button
                 className={`flex  hover:px-8 duration-200 px-6 py-2 items-center gap-2 text-red-500`}
-                // onClick={handleLogout}
+                onClick={logout}
               >
                 <Logout size={16} />
                 Logout
@@ -95,8 +120,6 @@ function Sidebar() {
                 Support
               </button> */}
             </div>
-
-            <hr className="bg-gray-400 mx-2 my-4" />
 
             {/* bottom */}
           </div>
