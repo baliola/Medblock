@@ -13,6 +13,7 @@ import FileScreen from '@screens/file/screens/File.scene';
 import HistoryScreen from '@screens/history/screens/History.scene';
 import SettingScreen from '@screens/setting/screens/Setting.scene';
 import {HEIGHT} from '@constants/dimensions';
+import HomeNavigation from '@screens/home/navigation/HomeNavigation';
 
 const Tab = createBottomTabNavigator();
 const StyledView = styled(View);
@@ -80,7 +81,10 @@ const MainNavigation = () => {
           elevation: 0,
         },
       })}>
-      <Tab.Screen name={t(Strings.navigation.home)} component={HomeScreen} />
+      <Tab.Screen
+        name={t(Strings.navigation.home)}
+        component={HomeNavigation}
+      />
       <Tab.Screen name={t(Strings.navigation.file)} component={FileScreen} />
       <Tab.Screen
         name={t(Strings.navigation.history)}

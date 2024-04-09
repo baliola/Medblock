@@ -25,7 +25,16 @@
         "emptyEmr": "Anda Belum Memiliki Rekam Medis",
         "refreshCode": "Refresh kode dalam {{second}} detik",
         "getNewCode": "Dapatkan kode baru",
-        "back": "Kembali"
+        "back": "Kembali",
+        "closeAccess": "Tutup Akses",
+        "profileInfo": "Informasi Profil",
+        "latestVisit": "Kunjungan Terakhir",
+        "medicalOfficer": "Petugas Medis",
+        "visitSummary": "Ringkasan Kunjungan",
+        "reasonVisit": "Alasan untuk berkunjung",
+        "diagnosis": "Diagnosis",
+        "planning": "Perencanaan",
+        "medication": "Obat"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",

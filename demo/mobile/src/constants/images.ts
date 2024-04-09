@@ -2,6 +2,8 @@ export default class Images {
   static readonly logo = require('../../assets/images/logo.png');
   static readonly logo2 = require('../../assets/images/logo2.png');
   static readonly logo3 = require('../../assets/images/logo3.png');
+  static readonly arrowLeft = require('../../assets/images/arrow_left.png');
+  static readonly arrowRight = require('../../assets/images/arrow_right.png');
   static readonly google = require('../../assets/images/google.png');
   static readonly eid = require('../../assets/images/eid.png');
   static readonly passkey = require('../../assets/images/passkey.png');
@@ -22,4 +24,7 @@ export default class Images {
   static readonly male = require('../../assets/images/male.png');
   static readonly share = require('../../assets/images/share.png');
   static readonly consentCode = require('../../assets/images/consent_code.png');
+  static readonly close = require('../../assets/images/close.png');
+  static readonly profile = require('../../assets/images/profile.png');
+  static readonly hospital = require('../../assets/images/hospital.png');
 }

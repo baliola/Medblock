@@ -26,6 +26,15 @@ export default class Strings {
     refreshCode: 'label.refreshCode',
     getNewCode: 'label.getNewCode',
     back: 'label.back',
+    closeAccess: 'label.closeAccess',
+    profileInfo: 'label.profileInfo',
+    latestVisit: 'label.latestVisit',
+    medicalOfficer: 'label.medicalOfficer',
+    visitSummary: 'label.visitSummary',
+    reasonVisit: 'label.reasonVisit',
+    diagnosis: 'label.diagnosis',
+    planning: 'label.planning',
+    medication: 'label.medication',
   };
 
   static readonly message = {

@@ -1,6 +1,7 @@
 import PrimaryButton from '@components/button/PrimaryButton';
 import GeneralImage from '@components/image/GeneralImage';
 import TextPrimary from '@components/text/TextPrimary';
+import ProfileBar from '@components/top_bar/ProfileBar';
 import Images from '@constants/images';
 import {RootStackParamList} from '@constants/routes';
 import Strings from '@constants/strings';
@@ -9,7 +10,7 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {styled} from 'nativewind';
 import React, {useState} from 'react';
-import {useTranslation} from 'react-i18next';
+
 import {
   FlatList,
   ScrollView,
@@ -26,7 +27,6 @@ const StyledFlatListMyEmr = styled(FlatList as new () => FlatList<any>);
 const data = [{id: 1, title: 'My EMR'}];
 
 const HomeScreen = () => {
-  const {t} = useTranslation('global');
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -34,7 +34,9 @@ const HomeScreen = () => {
 
   const renderItem = ({item}: {item: any}) => (
     <StyledTouchableOpacity
-      onPress={() => {}}
+      onPress={() => {
+        navigation.navigate('EmrDetail');
+      }}
       className="w-1/4 mx-2 flex flex-col items-center bg-slate-200 rounded-xl p-4">
       <GeneralImage url={Images.emr} size={32} />
       <TextPrimary text={item.title} classStyle="text-gray-800 mt-2" isBold />
@@ -48,32 +50,11 @@ const HomeScreen = () => {
   return (
     <Scaffold
       topBar={
-        <StyledView
-          className="flex flex-row justify-between m-6 pt-4 items-center"
-          style={{marginTop: StatusBar.currentHeight}}>
-          <StyledView className="flex flex-row space-x-4 items-center">
-            <GeneralImage size={50} url={Images.dummyProfile} />
-            <StyledView className="flex flex-col items-start">
-              <TextPrimary
-                text="I Putu Aryadi"
-                classStyle="text-gray-800 text-lg"
-                isBold
-              />
-              <StyledView className="flex flex-row items-start space-x-2">
-                <GeneralImage url={Images.male} size={18} />
-                <TextPrimary text="24 th" classStyle="text-gray-800" isBold />
-                <TextPrimary text="Maried" classStyle="text-gray-800" />
-              </StyledView>
-              <TextPrimary
-                text={t(Strings.label.emrId, {
-                  id: '234564213478',
-                })}
-              />
-            </StyledView>
-          </StyledView>
-
-          <GeneralImage url={Images.notif} size={32} />
-        </StyledView>
+        <ProfileBar
+          style={{marginTop: (StatusBar.currentHeight as number) + 20}}
+          onPressTrailing={() => {}}
+          trailingButton={<GeneralImage url={Images.notif} size={32} />}
+        />
       }
       bottomChild={
         <StyledView className="p-6">

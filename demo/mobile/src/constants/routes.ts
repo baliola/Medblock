@@ -21,6 +21,8 @@ export type RootStackParamList = {
   // Main
   MainNavigation: undefined;
 
-  Home: undefined;
+  // Home
+  HomeNavigation: undefined;
   ConsentCode: undefined;
+  EmrDetail: undefined;
 };

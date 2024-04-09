@@ -25,7 +25,16 @@
         "emptyEmr": "You don’t Have Medical Record Yet",
         "refreshCode": "Refresh the code in {{second}} second",
         "getNewCode": "Get new code",
-        "back": "Back"
+        "back": "Back",
+        "closeAccess": "Close Accsess",
+        "profileInfo": "Profile Information",
+        "latestVisit": "Latest Visit",
+        "medicalOfficer": "Medical Officer",
+        "visitSummary": "Visit Summary",
+        "reasonVisit": "Reason to visit",
+        "diagnosis": "Diagnosis",
+        "planning": "Planning",
+        "medication": "Medication"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",

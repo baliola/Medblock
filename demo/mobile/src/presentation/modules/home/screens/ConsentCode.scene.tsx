@@ -6,6 +6,7 @@ import Colors from '@constants/colors';
 import Images from '@constants/images';
 import Strings from '@constants/strings';
 import Scaffold from '@layouts/Scaffold';
+import {useNavigation} from '@react-navigation/native';
 import {styled} from 'nativewind';
 import React, {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -16,6 +17,7 @@ const StyledView = styled(View);
 const ConsentCodeScreen = () => {
   const {t} = useTranslation('global');
   const [seconds, setSeconds] = useState<number>(59);
+  const navigation = useNavigation();
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -33,6 +35,10 @@ const ConsentCodeScreen = () => {
 
   const handleResendCode = () => {
     setSeconds(59);
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
   };
 
   return (
@@ -66,7 +72,9 @@ const ConsentCodeScreen = () => {
         <BasicButton
           label={Strings.label.back}
           labelStyle={{color: Colors.primary_light}}
-          onPress={() => {}}
+          onPress={() => {
+            handleBack();
+          }}
           classStyle="bg-white rounded-xl py-4 px-12"
         />
         <GeneralImage
