@@ -20,3 +20,14 @@ Here's the general form of the command:
 ```bash
 ./add_metrics_collector.sh <canister-name> <caller> <network>
 ```
+
+## Add Provider
+This script is used to register a new provider in the provider registry. It uses the `dfx canister call` command to call the `register_new_provider` method on the provider registry canister.
+
+To use the `add_provider.sh` script, you need to provide three arguments: `caller`, `display_name`, and `network`.
+
+Here's the general form of the command:
+
+```bash
+./add_provider.sh <caller> <display_name> <network>
+```
