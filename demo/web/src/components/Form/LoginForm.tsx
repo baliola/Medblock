@@ -211,11 +211,19 @@ const LoginForm: FC<LoginFormProps> = ({
               color="#242DA8"
             />
             <div className="flex w-full justify-center gap-2">
-              <img src={line} alt="" className="w-full max-w-[104px]" />
+              <img
+                src={'/assets/line.svg'}
+                alt=""
+                className="w-full max-w-[104px]"
+              />
               <p className="text-center font-medium text-base relative text-[#5D5D5D]">
                 OR CONTINUE WITH
               </p>
-              <img src={line} alt="" className="w-full max-w-[104px]" />
+              <img
+                src={'/assets/line.svg'}
+                alt=""
+                className="w-full max-w-[104px]"
+              />
             </div>
             <div className="flex gap-4">
               <button className="h-14 border-[2px] w-full p-4 items-center flex justify-center rounded-2xl border-[#242DA8]">
@@ -227,7 +235,7 @@ const LoginForm: FC<LoginFormProps> = ({
             </div>
             <div className="flex flex-col gap-4 justify-center">
               <button className="h-14 gap-4 border-[2px] w-full p-4 items-center flex justify-center rounded-2xl border-[#242DA8]">
-                <img src={passkeyIcon} alt="" />
+                <img src={'/assets/passkeyIcon.svg'} alt="" />
                 <p className="text-base font-medium">Continue With Passkey</p>
               </button>
               <Link href={''} className="text-[#06B8EE] underline text-center">

@@ -26,12 +26,14 @@ import {
 import { SetStateAction, useMemo, useState } from 'react';
 import ModalAdd from './components/Modal/ModalAdd';
 import { useRouter } from 'next/router';
+import usePatient from '@/hooks/usePatient';
 
 export default function DashboardExample() {
   const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
+  const { fetchPatient } = usePatient();
 
   const toggleModal = () => {
     setShowModal(!showModal);

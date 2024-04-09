@@ -33,7 +33,7 @@ const LoginPage: NextPageWithLayout = () => {
     <div className="flex w-full">
       <div className="flex flex-col w-1/2 items-center relative">
         <img
-          src={heroImage}
+          src={'/assets/hero.svg'}
           alt=""
           className="relative left-12  max-w-[740px] w-full"
         />
@@ -44,17 +44,17 @@ const LoginPage: NextPageWithLayout = () => {
       </div>
       <div className="flex w-1/2 ">
         <img
-          src={hospitalImage}
+          src={'/assets/hospital.svg'}
           alt=""
           className="absolute max-w-[300px] right-24 -top-4 w-full"
         />
         <img
-          src={healthMinisterImage}
+          src={'/assets/healthMinister.svg'}
           alt=""
           className="absolute max-w-[300px] bottom-32 right-4 w-full"
         />
         <img
-          src={umbrellaImage}
+          src={'/assets/umbrella.svg'}
           alt=""
           className="absolute max-w-[300px] bottom-4 right-auto w-full"
         />

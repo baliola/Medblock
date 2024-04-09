@@ -8,9 +8,12 @@
 # testing
 /coverage
 
+
 # next.js
 /.next/
 /out/
+
+.dfx
 
 # production
 /build

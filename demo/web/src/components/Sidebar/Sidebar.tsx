@@ -47,10 +47,12 @@ function Sidebar() {
         <div className="justify-center p-4 md:p-6 flex cursor-pointer group items-center gap-2">
           {/* <div className="h-10 outline outline-violet-300 w-10 flex items-center bg-gradient-to-br justify-center rounded-full from-violet-500 to-violet-400 text-white"> */}
           <Image
-            src={logo}
-            alt="User"
+            src={'/assets/logo.svg'}
+            alt="Logo"
             width={160}
             height={36}
+            unoptimized
+
             // className="rounded-full"
           />
           {/* </div> */}
