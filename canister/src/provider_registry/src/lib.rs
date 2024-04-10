@@ -23,7 +23,6 @@ use canister_common::{
     statistics::{ self, traits::OpaqueMetrics },
 };
 
-
 use ic_stable_structures::Cell;
 use memory::{ FreezeThresholdMemory, UpgradeMemory };
 use registry::ProviderRegistry;
@@ -77,15 +76,12 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
     STATE.with(|cell| f(cell.borrow_mut().as_mut().expect("state not initialized")))
 }
 
-#[ic_cdk::inspect_message]
-fn inspect_message() {
-    verified_caller().expect("caller is not verified");
-    with_state(|s| s.freeze_threshold.get().check());
-
-    match only_canister_owner().is_ok() || only_provider().is_ok() {
-        true => ic_cdk::api::call::accept_message(),
-        false => ic_cdk::trap("unauthorized"),
-    }
+#[ic_cdk::update]
+async fn get_trusted_origins() -> Vec<String> {
+    vec![
+        // Origins should be in the format defined by the Window.postMessage method (https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#the_dispatched_event)
+        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/") // to be replaced with your frontend origin(s)
+    ]
 }
 
 // guard function
