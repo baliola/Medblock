@@ -51,7 +51,10 @@
         "yes": "Ya",
         "no": "Tidak",
         "alert": "Peringatan",
-        "logout": "Keluar"
+        "logout": "Keluar",
+        "notification": "Pemberitahuan",
+        "filter": "Saring",
+        "sort": "Urutkan"
     },
     "message": {
         "verifyYourId": "Verifikasi ID Anda, Silakan isi informasi di bawah ini",
@@ -75,5 +78,13 @@
     },
     "placeholder": {
         "search": "Cari"
+    },
+    "onBoardingItems": {
+        "ob1Title": "Bagaimana cara memulainya?",
+        "ob1Body": "Anda dapat memiliki alamat rekam medis dengan memverifikasi nomor ID atau NIK Anda melalui aplikasi kami",
+        "ob2Title": "Mengapa saya memerlukan rekam medis blockchain?",
+        "ob2Body": "Catatan medis Blockchain seperti lemari arsip yang sangat aman dan dikontrol oleh pasien untuk riwayat kesehatan Anda.",
+        "ob3Title": "Apa yang dapat saya lakukan dengan rekam medis blockchain saya?",
+        "ob3Body": "Bagikan riwayat kesehatan Anda secara aman dengan penyedia resmi untuk koordinasi perawatan yang lebih baik & Nikmati kontrol dan keamanan yang lebih besar atas data medis Anda."
     }
 }

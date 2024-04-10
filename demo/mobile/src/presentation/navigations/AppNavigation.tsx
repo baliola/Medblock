@@ -7,12 +7,20 @@ import FillPersonalInformationScreen from '@screens/verification/screens/FillPer
 import VerifiedScreen from '@screens/verification/screens/Verified.scene';
 import MainNavigation from './MainNavigation';
 import ConsentCodeScreen from '@screens/home/screens/ConsentCode.scene';
+import OnboardingScreen from '@screens/on_boarding/screens/Onboarding.scene';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigation = () => {
   return (
-    <Stack.Navigator initialRouteName={'Login'}>
+    <Stack.Navigator initialRouteName={'Onboarding'}>
+      <Stack.Screen
+        name={'Onboarding'}
+        component={OnboardingScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name={'Login'}
         component={LoginScreen}
