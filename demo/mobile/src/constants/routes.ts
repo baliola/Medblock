@@ -10,6 +10,9 @@ export default class AppRoutes {
 }
 
 export type RootStackParamList = {
+  // Onboarding
+  Onboarding: undefined;
+
   // Auth
   Login: undefined;
 

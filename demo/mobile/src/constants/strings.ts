@@ -55,6 +55,9 @@ export default class Strings {
     notification: 'label.notification',
     filter: 'label.filter',
     sort: 'label.sort',
+    and: 'label.and',
+    term: 'label.term',
+    privacy: 'label.privacy',
   };
 
   static readonly message = {
@@ -67,6 +70,7 @@ export default class Strings {
     closeEmr: 'message.closeEmr',
     emrClosed: 'message.emrClosed',
     logout: 'message.logout',
+    obBoardDesc: 'message.obBoardDesc',
   };
 
   static readonly validation = {
@@ -82,5 +86,14 @@ export default class Strings {
 
   static readonly placeholder = {
     search: 'placeholder.search',
+  };
+
+  static readonly onBoardingItems = {
+    ob1Title: 'onBoardingItems.ob1Title',
+    ob1Body: 'onBoardingItems.ob1Body',
+    ob2Title: 'onBoardingItems.ob2Title',
+    ob2Body: 'onBoardingItems.ob2Body',
+    ob3Title: 'onBoardingItems.ob3Title',
+    ob3Body: 'onBoardingItems.ob3Body',
   };
 }

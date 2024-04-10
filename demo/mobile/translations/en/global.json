@@ -54,7 +54,10 @@
         "logout": "Log Out",
         "notification": "Notification",
         "filter": "Filter",
-        "sort": "Sort"
+        "sort": "Sort",
+        "and": "and",
+        "term": "terms",
+        "privacy": "privacy policy"
     },
     "message": {
         "verifyYourId": "Verify your ID, Please fill  the information below",
@@ -65,7 +68,9 @@
         "findAndRevoke": "Find and select hospital that you want to revoke your EMR access",
         "closeEmr": "Close EMR Access to selected hospital?",
         "emrClosed": "Your EMR access to selected hospital is closed.",
-        "logout": "Are You Sure to quit?"
+        "logout": "Are You Sure to quit?",
+        "obBoardDesc": "By using Medblock pasport, you agree to the"
+
     },
     "validation": {
         "fileMax2Mb": "File is maximum 2MB!"
@@ -78,5 +83,13 @@
     },
     "placeholder": {
         "search": "Search"
+    },
+    "onBoardingItems": {
+        "ob1Title": "How do I get started?",
+        "ob1Body": "You can have medical record address by verifying your ID number or NIK through our apps",
+        "ob2Title": "Why do I need a blockchain medical record?",
+        "ob2Body": "Blockchain medical records are like ultra-secure, patient-controlled filing cabinets for your medical history. ",
+        "ob3Title": "What can I do with my blockchain medical record?",
+        "ob3Body": "Securely share your medical history with authorized providers for better care coordination & Enjoy greater control and security over your medical data."
     }
 }
