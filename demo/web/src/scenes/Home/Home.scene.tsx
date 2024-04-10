@@ -29,7 +29,7 @@ import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
 
 export default function DashboardExample() {
-  const { generateMockPatients } = usePatientMock();
+  // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
@@ -135,7 +135,7 @@ export default function DashboardExample() {
         <Card className="flex flex-col gap-2 mt-4">
           <Table
             columns={patientColumn}
-            data={generateMockPatients}
+            data={[]}
             isLoading={false}
             currentPage={0}
             // setCurrentPage={setCurrentPageAccountType}

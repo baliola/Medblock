@@ -13,10 +13,11 @@ import {
   providerCanisterId,
   providerCanisterIdMainnet,
 } from '@/lib/canister/provider.canister';
-import { Identity, SignIdentity } from '@dfinity/agent';
+import { HttpAgent, Identity, SignIdentity } from '@dfinity/agent';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
+import { NFIDS } from '@/interface/nfid.interface';
 
 const useAuth = () => {
   const [response, setResponse] = useState<any>(null);
@@ -25,32 +26,29 @@ const useAuth = () => {
     providerCanisterIdMainnet,
     patientCanisterIdMainnet,
   ];
-  const { data: nfid, error: nfidError } = useSWRImmutable('nfid', () =>
-    NFID.init({}),
-  );
+  const { setAgent } = useCentralStore();
+  const [loading, setIsloading] = useState(false);
 
   const router = useRouter();
+  const updateDelegation = async (nfid: NFID) => {
+    try {
+      const delegationIdentity: Identity = await nfid.updateGlobalDelegation({
+        targets: targetCanisterIds,
+      });
+      console.log('delegate response update', delegationIdentity);
+    } catch (error) {
+      console.log('ERROR', error);
+    }
+  };
 
-  //   function handleSuccess() {
-  //     const { setClient, setUserPrincipal } = useCentralStore();
-  //     const principalId = nfid?.getIdentity().getPrincipal().toText();
-  //     console.log('--------------');
-  //     setUserPrincipal(principalId);
-  //     toast.success('Login successfully');
-  //     setTimeout(() => {
-  //       router.push('/');
-  //     }, 3000);
-  //     console.log('--------------');
-  //   }
-
-  console.log('NFID:::', nfid);
+  //   console.log('NFID:::', nfid);
   const handleAuthenticate = useCallback(async () => {
     console.log('AUTHENTICATING........');
+    setIsloading(true);
 
-    if (!nfid) return alert('NFID is not initialized');
-
+    const testNewNfid = await NFIDS();
     try {
-      const identity = await nfid.getDelegation(
+      const identity = await testNewNfid.getDelegation(
         targetCanisterIds.length
           ? {
               targets: targetCanisterIds,
@@ -61,44 +59,56 @@ const useAuth = () => {
       );
       console.log('AUTHENTICATION SUCCESS:::', identity);
 
-      setIdentitiy(identity);
-      setResponse(identity);
+      const newAgent = new HttpAgent({ host: 'https://ic0.app', identity });
+      setAgent(newAgent);
+
       toast.success('Login successfully');
+      setIsloading(false);
       setTimeout(() => {
         router.push('/');
       }, 3000);
     } catch (error: any) {
+      setIsloading(false);
       setResponse({ error: error.message });
     }
-  }, [nfid, targetCanisterIds, setResponse]);
+  }, [targetCanisterIds, setResponse]);
 
   const checkAuthentication = async () => {
-    const isAuthenticated = await nfid?.isAuthenticated;
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-    }
-    return isAuthenticated;
+    // const isAuthenticated = await nfid?.isAuthenticated;
+    // if (!isAuthenticated) {
+    //   router.push('/auth/login');
+    // }
+    // return isAuthenticated;
   };
 
   const signOut = async () => {
-    try {
-      const principalId = nfid?.getIdentity().getPrincipal();
-      const isAuthenticated = await nfid?.isAuthenticated;
-      console.log('Principal', principalId);
-      console.log('isAuthenticated', isAuthenticated);
-
-      const resp = await nfid?.logout();
-      console.log('LOGOUT SUCCESSS', resp);
-      router.push('/auth/login');
-    } catch (error) {
-      console.log('ERROR', error);
-    }
+    // try {
+    //   const principalId = nfid?.getIdentity().getPrincipal();
+    //   const isAuthenticated = await nfid?.isAuthenticated;
+    //   console.log('Principal', principalId);
+    //   console.log('isAuthenticated', isAuthenticated);
+    //   const resp = await nfid?.logout();
+    //   console.log('LOGOUT SUCCESSS', resp);
+    //   router.push('/auth/login');
+    // } catch (error) {
+    //   console.log('ERROR', error);
+    // }
   };
+
+  // const delegationIdentity: Identity = await nfid.updateGlobalDelegation({
+  //   targets: [
+  //     'YOUR_CANISTER_ID_1',
+  //     'YOUR_CANISTER_ID_2',
+  //     'YOUR_CANISTER_ID_USER_SPECIFIC',
+  //   ],
+  // });
 
   return {
     handleAuthenticate,
     checkAuthentication,
     signOut,
+    // nfid,
+    identity,
   };
 };
 

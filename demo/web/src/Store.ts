@@ -1,3 +1,4 @@
+import { HttpAgent } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { create } from 'zustand';
 
@@ -23,6 +24,9 @@ interface centralStore {
   client: AuthClient | null;
   setClient: (client: AuthClient) => void;
 
+  agent: HttpAgent | undefined;
+  setAgent: (userAgent: HttpAgent) => void;
+
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
   setIsSidebarOpen: (isOpen: boolean) => void;
@@ -31,6 +35,11 @@ interface centralStore {
 export const useCentralStore = create<centralStore>((set, get) => ({
   activePage: 'DASHBOARD',
   client: null,
+
+  agent: undefined,
+  setAgent(userAgent) {
+    set({ agent: userAgent });
+  },
   userPrincipal: undefined,
   setUserPrincipal(id) {
     set({ userPrincipal: id });

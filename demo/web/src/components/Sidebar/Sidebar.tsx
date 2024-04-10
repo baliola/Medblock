@@ -63,7 +63,7 @@ function Sidebar() {
 
   useEffect(() => {
     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen);
-    checkAuthentication();
+    // checkAuthentication();
   }, [pathname]);
 
   return (
