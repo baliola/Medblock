@@ -34,7 +34,6 @@ use canister_common::{
 use config::CanisterConfig;
 use declarations::emr_registry::{ ReadEmrByIdResponse };
 
-
 use ic_stable_structures::Cell;
 use memory::UpgradeMemory;
 use registry::PatientRegistry;
@@ -237,14 +236,12 @@ fn initialize() {
     start_collect_metrics_job();
 }
 
-#[ic_cdk::inspect_message]
-fn inspect_message() {
-    verified_caller().expect("caller is not verified");
-
-    match only_canister_owner().is_ok() || only_patient().is_ok() {
-        true => ic_cdk::api::call::accept_message(),
-        false => ic_cdk::trap("unauthorized"),
-    }
+#[ic_cdk::update]
+async fn get_trusted_origins() -> Vec<String> {
+    vec![
+        // Origins should be in the format defined by the Window.postMessage method (https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#the_dispatched_event)
+        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/") // to be replaced with your frontend origin(s)
+    ]
 }
 
 #[ic_cdk::post_upgrade]
@@ -426,7 +423,6 @@ fn update_provider_registry_principal(req: UpdateEmrRegistryRequest) {
         }
     })
 }
-
 
 #[ic_cdk::update(guard = "only_patient")]
 fn revoke_consent(req: RevokeConsentRequest) {

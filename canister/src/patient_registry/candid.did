@@ -137,6 +137,7 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
+  get_trusted_origins : () -> (vec text);
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
   ping : () -> (PingResult) composite_query;
