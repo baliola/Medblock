@@ -31,10 +31,12 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
 import { AuthClient } from '@dfinity/auth-client';
+import useAuth from '@/hooks/useAuth';
 
 function Sidebar() {
   const router = useRouter();
   const { pathname } = router;
+  const { signOut, checkAuthentication } = useAuth();
   const {
     setIsSidebarOpen,
     isSidebarOpen,
@@ -59,9 +61,10 @@ function Sidebar() {
     });
   };
 
-  // useEffect(() => {
-  //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
-  // }, [pathname])
+  useEffect(() => {
+    if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen);
+    checkAuthentication();
+  }, [pathname]);
 
   return (
     <div className="fixed w-60 shrink-0 md:block h-screen  top-0 overflow-hidden">
@@ -105,7 +108,8 @@ function Sidebar() {
 
               <button
                 className={`flex  hover:px-8 duration-200 px-6 py-2 items-center gap-2 text-red-500`}
-                onClick={logout}
+                onClick={signOut}
+                type="button"
               >
                 <Logout size={16} />
                 Logout

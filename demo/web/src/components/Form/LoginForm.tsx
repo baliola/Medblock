@@ -15,6 +15,11 @@ import { AuthClient } from '@dfinity/auth-client';
 import { EyeDropperIcon, EyeIcon } from '@heroicons/react/20/solid';
 import { Eye, EyeSlash } from 'iconsax-react';
 import { useCentralStore } from '@/Store';
+import { targetCanister } from '@/lib/canister/target.canister';
+import { emrCanisterId } from '@/lib/canister/emr.canister';
+import { patientCanisterId } from '@/lib/canister/patient.canister';
+import { providerCanisterId } from '@/lib/canister/provider.canister';
+import useAuth from '@/hooks/useAuth';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -52,10 +57,10 @@ const LoginForm: FC<LoginFormProps> = ({
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
+
   const router = useRouter();
   const { setClient, setUserPrincipal } = useCentralStore();
-
-  const targetCanisterIds = process.env.CANISTER_ID;
+  const { handleAuthenticate } = useAuth();
 
   useEffect(() => {
     async function initializeAuthClient() {
@@ -79,21 +84,19 @@ const LoginForm: FC<LoginFormProps> = ({
 
   const handleLogin = async () => {
     console.log('running submit login');
-    const targets = targetCanisterIds?.length ? [targetCanisterIds] : undefined;
-
+    const targets = [emrCanisterId, patientCanisterId, providerCanisterId];
     try {
-      if (!authClient) throw new Error('AuthClient not initialized');
-
-      const APP_NAME = 'NFID example';
-      const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
-      const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
-
-      const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
-      authClient.login({
-        identityProvider,
-        onSuccess: handleSuccess,
-      });
+      // if (!authClient) throw new Error('AuthClient not initialized');
+      // const APP_NAME = 'Medblock';
+      // const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
+      // const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
+      // const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
+      // authClient.login({
+      //   identityProvider,
+      //   onSuccess: handleSuccess,
+      // });
       // const nfid = await NFID.init({
+      //   // origin: 'https://icp0.io',
       //   application: {
       //     name: 'My Sweet App',
       //     logo: 'https://dev.nfid.one/static/media/id.300eb72f3335b50f5653a7d6ad5467b3.svg',
@@ -104,8 +107,8 @@ const LoginForm: FC<LoginFormProps> = ({
       //   targets: targets,
       //   // You can add other optional properties here if needed
       // });
+      // console.log('identity', identity);
       // const address: Identity = await nfid.getIdentity();
-
       // console.log('response', identity);
       // console.log('response nfid', nfid);
       // console.log('response address', address);
@@ -122,7 +125,7 @@ const LoginForm: FC<LoginFormProps> = ({
     <Formik
       initialValues={formData}
       // validationSchema={''}
-      onSubmit={handleLogin}
+      onSubmit={handleAuthenticate}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
         <>
