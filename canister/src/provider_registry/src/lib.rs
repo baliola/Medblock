@@ -17,6 +17,7 @@ use canister_common::{
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
+    opaque_metrics,
     random::CanisterRandomSource,
     register_log,
     stable::{ Candid, Memory, Stable },
@@ -291,10 +292,12 @@ pub async fn update_canistergeek_information(
 #[ic_cdk::query(guard = "only_authorized_metrics_collector")]
 fn metrics() -> String {
     with_state(|s| {
+        let config: config::CanisterConfig = s.config.get().to_owned().into_inner();
         [
             s.providers.measure(),
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
+            <config::CanisterConfig as OpaqueMetrics>::measure(&config),
         ].join("\n")
     })
 }
@@ -387,7 +390,7 @@ fn update_patient_registry_principal(req: UpdatePatientRegistryRequest) {
     with_state_mut(|s| {
         let mut config = s.config.get().to_owned();
 
-        config.update_default_emr_registry_principal(req.principal);
+        config.update_patient_registry_principal(req.principal);
 
         match s.config.set(config) {
             Ok(_) => (),
