@@ -111,7 +111,7 @@ impl ProviderRegistry {
 
                 match patient_registry.notify_issued(issue_request).await.map_err(CallError::from) {
                     Ok(_) => response,
-                    Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
+                    Err(e) => ic_cdk::trap(&format!("ERROR: error calling patient canister : {}", e)),
                 }
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),

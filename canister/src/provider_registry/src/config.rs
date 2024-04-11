@@ -2,8 +2,10 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     impl_max_size,
     impl_mem_bound,
+    metrics,
     mmgr::MemoryManager,
     stable::{ Candid, Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 use ic_stable_structures::Cell;
 use serde::Deserialize;
@@ -18,6 +20,63 @@ pub struct CanisterConfig {
     patient_registry: Principal,
     emr_registries: Vec<Principal>,
     authorized_metrics_collectors: Vec<Principal>,
+}
+
+metrics!(CanisterConfig: EmrRegistry,PatientRegistry,MetricsCollector);
+impl Metrics<EmrRegistry> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "emr_registry"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        ""
+    }
+
+    fn update_measurements(&self) {}
+
+    fn get_measurements(&self) -> String {
+        self.emr_registries
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+}
+
+impl Metrics<PatientRegistry> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "patient_registry"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        ""
+    }
+
+    fn update_measurements(&self) {}
+
+    fn get_measurements(&self) -> String {
+        self.patient_registry.to_string()
+    }
+}
+
+impl Metrics<MetricsCollector> for CanisterConfig {
+    fn metrics_name() -> &'static str {
+        "metrics_collector"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        ""
+    }
+
+    fn update_measurements(&self) {}
+
+    fn get_measurements(&self) -> String {
+        self.authorized_metrics_collectors
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(",")
+    }
 }
 
 impl_max_size!(for CanisterConfig: Principal, u8);
