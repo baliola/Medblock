@@ -21,10 +21,10 @@ type NFIDConfig = {
 //     logo: "https://dev.nfid.one/static/media/id.300eb72f3335b50f5653a7d6ad5467b3.svg"
 //   },
 // }: NFIDConfig);
-export async function testNFID() {
+export async function NFIDS() {
   const nfid = await NFID.init({
     application: {
-      name: 'My Sweet App',
+      name: 'MEDBLOCK',
       logo: 'https://dev.nfid.one/static/media/id.300eb72f3335b50f5653a7d6ad5467b3.svg',
     },
   } as NFIDConfig);

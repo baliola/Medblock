@@ -19,13 +19,14 @@ import { emrCanisterId } from '@/lib/canister/emr.canister';
 import { patientCanisterId } from '@/lib/canister/patient.canister';
 import { providerCanisterId } from '@/lib/canister/provider.canister';
 import useAuth from '@/hooks/useAuth';
+import useMobile from '@/hooks/useMobile';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
 // import { Assets } from '@/constant/generated/assets';
 // import useAuth from '@/hooks/useAuth';
 
-export interface LoginFormProps {
+export interface LoginFormMobileProps {
   titleEmail: string;
   titlePassword: string;
   placeholderEmail: string;
@@ -33,7 +34,7 @@ export interface LoginFormProps {
   required: boolean;
 }
 
-const LoginForm: FC<LoginFormProps> = ({
+const LoginFormMobile: FC<LoginFormMobileProps> = ({
   titleEmail,
   titlePassword,
   placeholderEmail,
@@ -54,12 +55,8 @@ const LoginForm: FC<LoginFormProps> = ({
     password: '',
   });
   const [showError, setShowError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [authClient, setAuthClient] = useState<AuthClient | null>(null);
 
-  const router = useRouter();
-  const { setClient, setUserPrincipal } = useCentralStore();
-  const { handleAuthenticate, handleLogin } = useAuth();
+  const { handleLogin } = useMobile();
 
   useEffect(() => {
     localStorage.removeItem('user');
@@ -69,11 +66,11 @@ const LoginForm: FC<LoginFormProps> = ({
     <Formik
       initialValues={formData}
       // validationSchema={''}
-      onSubmit={handleAuthenticate}
+      onSubmit={handleLogin}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
         <>
-          <div className="flex flex-col gap-2 justify-center items-center mb-[30px]">
+          <div className="flex flex-col gap-2 justify-center items-center text-center mb-[30px]">
             {/* <Image src={Assets.logo} width={120} height={120} alt={''} /> */}
             <p className="text-center font-semibold text-6xl">
               Med<span className="text-[#F04438]">block</span>
@@ -82,53 +79,8 @@ const LoginForm: FC<LoginFormProps> = ({
               Secure Health, Seamless Care{' '}
             </p>
           </div>
-          {showError && (
-            <div className="flex flex-row h-10 w-full items-center bg-[#FEECEB] rounded-xl gap-4 p-5">
-              <img src="/assets/Icons/alertError.svg" alt="" />
-              <p className="text-[#F04438]">Email atau Password salah!</p>
-            </div>
-          )}
+
           <div className="flex flex-col w-full px-[16px] gap-4">
-            {/* <div className={`flex flex-col gap-2`}>
-              <div className="grid grid-cols-2">
-                <label htmlFor="">
-                  {' '}
-                  <span className="block text-sm font-normal text-slate-600">
-                    {titlePassword}{' '}
-                  </span>
-                </label>
-                <div className="flex justify-end text-sm text-tremor-background-purple">
-                  <a
-                    className="items-center flex cursor-pointer px-1 rounded-md hover:bg-blue-100 transition ease-in duration-200"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeSlash width={18} height={18} className="mr-1" />
-                    ) : (
-                      <Eye width={18} height={18} className="mr-1" />
-                    )}
-                    {showPassword ? (
-                      <label className="cursor-pointer">Hide</label>
-                    ) : (
-                      <label className="cursor-pointer">Show</label>
-                    )}
-                  </a>
-                </div>
-              </div>
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder={placeholderPassword}
-                onChange={handleChange('password')}
-                className={
-                  'rounded-2xl bg-[#E7E7E7]  mt-[6px] flex flex-row min-w-full h-[56px] rounde text-[14px] border px-4  border-[#B4BAC6] focus:outline-none focus:border-[#397BFF] focus:border-b-[1px]'
-                }
-              />
-              {errors?.password && (
-                <p className="text-sm text-rose-500">{errors.password}</p>
-              )}
-            </div>{' '} */}
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
               title="Sign in"
@@ -175,4 +127,4 @@ const LoginForm: FC<LoginFormProps> = ({
   );
 };
 
-export default LoginForm;
+export default LoginFormMobile;

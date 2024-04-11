@@ -30,15 +30,41 @@ import { useCentralStore } from '@/Store';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
+import { AuthClient } from '@dfinity/auth-client';
+import useAuth from '@/hooks/useAuth';
 
 function Sidebar() {
   const router = useRouter();
   const { pathname } = router;
-  const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
+  const { signOut, checkAuthentication } = useAuth();
+  const {
+    setIsSidebarOpen,
+    isSidebarOpen,
+    client,
+    setUserPrincipal,
+    setClient,
+  } = useCentralStore();
+  async function initializeAuthClient() {
+    console.log('handle logout running...');
 
-  // useEffect(() => {
-  //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
-  // }, [pathname])
+    const client = await AuthClient.create();
+    setClient(client);
+  }
+  const logout = () => {
+    console.log('handle logout running...');
+    if (!client) {
+      console.log('client null');
+      initializeAuthClient();
+    }
+    client?.logout({
+      returnTo: '/auth/login',
+    });
+  };
+
+  useEffect(() => {
+    if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen);
+    // checkAuthentication();
+  }, [pathname]);
 
   return (
     <div className="fixed w-60 shrink-0 md:block h-screen  top-0 overflow-hidden">
@@ -47,10 +73,12 @@ function Sidebar() {
         <div className="justify-center p-4 md:p-6 flex cursor-pointer group items-center gap-2">
           {/* <div className="h-10 outline outline-violet-300 w-10 flex items-center bg-gradient-to-br justify-center rounded-full from-violet-500 to-violet-400 text-white"> */}
           <Image
-            src={logo}
-            alt="User"
+            src={'/assets/logo.svg'}
+            alt="Logo"
             width={160}
             height={36}
+            unoptimized
+
             // className="rounded-full"
           />
           {/* </div> */}
@@ -75,10 +103,13 @@ function Sidebar() {
           </div>
 
           <div>
-            <div className="text-gray-500 text-xs font-medium md:px-2">
+            <div className="text-gray-500 text-xs font-medium md:px-2 mb-48">
+              <hr className="bg-gray-400 mx-2 my-4" />
+
               <button
                 className={`flex  hover:px-8 duration-200 px-6 py-2 items-center gap-2 text-red-500`}
-                // onClick={handleLogout}
+                onClick={signOut}
+                type="button"
               >
                 <Logout size={16} />
                 Logout
@@ -93,8 +124,6 @@ function Sidebar() {
                 Support
               </button> */}
             </div>
-
-            <hr className="bg-gray-400 mx-2 my-4" />
 
             {/* bottom */}
           </div>

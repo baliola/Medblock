@@ -8,6 +8,8 @@ import { NextPageWithLayout } from '@/types';
 import EmptyLayout from '@/layouts/EmptyLayout';
 import { ToastContainer } from 'react-toastify';
 import PatientLayout from '@/layouts/PatientLayout';
+import { NFIDS } from '@/interface/nfid.interface';
+import { useEffect } from 'react';
 
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -17,6 +19,14 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? CommonLayout;
   const getEmptyLayout = Component.getLayout ?? EmptyLayout;
   const getPatientLayout = Component.getLayout ?? PatientLayout;
+
+  const initNFID = async () => {
+    await NFIDS;
+  };
+
+  useEffect(() => {
+    initNFID();
+  });
 
   if (Component.disableLayout) {
     return <> {getEmptyLayout(<Component {...pageProps} />)}</>;

@@ -1,34 +1,9 @@
-import {
-  Card,
-  Grid,
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Text,
-  Title,
-} from '@tremor/react';
-import { useState } from 'react';
-
+import RegistrationsForm from '@/components/Form/RegistrationsForm';
+import { googleIcon, eidLogo } from '@/lib/assets';
 import { NextPageWithLayout } from '@/types';
-import LoginForm from '@/components/Form/LoginForm';
-import Image from 'next/image';
-import {
-  healthMinisterImage,
-  heroImage,
-  hospitalImage,
-  umbrellaImage,
-} from '@/lib/assets';
-
-const LoginPage: NextPageWithLayout = () => {
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [password, setPassword] = useState('');
-
-  const togglePasswordVisibility = () => {
-    setPasswordVisible(!passwordVisible);
-  };
-
+import { Link } from 'iconsax-react';
+import React from 'react';
+const RegistrationsScene: NextPageWithLayout = () => {
   return (
     <div className="flex w-full">
       <div className="flex flex-col w-1/2 items-center relative">
@@ -60,7 +35,7 @@ const LoginPage: NextPageWithLayout = () => {
         />
         <div className="flex flex-col w-full relative items-center justify-center h-full">
           <div className="flex relative flex-col mx-auto justify-center shadow-lg border-white border-[2px]  rounded-2xl backdrop-blur-md bg-white/65  items-center px-6 py-[38px] max-w-[461px] w-full">
-            <LoginForm
+            <RegistrationsForm
               titleEmail={'Username'}
               titlePassword={'Password'}
               placeholderEmail={'Please input your username'}
@@ -74,5 +49,5 @@ const LoginPage: NextPageWithLayout = () => {
   );
 };
 
-export default LoginPage;
-LoginPage.disableLayout = true;
+export default RegistrationsScene;
+RegistrationsScene.disableLayout = true;
