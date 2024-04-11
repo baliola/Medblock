@@ -59,7 +59,7 @@ const LoginForm: FC<LoginFormProps> = ({
 
   const router = useRouter();
   const { setClient, setUserPrincipal } = useCentralStore();
-  const { handleAuthenticate } = useAuth();
+  const { handleAuthenticate, handleLogin } = useAuth();
 
   useEffect(() => {
     localStorage.removeItem('user');

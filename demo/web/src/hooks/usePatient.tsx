@@ -27,9 +27,6 @@ export interface EmrListPatientRequest {
 const usePatient = () => {
   const { agent } = useCentralStore();
   const [patientList, setPatientList] = useState([]);
-  const [delegation, setDelegation] = useState<DelegationType>(1);
-  const router = useRouter();
-  const nfid = new NFID();
 
   const canister = patientCanisterIdMainnet;
   async function fetchPatient() {
@@ -81,7 +78,6 @@ const usePatient = () => {
   }
 
   useEffect(() => {
-    console.log('hello', nfid.getIdentity().getPrincipal());
     console.log('AGENT NIH BRO', agent);
     if (agent) fetchPatient();
   }, []);

@@ -1,6 +1,6 @@
 import useSWRImmutable from 'swr/immutable';
 import { NFID } from '@nfid/embed';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   emrCanisterId,
   emrCanisterIdMainnet,
@@ -18,10 +18,16 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { NFIDS } from '@/interface/nfid.interface';
+import { AuthClient } from '@dfinity/auth-client';
 
 const useAuth = () => {
   const [response, setResponse] = useState<any>(null);
   const [identity, setIdentitiy] = useState<Identity>();
+  const [nfid, setNfid] = useState<NFID | null>(null);
+  const [client, setClient] = useState<AuthClient>();
+  const [signIn, setSignedIn] = useState(false);
+  const [principal, setPrincipal] = useState<string>('');
+
   const targetCanisterIds = [
     providerCanisterIdMainnet,
     patientCanisterIdMainnet,
@@ -40,6 +46,43 @@ const useAuth = () => {
       console.log('ERROR', error);
     }
   };
+  const initAuth = async () => {
+    const client = await AuthClient.create();
+    const isAuthenticated = await client.isAuthenticated();
+
+    setClient(client);
+
+    if (isAuthenticated) {
+      const identity = client.getIdentity();
+      const principal = identity.getPrincipal().toString();
+      setSignedIn(true);
+      setPrincipal(principal);
+    }
+  };
+
+  const handleLogin = async () => {
+    await new Promise<void>((resolve, reject) => {
+      client?.login({
+        identityProvider: 'https://identity.ic0.app',
+        onSuccess: async () => {
+          const identity = client.getIdentity();
+          const principal = identity.getPrincipal().toString();
+          toast.success('Login successfully');
+          //   setIsloading(false);
+          //   setTimeout(() => {
+          //     router.push('/');
+          //   }, 3000);
+
+          console.log('principal', principal);
+          console.log('identity', identity);
+
+          // Use identity and principal here if needed
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  };
 
   //   console.log('NFID:::', nfid);
   const handleAuthenticate = useCallback(async () => {
@@ -47,6 +90,7 @@ const useAuth = () => {
     setIsloading(true);
 
     const testNewNfid = await NFIDS();
+    setNfid(testNewNfid);
     try {
       const identity = await testNewNfid.getDelegation(
         targetCanisterIds.length
@@ -60,8 +104,8 @@ const useAuth = () => {
       console.log('AUTHENTICATION SUCCESS:::', identity);
 
       const newAgent = new HttpAgent({ host: 'https://ic0.app', identity });
+      console.log('PRINCIAP', identity.getPrincipal().toText());
       setAgent(newAgent);
-
       toast.success('Login successfully');
       setIsloading(false);
       setTimeout(() => {
@@ -74,7 +118,7 @@ const useAuth = () => {
   }, [targetCanisterIds, setResponse]);
 
   const checkAuthentication = async () => {
-    // const isAuthenticated = await nfid?.isAuthenticated;
+    const isAuthenticated = await nfid?.isAuthenticated;
     // if (!isAuthenticated) {
     //   router.push('/auth/login');
     // }
@@ -103,11 +147,16 @@ const useAuth = () => {
   //   ],
   // });
 
+  useEffect(() => {
+    initAuth();
+  }, []);
+
   return {
     handleAuthenticate,
     checkAuthentication,
     signOut,
     // nfid,
+    handleLogin,
     identity,
   };
 };
