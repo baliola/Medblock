@@ -4,7 +4,6 @@ use api::{
     AuthorizedCallerRequest,
     ClaimConsentRequest,
     ClaimConsentResponse,
-    CreateConsentRequest,
     CreateConsentResponse,
     EmrListConsentRequest,
     EmrListConsentResponse,
@@ -13,7 +12,10 @@ use api::{
     FinishSessionRequest,
     GetPatientInfoBySessionRequest,
     GetPatientInfoResponse,
+    IsConsentClaimedRequest,
+    IsConsentClaimedResponse,
     IssueRequest,
+    PatientListResponse,
     PingResult,
     ReadEmrByIdRequest,
     ReadEmrSessionRequest,
@@ -314,6 +316,29 @@ fn register_patient(req: RegisterPatientRequest) {
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 
+#[ic_cdk::query]
+fn patient_list() -> PatientListResponse {
+    let caller = verified_caller().unwrap();
+    let consents = ConsentsApi::user_list_with_consent(&caller);
+    let patients = consents
+        .into_iter()
+        .map(|c| c.nik)
+        .collect::<Vec<_>>();
+
+    patients
+        .into_iter()
+        .map(|nik| { with_state(|s| s.registry.get_patient_info(nik)).unwrap() })
+        .collect::<Vec<_>>()
+        .into()
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+fn is_consent_claimed(req: IsConsentClaimedRequest) -> IsConsentClaimedResponse {
+    let caller = verified_caller().unwrap();
+    let patient = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    ConsentsApi::is_claimed(&req.code, &patient).into()
+}
+
 #[ic_cdk::query(composite = true)]
 async fn ping() -> PingResult {
     let emr_registry = with_state(|s| s.config.get().emr_registry());
@@ -354,14 +379,15 @@ pub async fn update_canistergeek_information(
     canistergeek_ic_rust::update_information(request);
 }
 
+// TODO : make all emr list is available and user does not have to choose what emr to share, share everything by default
 #[ic_cdk::update(guard = "only_patient")]
-async fn create_consent(req: CreateConsentRequest) -> CreateConsentResponse {
+async fn create_consent() -> CreateConsentResponse {
     let owner = verified_caller().unwrap();
     let owner = with_state(|s| s.registry.owner_map.get_nik(&owner))
         .unwrap()
         .into_inner();
 
-    ConsentsApi::generate_consent(owner, req.allowed).into()
+    ConsentsApi::generate_consent(owner).into()
 }
 
 #[ic_cdk::query(composite = true)]
@@ -376,7 +402,12 @@ async fn read_emr_with_session(
 #[ic_cdk::query]
 async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResponse {
     let caller = verified_caller().unwrap();
-    ConsentsApi::emr_list_with_session(&req.session_id, &caller).unwrap().into()
+    let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
+    let nik = consent.nik;
+
+    with_state(|s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
+        .unwrap()
+        .into()
 }
 
 #[cfg(feature = "vetkd")]
@@ -469,6 +500,7 @@ fn finish_session(req: FinishSessionRequest) {
     ConsentsApi::finish_sesion(&req.session_id, &caller)
 }
 
+// TODO : move this into provider registry
 #[ic_cdk::update]
 fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     let caller = verified_caller().unwrap();
