@@ -1,19 +1,48 @@
-use candid::{ CandidType };
+use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ EmrHeader, UserId, H256 },
+    common::{ AsciiRecordsKey, EmrHeader, UserId, H256 },
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
     metrics,
     mmgr::MemoryManager,
     opaque_metrics,
     random::CallError,
-    stable::{ Memory, Stable, StableSet, ToStable },
+    stable::{ Candid, Memory, Stable, StableSet, ToStable },
     statistics::traits::{ Metrics, OpaqueMetrics },
 };
+use ic_stable_structures::memory_manager;
+use serde::Deserialize;
 
 use crate::{ api::ReadEmrByIdRequest };
 
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub emr_binding_map: EmrBindingMap,
+    pub info_map: InfoMap,
+}
+
+impl PatientRegistry {
+    pub fn update_patient_info(
+        &mut self,
+        patient_principal: Principal,
+        patient: Patient
+    ) -> PatientBindingMapResult {
+        let nik = self.owner_map.get_nik(&patient_principal)?;
+        self.info_map.set(nik.into_inner(), patient)
+    }
+
+    pub fn get_patient_info_with_principal(
+        &self,
+        patient_principal: Principal
+    ) -> PatientBindingMapResult<Patient> {
+        let nik = self.owner_map.get_nik(&patient_principal)?;
+        self.info_map.get(nik.into_inner())
+    }
+
+    pub fn get_patient_info(&self, patient: NIK) -> PatientBindingMapResult<Patient> {
+        self.info_map.get(patient)
+    }
 }
 
 impl OpaqueMetrics for PatientRegistry {
@@ -59,6 +88,7 @@ impl PatientRegistry {
         Self {
             owner_map: OwnerMap::init(memory_manager),
             emr_binding_map: EmrBindingMap::init(memory_manager),
+            info_map: InfoMap::init(memory_manager),
         }
     }
 }
@@ -322,5 +352,121 @@ mod test_emr_binding_map {
 
         emr_binding_map.issue_for(nik.clone(), header.clone());
         assert_eq!(emr_binding_map.emr_list(&nik, 0, 3).unwrap(), vec![header.to_stable()]);
+    }
+}
+
+pub struct InfoMap(ic_stable_structures::BTreeMap<Stable<NIK>, Stable<Patient, Candid>, Memory>);
+
+impl InfoMap {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
+    }
+
+    pub fn get(&self, nik: NIK) -> PatientBindingMapResult<Patient> {
+        let key = nik.to_stable();
+
+        self.0
+            .get(&key)
+            .ok_or(PatientRegistryError::UserDoesNotExist)
+            .map(|patient| patient.into_inner())
+    }
+
+    pub fn set(&mut self, nik: NIK, patient: Patient) -> PatientBindingMapResult {
+        let key = nik.to_stable();
+        if self.0.contains_key(&key) {
+            return Err(PatientRegistryError::UserExist);
+        }
+
+        let result = self.0.insert(key, patient.to_stable());
+        assert!(result.is_none(), "info should not exist");
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod info_test {
+    use super::*;
+
+    #[test]
+    fn test_set() {
+        let mut info_map = InfoMap::init(&MemoryManager::init());
+        let nik = NIK::from([0u8; 32]);
+
+        let patient = Patient::V1(V1::default());
+
+        assert_eq!(info_map.set(nik.clone(), patient.clone()).unwrap(), ());
+        assert_eq!(
+            info_map.set(nik.clone(), patient.clone()).unwrap_err(),
+            PatientRegistryError::UserExist
+        );
+
+        assert_eq!(info_map.get(nik.clone()).unwrap(), patient);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, PartialOrd, Ord)]
+pub enum Patient {
+    V1(V1),
+}
+
+impl From<V1> for Patient {
+    fn from(v1: V1) -> Self {
+        Self::V1(v1)
+    }
+}
+
+impl Default for Patient {
+    fn default() -> Self {
+        // change this if upgrading to a new version
+        Self::V1(Default::default())
+    }
+}
+impl_mem_bound!(for Patient: bounded; fixed_size: false);
+impl_range_bound!(Patient);
+impl Patient {
+    pub const fn max_size() -> usize {
+        V1::max_size()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Default, PartialOrd, Ord)]
+pub struct V1 {
+    pub place_of_birth: AsciiRecordsKey,
+    pub date_of_birth: AsciiRecordsKey,
+    pub address: AsciiRecordsKey<64>,
+    pub martial_status: AsciiRecordsKey<10>,
+    pub gender: AsciiRecordsKey<10>,
+}
+
+// 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
+// benchmarked by tsting the encoded size of a struct with max size fields.
+impl_max_size!(for V1: 200);
+impl_mem_bound!(for V1: bounded; fixed_size: false);
+impl_range_bound!(V1);
+
+#[cfg(test)]
+mod v1_test {
+    use super::*;
+
+    // ~192 bytes
+    #[test]
+    fn test_len_encoded() {
+        use candid::Encode;
+        use candid::Decode;
+
+        let patient = V1 {
+            place_of_birth: AsciiRecordsKey::<32>::new("a".repeat(32)).unwrap(),
+            date_of_birth: AsciiRecordsKey::<32>::new("a".repeat(32)).unwrap(),
+            address: AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap(),
+            martial_status: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
+            gender: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
+        };
+
+        let encoded = Encode!(&patient).unwrap();
+        println!("encoded: {:?}", encoded.len());
+        let decoded = Decode!(&encoded, V1).unwrap();
+
+        assert_eq!(patient, decoded);
     }
 }

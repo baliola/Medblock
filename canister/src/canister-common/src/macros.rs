@@ -218,6 +218,7 @@ macro_rules! from {
     };
 }
 
+/// do not change the ordering of the fields, always add new member at the end
 #[macro_export]
 macro_rules! generate_memory_id {
     (@internal $counter:expr,) => {
