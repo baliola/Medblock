@@ -5,18 +5,24 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     common::{ EmrHeader, Id },
     id_generator::IdGenerator,
+    impl_max_size,
+    impl_mem_bound,
+    impl_range_bound,
     log,
     metrics,
     opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
-    statistics::traits::{ Metrics },
+    stable::{ Candid, Memory, Stable },
+    statistics::traits::Metrics,
 };
 use serde::Deserialize;
 
 use crate::registry::{ PatientRegistry, NIK };
 
 thread_local! {
-    pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = const { std::cell::RefCell::new(None) };
+    pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = const {
+        std::cell::RefCell::new(None)
+    };
     pub static INIT_FLAG: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -46,6 +52,26 @@ const ALLOWED_CHAR: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '
 /// A consent code is a 6 digit code that is used to identify a consent
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ConsentCode([u8; CODE_LEN]);
+// benchmarked for candid encoding
+impl_max_size!(for ConsentCode: 14);
+impl_mem_bound!(for ConsentCode: bounded; fixed_size:false);
+impl_range_bound!(ConsentCode);
+
+#[cfg(test)]
+mod encode_test_consent_code {
+    use super::*;
+
+    #[test]
+    fn test_len_encoded() {
+        use candid::{ Encode, Decode };
+        let code = ConsentCode([b'1', b'2', b'3', b'4', b'5', b'6']);
+        let encoded = Encode!(&code).unwrap();
+        println!("encoded: {:?}", encoded.len());
+        let decoded: ConsentCode = Decode!(&encoded, ConsentCode).unwrap();
+
+        assert_eq!(code, decoded);
+    }
+}
 
 impl ConsentCode {
     /// the u32 is assumed to be random and unique
@@ -176,28 +202,30 @@ impl ConsentsApi {
         with_consent_mut(|consents| consents.resolve_session(session_id, session_user))
     }
 
-    fn remove_consent_after_expiry(code: ConsentCode) {
+    // we dont have expiry for now
+    // fn remove_consent_after_expiry(code: ConsentCode) {
+    //     ensure_initialized();
+
+    //     ic_cdk_timers::set_timer(EXPIRY, move || {
+    //         let Some(consent) = with_consent_mut(|consent| consent.remove_consent(&code)) else {
+    //             return;
+    //         };
+
+    //         match consent.session_id {
+    //             Some(ref session) =>
+    //                 with_consent_mut(|consent| consent.finish_session_unchecked(session)),
+    //             None => (),
+    //         }
+    //     });
+    // }
+
+    pub fn generate_consent(nik: NIK) -> ConsentCode {
         ensure_initialized();
 
-        ic_cdk_timers::set_timer(EXPIRY, move || {
-            let Some(consent) = with_consent_mut(|consent| consent.remove_consent(&code)) else {
-                return;
-            };
-
-            match consent.session_id {
-                Some(ref session) =>
-                    with_consent_mut(|consent| consent.finish_session_unchecked(session)),
-                None => (),
-            }
-        });
-    }
-
-    pub fn generate_consent(nik: NIK, allowed: Vec<EmrHeader>) -> ConsentCode {
-        ensure_initialized();
-
-        let partial = PartialConsent::new(nik, allowed);
+        let partial = PartialConsent::new(nik);
         let code = with_consent_mut(|consents| { consents.add_consent(partial) });
-        Self::remove_consent_after_expiry(code);
+        // we dont have expiry for now
+        // Self::remove_consent_after_expiry(code);
         code
     }
 
@@ -206,40 +234,26 @@ impl ConsentsApi {
         with_consent_mut(|consents| consents.remove_consent(code));
     }
 
-    pub fn is_header_exists_and_allowed(
-        code: &ConsentCode,
-        header: &EmrHeader,
-        session_id: &Id
-    ) -> bool {
-        ensure_initialized();
-        with_consent(|consents| consents.ensure_header_exists_and_allowed(code, header, session_id))
-    }
-
     pub fn is_session_allowed(code: &ConsentCode, session_id: &Id) -> bool {
         ensure_initialized();
         with_consent(|consents| consents.ensure_session_allowed(code, session_id))
     }
 
-    pub fn claim_consent(code: &ConsentCode, session_user: Principal) -> Option<SessionId> {
+    pub fn is_claimed(code: &ConsentCode, patient: &NIK) -> bool {
         ensure_initialized();
-        
-
-        with_consent_mut(|consents| consents.claim_consent(code, session_user))
+        with_consent(|consents| consents.is_claimed(code, patient))
     }
 
-    pub fn emr_list_with_session(
-        session_id: &Id,
-        session_user: &Principal
-    ) -> Result<Vec<EmrHeader>, String> {
+    // TODO: temporary function to get patient list
+    pub fn user_list_with_consent(user: &Principal) -> Vec<Consent> {
         ensure_initialized();
-        let consent = with_consent_mut(|consents| {
-            consents.resolve_session(session_id, session_user)
-        });
+        with_consent(|consents| consents.consent_list_with_user(user))
+    }
 
-        match consent {
-            Some(consent) => Ok(consent.allowed_headers),
-            None => Err("invalid session".to_string()),
-        }
+    pub fn claim_consent(code: &ConsentCode, session_user: Principal) -> Option<SessionId> {
+        ensure_initialized();
+
+        with_consent_mut(|consents| consents.claim_consent(code, session_user))
     }
 
     pub fn finish_sesion(session_id: &Id, session_user: &Principal) {
@@ -261,9 +275,7 @@ impl ConsentsApi {
         match consent {
             Some(consent) =>
                 Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await),
-            None => {
-                Err("invalid session".to_string())
-            }
+            None => { Err("invalid session".to_string()) }
         }
     }
 
@@ -278,11 +290,38 @@ pub type SessionId = Id;
 pub struct Consent {
     pub code: ConsentCode,
     pub nik: NIK,
-    pub allowed_headers: Vec<EmrHeader>,
     pub claimed: bool,
     pub session_id: Option<SessionId>,
     pub session_user: Option<Principal>,
 }
+#[cfg(test)]
+mod encode_test_consent {
+    use super::*;
+
+    #[test]
+    fn test_len_encoded() {
+        use candid::{ Encode, Decode };
+        let code = Consent {
+            code: ConsentCode([b'1', b'2', b'3', b'4', b'5', b'6']),
+            nik: NIK::from_str(
+                "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709"
+            ).unwrap(),
+            claimed: false,
+            session_id: None,
+            session_user: None,
+        };
+        let encoded = Encode!(&code).unwrap();
+        println!("encoded: {:?}", encoded.len());
+        let decoded: Consent = Decode!(&encoded, Consent).unwrap();
+
+        assert_eq!(code, decoded);
+    }
+}
+
+// ~117 bytes benchmarked for candid encoding
+impl_max_size!(for Consent: 120);
+impl_mem_bound!(for Consent: bounded; fixed_size:false);
+impl_range_bound!(Consent);
 
 impl Consent {
     pub fn from_partial(partial: PartialConsent, code: ConsentCode) -> Self {
@@ -291,7 +330,6 @@ impl Consent {
             claimed: false,
             code,
             nik: partial.nik,
-            allowed_headers: partial.allowed_headers,
             session_user: None,
         }
     }
@@ -300,19 +338,20 @@ impl Consent {
 #[derive(CandidType, Debug, Deserialize, Clone)]
 pub struct PartialConsent {
     nik: NIK,
-    allowed_headers: Vec<EmrHeader>,
 }
 
 impl PartialConsent {
-    pub fn new(nik: NIK, allowed_headers: Vec<EmrHeader>) -> Self {
-        Self { nik, allowed_headers }
+    pub fn new(nik: NIK) -> Self {
+        Self { nik }
     }
 }
 
-// we intentionally use heap memory here as we dont need the persistance of stable memory here.
+// we intentionally use heap memory here as we dont need the persistance of s≥table memory here.
 pub struct ConsentMap {
     inner: std::collections::HashMap<ConsentCode, Consent>,
     sessions: std::collections::HashMap<SessionId, ConsentCode>,
+    // TODO: remove this after demo, move all of the structure into stable memory
+    // and then move the consent related functions to provider registry either all of them or part of it
     rng: CanisterRandomSource,
 }
 
@@ -349,6 +388,15 @@ impl ConsentMap {
         }
     }
 
+    //TODO: temporary function to get patient list
+    pub fn consent_list_with_user(&self, user: &Principal) -> Vec<Consent> {
+        self.inner
+            .values()
+            .filter(|consent| consent.session_user.as_ref().eq(&Some(user)))
+            .cloned()
+            .collect()
+    }
+
     pub async fn new() -> Self {
         ConsentMap {
             sessions: std::collections::HashMap::new(),
@@ -372,6 +420,13 @@ impl ConsentMap {
         });
     }
 
+    pub fn is_claimed(&self, code: &ConsentCode, patient: &NIK) -> bool {
+        match self.inner.get(code) {
+            Some(consent) => consent.claimed && consent.nik.eq(patient),
+            None => false,
+        }
+    }
+
     pub fn add_consent(&mut self, partial: PartialConsent) -> ConsentCode {
         let random = self.rng.raw_random_u64();
 
@@ -383,36 +438,11 @@ impl ConsentMap {
         code
     }
 
-    pub fn ensure_header_exists_and_allowed(
-        &self,
-        code: &ConsentCode,
-        header: &EmrHeader,
-        session_id: &Id
-    ) -> bool {
-        match self.inner.get(code) {
-            Some(consent) =>
-                consent.allowed_headers.contains(header) &&
-                    consent.claimed &&
-                    consent.session_id.as_ref().eq(&Some(session_id)),
-            None => false,
-        }
-    }
-
     pub fn ensure_session_allowed(&self, code: &ConsentCode, session_id: &Id) -> bool {
         match self.inner.get(code) {
             Some(consent) => consent.claimed && consent.session_id.as_ref().eq(&Some(session_id)),
             None => false,
         }
-    }
-
-    pub fn emr_list(&self, code: &ConsentCode, session_id: &Id) -> Result<Vec<EmrHeader>, String> {
-        if !self.ensure_session_allowed(code, session_id) {
-            return Err("invalid session".to_string());
-        }
-
-        let consent = self.inner.get(code).unwrap();
-
-        Ok(consent.allowed_headers.clone())
     }
 
     pub fn get_consent_uncheked(&self, code: &ConsentCode) -> Option<&Consent> {
@@ -534,7 +564,7 @@ mod tests {
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
-        let partial = PartialConsent::new(nik.clone(), vec![]);
+        let partial = PartialConsent::new(nik.clone());
 
         let code = consents.add_consent(partial.clone());
 
@@ -553,7 +583,7 @@ mod tests {
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
-        let partial = PartialConsent::new(nik.clone(), vec![]);
+        let partial = PartialConsent::new(nik.clone());
 
         let code = consents.add_consent(partial.clone());
 
@@ -565,59 +595,6 @@ mod tests {
         );
 
         assert!(consents.claim_consent(&code, Principal::anonymous()).is_none());
-    }
-
-    #[test]
-    fn test_claim_ensure_allowed() {
-        let mut consents = ConsentMap::new_with_seed(0);
-
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
-
-        let header = EmrHeader {
-            user_id: nik.clone(),
-            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            registry_id: Principal::anonymous().into(),
-        };
-
-        let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
-
-        let code = consents.add_consent(partial.clone());
-
-        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
-
-        assert!(consents.ensure_header_exists_and_allowed(&code, &header, &session_id));
-    }
-    #[test]
-    fn test_claim_ensure_allowed_fail() {
-        let mut consents = ConsentMap::new_with_seed(0);
-
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
-
-        let header = EmrHeader {
-            user_id: nik.clone(),
-            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            registry_id: Principal::anonymous().into(),
-        };
-
-        let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
-        let code = consents.add_consent(partial.clone());
-
-        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
-
-        let header = EmrHeader {
-            user_id: nik.clone(),
-            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            registry_id: Principal::from_text("s55qq-oqaaa-aaaaa-aaakq-cai").unwrap().into(),
-        };
-
-        assert!(!consents.ensure_header_exists_and_allowed(&code, &header, &session_id));
     }
 
     #[test]
@@ -635,7 +612,7 @@ mod tests {
             registry_id: Principal::anonymous().into(),
         };
 
-        let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
+        let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
 
         let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
@@ -665,7 +642,7 @@ mod tests {
             registry_id: Principal::anonymous().into(),
         };
 
-        let partial = PartialConsent::new(nik.clone(), vec![header.clone()]);
+        let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
 
         let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();

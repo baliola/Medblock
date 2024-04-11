@@ -75,10 +75,6 @@ pub struct IssueRequest {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct CreateConsentRequest {
-    pub allowed: Vec<EmrHeader>,
-}
-#[derive(CandidType, Deserialize)]
 pub struct CreateConsentResponse {
     code: ConsentCode,
 }
@@ -99,6 +95,8 @@ pub struct ReadEmrSessionResponse {}
 #[derive(CandidType, Deserialize)]
 pub struct EmrListConsentRequest {
     pub session_id: SessionId,
+    pub page: u8,
+    pub limit: u8,
 }
 
 pub type EmrListConsentResponse = EmrListPatientResponse;
@@ -180,3 +178,25 @@ from!(GetPatientInfoResponse: Patient as value {
 pub struct GetPatientInfoBySessionRequest {
     pub session_id: SessionId,
 }
+
+#[derive(CandidType, Deserialize)]
+pub struct PatientListResponse {
+    pub patients: Vec<Patient>,
+}
+
+from!(PatientListResponse: Vec<Patient> as value {
+    patients: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct IsConsentClaimedRequest {
+    pub code: ConsentCode,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct IsConsentClaimedResponse {
+    claimed: bool,
+}
+from!(IsConsentClaimedResponse: bool as value {
+    claimed: value
+});
