@@ -80,6 +80,7 @@ type GetMetricsParameters = record {
   granularity : MetricsGranularity;
   dateFromMillis : nat;
 };
+type GetPatientInfoResponse = record { patient : Patient };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
   canisterHeapMemorySize : vec nat64;
@@ -99,6 +100,7 @@ type NumericEntity = record {
   first : nat64;
   last : nat64;
 };
+type Patient = variant { V1 : V1 };
 type PingResult = record { emr_registry_status : bool };
 type ReadEmrByIdRequest = record {
   provider_id : text;
@@ -125,6 +127,14 @@ type UpdateEmrRegistryRequest = record { "principal" : principal };
 type UpdateInformationRequest = record {
   metrics : opt CollectMetricsRequestType;
 };
+type UpdateInitialPatientInfoRequest = record { info : V1 };
+type V1 = record {
+  martial_status : text;
+  place_of_birth : text;
+  address : text;
+  gender : text;
+  date_of_birth : text;
+};
 service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
@@ -136,6 +146,10 @@ service : () -> {
   finish_session : (ClaimConsentResponse) -> ();
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
+    ) query;
+  get_patient_info : () -> (GetPatientInfoResponse) query;
+  get_patient_info_with_consent : (ClaimConsentResponse) -> (
+      GetPatientInfoResponse,
     ) query;
   get_trusted_origins : () -> (vec text);
   metrics : () -> (text) query;
@@ -152,5 +166,6 @@ service : () -> {
   revoke_consent : (ClaimConsentRequest) -> ();
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
+  update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
 }

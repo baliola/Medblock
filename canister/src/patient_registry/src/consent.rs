@@ -502,7 +502,7 @@ impl ConsentMap {
     }
 
     /// resolve a given session id to consent if it has been claimed,
-    /// will remove the session if the consent is already removed.
+    /// will return [None] the session if the consent is already removed.
     pub fn resolve_session(
         &mut self,
         session_id: &SessionId,

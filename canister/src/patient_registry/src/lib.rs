@@ -11,6 +11,8 @@ use api::{
     EmrListPatientRequest,
     EmrListPatientResponse,
     FinishSessionRequest,
+    GetPatientInfoBySessionRequest,
+    GetPatientInfoResponse,
     IssueRequest,
     PingResult,
     ReadEmrByIdRequest,
@@ -18,6 +20,7 @@ use api::{
     RegisterPatientRequest,
     RevokeConsentRequest,
     UpdateEmrRegistryRequest,
+    UpdateInitialPatientInfoRequest,
 };
 use candid::{ Decode, Encode };
 use canister_common::{
@@ -240,7 +243,7 @@ fn initialize() {
 async fn get_trusted_origins() -> Vec<String> {
     vec![
         // Origins should be in the format defined by the Window.postMessage method (https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#the_dispatched_event)
-        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/") // to be replaced with your frontend origin(s)
+        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943") // to be replaced with your frontend origin(s)
     ]
 }
 
@@ -388,6 +391,12 @@ async fn derive_encryption_key_with_session(
 
 #[cfg(feature = "vetkd")]
 #[ic_cdk::update]
+async fn derive_encryption_key_for_self() {
+    todo!()
+}
+
+#[cfg(feature = "vetkd")]
+#[ic_cdk::update]
 /// Derive the encryption verification key with the session id, used to verify the encrypted emr decryption key
 async fn derive_encryption_verification_key_with_session(
     req: DeriveVerificationKeyRequest
@@ -422,6 +431,30 @@ fn update_provider_registry_principal(req: UpdateEmrRegistryRequest) {
             Err(e) => ic_cdk::trap(&format!("failed to update emr registry principal: {:?}", e)),
         }
     })
+}
+
+#[ic_cdk::update(guard = "only_patient")]
+fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
+    let caller = verified_caller().unwrap();
+
+    with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
+}
+
+#[ic_cdk::query]
+fn get_patient_info_with_consent(req: GetPatientInfoBySessionRequest) -> GetPatientInfoResponse {
+    let caller = verified_caller().unwrap();
+    let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
+    with_state(|s| s.registry.get_patient_info(consent.nik))
+        .unwrap()
+        .into()
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+fn get_patient_info() -> GetPatientInfoResponse {
+    let caller = verified_caller().unwrap();
+    with_state(|s| s.registry.get_patient_info_with_principal(caller))
+        .unwrap()
+        .into()
 }
 
 #[ic_cdk::update(guard = "only_patient")]
