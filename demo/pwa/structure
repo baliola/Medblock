@@ -1,0 +1,85 @@
+- components/
+  - common/                (Reusable components)
+  - layout/                (Layout components)
+  - modules/               (Module-specific components)
+    - Course/              (Course module components)
+      - CourseContainer.tsx  (Container component for fetching course data)
+      - CourseDetails.tsx    (Presentational component for rendering course details)
+      - CourseList.tsx       (Presentational component for rendering a list of courses)
+    - Chat/                (Chat module components)
+      - ChatContainer.tsx    (Container component for fetching chat data)
+      - ChatWindow.tsx       (Presentational component for rendering chat window)
+      - ChatMessage.tsx      (Presentational component for rendering a chat message)
+    - VideoConference/     (Video conference module components)
+      - ConferenceContainer.tsx  (Container component for fetching conference data)
+      - ConferenceRoom.tsx       (Presentational component for rendering conference room)
+      - ParticipantList.tsx      (Presentational component for rendering list of participants)
+  - containers/            (Shared container components)
+
+- pages/
+  - index.tsx               (Home page)
+  - courses/
+    - [courseId].tsx        (Dynamic course page)
+    - create.tsx            (Create course page)
+    - edit.tsx              (Edit course page)
+  - login.tsx               (Login page)
+  - signup.tsx              (Signup page)
+  - chat.tsx                (Chat page)
+  - videoConference.tsx     (Video conference page)
+  - ...
+
+- scenes/
+  - Home/
+    - components/          (components used in homepage)
+      - Card.module.css    (styling for card component)  
+      - Card.tsx           
+      - index.ts           (import all component used for homepage in this file)       
+    - Home.scenes.tsx
+    - Home.module.css
+    - Home.stories.tsx    (Storyboard documentation)
+    - Home.test.tsx       (Test for the component)
+
+- apiHandlers/
+  - courses.ts             (Course-related API endpoints)
+  - chat.ts                (Chat-related API endpoints)
+  - videoConference.ts     (Video conference-related API endpoints)
+  - ...
+
+- lib/
+  - auth.ts                (Authentication related functions)
+  - api.ts                 (Axios or Fetch wrapper for API calls)
+  - chat.ts                (Chat-related utilities)
+  - videoConference.ts     (Video conference-related utilities)
+  - validation/
+    - registerValidation.ts
+
+- styles/                 (Global styles, CSS modules)
+
+- public/                 (Publicly accessible files, images, etc.)
+
+- redux/
+  - actions/
+    - authActions.ts
+  - reducers/
+    - authReducer.ts
+  - types/
+    - auth.ts
+  - store.ts
+
+- utils/                  (Utility functions)
+
+- interfaces/             (Data models, data types, interfaces)
+
+- services/               (Services for interacting with external APIs, databases, etc.)
+
+- __tests__/                  (Tests for unit testing and integration testing)
+
+- config/                 (Configuration files)
+
+- .env                    (Environment variables)
+
+- next.config.js          (Next.js configuration)
+
+- package.json            (Package dependencies and scripts)
+
+- README.md               (Project documentation)
