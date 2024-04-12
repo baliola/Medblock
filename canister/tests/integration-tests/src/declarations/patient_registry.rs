@@ -14,6 +14,9 @@ pub struct ClaimConsentRequest { pub code: String }
 pub struct ClaimConsentResponse { pub session_id: String }
 
 #[derive(CandidType, Deserialize)]
+pub struct EmrListPatientRequest { pub page: u8, pub limit: u8 }
+
+#[derive(CandidType, Deserialize)]
 pub struct EmrHeader {
   pub provider_id: String,
   pub user_id: String,
@@ -22,13 +25,14 @@ pub struct EmrHeader {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct CreateConsentRequest { pub allowed: Vec<EmrHeader> }
-
-#[derive(CandidType, Deserialize)]
-pub struct EmrListPatientRequest { pub page: u8, pub limit: u8 }
-
-#[derive(CandidType, Deserialize)]
 pub struct EmrListPatientResponse { pub emrs: Vec<EmrHeader> }
+
+#[derive(CandidType, Deserialize)]
+pub struct EmrListConsentRequest {
+  pub session_id: String,
+  pub page: u8,
+  pub limit: u8,
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct StatusRequest {
@@ -184,7 +188,28 @@ pub struct GetInformationResponse {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct V1 {
+  pub martial_status: String,
+  pub place_of_birth: String,
+  pub address: String,
+  pub gender: String,
+  pub date_of_birth: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum Patient { V1(V1) }
+
+#[derive(CandidType, Deserialize)]
+pub struct GetPatientInfoResponse { pub patient: Patient }
+
+#[derive(CandidType, Deserialize)]
+pub struct IsConsentClaimedResponse { pub claimed: bool }
+
+#[derive(CandidType, Deserialize)]
 pub struct IssueRequest { pub header: EmrHeader }
+
+#[derive(CandidType, Deserialize)]
+pub struct PatientListResponse { pub patients: Vec<Patient> }
 
 #[derive(CandidType, Deserialize)]
 pub struct PingResult { pub emr_registry_status: bool }
@@ -233,6 +258,9 @@ pub struct UpdateInformationRequest {
 #[derive(CandidType, Deserialize)]
 pub struct UpdateEmrRegistryRequest { pub principal: Principal }
 
+#[derive(CandidType, Deserialize)]
+pub struct UpdateInitialPatientInfoRequest { pub info: V1 }
+
 pub struct PatientRegistry(pub Principal);
 impl PatientRegistry {
   pub async fn add_authorized_metrics_collector(
@@ -244,15 +272,15 @@ impl PatientRegistry {
   pub async fn claim_consent(&self, arg0: ClaimConsentRequest) -> Result<
     (ClaimConsentResponse,)
   > { ic_cdk::call(self.0, "claim_consent", (arg0,)).await }
-  pub async fn create_consent(&self, arg0: CreateConsentRequest) -> Result<
-    (ClaimConsentRequest,)
-  > { ic_cdk::call(self.0, "create_consent", (arg0,)).await }
+  pub async fn create_consent(&self) -> Result<(ClaimConsentRequest,)> {
+    ic_cdk::call(self.0, "create_consent", ()).await
+  }
   pub async fn emr_list_patient(&self, arg0: EmrListPatientRequest) -> Result<
     (EmrListPatientResponse,)
   > { ic_cdk::call(self.0, "emr_list_patient", (arg0,)).await }
   pub async fn emr_list_with_session(
     &self,
-    arg0: ClaimConsentResponse,
+    arg0: EmrListConsentRequest,
   ) -> Result<(EmrListPatientResponse,)> {
     ic_cdk::call(self.0, "emr_list_with_session", (arg0,)).await
   }
@@ -265,14 +293,29 @@ impl PatientRegistry {
   ) -> Result<(GetInformationResponse,)> {
     ic_cdk::call(self.0, "getCanistergeekInformation", (arg0,)).await
   }
+  pub async fn get_patient_info(&self) -> Result<(GetPatientInfoResponse,)> {
+    ic_cdk::call(self.0, "get_patient_info", ()).await
+  }
+  pub async fn get_patient_info_with_consent(
+    &self,
+    arg0: ClaimConsentResponse,
+  ) -> Result<(GetPatientInfoResponse,)> {
+    ic_cdk::call(self.0, "get_patient_info_with_consent", (arg0,)).await
+  }
   pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
     ic_cdk::call(self.0, "get_trusted_origins", ()).await
   }
+  pub async fn is_consent_claimed(&self, arg0: ClaimConsentRequest) -> Result<
+    (IsConsentClaimedResponse,)
+  > { ic_cdk::call(self.0, "is_consent_claimed", (arg0,)).await }
   pub async fn metrics(&self) -> Result<(String,)> {
     ic_cdk::call(self.0, "metrics", ()).await
   }
   pub async fn notify_issued(&self, arg0: IssueRequest) -> Result<()> {
     ic_cdk::call(self.0, "notify_issued", (arg0,)).await
+  }
+  pub async fn patient_list(&self) -> Result<(PatientListResponse,)> {
+    ic_cdk::call(self.0, "patient_list", ()).await
   }
   pub async fn ping(&self) -> Result<(PingResult,)> {
     ic_cdk::call(self.0, "ping", ()).await
@@ -309,6 +352,12 @@ impl PatientRegistry {
     arg0: UpdateEmrRegistryRequest,
   ) -> Result<()> {
     ic_cdk::call(self.0, "update_emr_registry_principal", (arg0,)).await
+  }
+  pub async fn update_initial_patient_info(
+    &self,
+    arg0: UpdateInitialPatientInfoRequest,
+  ) -> Result<()> {
+    ic_cdk::call(self.0, "update_initial_patient_info", (arg0,)).await
   }
   pub async fn update_provider_registry_principal(
     &self,
