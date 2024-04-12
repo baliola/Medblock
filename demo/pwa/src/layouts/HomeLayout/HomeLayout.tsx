@@ -16,10 +16,6 @@ type HomeNavigation = {
 export const HomeLayout: FC<HomeLayoutProps> = ({ children }) => {
   const router = useRouter();
 
-  console.log('====================================');
-  console.log('ROUTER-->', router.pathname);
-  console.log('====================================');
-
   const [navigations, setNavigations] = useState<HomeNavigation[]>([
     {
       id: 1,

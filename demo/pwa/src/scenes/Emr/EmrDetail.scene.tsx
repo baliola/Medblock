@@ -9,7 +9,7 @@ import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 import VisitSummaryItem from './components/VisitSummaryItem';
 
-const EmrDetailScreen = () => {
+const EmrDetailPage = () => {
   return (
     <Scaffold
       topBar={
@@ -76,4 +76,4 @@ Rawat inap jika diperlukan"
   );
 };
 
-export default EmrDetailScreen;
+export default EmrDetailPage;
