@@ -81,7 +81,8 @@ pub fn with_state_mut<R>(f: impl FnOnce(&mut State) -> R) -> R {
 async fn get_trusted_origins() -> Vec<String> {
     vec![
         // Origins should be in the format defined by the Window.postMessage method (https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#the_dispatched_event)
-        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943") // to be replaced with your frontend origin(s)
+        String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943"), // to be replaced with your frontend origin(s) // TODO: make a config out of this
+        String::from("http://localhost:3000")
     ]
 }
 

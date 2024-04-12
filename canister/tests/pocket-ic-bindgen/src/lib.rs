@@ -131,6 +131,7 @@ mod code_gen {
             let boilerplate = Gen::static_boiler_plate();
 
             quote::quote! {
+                #![allow(warnings, unused_imports)]
                 #source
                 
                 pub mod pocket_ic_bindings {
@@ -301,7 +302,7 @@ mod parser {
             let ids = idents.clone();
             let payload = match ids.is_empty() {
                 true => quote::quote! { () },
-                false => quote::quote! { (#(#ids),*,) },
+                false => quote::quote! { (#(#ids),*) },
             };
 
             let return_args = self.return_args
@@ -459,9 +460,9 @@ mod parser {
                 return vec![];
             };
 
+            // TODO :  handle case such as Vec<T>
             let output = must_type!(output, syn::Type::Path, "unexpected type found")
-                .path.get_ident()
-                .unwrap()
+                .to_token_stream()
                 .to_string();
 
             vec![Arg {
