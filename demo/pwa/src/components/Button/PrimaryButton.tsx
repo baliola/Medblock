@@ -5,6 +5,7 @@ export interface PrimaryButtonProps {
   onSubmit: () => void;
   disable?: boolean;
   child?: React.ReactElement<any, any>;
+  classStyle?: string;
 }
 
 const PrimaryButton: FC<PrimaryButtonProps> = ({
@@ -12,6 +13,7 @@ const PrimaryButton: FC<PrimaryButtonProps> = ({
   onSubmit,
   disable,
   child,
+  classStyle,
 }) => (
   <button
     className={`h-14 outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40 w-full ${

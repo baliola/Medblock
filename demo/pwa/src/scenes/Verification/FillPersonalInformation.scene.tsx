@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router';
 import React from 'react';
 
 import PrimaryButton from '@/components/Button/PrimaryButton';
@@ -6,6 +7,8 @@ import Images from '@/constants/images';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 const FillPersonalInformationPage = () => {
+  const router = useRouter();
+
   return (
     <Scaffold
       topBar={
@@ -15,7 +18,10 @@ const FillPersonalInformationPage = () => {
       }
       bottomChild={
         <div className="px-8 py-4">
-          <PrimaryButton title="Submit" onPress={() => {}} classStyle="mt-4" />
+          <PrimaryButton
+            title="Submit"
+            onSubmit={() => router.push('/verified')}
+          />
         </div>
       }
     >
