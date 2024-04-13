@@ -7,7 +7,7 @@
 
 # testing
 /coverage
-
+canister_ids.json
 
 # next.js
 /.next/
