@@ -19,7 +19,7 @@ import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { NFIDS } from '@/interface/nfid.interface';
 import { AuthClient, AuthClientLoginOptions } from '@dfinity/auth-client';
-import { host } from '@/config/config';
+import { host, loginHost } from '@/config/config';
 import { useAuth } from '@/config/agent';
 import { LogoutParameters } from '@ic-reactor/react/dist/types';
 
@@ -38,7 +38,7 @@ const useAuthentication = () => {
   const { setAgent } = useCentralStore();
   const [loading, setIsloading] = useState(false);
 
-  const hosts: AuthClientLoginOptions = { identityProvider: host };
+  const hosts: AuthClientLoginOptions = { identityProvider: loginHost };
 
   const router = useRouter();
 
