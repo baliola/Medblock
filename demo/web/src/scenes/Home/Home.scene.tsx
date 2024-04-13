@@ -27,19 +27,20 @@ import { SetStateAction, useMemo, useState } from 'react';
 import ModalAdd from './components/Modal/ModalAdd';
 import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
+import { Patient } from 'declarations/patient_registry/patient_registry.did';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
-  const { fetchPatient } = usePatient();
+  const { fetchPatient, patientList } = usePatient();
 
   const toggleModal = () => {
     setShowModal(!showModal);
   };
 
-  const patientColumn = useMemo<ColumnDef<MockPatients>[]>(
+  const patientColumn = useMemo<ColumnDef<Patient>[]>(
     () => [
       {
         header: 'No',
@@ -48,25 +49,25 @@ export default function DashboardExample() {
       {
         header: 'Full Name',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.firstName}</p>
+          <p className="font-normal">{info.row.original.V1.address}</p>
         ),
       },
       {
         header: 'Date of Birth',
         cell: (info) => (
-          <p className="font-normal">
-            {info.row.original.dob.toLocaleDateString()}
-          </p>
+          <p className="font-normal">{info.row.original.V1.date_of_birth}</p>
         ), // Format the date as needed
       },
       {
         header: 'Place of Birth',
-        cell: (info) => <p className="font-normal">{info.row.original.pob}</p>,
+        cell: (info) => (
+          <p className="font-normal"> {info.row.original.V1.place_of_birth}</p>
+        ),
       },
       {
         header: 'Address',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.address}</p>
+          <p className="font-normal">{info.row.original.V1.address}</p>
         ),
       },
       {
@@ -84,7 +85,7 @@ export default function DashboardExample() {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/emr/${info.row.original.id}`);
+                router.push(`/emr/1`);
               }}
             />
             <User size="24" className="cursor-pointer" />
@@ -135,7 +136,7 @@ export default function DashboardExample() {
         <Card className="flex flex-col gap-2 mt-4">
           <Table
             columns={patientColumn}
-            data={[]}
+            data={patientList ?? []}
             isLoading={false}
             currentPage={0}
             // setCurrentPage={setCurrentPageAccountType}
