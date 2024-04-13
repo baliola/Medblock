@@ -159,8 +159,12 @@ const useAuthentication = () => {
   };
 
   const signOut = async () => {
-    logout({ returnTo: '/auth/login' });
-    window.location.reload();
+    logout().then(() => {
+      toast.success('Logout successfully');
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 3000);
+    });
     // try {
     //   const principalId = nfid?.getIdentity().getPrincipal();
     //   const isAuthenticated = await nfid?.isAuthenticated;

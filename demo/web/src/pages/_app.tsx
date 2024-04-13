@@ -13,6 +13,7 @@ import PatientLayout from '@/layouts/PatientLayout';
 import { NFIDS } from '@/interface/nfid.interface';
 import { useEffect, useState } from 'react';
 import { AgentProvider } from '@/config/agent';
+import SplashScreen from '@/scenes/Splash/SplashScreen';
 
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -44,7 +45,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
   if (!windowLoaded) {
     // Render a loading state while waiting for window to load
-    return <div>Loading...</div>;
+    return <SplashScreen />;
   }
 
   if (Component.disableLayout) {
