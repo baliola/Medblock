@@ -4,7 +4,6 @@ import {
   patient_registry,
 } from 'declarations/patient_registry';
 import { useEffect, useState } from 'react';
-import useAuth from './useAuth';
 import {
   patientCanisterId,
   patientCanisterIdMainnet,
@@ -22,10 +21,8 @@ import {
   V1,
 } from 'declarations/patient_registry/patient_registry.did';
 import keccak256 from 'keccak256';
-
-import { Patient } from '@/interface/patient.interface';
-import { NFIDS } from '@/interface/nfid.interface';
-import { toast } from 'react-toastify';
+import { AppAgent } from '@/config/config';
+import { useAuth } from '@/config/agent';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -43,27 +40,19 @@ export interface EmrListPatientRequest {
 }
 
 const usePatient = () => {
-  const {
-    agent,
-    setAgent,
-    setIdentity,
-    identity,
-    patientList,
-    setPatientList,
-  } = useCentralStore();
+  const { patientList, setPatientList } = useCentralStore();
+  const { identity } = useAuth();
   const router = useRouter();
-  const canister = patientCanisterIdMainnet;
-  const api = createActor(canister, { agent });
+  const canister = patientCanisterId;
+  const api = createActor(canister, { agent: AppAgent(identity) });
+
+  console.log('identity', identity?.getPrincipal().toText());
 
   async function fetchPatient() {
     console.log('FETCH PATIENT RUNNING.....');
-    const request = {
-      page: BigInt(0),
-      limit: 10,
-    };
-    // const nfid = await NFIDS();
-
     try {
+      console.log('FETCH PATIENT RUNNING.....');
+
       const response = await api?.patient_list();
 
       console.log('-----------------');
@@ -179,33 +168,15 @@ const usePatient = () => {
       // setPatientList(response.code);
     } catch (error) {
       console.log('-----------------');
-      console.log('ERROR::::', error);
+      console.log('ERROR UPDATE PATIENT DUMMY::::', error);
       console.log('-----------------');
     }
   };
 
-  const getAgent = () => {
-    const localIdentityString = localStorage.getItem('identity');
-    if (localIdentityString) {
-      const localIdentity: Identity = JSON.parse(localIdentityString);
-      console.log('agent local', localIdentity);
-      console.log('identity', localIdentity);
-
-      // setIdentity(localIdentity);
-    } else {
-      router.push('/auth/login');
-    }
-  };
-
   useEffect(() => {
-    console.log('AGENT NIH BRO', identity);
-    updateInfoDummyPatient();
-    // if (agent) {
-    fetchPatient();
+    if (identity) fetchPatient();
     // }
-  }, []);
-
-  // useEffect(() => {}, [delegation, identity]);
+  }, [identity]);
 
   return {
     fetchPatient,

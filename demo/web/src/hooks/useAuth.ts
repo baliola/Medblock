@@ -18,16 +18,18 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { NFIDS } from '@/interface/nfid.interface';
-import { AuthClient } from '@dfinity/auth-client';
+import { AuthClient, AuthClientLoginOptions } from '@dfinity/auth-client';
 import { host } from '@/config/config';
+import { useAuth } from '@/config/agent';
+import { LogoutParameters } from '@ic-reactor/react/dist/types';
 
-const useAuth = () => {
+const useAuthentication = () => {
   const [response, setResponse] = useState<any>(null);
-  const [identity, setIdentitiy] = useState<Identity>();
   const [nfid, setNfid] = useState<NFID | null>(null);
   const [client, setClient] = useState<AuthClient>();
   const [signIn, setSignedIn] = useState(false);
-  const [principal, setPrincipal] = useState<string>('');
+
+  const { setUserPrincipal, setIdentity } = useCentralStore();
 
   const targetCanisterIds = [
     providerCanisterIdMainnet,
@@ -36,17 +38,23 @@ const useAuth = () => {
   const { setAgent } = useCentralStore();
   const [loading, setIsloading] = useState(false);
 
+  const hosts: AuthClientLoginOptions = { identityProvider: host };
+
   const router = useRouter();
-  const updateDelegation = async (nfid: NFID) => {
-    try {
-      const delegationIdentity: Identity = await nfid.updateGlobalDelegation({
-        targets: targetCanisterIds,
-      });
-      console.log('delegate response update', delegationIdentity);
-    } catch (error) {
-      console.log('ERROR', error);
-    }
-  };
+
+  const { login, logout, authenticated, identity, loginError } = useAuth({
+    onLoginSuccess: (principal) => {
+      console.log(`Logged in as ${principal}`);
+      toast.success('Login successfully');
+      setIsloading(false);
+      setTimeout(() => {
+        router.push('/');
+      }, 3000);
+    },
+    onLoginError: (error: any) =>
+      console.error(`Login failed: ${error.message}`),
+  });
+
   const initAuth = async () => {
     const client = await AuthClient.create();
     const isAuthenticated = await client.isAuthenticated();
@@ -57,7 +65,7 @@ const useAuth = () => {
       const identity = client.getIdentity();
       const principal = identity.getPrincipal().toString();
       setSignedIn(true);
-      setPrincipal(principal);
+      setUserPrincipal(principal);
     }
   };
 
@@ -66,42 +74,43 @@ const useAuth = () => {
     const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
     const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
     const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
+    login(hosts);
 
-    await new Promise<void>((resolve, reject) => {
-      client?.login({
-        identityProvider: host,
-        onSuccess: async () => {
-          const identity = client.getIdentity();
-          const principal = identity.getPrincipal().toString();
-          //   setIsloading(false);
-          //   setTimeout(() => {
-          //     router.push('/');
-          //   }, 3000);
+    // await new Promise<void>((resolve, reject) => {
+    //   client?.login({
+    //     identityProvider: host,
+    //     onSuccess: async () => {
+    //       const identity = client.getIdentity();
+    //       const principal = identity.getPrincipal().toString();
+    //       //   setIsloading(false);
+    //       //   setTimeout(() => {
+    //       //     router.push('/');
+    //       //   }, 3000);
 
-          console.log('principal', principal);
-          console.log('identity', identity);
-          console.log('clinet', client);
-          const newAgent = new HttpAgent({
-            host,
-            // host: 'http://127.0.0.1:4943',
-            identity,
-          });
+    //       console.log('principal', principal);
+    //       console.log('identity', identity);
+    //       console.log('clinet', client);
+    //       const newAgent = new HttpAgent({
+    //         host,
+    //         // host: 'http://127.0.0.1:4943',
+    //         identity,
+    //       });
 
-          console.log('PRINCIAP', identity.getPrincipal().toText());
-          setAgent(newAgent);
-          setIdentitiy(identity);
-          toast.success('Login successfully');
-          setIsloading(false);
-          setTimeout(() => {
-            router.push('/');
-          }, 3000);
+    //       console.log('PRINCIAP', identity.getPrincipal().toText());
+    //       setAgent(newAgent);
+    //       // setIdentitiy(identity);
+    //       toast.success('Login successfully');
+    //       setIsloading(false);
+    //       setTimeout(() => {
+    //         router.push('/');
+    //       }, 3000);
 
-          // Use identity and principal here if needed
-          resolve();
-        },
-        onError: reject,
-      });
-    });
+    //       // Use identity and principal here if needed
+    //       resolve();
+    //     },
+    //     onError: reject,
+    //   });
+    // });
   };
 
   //   console.log('NFID:::', nfid);
@@ -129,7 +138,7 @@ const useAuth = () => {
       });
       console.log('PRINCIAP', identity.getPrincipal().toText());
       setAgent(newAgent);
-      setIdentitiy(identity);
+      // setIdentitiy(identity);
       toast.success('Login successfully');
       setIsloading(false);
       setTimeout(() => {
@@ -150,6 +159,8 @@ const useAuth = () => {
   };
 
   const signOut = async () => {
+    logout({ returnTo: '/auth/login' });
+    window.location.reload();
     // try {
     //   const principalId = nfid?.getIdentity().getPrincipal();
     //   const isAuthenticated = await nfid?.isAuthenticated;
@@ -185,4 +196,4 @@ const useAuth = () => {
   };
 };
 
-export default useAuth;
+export default useAuthentication;

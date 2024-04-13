@@ -11,6 +11,7 @@ import { ToastContainer } from 'react-toastify';
 import PatientLayout from '@/layouts/PatientLayout';
 import { NFIDS } from '@/interface/nfid.interface';
 import { useEffect } from 'react';
+import { AgentProvider } from '@/config/agent';
 
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -31,21 +32,21 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
   if (Component.disableLayout) {
     return (
-      <InternetIdentityProvider>
+      <AgentProvider>
         {' '}
         {getEmptyLayout(<Component {...pageProps} />)}
-      </InternetIdentityProvider>
+      </AgentProvider>
     );
   } else if (Component.patientLayout) {
     return (
-      <InternetIdentityProvider>
+      <AgentProvider>
         {' '}
         {getPatientLayout(<Component {...pageProps} />)}
-      </InternetIdentityProvider>
+      </AgentProvider>
     );
   }
   return (
-    <InternetIdentityProvider>
+    <AgentProvider>
       <ToastContainer
         position="top-center"
         hideProgressBar={false}
@@ -53,7 +54,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
         theme="light"
       />
       {getLayout(<Component {...pageProps} />)}
-    </InternetIdentityProvider>
+    </AgentProvider>
   );
 }
 
