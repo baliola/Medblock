@@ -38,6 +38,8 @@ echo "adding authorized caller to provider canister"
 dfx canister call --network=local provider_registry update_emr_registry_principal --type idl "(record {\"principal\"=principal \"$emr_registry_id\" })" --candid $root/canister/src/provider_registry/candid.did
 dfx canister call --network=local provider_registry update_patient_registry_principal --type idl "(record {\"principal\"=principal \"$patient_registry_id\" })" --candid $root/canister/src/provider_registry/candid.did
 
+echo deploying internet identity
+dfx deploy internet_identity --network=local
 # echo identity for testing
 candid_ui=$(dfx canister id __Candid_UI)
 basepath="http://127.0.0.1:4943/?canisterId=$candid_ui"
