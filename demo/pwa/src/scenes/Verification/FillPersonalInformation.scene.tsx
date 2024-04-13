@@ -61,6 +61,24 @@ const FillPersonalInformationPage = () => {
           classStyle="mb-4"
           type="file"
         />
+        <div className="relative flex items-start">
+          <div className="flex h-6 items-center">
+            <input
+              id="comments"
+              aria-describedby="comments-description"
+              name="comments"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-normal focus:ring-primary-ntext-primary-normal"
+            />
+          </div>
+          <div className="ml-3 text-sm leading-6">
+            <span id="comments-description" className="text-gray-500">
+              <a href="" className="underline">
+                I Agree to term of service’s Medblock and all of information
+              </a>
+            </span>
+          </div>
+        </div>
       </div>
     </Scaffold>
   );

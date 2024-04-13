@@ -16,7 +16,9 @@ const HeaderButton: React.FC<HeaderButtonProps> = ({
 }) => {
   return (
     <div
-      onClick={() => {}}
+      onClick={() => {
+        onPress();
+      }}
       className={'flex flex-row justify-between items-center ' + classStyle}
     >
       <div className="flex flex-row space-x-2">

@@ -22,7 +22,9 @@ export default function HomePage() {
           <AppBarWithIcon
             child={
               <ProfileBar
-                onPressTrailing={() => {}}
+                onPressTrailing={() => {
+                  router.push('/home/notification');
+                }}
                 trailingButton={
                   <img src={Images.notif} alt="" className="w-8" />
                 }
@@ -39,7 +41,9 @@ export default function HomePage() {
                   <p>Share Code</p>
                 </div>
               }
-              onPress={() => {}}
+              onSubmit={() => {
+                router.push('/home/consent-code');
+              }}
             />
           </div>
         }

@@ -15,7 +15,7 @@ const ProfileBar: FC<ProfileBarProps> = ({
 }) => {
   return (
     <div
-      className="flex flex-row justify-between mx-6 items-center"
+      className="flex flex-row justify-between mx-6 items-center mt-4"
       style={style}
     >
       <div className="flex flex-row space-x-4 items-center">

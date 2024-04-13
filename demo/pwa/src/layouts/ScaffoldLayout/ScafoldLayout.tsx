@@ -18,7 +18,7 @@ const Scaffold: FC<ScaffoldProps> = ({
   return (
     <div className="w-screen h-screen relative" style={style}>
       {topBar != null ? (
-        <div className="fixed top-0 z-10 w-screen">{topBar}</div>
+        <div className="fixed top-0 z-10 w-screen bg-white">{topBar}</div>
       ) : null}
       {children}
       {bottomChild != null ? (

@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router';
 import { CloseCircle } from 'solar-icon-set/essentionalui';
 
 import AppBar from '@/components/AppBar/AppBar';
@@ -10,13 +11,17 @@ import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 import VisitSummaryItem from './components/VisitSummaryItem';
 
 const EmrDetailPage = () => {
+  const router = useRouter();
+
   return (
     <Scaffold
       topBar={
         <div className="flex flex-col bg-white">
           <AppBar title={<p className="text-lg text-gray-800">My EMR</p>} />
           <ProfileBar
-            onPressTrailing={() => {}}
+            onPressTrailing={() => {
+              router.push(`/emr/${1}/revoke-access`);
+            }}
             trailingButton={
               <div className="flex flex-col rounded-xl bg-secondary-light py-4 px-2 items-center w-20">
                 <CloseCircle size={28} iconStyle="Bold" color="red" />
@@ -33,7 +38,9 @@ const EmrDetailPage = () => {
         <HeaderButton
           icon={Images.profile}
           label={'Profile Information'}
-          onPress={() => {}}
+          onPress={() => {
+            router.push(`/emr/${1}/profile`);
+          }}
           classStyle="mb-6"
         />
         <HeaderButton
