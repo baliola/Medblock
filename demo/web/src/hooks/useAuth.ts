@@ -19,6 +19,7 @@ import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { NFIDS } from '@/interface/nfid.interface';
 import { AuthClient } from '@dfinity/auth-client';
+import { host } from '@/config/config';
 
 const useAuth = () => {
   const [response, setResponse] = useState<any>(null);
@@ -68,7 +69,7 @@ const useAuth = () => {
 
     await new Promise<void>((resolve, reject) => {
       client?.login({
-        // identityProvider: 'http://127.0.0.1:4943',
+        identityProvider: host,
         onSuccess: async () => {
           const identity = client.getIdentity();
           const principal = identity.getPrincipal().toString();
@@ -80,9 +81,9 @@ const useAuth = () => {
           console.log('principal', principal);
           console.log('identity', identity);
           console.log('clinet', client);
-
           const newAgent = new HttpAgent({
-            host: 'http://127.0.0.1:4943',
+            host,
+            // host: 'http://127.0.0.1:4943',
             identity,
           });
 
@@ -123,7 +124,7 @@ const useAuth = () => {
       console.log('AUTHENTICATION SUCCESS:::', identity);
 
       const newAgent = new HttpAgent({
-        host: 'http://127.0.0.1:4943',
+        host: 'https://identity.ic0.app',
         identity,
       });
       console.log('PRINCIAP', identity.getPrincipal().toText());

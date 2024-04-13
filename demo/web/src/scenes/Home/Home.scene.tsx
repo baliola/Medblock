@@ -34,7 +34,7 @@ export default function DashboardExample() {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
-  const { fetchPatient, patientList } = usePatient();
+  const { fetchPatient, patientList, createdummyConsent } = usePatient();
 
   const toggleModal = () => {
     setShowModal(!showModal);
@@ -120,6 +120,16 @@ export default function DashboardExample() {
                 required
               />
             </div>
+          </div>
+          <div className="flex w-full justify-end">
+            <button
+              className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
+              onClick={createdummyConsent}
+            >
+              {/* <img src={} alt="" /> */}
+              <PlusIcon width={16} />
+              Dummy Consent Code
+            </button>
           </div>
           <div className="flex w-full justify-end">
             <button

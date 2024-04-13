@@ -137,7 +137,7 @@ const LoginForm: FC<LoginFormProps> = ({
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
               title="Sign in"
-              onSubmit={handleLogin}
+              onSubmit={handleSubmit}
               disable={false}
               color="#242DA8"
             />

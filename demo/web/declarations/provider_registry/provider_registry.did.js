@@ -160,6 +160,7 @@ export const idlFactory = ({ IDL }) => {
         [GetInformationResponse],
         ['query'],
       ),
+    'get_trusted_origins' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'issue_emr' : IDL.Func([IssueEmrRequest], [IssueEmrResponse], []),
     'metrics' : IDL.Func([], [IDL.Text], ['query']),
     'ping' : IDL.Func([], [PingResult], ['composite_query']),

@@ -142,6 +142,7 @@ export interface _SERVICE {
     [GetInformationRequest],
     GetInformationResponse
   >,
+  'get_trusted_origins' : ActorMethod<[], Array<string>>,
   'issue_emr' : ActorMethod<[IssueEmrRequest], IssueEmrResponse>,
   'metrics' : ActorMethod<[], string>,
   'ping' : ActorMethod<[], PingResult>,

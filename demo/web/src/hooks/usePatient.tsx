@@ -18,6 +18,7 @@ import { NFID } from '@nfid/embed';
 import { PatientListResponse } from 'declarations/patient_registry/patient_registry.did';
 import { Patient } from '@/interface/patient.interface';
 import { NFIDS } from '@/interface/nfid.interface';
+import { toast } from 'react-toastify';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -25,6 +26,10 @@ enum DelegationType {
   GLOBAL = 0,
   ANONYMOUS = 1,
 }
+export interface ClaimConsentRequest {
+  code: string;
+}
+
 export interface EmrListPatientRequest {
   page: number;
   limit: number;
@@ -34,19 +39,10 @@ const usePatient = () => {
   const { agent, setAgent, setIdentity, identity } = useCentralStore();
   const [patientList, setPatientList] = useState<Patient[]>();
   const router = useRouter();
+  const canister = patientCanisterIdMainnet;
+  const api = createActor(canister, { agent });
 
-  const canister = patientCanisterId;
   async function fetchPatient() {
-    const newAgent = new HttpAgent({
-      host: 'http://127.0.0.1:4943',
-      identity,
-    });
-    // console.log(
-    //   'identity in fetch patient',
-    //   identity?.getPrincipal()?.toText(),
-    // );
-
-    const api = createActor(canister, { agent });
     console.log('FETCH PATIENT RUNNING.....');
     const request = {
       page: BigInt(0),
@@ -56,11 +52,7 @@ const usePatient = () => {
 
     try {
       const response = await api?.patient_list();
-      // const response: Response = await nfid.requestCanisterCall({
-      //   canisterId: patientCanisterIdMainnet, // the canister id which will be called
-      //   method: 'patient_list', // the method on the canister which will be called
-      //   parameters: undefined, // the parameters passed to the method on the canister
-      // });
+
       console.log('-----------------');
       console.log('RESPONSE::::', response);
       console.log('-----------------');
@@ -71,36 +63,38 @@ const usePatient = () => {
       console.log('ERROR::::', error);
       console.log('-----------------');
     }
-
-    // const encodeParams = Cbor.encode(req);
-    // const decoder = new TextDecoder('utf-8');
-    // const paramsString = decoder.decode(new Uint8Array(encodeParams));
-    // // const reqString = JSON.stringify(req);
-
-    // console.log('encode', encodeParams);
-    // console.log('param', paramsString);
-
-    // if (!nfid) return alert('NFID is not initialized');
-
-    // await nfid
-    //   ?.requestCanisterCall({
-    //     canisterId: canister, // the canister id which will be called
-    //     method: 'emr_list_patient', // the method on the canister which will be called
-    //     parameters: '', // the parameters passed to the method on the canister
-    //   })
-    //   .then((ping) => {
-    //     console.log('-------------');
-    //     console.log('PING PATIENT REGISTRY', ping);
-    //     console.log('-------------');
-    //   });
-
-    // console.log('fetching patient test...');
-    // let ping = await patient_registry?.emr_list_patient(req);
-    // let ping = await api.emr_list_patient(req);
-    // console.log('-------------');
-    // console.log('PING PATIENT REGISTRY', ping);
-    // console.log('-------------');
   }
+  const createdummyConsent = async () => {
+    try {
+      const response = await api?.create_consent();
+
+      console.log('-----------------');
+      console.log('RESPONSE conscentt::::', response.code);
+      console.log('-----------------');
+
+      // setPatientList(response.code);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  };
+
+  const claimConsent = async (code: ClaimConsentRequest) => {
+    try {
+      const response = await api?.claim_consent(code);
+
+      console.log('-----------------');
+      console.log('RESPONSE conscentt::::', response);
+      console.log('-----------------');
+
+      // setPatientList(response.code);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  };
   const getAgent = () => {
     const localIdentityString = localStorage.getItem('identity');
     if (localIdentityString) {
@@ -126,14 +120,11 @@ const usePatient = () => {
   return {
     fetchPatient,
     patientList,
+    createdummyConsent,
+    claimConsent,
   };
 };
 
 export default usePatient;
-
-interface Req {
-  page: number;
-  limit: number;
-}
 
 // export default canister;
