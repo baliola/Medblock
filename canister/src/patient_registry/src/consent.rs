@@ -202,6 +202,16 @@ impl ConsentsApi {
         with_consent_mut(|consents| consents.resolve_session(session_id, session_user))
     }
 
+    pub fn resolve_session_with_code() {
+        // TODO
+        todo!()
+    }
+
+    pub fn list_consent_with_user() {
+        // TODO:
+        todo!()
+    }
+
     // we dont have expiry for now
     // fn remove_consent_after_expiry(code: ConsentCode) {
     //     ensure_initialized();
@@ -502,6 +512,16 @@ impl ConsentMap {
         }
     }
 
+    pub fn list_consent_with_user() {
+        // TODO:
+        todo!()
+    }
+
+    pub fn list_consent_with_user() {
+        // TODO:
+        todo!()
+    }
+
     /// wil return none if consent is already claimed or does not exist
     pub fn claim_consent(
         &mut self,
@@ -546,6 +566,11 @@ impl ConsentMap {
 
         // return the consent if it exists
         self.safe_get_consent_for(code, session_user).cloned()
+    }
+
+    pub fn resolve_session_with_code() {
+        // TODO
+        todo!()
     }
 }
 

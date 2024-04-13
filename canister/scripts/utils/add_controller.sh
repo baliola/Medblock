@@ -1,5 +1,6 @@
 #! bash
 root=$(git rev-parse --show-toplevel)
+cd $root/canister
 canister=$1
 controller=$2
 network=$3

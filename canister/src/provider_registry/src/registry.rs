@@ -111,7 +111,8 @@ impl ProviderRegistry {
 
                 match patient_registry.notify_issued(issue_request).await.map_err(CallError::from) {
                     Ok(_) => response,
-                    Err(e) => ic_cdk::trap(&format!("ERROR: error calling patient canister : {}", e)),
+                    Err(e) =>
+                        ic_cdk::trap(&format!("ERROR: error calling patient canister : {}", e)),
                 }
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
@@ -213,12 +214,13 @@ impl ProviderRegistry {
         &mut self,
         provider_principal: ProviderPrincipal,
         display_name: AsciiRecordsKey<64>,
+        address: AsciiRecordsKey<64>,
         id: Id
     ) -> ProviderRegistryResult<()> {
         // IMPORTANT: dont forget to change to newer version if updating provider version.
 
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = V1::new(display_name, id).to_provider();
+        let provider = V1::new(display_name, address, id).to_provider();
 
         // bind the principal to the internal id
         self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
@@ -626,6 +628,7 @@ mod provider_test {
         let internal_id = Id::new(&id_bytes);
         let name = "a".repeat(64);
         let provider = V1::new(
+            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
             internal_id.clone()
         ).to_provider();
@@ -648,6 +651,7 @@ mod provider_test {
 
         let internal_id = Id::new(&id_bytes);
         let provider = V1::new(
+            AsciiRecordsKey::<64>::new("test").unwrap(),
             AsciiRecordsKey::<64>::new("test").unwrap(),
             internal_id.clone()
         ).to_provider();
@@ -898,8 +902,11 @@ pub mod provider {
         /// can either be verified or suspended
         activation_status: Status,
 
-        /// encrypted display name for health provider
+        /// display name for health provider
         display_name: AsciiRecordsKey<64>,
+
+        /// address for health provider
+        address: AsciiRecordsKey<64>,
 
         /// internal identifier for this provider
         /// we separate this from the principal because we want to be able to change the principal
@@ -921,9 +928,14 @@ pub mod provider {
     }
 
     impl V1 {
-        pub fn new(display_name: AsciiRecordsKey<64>, internal_id: InternalProviderId) -> Self {
+        pub fn new(
+            display_name: AsciiRecordsKey<64>,
+            address: AsciiRecordsKey<64>,
+            internal_id: InternalProviderId
+        ) -> Self {
             Self {
                 activation_status: Status::Active,
+                address,
                 display_name,
                 internal_id,
                 session: Session::default(),
@@ -953,7 +965,7 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
-            let s = V1::new(name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"));
+            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"));
             let encoded = Encode!(&s).unwrap();
 
             println!("encoded len: {}", encoded.len());
@@ -964,9 +976,9 @@ pub mod provider {
         }
     }
 
-    // 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
+    // 260 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
     // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
-    impl_max_size!(for V1: 200);
+    impl_max_size!(for V1: 260);
     impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
     impl Billable for V1 {

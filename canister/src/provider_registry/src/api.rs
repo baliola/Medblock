@@ -55,6 +55,7 @@ pub struct PingResult {
 pub struct RegisternewProviderRequest {
     pub provider_principal: ic_principal::Principal,
     pub display_name: AsciiRecordsKey<64>,
+    pub address: AsciiRecordsKey<64>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -117,8 +118,7 @@ pub struct UnSuspendRequest {
     pub principal: Principal,
 }
 
-
 #[derive(CandidType, Deserialize)]
-pub struct AuthorizedCallerRequest{
+pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }

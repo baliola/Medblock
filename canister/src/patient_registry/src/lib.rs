@@ -338,6 +338,7 @@ fn patient_list() -> PatientListResponse {
 fn is_consent_claimed(req: IsConsentClaimedRequest) -> IsConsentClaimedResponse {
     let caller = verified_caller().unwrap();
     let patient = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    // TODO :  change this into resolve session with code
     ConsentsApi::is_claimed(&req.code, &patient).into()
 }
 
