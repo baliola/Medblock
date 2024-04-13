@@ -4,6 +4,8 @@ use api::{
     AuthorizedCallerRequest,
     IssueEmrResponse,
     PingResult,
+    ProviderInfoRequest,
+    ProviderInfoResponse,
     RegisternewProviderRequest,
     RegisternewProviderResponse,
     SuspendRequest,
@@ -411,9 +413,9 @@ fn unsuspend_provider(req: UnSuspendRequest) {
     with_state_mut(|s| s.providers.unsuspend_provider(&req.principal)).unwrap()
 }
 
-fn get_provider_with_principal() {
-    // TODO
-    todo!()
+#[ic_cdk::query]
+fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoResponse {
+    with_state(|s| s.providers.provider_info_with_principal(&req.provider).unwrap()).into()
 }
 
 ic_cdk::export_candid!();

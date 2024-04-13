@@ -7,7 +7,7 @@ use canister_common::{
 use serde::Deserialize;
 
 use crate::{
-    consent::{ ConsentCode, SessionId },
+    consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
     registry::{ Patient, V1 },
 };
@@ -193,10 +193,21 @@ pub struct IsConsentClaimedRequest {
     pub code: ConsentCode,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Default)]
 pub struct IsConsentClaimedResponse {
-    claimed: bool,
+    pub claimed: bool,
+    pub info: Option<Consent>,
 }
 from!(IsConsentClaimedResponse: bool as value {
     claimed: value
+    info: None
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct ConsentListResponse {
+    pub consents: Vec<Consent>,
+}
+
+from!(ConsentListResponse: Vec<Consent> as value {
+    consents: value
 });

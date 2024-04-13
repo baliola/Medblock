@@ -46,6 +46,26 @@ pub struct ProviderRegistry {
     issued: Issued,
 }
 
+impl ProviderRegistry {
+    pub fn provider_info_with_principal(
+        &self,
+        principal: &Principal
+    ) -> ProviderRegistryResult<Provider> {
+        let internal_id = self.providers_bindings.get_internal_id(principal)?;
+
+        Ok(
+            self.providers
+                .get_provider(internal_id.into_inner())
+                .ok_or(
+                    RegistryError::ProviderBindingMapError(
+                        ProviderBindingMapError::ProviderDoesNotExist
+                    )
+                )?
+                .into_inner()
+        )
+    }
+}
+
 // update emr inter-canister call
 impl ProviderRegistry {
     pub async fn do_call_update_emr(
