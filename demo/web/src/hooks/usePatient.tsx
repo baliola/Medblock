@@ -41,12 +41,10 @@ export interface EmrListPatientRequest {
 
 const usePatient = () => {
   const { patientList, setPatientList } = useCentralStore();
-  const { identity } = useAuth();
+  const { identity, authenticated } = useAuth();
   const router = useRouter();
   const canister = patientCanisterId;
   const api = createActor(canister, { agent: AppAgent(identity) });
-
-  console.log('identity', identity?.getPrincipal().toText());
 
   async function fetchPatient() {
     console.log('FETCH PATIENT RUNNING.....');
@@ -175,7 +173,6 @@ const usePatient = () => {
 
   useEffect(() => {
     if (identity) fetchPatient();
-    // }
   }, [identity]);
 
   return {

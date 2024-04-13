@@ -38,7 +38,7 @@ const useAuthentication = () => {
   const { setAgent } = useCentralStore();
   const [loading, setIsloading] = useState(false);
 
-  const hosts: AuthClientLoginOptions = { identityProvider: loginHost };
+  const hosts: AuthClientLoginOptions = { identityProvider: host };
 
   const router = useRouter();
 
@@ -74,7 +74,7 @@ const useAuthentication = () => {
     const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
     const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
     const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
-    login(hosts);
+    await login(hosts);
 
     // await new Promise<void>((resolve, reject) => {
     //   client?.login({

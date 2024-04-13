@@ -1,3 +1,4 @@
+'use-client';
 import '@/globals.css';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -10,7 +11,7 @@ import EmptyLayout from '@/layouts/EmptyLayout';
 import { ToastContainer } from 'react-toastify';
 import PatientLayout from '@/layouts/PatientLayout';
 import { NFIDS } from '@/interface/nfid.interface';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AgentProvider } from '@/config/agent';
 
 export type AppPropsWithLayout = AppProps & {
@@ -18,6 +19,15 @@ export type AppPropsWithLayout = AppProps & {
 };
 
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
+  const [windowLoaded, setWindowLoaded] = useState(false);
+
+  useEffect(() => {
+    // Check if window is loaded
+    if (typeof window !== 'undefined') {
+      setWindowLoaded(true);
+    }
+  }, []);
+
   const getLayout = Component.getLayout ?? CommonLayout;
   const getEmptyLayout = Component.getLayout ?? EmptyLayout;
   const getPatientLayout = Component.getLayout ?? PatientLayout;
@@ -27,20 +37,27 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   };
 
   useEffect(() => {
-    initNFID();
-  });
+    if (windowLoaded) {
+      initNFID();
+    }
+  }, [windowLoaded]);
+
+  if (!windowLoaded) {
+    // Render a loading state while waiting for window to load
+    return <div>Loading...</div>;
+  }
 
   if (Component.disableLayout) {
     return (
-      <AgentProvider>
-        {' '}
-        {getEmptyLayout(<Component {...pageProps} />)}
-      </AgentProvider>
+      <div suppressHydrationWarning>
+        <AgentProvider>
+          {getEmptyLayout(<Component {...pageProps} />)}
+        </AgentProvider>
+      </div>
     );
   } else if (Component.patientLayout) {
     return (
       <AgentProvider>
-        {' '}
         {getPatientLayout(<Component {...pageProps} />)}
       </AgentProvider>
     );
