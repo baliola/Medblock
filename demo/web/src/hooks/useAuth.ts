@@ -61,13 +61,17 @@ const useAuth = () => {
   };
 
   const handleLogin = async () => {
+    const APP_NAME = 'NFID example';
+    const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
+    const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
+    const identityProvider = `https://nfid.one/authenticate${CONFIG_QUERY}`;
+
     await new Promise<void>((resolve, reject) => {
       client?.login({
-        identityProvider: 'https://identity.ic0.app',
+        // identityProvider: 'http://127.0.0.1:4943',
         onSuccess: async () => {
           const identity = client.getIdentity();
           const principal = identity.getPrincipal().toString();
-          toast.success('Login successfully');
           //   setIsloading(false);
           //   setTimeout(() => {
           //     router.push('/');
@@ -75,6 +79,21 @@ const useAuth = () => {
 
           console.log('principal', principal);
           console.log('identity', identity);
+          console.log('clinet', client);
+
+          const newAgent = new HttpAgent({
+            host: 'http://127.0.0.1:4943',
+            identity,
+          });
+
+          console.log('PRINCIAP', identity.getPrincipal().toText());
+          setAgent(newAgent);
+          setIdentitiy(identity);
+          toast.success('Login successfully');
+          setIsloading(false);
+          setTimeout(() => {
+            router.push('/');
+          }, 3000);
 
           // Use identity and principal here if needed
           resolve();
@@ -103,9 +122,13 @@ const useAuth = () => {
       );
       console.log('AUTHENTICATION SUCCESS:::', identity);
 
-      const newAgent = new HttpAgent({ host: 'https://ic0.app', identity });
+      const newAgent = new HttpAgent({
+        host: 'http://127.0.0.1:4943',
+        identity,
+      });
       console.log('PRINCIAP', identity.getPrincipal().toText());
       setAgent(newAgent);
+      setIdentitiy(identity);
       toast.success('Login successfully');
       setIsloading(false);
       setTimeout(() => {

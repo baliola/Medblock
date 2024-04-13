@@ -19,6 +19,7 @@ import { emrCanisterId } from '@/lib/canister/emr.canister';
 import { patientCanisterId } from '@/lib/canister/patient.canister';
 import { providerCanisterId } from '@/lib/canister/provider.canister';
 import useAuth from '@/hooks/useAuth';
+import { useInternetIdentity } from 'ic-use-internet-identity';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -53,6 +54,10 @@ const LoginForm: FC<LoginFormProps> = ({
     email: '',
     password: '',
   });
+  const { login, loginStatus } = useInternetIdentity();
+  const disabled = loginStatus === 'logging-in' || loginStatus === 'success';
+  const text = loginStatus === 'logging-in' ? 'Logging in...' : 'Login';
+
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
@@ -69,7 +74,7 @@ const LoginForm: FC<LoginFormProps> = ({
     <Formik
       initialValues={formData}
       // validationSchema={''}
-      onSubmit={handleAuthenticate}
+      onSubmit={handleLogin}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
         <>
@@ -132,7 +137,7 @@ const LoginForm: FC<LoginFormProps> = ({
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit
               title="Sign in"
-              onSubmit={handleSubmit}
+              onSubmit={handleLogin}
               disable={false}
               color="#242DA8"
             />

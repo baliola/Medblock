@@ -1,17 +1,23 @@
-import { canisterId, patient_registry } from 'declarations/patient_registry';
+import {
+  canisterId,
+  createActor,
+  patient_registry,
+} from 'declarations/patient_registry';
 import { useEffect, useState } from 'react';
 import useAuth from './useAuth';
 import {
   patientCanisterId,
   patientCanisterIdMainnet,
 } from '@/lib/canister/patient.canister';
-import { Cbor, HttpAgent } from '@dfinity/agent';
+import { Actor, Cbor, HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
-import { createActor } from 'declarations/provider_registry';
 import { NFID } from '@nfid/embed';
+import { PatientListResponse } from 'declarations/patient_registry/patient_registry.did';
+import { Patient } from '@/interface/patient.interface';
+import { NFIDS } from '@/interface/nfid.interface';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -25,22 +31,41 @@ export interface EmrListPatientRequest {
 }
 
 const usePatient = () => {
-  const { agent } = useCentralStore();
-  const [patientList, setPatientList] = useState([]);
+  const { agent, setAgent, setIdentity, identity } = useCentralStore();
+  const [patientList, setPatientList] = useState<Patient[]>();
+  const router = useRouter();
 
-  const canister = patientCanisterIdMainnet;
+  const canister = patientCanisterId;
   async function fetchPatient() {
-    const api = createActor(providerCanisterIdMainnet, { agent });
+    const newAgent = new HttpAgent({
+      host: 'http://127.0.0.1:4943',
+      identity,
+    });
+    // console.log(
+    //   'identity in fetch patient',
+    //   identity?.getPrincipal()?.toText(),
+    // );
+
+    const api = createActor(canister, { agent });
     console.log('FETCH PATIENT RUNNING.....');
     const request = {
       page: BigInt(0),
       limit: 10,
     };
+    // const nfid = await NFIDS();
+
     try {
-      const response = await api?.emr_list_provider(request);
+      const response = await api?.patient_list();
+      // const response: Response = await nfid.requestCanisterCall({
+      //   canisterId: patientCanisterIdMainnet, // the canister id which will be called
+      //   method: 'patient_list', // the method on the canister which will be called
+      //   parameters: undefined, // the parameters passed to the method on the canister
+      // });
       console.log('-----------------');
       console.log('RESPONSE::::', response);
       console.log('-----------------');
+
+      setPatientList(response.patients);
     } catch (error) {
       console.log('-----------------');
       console.log('ERROR::::', error);
@@ -76,16 +101,31 @@ const usePatient = () => {
     // console.log('PING PATIENT REGISTRY', ping);
     // console.log('-------------');
   }
+  const getAgent = () => {
+    const localIdentityString = localStorage.getItem('identity');
+    if (localIdentityString) {
+      const localIdentity: Identity = JSON.parse(localIdentityString);
+      console.log('agent local', localIdentity);
+      console.log('identity', localIdentity);
+
+      // setIdentity(localIdentity);
+    } else {
+      router.push('/auth/login');
+    }
+  };
 
   useEffect(() => {
-    console.log('AGENT NIH BRO', agent);
-    if (agent) fetchPatient();
+    console.log('AGENT NIH BRO', identity);
+    // if (agent) {
+    fetchPatient();
+    // }
   }, []);
 
   // useEffect(() => {}, [delegation, identity]);
 
   return {
     fetchPatient,
+    patientList,
   };
 };
 
