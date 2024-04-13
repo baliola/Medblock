@@ -65,7 +65,11 @@ const ModalAdd = ({
       const newData: ClaimConsentRequest = {
         code: otp.join(''),
       };
-      claimConsent(newData);
+      claimConsent(newData).then(() => {
+        setShowModalPhone(false);
+
+        setShowModalSuccess(true);
+      });
     } catch (error) {
       setLoading(false);
     }

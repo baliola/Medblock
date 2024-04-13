@@ -28,16 +28,26 @@ import ModalAdd from './components/Modal/ModalAdd';
 import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
 import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import ModalSuccess from './components/Modal/ModalSuccess';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
-  const { fetchPatient, patientList, createdummyConsent } = usePatient();
+  const {
+    fetchPatient,
+    patientList,
+    createdummyConsent,
+    registerDummyPatient,
+  } = usePatient();
 
   const toggleModal = () => {
     setShowModal(!showModal);
+  };
+
+  const toggleModalSuccess = () => {
+    setShowModalSuccess(!showModalSuccess);
   };
 
   const patientColumn = useMemo<ColumnDef<Patient>[]>(
@@ -124,6 +134,16 @@ export default function DashboardExample() {
           <div className="flex w-full justify-end">
             <button
               className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
+              onClick={registerDummyPatient}
+            >
+              {/* <img src={} alt="" /> */}
+              <PlusIcon width={16} />
+              Dummy Patient
+            </button>
+          </div>
+          <div className="flex w-full justify-end">
+            <button
+              className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
               onClick={createdummyConsent}
             >
               {/* <img src={} alt="" /> */}
@@ -163,6 +183,9 @@ export default function DashboardExample() {
           // setPhoneNumber={undefined}
           datas={''}
         />
+      </Modal>
+      <Modal toggle={toggleModalSuccess} isOpen={showModalSuccess}>
+        <ModalSuccess toggle={toggleModalSuccess} />
       </Modal>
     </>
   );

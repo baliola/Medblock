@@ -15,7 +15,14 @@ import { useRouter } from 'next/router';
 import { useCentralStore } from '@/Store';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
 import { NFID } from '@nfid/embed';
-import { PatientListResponse } from 'declarations/patient_registry/patient_registry.did';
+import {
+  PatientListResponse,
+  RegisterPatientRequest,
+  UpdateInitialPatientInfoRequest,
+  V1,
+} from 'declarations/patient_registry/patient_registry.did';
+import keccak256 from 'keccak256';
+
 import { Patient } from '@/interface/patient.interface';
 import { NFIDS } from '@/interface/nfid.interface';
 import { toast } from 'react-toastify';
@@ -36,8 +43,14 @@ export interface EmrListPatientRequest {
 }
 
 const usePatient = () => {
-  const { agent, setAgent, setIdentity, identity } = useCentralStore();
-  const [patientList, setPatientList] = useState<Patient[]>();
+  const {
+    agent,
+    setAgent,
+    setIdentity,
+    identity,
+    patientList,
+    setPatientList,
+  } = useCentralStore();
   const router = useRouter();
   const canister = patientCanisterIdMainnet;
   const api = createActor(canister, { agent });
@@ -88,6 +101,8 @@ const usePatient = () => {
       console.log('RESPONSE conscentt::::', response);
       console.log('-----------------');
 
+      fetchPatient();
+
       // setPatientList(response.code);
     } catch (error) {
       console.log('-----------------');
@@ -95,6 +110,80 @@ const usePatient = () => {
       console.log('-----------------');
     }
   };
+  const generateRandomNumber = (): string => {
+    const randomNumber = Math.floor(
+      1000000000000000 + Math.random() * 9000000000000000,
+    );
+    return String(randomNumber);
+  };
+
+  // Function to generate hash and encode to example format
+  const generateAndEncodeHash = (): string => {
+    // Generate a random 16-digit number
+    const randomNum = generateRandomNumber();
+
+    // Generate the hash using Keccak
+    const hashBuffer = keccak256(randomNum);
+
+    // Encode the hash to hexadecimal string
+    const encodedHash = Buffer.from(hashBuffer).toString('hex');
+
+    return encodedHash;
+  };
+  const registerDummyPatient = async () => {
+    const nik = generateAndEncodeHash();
+    console.log('nik generated', nik);
+    const data: RegisterPatientRequest = {
+      nik: nik,
+    };
+    try {
+      const response = await api?.register_patient(data);
+
+      console.log('-----------------');
+      console.log('RESPONSE conscentt::::', response);
+      console.log('-----------------');
+      updateInfoDummyPatient();
+
+      // setPatientList(response.code);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  };
+
+  const generateRandomString = (): string => {
+    return Math.random().toString(36).substr(2, 8);
+  };
+  const generateRandomV1Values = (): V1 => {
+    return {
+      martial_status: generateRandomString(),
+      place_of_birth: generateRandomString(),
+      address: generateRandomString(),
+      gender: generateRandomString(),
+      date_of_birth: generateRandomString(),
+    };
+  };
+  const updateInfoDummyPatient = async () => {
+    const randomV1Values = generateRandomV1Values();
+    const data: UpdateInitialPatientInfoRequest = {
+      info: randomV1Values,
+    };
+    try {
+      const response = await api?.update_initial_patient_info(data);
+
+      console.log('-----------------');
+      console.log('RESPONSE conscentt::::', response);
+      console.log('-----------------');
+
+      // setPatientList(response.code);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  };
+
   const getAgent = () => {
     const localIdentityString = localStorage.getItem('identity');
     if (localIdentityString) {
@@ -110,6 +199,7 @@ const usePatient = () => {
 
   useEffect(() => {
     console.log('AGENT NIH BRO', identity);
+    updateInfoDummyPatient();
     // if (agent) {
     fetchPatient();
     // }
@@ -122,6 +212,8 @@ const usePatient = () => {
     patientList,
     createdummyConsent,
     claimConsent,
+    registerDummyPatient,
+    updateInfoDummyPatient,
   };
 };
 

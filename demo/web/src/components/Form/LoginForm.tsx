@@ -74,7 +74,7 @@ const LoginForm: FC<LoginFormProps> = ({
     <Formik
       initialValues={formData}
       // validationSchema={''}
-      onSubmit={handleLogin}
+      onSubmit={handleAuthenticate}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
         <>
