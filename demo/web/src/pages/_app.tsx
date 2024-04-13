@@ -2,6 +2,7 @@ import '@/globals.css';
 import 'react-toastify/dist/ReactToastify.css';
 
 import type { AppProps } from 'next/app';
+import { InternetIdentityProvider } from 'ic-use-internet-identity';
 
 import CommonLayout from '@/layouts/CommonLayout';
 import { NextPageWithLayout } from '@/types';
@@ -29,12 +30,22 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   });
 
   if (Component.disableLayout) {
-    return <> {getEmptyLayout(<Component {...pageProps} />)}</>;
+    return (
+      <InternetIdentityProvider>
+        {' '}
+        {getEmptyLayout(<Component {...pageProps} />)}
+      </InternetIdentityProvider>
+    );
   } else if (Component.patientLayout) {
-    return <> {getPatientLayout(<Component {...pageProps} />)}</>;
+    return (
+      <InternetIdentityProvider>
+        {' '}
+        {getPatientLayout(<Component {...pageProps} />)}
+      </InternetIdentityProvider>
+    );
   }
   return (
-    <>
+    <InternetIdentityProvider>
       <ToastContainer
         position="top-center"
         hideProgressBar={false}
@@ -42,7 +53,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
         theme="light"
       />
       {getLayout(<Component {...pageProps} />)}
-    </>
+    </InternetIdentityProvider>
   );
 }
 
