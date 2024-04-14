@@ -30,11 +30,13 @@ import { useCentralStore } from '@/Store';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
+import useEMRPatient from '@/hooks/useEmrPatient';
 
 function PatientInfo() {
   const router = useRouter();
   const { pathname } = router;
   const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
+  const { patientInfo } = useEMRPatient();
 
   // useEffect(() => {
   //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
@@ -62,35 +64,51 @@ function PatientInfo() {
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Name: Max{' '}
+              Name: {patientInfo?.V1.name ?? '....'}
             </p>
           </div>
           <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Gender: male{' '}
+              Gender: {patientInfo?.V1.gender ? patientInfo?.V1.gender : '...'}
             </p>
           </div>{' '}
           <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Address: Jl Renon Denpasar
+              Address:{patientInfo?.V1.address ? patientInfo.V1.address : '...'}
             </p>
           </div>{' '}
           <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Martial States: Single
+              Martial States:{' '}
+              {patientInfo?.V1.martial_status
+                ? patientInfo.V1.martial_status
+                : '....'}
             </p>
           </div>{' '}
           <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Date of Birth: 1 August 2000
+              Date of Birth:{' '}
+              {patientInfo?.V1.date_of_birth
+                ? patientInfo.V1.date_of_birth
+                : '....'}
+            </p>
+          </div>
+          <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
+            <p
+              className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
+            >
+              Place of Birth:{' '}
+              {patientInfo?.V1.place_of_birth
+                ? patientInfo?.V1.place_of_birth
+                : '....'}
             </p>
           </div>
         </div>

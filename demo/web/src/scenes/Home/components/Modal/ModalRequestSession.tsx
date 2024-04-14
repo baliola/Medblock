@@ -1,7 +1,9 @@
+import Modal from '@/components/Modal/Modal';
 import useCountdown from '@/hooks/useCoundown';
 import usePatient, { ClaimConsentRequest } from '@/hooks/usePatient';
-import { XCircleIcon, XMarkIcon } from '@heroicons/react/20/solid';
+import { PlusIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/20/solid';
 import { AxiosError } from 'axios';
+import { ScanBarcode } from 'iconsax-react';
 import React, {
   Dispatch,
   SetStateAction,
@@ -12,28 +14,26 @@ import React, {
 import { toast } from 'react-toastify';
 
 interface Modals {
-  setShowModalPhone: Dispatch<SetStateAction<boolean>>;
+  setShowModal: Dispatch<SetStateAction<boolean>>;
   setShowModalSuccess: Dispatch<SetStateAction<boolean>>;
-  //   setPhoneNumber: any;
-  datas: string;
+  toggle: () => void;
 }
 
 let currentOTPIndex = 0;
-const ModalAdd = ({
-  setShowModalPhone,
+const ModalAddGetPatientSession = ({
+  setShowModal,
   setShowModalSuccess,
-  datas,
 }: Modals) => {
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
   const [activeOTPIndex, setActiveOTPIndex] = useState<number>(0);
   const [errOtp, setErrOtp] = useState('');
   const { secondLeft, start } = useCountdown();
   const [correctOTP, setCorrectOtp] = useState('');
-  const { claimConsent } = usePatient();
+  const { claimConsent, claimConsentToGetSession } = usePatient();
   const [loading, setLoading] = useState(false);
 
   const toggleModalPhone = () => {
-    setShowModalPhone(false);
+    setShowModal(false);
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,9 +65,8 @@ const ModalAdd = ({
       const newData: ClaimConsentRequest = {
         code: otp.join(''),
       };
-      claimConsent(newData).then(() => {
-        setShowModalPhone(false);
-
+      claimConsentToGetSession(newData).then(() => {
+        setShowModal(false);
         setShowModalSuccess(true);
       });
     } catch (error) {
@@ -83,29 +82,11 @@ const ModalAdd = ({
     start(59);
   }, []);
 
-  // useEffect(() => {
-  //   if (secondLeft === 0) {
-  //     let random = Math.random().toString().substring(2, 8);
-  //     setCorrectOtp(random);
-  //   }
-  // }, [secondLeft]);
-
-  // useEffect(() => {
-  //   if (otp.join('') !== '' && otp.join('') !== correctOTP) {
-  //     setErrOtp('Invalid OTP pls check again');
-  //   } else {
-  //     setErrOtp('');
-  //   }
-  // }, [otp]);
-
-  // console.log(correctOTP);
-  // console.log(otp.join(''));
-
   return (
     <>
       <div className="flex flex-col justify-center items-center rounded-[4px] max-w-[500px] w-full bg-white">
         <div className="flex justify-between w-full p-5 gap-5 border-b">
-          <div className="text-slate-600">Consent Code</div>
+          <div className="text-slate-600">Request Detail Patient</div>
           <button onClick={toggleModalPhone} className="text-slate-400">
             <XCircleIcon className="w-4 h-4 hover:text-red-500" />
           </button>
@@ -178,4 +159,4 @@ const ModalAdd = ({
   );
 };
 
-export default ModalAdd;
+export default ModalAddGetPatientSession;

@@ -27,7 +27,14 @@ export interface ClaimConsentRequest { 'code' : string }
 export interface ClaimConsentResponse { 'session_id' : string }
 export type CollectMetricsRequestType = { 'force' : null } |
   { 'normal' : null };
-export interface CreateConsentRequest { 'allowed' : Array<EmrHeader> }
+export interface Consent {
+  'nik' : string,
+  'session_id' : [] | [string],
+  'code' : string,
+  'claimed' : boolean,
+  'session_user' : [] | [Principal],
+}
+export interface ConsentListResponse { 'consents' : Array<Consent> }
 export interface DailyMetricsData {
   'updateCalls' : bigint,
   'canisterHeapMemorySize' : NumericEntity,
@@ -45,6 +52,11 @@ export interface EmrHeader {
 export interface EmrHeaderWithBody {
   'body' : Array<EmrFragment>,
   'header' : EmrHeader,
+}
+export interface EmrListConsentRequest {
+  'session_id' : string,
+  'page' : number,
+  'limit' : number,
 }
 export interface EmrListPatientRequest { 'page' : number, 'limit' : number }
 export interface EmrListPatientResponse { 'emrs' : Array<EmrHeader> }
@@ -80,12 +92,17 @@ export interface GetMetricsParameters {
   'granularity' : MetricsGranularity,
   'dateFromMillis' : bigint,
 }
+export interface GetPatientInfoResponse { 'nik' : string, 'patient' : Patient }
 export interface HourlyMetricsData {
   'updateCalls' : BigUint64Array | bigint[],
   'canisterHeapMemorySize' : BigUint64Array | bigint[],
   'canisterCycles' : BigUint64Array | bigint[],
   'canisterMemorySize' : BigUint64Array | bigint[],
   'timeMillis' : bigint,
+}
+export interface IsConsentClaimedResponse {
+  'info' : [] | [Consent],
+  'claimed' : boolean,
 }
 export interface IssueRequest { 'header' : EmrHeader }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
@@ -100,6 +117,8 @@ export interface NumericEntity {
   'first' : bigint,
   'last' : bigint,
 }
+export type Patient = { 'V1' : V1 };
+export interface PatientListResponse { 'patients' : Array<Patient> }
 export interface PingResult { 'emr_registry_status' : boolean }
 export interface ReadEmrByIdRequest {
   'provider_id' : string,
@@ -126,19 +145,29 @@ export interface UpdateEmrRegistryRequest { 'principal' : Principal }
 export interface UpdateInformationRequest {
   'metrics' : [] | [CollectMetricsRequestType],
 }
+export interface UpdateInitialPatientInfoRequest { 'info' : V1 }
+export interface V1 {
+  'name' : string,
+  'martial_status' : string,
+  'place_of_birth' : string,
+  'address' : string,
+  'gender' : string,
+  'date_of_birth' : string,
+}
 export interface _SERVICE {
   'add_authorized_metrics_collector' : ActorMethod<
     [AuthorizedCallerRequest],
     undefined
   >,
   'claim_consent' : ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>,
-  'create_consent' : ActorMethod<[CreateConsentRequest], ClaimConsentRequest>,
+  'consent_list' : ActorMethod<[], ConsentListResponse>,
+  'create_consent' : ActorMethod<[], ClaimConsentRequest>,
   'emr_list_patient' : ActorMethod<
     [EmrListPatientRequest],
     EmrListPatientResponse
   >,
   'emr_list_with_session' : ActorMethod<
-    [ClaimConsentResponse],
+    [EmrListConsentRequest],
     EmrListPatientResponse
   >,
   'finish_session' : ActorMethod<[ClaimConsentResponse], undefined>,
@@ -146,8 +175,19 @@ export interface _SERVICE {
     [GetInformationRequest],
     GetInformationResponse
   >,
+  'get_patient_info' : ActorMethod<[], GetPatientInfoResponse>,
+  'get_patient_info_with_consent' : ActorMethod<
+    [ClaimConsentResponse],
+    GetPatientInfoResponse
+  >,
+  'get_trusted_origins' : ActorMethod<[], Array<string>>,
+  'is_consent_claimed' : ActorMethod<
+    [ClaimConsentRequest],
+    IsConsentClaimedResponse
+  >,
   'metrics' : ActorMethod<[], string>,
   'notify_issued' : ActorMethod<[IssueRequest], undefined>,
+  'patient_list' : ActorMethod<[], PatientListResponse>,
   'ping' : ActorMethod<[], PingResult>,
   'read_emr_by_id' : ActorMethod<[ReadEmrByIdRequest], ReadEmrByIdResponse>,
   'read_emr_with_session' : ActorMethod<
@@ -166,6 +206,10 @@ export interface _SERVICE {
   >,
   'update_emr_registry_principal' : ActorMethod<
     [UpdateEmrRegistryRequest],
+    undefined
+  >,
+  'update_initial_patient_info' : ActorMethod<
+    [UpdateInitialPatientInfoRequest],
     undefined
   >,
   'update_provider_registry_principal' : ActorMethod<

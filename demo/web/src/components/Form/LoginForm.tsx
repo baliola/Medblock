@@ -1,24 +1,13 @@
-import { AxiosError } from 'axios';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { FC, useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
 import { ErrorMessage, Field, Formik, useFormik } from 'formik';
 import AuthBtnSubmit from '../AuthButton/AuthBtnSubmit';
-import { Identity } from '@dfinity/agent';
-import { NFID } from '@nfid/embed';
-import { NFIDConfig } from '@nfid/embed/src/lib/types';
 import { eidLogo, googleIcon, line, passkeyIcon } from '@/lib/assets';
 import { AuthClient } from '@dfinity/auth-client';
-import { EyeDropperIcon, EyeIcon } from '@heroicons/react/20/solid';
-import { Eye, EyeSlash } from 'iconsax-react';
 import { useCentralStore } from '@/Store';
-import { targetCanister } from '@/lib/canister/target.canister';
-import { emrCanisterId } from '@/lib/canister/emr.canister';
-import { patientCanisterId } from '@/lib/canister/patient.canister';
-import { providerCanisterId } from '@/lib/canister/provider.canister';
-import useAuth from '@/hooks/useAuth';
+import useAuthentication from '@/hooks/useAuth';
+import { useAuth } from '@/config/agent';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -53,13 +42,15 @@ const LoginForm: FC<LoginFormProps> = ({
     email: '',
     password: '',
   });
+
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
 
   const router = useRouter();
   const { setClient, setUserPrincipal } = useCentralStore();
-  const { handleAuthenticate, handleLogin } = useAuth();
+  const { handleAuthenticate, handleLogin } = useAuthentication();
+  const { identity } = useAuth();
 
   useEffect(() => {
     localStorage.removeItem('user');
@@ -69,7 +60,7 @@ const LoginForm: FC<LoginFormProps> = ({
     <Formik
       initialValues={formData}
       // validationSchema={''}
-      onSubmit={handleAuthenticate}
+      onSubmit={handleLogin}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
         <>

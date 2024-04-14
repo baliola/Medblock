@@ -2,18 +2,30 @@ export const idlFactory = ({ IDL }) => {
   const AuthorizedCallerRequest = IDL.Record({ 'caller' : IDL.Principal });
   const ClaimConsentRequest = IDL.Record({ 'code' : IDL.Text });
   const ClaimConsentResponse = IDL.Record({ 'session_id' : IDL.Text });
+  const Consent = IDL.Record({
+    'nik' : IDL.Text,
+    'session_id' : IDL.Opt(IDL.Text),
+    'code' : IDL.Text,
+    'claimed' : IDL.Bool,
+    'session_user' : IDL.Opt(IDL.Principal),
+  });
+  const ConsentListResponse = IDL.Record({ 'consents' : IDL.Vec(Consent) });
+  const EmrListPatientRequest = IDL.Record({
+    'page' : IDL.Nat8,
+    'limit' : IDL.Nat8,
+  });
   const EmrHeader = IDL.Record({
     'provider_id' : IDL.Text,
     'user_id' : IDL.Text,
     'emr_id' : IDL.Text,
     'registry_id' : IDL.Principal,
   });
-  const CreateConsentRequest = IDL.Record({ 'allowed' : IDL.Vec(EmrHeader) });
-  const EmrListPatientRequest = IDL.Record({
+  const EmrListPatientResponse = IDL.Record({ 'emrs' : IDL.Vec(EmrHeader) });
+  const EmrListConsentRequest = IDL.Record({
+    'session_id' : IDL.Text,
     'page' : IDL.Nat8,
     'limit' : IDL.Nat8,
   });
-  const EmrListPatientResponse = IDL.Record({ 'emrs' : IDL.Vec(EmrHeader) });
   const StatusRequest = IDL.Record({
     'memory_size' : IDL.Bool,
     'cycles' : IDL.Bool,
@@ -115,7 +127,25 @@ export const idlFactory = ({ IDL }) => {
     'logs' : IDL.Opt(CanisterLogResponse),
     'version' : IDL.Opt(IDL.Nat),
   });
+  const V1 = IDL.Record({
+    'name' : IDL.Text,
+    'martial_status' : IDL.Text,
+    'place_of_birth' : IDL.Text,
+    'address' : IDL.Text,
+    'gender' : IDL.Text,
+    'date_of_birth' : IDL.Text,
+  });
+  const Patient = IDL.Variant({ 'V1' : V1 });
+  const GetPatientInfoResponse = IDL.Record({
+    'nik' : IDL.Text,
+    'patient' : Patient,
+  });
+  const IsConsentClaimedResponse = IDL.Record({
+    'info' : IDL.Opt(Consent),
+    'claimed' : IDL.Bool,
+  });
   const IssueRequest = IDL.Record({ 'header' : EmrHeader });
+  const PatientListResponse = IDL.Record({ 'patients' : IDL.Vec(Patient) });
   const PingResult = IDL.Record({ 'emr_registry_status' : IDL.Bool });
   const ReadEmrByIdRequest = IDL.Record({
     'provider_id' : IDL.Text,
@@ -141,6 +171,7 @@ export const idlFactory = ({ IDL }) => {
     'metrics' : IDL.Opt(CollectMetricsRequestType),
   });
   const UpdateEmrRegistryRequest = IDL.Record({ 'principal' : IDL.Principal });
+  const UpdateInitialPatientInfoRequest = IDL.Record({ 'info' : V1 });
   return IDL.Service({
     'add_authorized_metrics_collector' : IDL.Func(
         [AuthorizedCallerRequest],
@@ -152,18 +183,15 @@ export const idlFactory = ({ IDL }) => {
         [ClaimConsentResponse],
         [],
       ),
-    'create_consent' : IDL.Func(
-        [CreateConsentRequest],
-        [ClaimConsentRequest],
-        [],
-      ),
+    'consent_list' : IDL.Func([], [ConsentListResponse], ['query']),
+    'create_consent' : IDL.Func([], [ClaimConsentRequest], []),
     'emr_list_patient' : IDL.Func(
         [EmrListPatientRequest],
         [EmrListPatientResponse],
         ['query'],
       ),
     'emr_list_with_session' : IDL.Func(
-        [ClaimConsentResponse],
+        [EmrListConsentRequest],
         [EmrListPatientResponse],
         ['query'],
       ),
@@ -173,8 +201,21 @@ export const idlFactory = ({ IDL }) => {
         [GetInformationResponse],
         ['query'],
       ),
+    'get_patient_info' : IDL.Func([], [GetPatientInfoResponse], ['query']),
+    'get_patient_info_with_consent' : IDL.Func(
+        [ClaimConsentResponse],
+        [GetPatientInfoResponse],
+        ['query'],
+      ),
+    'get_trusted_origins' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
+    'is_consent_claimed' : IDL.Func(
+        [ClaimConsentRequest],
+        [IsConsentClaimedResponse],
+        ['query'],
+      ),
     'metrics' : IDL.Func([], [IDL.Text], ['query']),
     'notify_issued' : IDL.Func([IssueRequest], [], []),
+    'patient_list' : IDL.Func([], [PatientListResponse], ['query']),
     'ping' : IDL.Func([], [PingResult], ['composite_query']),
     'read_emr_by_id' : IDL.Func(
         [ReadEmrByIdRequest],
@@ -200,6 +241,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'update_emr_registry_principal' : IDL.Func(
         [UpdateEmrRegistryRequest],
+        [],
+        [],
+      ),
+    'update_initial_patient_info' : IDL.Func(
+        [UpdateInitialPatientInfoRequest],
         [],
         [],
       ),

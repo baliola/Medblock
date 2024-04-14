@@ -1,11 +1,13 @@
 import Image from 'next/image';
-import { FC, ReactElement } from 'react';
+import { FC, ReactElement, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { useCentralStore } from '@/Store';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Navbar from '@/components/Navbar/Navbar';
 import PatientInfo from '@/scenes/Detail/component/PatientInfo';
+import { useAuth } from '@/config/agent';
+import { useRouter } from 'next/router';
 
 interface PatientLayoutProps {
   children: ReactElement;
@@ -13,6 +15,17 @@ interface PatientLayoutProps {
 
 export const PatientLayout: FC<PatientLayoutProps> = ({ children }) => {
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useCentralStore();
+
+  const { authenticate, authenticated, identity } = useAuth();
+  const router = useRouter();
+
+  // useEffect(() => {
+  //   console.log('patient detail page', identity?.getPrincipal().toText());
+  //   if (identity?.getPrincipal().toText() === undefined) {
+  //     console.log('user not authorized');
+  //     router.push('/auth/login');
+  //   }
+  // }, []);
 
   return (
     <motion.div

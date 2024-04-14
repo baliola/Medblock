@@ -9,20 +9,53 @@ import ImageGallery from './component/ImageGallery';
 import Modal from '@/components/Modal/Modal';
 import InputField from '@/components/Input/InputField';
 import { PlusIcon } from '@heroicons/react/20/solid';
+import AuthBtnSubmit from '@/components/AuthButton/AuthBtnSubmit';
+import BtnSubmit from '@/components/AuthButton/SubmitBtn';
+import { EmrFragment } from 'declarations/emr_registry/emr_registry.did';
+import useEmr from '@/hooks/useEmr';
 
 const MedicalRecord: NextPageWithLayout = () => {
   const initialValue = {
-    name: '',
+    location: 'denpasar',
+    amnanesis: '',
+    medication: '',
+    oxygen: '',
+    temperature: '',
+    blood: '',
+    doctor: '',
   };
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [query, setQuery] = useState('');
-  const handleSubmit = async (values: any) => {
-    console.log('values', values);
-  };
+  const { createEmr } = useEmr();
+
   const toggleModal = () => {
     setShowModal(!showModal);
   };
+
+  const handleSubmit = async (values: any) => {
+    console.log('values', values);
+    const emrFragments: EmrFragment[] = [];
+
+    // Iterate over the initial values object
+    for (const [key, value] of Object.entries(initialValue)) {
+      // Skip fields that are not included in the initial values
+
+      if (key === 'doctor') continue;
+
+      if (values[key] === undefined) continue;
+
+      // Create EmrFragment object and push it to the array
+      emrFragments.push({ key, value: values[key] });
+    }
+    if (values.doctor && values.doctor.name) {
+      emrFragments.push({ key: 'doctor', value: values.doctor.name });
+    }
+
+    console.log('emr fragments', emrFragments);
+    createEmr(emrFragments);
+  };
+
   return (
     <>
       <div className="flex flex-col w-full gap-6">
@@ -78,12 +111,12 @@ const MedicalRecord: NextPageWithLayout = () => {
                       :
                       <OptionField
                         options={dummyDoctorTypes}
-                        fieldName=""
+                        fieldName="doctor"
                         query={query}
                         setQuery={setQuery}
                         setFieldValue={setFieldValue}
                         handleChange={handleChange('doctor')}
-                        values={values.name}
+                        values={values.location}
                       />
                     </div>{' '}
                   </div>
@@ -147,16 +180,21 @@ const MedicalRecord: NextPageWithLayout = () => {
                   </div>
                 </div>
                 <div className="flex w-full justify-end items-end">
-                  <button
+                  <BtnSubmit
+                    title={'Add Medical Record'}
+                    onSubmit={handleSubmit}
+                    disable={false}
+                    color={'#242DA8'}
+                  />
+                  {/* <button
                     className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
                     // onClick={() => {
                     //   router.push(`/medical-record/add`);
                     // }}
                   >
-                    {/* <img src={} alt="" /> */}
                     <PlusIcon width={16} />
                     Add Medical Record
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>

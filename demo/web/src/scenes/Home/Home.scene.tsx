@@ -27,46 +27,69 @@ import { SetStateAction, useMemo, useState } from 'react';
 import ModalAdd from './components/Modal/ModalAdd';
 import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
+import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import ModalSuccess from './components/Modal/ModalSuccess';
+import ModalAddGetPatientSession from './components/Modal/ModalRequestSession';
+import useProvider from '@/hooks/useProvider';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
-  const { fetchPatient } = usePatient();
+
+  const { GetProviderInfo } = useProvider();
+  const {
+    fetchPatient,
+    patientList,
+    createdummyConsent,
+    registerDummyPatient,
+    sessionId,
+    toggleModalSession,
+    setShowModalSession,
+    showModalSession,
+  } = usePatient();
 
   const toggleModal = () => {
     setShowModal(!showModal);
   };
 
-  const patientColumn = useMemo<ColumnDef<MockPatients>[]>(
+  const toggleModalSuccess = () => {
+    setShowModalSuccess(!showModalSuccess);
+  };
+
+  console.log('seesion id', sessionId);
+
+  const patientColumn = useMemo<ColumnDef<Patient>[]>(
     () => [
       {
         header: 'No',
-        cell: (info) => <p className="font-normal w-auto">{info.row.index}</p>,
+        cell: (info) => (
+          <p className="font-normal w-auto">{info.row.index + 1}</p>
+        ),
       },
       {
         header: 'Full Name',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.firstName}</p>
+          <p className="font-normal">{info.row.original.V1.name}</p>
         ),
       },
       {
         header: 'Date of Birth',
         cell: (info) => (
-          <p className="font-normal">
-            {info.row.original.dob.toLocaleDateString()}
-          </p>
+          <p className="font-normal">{info.row.original.V1.date_of_birth}</p>
         ), // Format the date as needed
       },
       {
         header: 'Place of Birth',
-        cell: (info) => <p className="font-normal">{info.row.original.pob}</p>,
+        cell: (info) => (
+          <p className="font-normal"> {info.row.original.V1.place_of_birth}</p>
+        ),
       },
       {
         header: 'Address',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.address}</p>
+          <p className="font-normal">{info.row.original.V1.address}</p>
         ),
       },
       {
@@ -77,14 +100,14 @@ export default function DashboardExample() {
               size="24"
               color="#FDB569"
               className="cursor-pointer"
-              onClick={toggleModal}
+              onClick={() => toggleModalSession()}
             />
             <Health
               size="24"
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/emr/${info.row.original.id}`);
+                router.push(`/emr/1`);
               }}
             />
             <User size="24" className="cursor-pointer" />
@@ -123,6 +146,26 @@ export default function DashboardExample() {
           <div className="flex w-full justify-end">
             <button
               className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
+              onClick={registerDummyPatient}
+            >
+              {/* <img src={} alt="" /> */}
+              <PlusIcon width={16} />
+              Dummy Patient
+            </button>
+          </div>
+          <div className="flex w-full justify-end">
+            <button
+              className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
+              onClick={createdummyConsent}
+            >
+              {/* <img src={} alt="" /> */}
+              <PlusIcon width={16} />
+              Dummy Consent Code
+            </button>
+          </div>
+          <div className="flex w-full justify-end">
+            <button
+              className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
               onClick={toggleModal}
             >
               {/* <img src={} alt="" /> */}
@@ -135,7 +178,7 @@ export default function DashboardExample() {
         <Card className="flex flex-col gap-2 mt-4">
           <Table
             columns={patientColumn}
-            data={[]}
+            data={patientList ?? []}
             isLoading={false}
             currentPage={0}
             // setCurrentPage={setCurrentPageAccountType}
@@ -151,6 +194,16 @@ export default function DashboardExample() {
           setShowModalSuccess={setShowModalSuccess}
           // setPhoneNumber={undefined}
           datas={''}
+        />
+      </Modal>
+      <Modal toggle={toggleModalSuccess} isOpen={showModalSuccess}>
+        <ModalSuccess toggle={toggleModalSuccess} sessionId={sessionId} />
+      </Modal>
+      <Modal toggle={toggleModalSession} isOpen={showModalSession}>
+        <ModalAddGetPatientSession
+          setShowModal={setShowModalSession}
+          setShowModalSuccess={setShowModalSuccess}
+          toggle={toggleModalSession}
         />
       </Modal>
     </>
