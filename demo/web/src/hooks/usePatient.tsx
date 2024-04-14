@@ -25,6 +25,7 @@ import keccak256 from 'keccak256';
 import { AppAgent } from '@/config/config';
 import { useAuth } from '@/config/agent';
 import { localStorageHelper } from '@/helpers/localStorage.helpers';
+import { rejects } from 'assert';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -178,6 +179,7 @@ const usePatient = () => {
   };
   const generateRandomV1Values = (): V1 => {
     return {
+      name: generateRandomString(),
       martial_status: generateRandomString(),
       place_of_birth: generateRandomString(),
       address: generateRandomString(),

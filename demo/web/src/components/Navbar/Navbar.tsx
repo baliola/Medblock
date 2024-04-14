@@ -7,6 +7,8 @@ import {
   SearchNormal1,
   SidebarLeft,
 } from 'iconsax-react';
+import { useCentralStore } from '@/Store';
+import { UserCircleIcon } from '@heroicons/react/20/solid';
 
 function Navbar({
   isOpen,
@@ -15,15 +17,23 @@ function Navbar({
   isOpen: boolean;
   sidebarChange: (value: boolean) => void;
 }) {
+  const { provider } = useCentralStore();
   return (
     <div>
       <div className="flex p-4 md:p-6 justify-between items-center">
         {/* profile/left section */}
         <div className="flex items-center justify-between gap-2">
-          <div className="">
-            <p className="text-2xl font-semibold text-gray-800">
-              Medblock Dashboard
-            </p>
+          <div className="flex items-center justify-between gap-2">
+            <UserCircleIcon width={40} height={40} />
+            <div className="">
+              <p className="text-sm font-semibold text-gray-800 capitalize">
+                {provider ? provider.V1.display_name : ''}
+              </p>
+              <p className="text-xs font-medium text-gray-500 capitalize">
+                {' '}
+                {provider ? provider.V1.address : ''}
+              </p>
+            </div>
           </div>
         </div>
 

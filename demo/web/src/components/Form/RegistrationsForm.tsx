@@ -19,6 +19,10 @@ import { emrCanisterId } from '@/lib/canister/emr.canister';
 import { patientCanisterId } from '@/lib/canister/patient.canister';
 import { providerCanisterId } from '@/lib/canister/provider.canister';
 import useAuth from '@/hooks/useAuth';
+import RegisterProviderValidations from '@/lib/validation/Provider.validation';
+import useProvider from '@/hooks/useProvider';
+import { RegisterProviderRequest } from '@/interface/Provider.interface';
+import useRegister from '@/hooks/useRegister';
 
 // import AuthBtnSubmit from '../Button/AuthButton/AuthBtnSubmit';
 // import loginValidationSchema from '@/lib/faker/validation/auth/LoginValidation';
@@ -41,11 +45,19 @@ const RegistrationsForm: FC<RegistrationsFormProps> = ({
   required = false,
 }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    displayName: '',
     address: '',
   });
-
-  const handleRegister = (values: any) => {};
+  const { registerProvider } = useRegister();
+  //
+  const handleRegister = (values: RegisterProviderRequest) => {
+    console.log('values', values);
+    const data: RegisterProviderRequest = {
+      displayName: values.displayName,
+      address: values.address,
+    };
+    registerProvider(data);
+  };
 
   useEffect(() => {
     localStorage.removeItem('user');
@@ -54,7 +66,7 @@ const RegistrationsForm: FC<RegistrationsFormProps> = ({
   return (
     <Formik
       initialValues={formData}
-      // validationSchema={''}
+      validationSchema={RegisterProviderValidations}
       onSubmit={handleRegister}
     >
       {({ errors, handleChange, handleSubmit, isSubmitting, values }) => (
@@ -80,15 +92,18 @@ const RegistrationsForm: FC<RegistrationsFormProps> = ({
                 </label>
               </div>
               <input
-                id="name"
-                name="name"
+                id="displayName"
+                name="displayName"
                 type={'text'}
                 placeholder={'Enter your hospital name...'}
-                onChange={handleChange('password')}
+                onChange={handleChange('displayName')}
                 className={
                   'rounded-2xl bg-[#E7E7E7]  mt-[6px] flex flex-row min-w-full h-[56px] rounde text-[14px] border px-4  border-[#B4BAC6] focus:outline-none focus:border-[#397BFF] focus:border-b-[1px]'
                 }
               />
+              {errors?.displayName && (
+                <p className="text-[#F04438]">{errors?.displayName}</p>
+              )}{' '}
             </div>{' '}
             <div className={`flex flex-col gap-2`}>
               <div className="grid grid-cols-2">
@@ -100,15 +115,18 @@ const RegistrationsForm: FC<RegistrationsFormProps> = ({
                 </label>
               </div>
               <input
-                id="name"
-                name="name"
+                id="address"
+                name="address"
                 type={'text'}
                 placeholder={'Enter your hospital address...'}
-                onChange={handleChange('password')}
+                onChange={handleChange('address')}
                 className={
                   'rounded-2xl bg-[#E7E7E7]  mt-[6px] flex flex-row min-w-full h-[56px] rounde text-[14px] border px-4  border-[#B4BAC6] focus:outline-none focus:border-[#397BFF] focus:border-b-[1px]'
                 }
               />
+              {errors?.address && (
+                <p className="text-[#F04438]">{errors?.address}</p>
+              )}{' '}
             </div>{' '}
             <div className="flex justify-end w-[100%]"></div>
             <AuthBtnSubmit

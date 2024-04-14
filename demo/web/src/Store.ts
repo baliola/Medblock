@@ -1,6 +1,7 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import { Provider } from 'declarations/provider_registry/provider_registry.did';
 import { create } from 'zustand';
 
 type pageOptions =
@@ -21,6 +22,9 @@ interface centralStore {
 
   sessionId: string | undefined;
   setSessionId: (session: string) => void;
+
+  provider: Provider | undefined;
+  setProvider: (provider: Provider) => void;
 
   patientList: Patient[] | null;
   setPatientList: (patient: Patient[]) => void;
@@ -51,6 +55,11 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   patientList: null,
   setPatientList(patient) {
     set({ patientList: patient });
+  },
+
+  provider: undefined,
+  setProvider(provider) {
+    set({ provider: provider });
   },
 
   sessionId: undefined,

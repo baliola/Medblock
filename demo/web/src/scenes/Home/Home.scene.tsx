@@ -30,12 +30,15 @@ import usePatient from '@/hooks/usePatient';
 import { Patient } from 'declarations/patient_registry/patient_registry.did';
 import ModalSuccess from './components/Modal/ModalSuccess';
 import ModalAddGetPatientSession from './components/Modal/ModalRequestSession';
+import useProvider from '@/hooks/useProvider';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
+
+  const { GetProviderInfo } = useProvider();
   const {
     fetchPatient,
     patientList,
@@ -61,12 +64,14 @@ export default function DashboardExample() {
     () => [
       {
         header: 'No',
-        cell: (info) => <p className="font-normal w-auto">{info.row.index}</p>,
+        cell: (info) => (
+          <p className="font-normal w-auto">{info.row.index + 1}</p>
+        ),
       },
       {
         header: 'Full Name',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.V1.address}</p>
+          <p className="font-normal">{info.row.original.V1.name}</p>
         ),
       },
       {
