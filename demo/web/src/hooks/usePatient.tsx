@@ -15,6 +15,7 @@ import { useCentralStore } from '@/Store';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
 import { NFID } from '@nfid/embed';
 import {
+  EmrListConsentRequest,
   PatientListResponse,
   RegisterPatientRequest,
   UpdateInitialPatientInfoRequest,
@@ -23,6 +24,7 @@ import {
 import keccak256 from 'keccak256';
 import { AppAgent } from '@/config/config';
 import { useAuth } from '@/config/agent';
+import { localStorageHelper } from '@/helpers/localStorage.helpers';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -76,6 +78,7 @@ const usePatient = () => {
       console.log('-----------------');
     }
   }
+
   const createdummyConsent = async () => {
     try {
       const response = await api?.create_consent();
@@ -119,6 +122,7 @@ const usePatient = () => {
       console.log('-----------------');
       // if (sessionId) {
       setSessionId(session);
+      localStorageHelper.setItem('session', session);
       // }
       // setPatientList(response.code);
     } catch (error) {

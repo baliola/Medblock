@@ -13,12 +13,13 @@ import dateFormatter from '@/lib/dateFormatter';
 import { Health, SearchNormal1 } from 'iconsax-react';
 import { PlusIcon } from '@heroicons/react/20/solid';
 import { useRouter } from 'next/router';
+import useEMRPatient from '@/hooks/useEmrPatient';
 // import Datepicker from 'react-tailwindcss-datepicker';
 
 const DetailPatient: NextPageWithLayout = () => {
   // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
-
+  const { getPatientInfo } = useEMRPatient();
   const [dateValue, setDateValue] = useState({
     startDate: new Date(),
     endDate: new Date(),
