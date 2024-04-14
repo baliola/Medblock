@@ -19,12 +19,12 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('user not authorized');
+    console.log('user not authorized', identity?.getPrincipal());
 
-    if (identity?.getPrincipal().toText() === undefined) {
-      console.log('user not authorized');
-      router.push('/auth/login');
-    }
+    // if (identity?.getPrincipal().toText() === undefined) {
+    //   console.log('user not authorized');
+    //   router.push('/auth/login');
+    // }
   }, []);
   return (
     <motion.div

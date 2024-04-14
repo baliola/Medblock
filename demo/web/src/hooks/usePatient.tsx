@@ -40,11 +40,23 @@ export interface EmrListPatientRequest {
 }
 
 const usePatient = () => {
-  const { patientList, setPatientList } = useCentralStore();
+  const { patientList, setPatientList, sessionId, setSessionId } =
+    useCentralStore();
   const { identity, authenticated } = useAuth();
   const router = useRouter();
   const canister = patientCanisterId;
   const api = createActor(canister, { agent: AppAgent(identity) });
+  // const [sessionId, setSessionId] = useState<string | undefined>();
+
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [showModalSession, setShowModalSession] = useState<boolean>(false);
+
+  const toggleModal = () => {
+    setShowModal(!showModal);
+  };
+  const toggleModalSession = () => {
+    setShowModalSession(!showModalSession);
+  };
 
   async function fetchPatient() {
     console.log('FETCH PATIENT RUNNING.....');
@@ -90,6 +102,24 @@ const usePatient = () => {
 
       fetchPatient();
 
+      // setPatientList(response.code);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  };
+
+  const claimConsentToGetSession = async (code: ClaimConsentRequest) => {
+    try {
+      const response = await api?.claim_consent(code);
+      const session = await response?.session_id;
+      console.log('-----------------');
+      console.log('RESPONSE conscentt::::', session);
+      console.log('-----------------');
+      // if (sessionId) {
+      setSessionId(session);
+      // }
       // setPatientList(response.code);
     } catch (error) {
       console.log('-----------------');
@@ -182,6 +212,14 @@ const usePatient = () => {
     claimConsent,
     registerDummyPatient,
     updateInfoDummyPatient,
+    claimConsentToGetSession,
+    sessionId,
+    toggleModal,
+    setShowModal,
+    showModal,
+    toggleModalSession,
+    setShowModalSession,
+    showModalSession,
   };
 };
 

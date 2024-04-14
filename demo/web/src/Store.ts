@@ -19,6 +19,9 @@ interface centralStore {
   activePage: pageOptions;
   setActivePage: (page: pageOptions) => void;
 
+  sessionId: string | undefined;
+  setSessionId: (session: string) => void;
+
   patientList: Patient[] | null;
   setPatientList: (patient: Patient[]) => void;
 
@@ -48,6 +51,11 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   patientList: null,
   setPatientList(patient) {
     set({ patientList: patient });
+  },
+
+  sessionId: undefined,
+  setSessionId(session) {
+    set({ sessionId: session });
   },
 
   client: null,

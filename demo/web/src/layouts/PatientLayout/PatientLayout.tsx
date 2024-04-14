@@ -19,13 +19,13 @@ export const PatientLayout: FC<PatientLayoutProps> = ({ children }) => {
   const { authenticate, authenticated, identity } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    console.log('patient detail page', identity?.getPrincipal().toText());
-    if (identity?.getPrincipal().toText() === undefined) {
-      console.log('user not authorized');
-      router.push('/auth/login');
-    }
-  }, []);
+  // useEffect(() => {
+  //   console.log('patient detail page', identity?.getPrincipal().toText());
+  //   if (identity?.getPrincipal().toText() === undefined) {
+  //     console.log('user not authorized');
+  //     router.push('/auth/login');
+  //   }
+  // }, []);
 
   return (
     <motion.div

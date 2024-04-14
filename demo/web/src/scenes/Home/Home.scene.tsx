@@ -29,6 +29,7 @@ import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
 import { Patient } from 'declarations/patient_registry/patient_registry.did';
 import ModalSuccess from './components/Modal/ModalSuccess';
+import ModalAddGetPatientSession from './components/Modal/ModalRequestSession';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
@@ -40,6 +41,10 @@ export default function DashboardExample() {
     patientList,
     createdummyConsent,
     registerDummyPatient,
+    sessionId,
+    toggleModalSession,
+    setShowModalSession,
+    showModalSession,
   } = usePatient();
 
   const toggleModal = () => {
@@ -49,6 +54,8 @@ export default function DashboardExample() {
   const toggleModalSuccess = () => {
     setShowModalSuccess(!showModalSuccess);
   };
+
+  console.log('seesion id', sessionId);
 
   const patientColumn = useMemo<ColumnDef<Patient>[]>(
     () => [
@@ -88,7 +95,7 @@ export default function DashboardExample() {
               size="24"
               color="#FDB569"
               className="cursor-pointer"
-              onClick={toggleModal}
+              onClick={() => toggleModalSession()}
             />
             <Health
               size="24"
@@ -185,7 +192,14 @@ export default function DashboardExample() {
         />
       </Modal>
       <Modal toggle={toggleModalSuccess} isOpen={showModalSuccess}>
-        <ModalSuccess toggle={toggleModalSuccess} />
+        <ModalSuccess toggle={toggleModalSuccess} sessionId={sessionId} />
+      </Modal>
+      <Modal toggle={toggleModalSession} isOpen={showModalSession}>
+        <ModalAddGetPatientSession
+          setShowModal={setShowModalSession}
+          setShowModalSuccess={setShowModalSuccess}
+          toggle={toggleModalSession}
+        />
       </Modal>
     </>
   );

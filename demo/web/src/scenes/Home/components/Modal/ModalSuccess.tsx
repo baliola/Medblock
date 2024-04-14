@@ -4,12 +4,22 @@ import {
   CheckIcon,
 } from '@heroicons/react/20/solid';
 import XCircleIcon from '@heroicons/react/20/solid/XCircleIcon';
+import { useRouter } from 'next/router';
 import React from 'react';
 
 type ModalSuccessType = {
   toggle: () => void;
+  sessionId?: string | null;
 };
 export default function ModalSuccess(props: ModalSuccessType) {
+  const router = useRouter();
+  const goToDetail = () => {
+    router.push(`/emr/${props.sessionId}`);
+  };
+
+  console.log('session id from modal', props.sessionId);
+
+  console.log(props.sessionId);
   return (
     <div className="flex flex-col justify-center items-center rounded-[4px] max-w-[500px] w-full bg-white">
       <div className="flex flex-col justify-center items-center px-5">
@@ -20,13 +30,23 @@ export default function ModalSuccess(props: ModalSuccessType) {
           </div>
 
           <div className="flex justify-center w-full p-6 space-x-3">
-            <button
-              className="px-4 py-1 text-base font-light rounded-2xl bg-[#242DA8] text-white  transition-all ease-in duration-200 "
-              type="button"
-              onClick={props.toggle}
-            >
-              Close
-            </button>
+            {props.sessionId ? (
+              <button
+                className="px-4 py-1 text-base font-light rounded-2xl bg-[#242DA8] text-white  transition-all ease-in duration-200 "
+                type="button"
+                onClick={goToDetail}
+              >
+                Go to Detail
+              </button>
+            ) : (
+              <button
+                className="px-4 py-1 text-base font-light rounded-2xl bg-[#242DA8] text-white  transition-all ease-in duration-200 "
+                type="button"
+                onClick={props.toggle}
+              >
+                Close
+              </button>
+            )}
           </div>
         </form>
       </div>
