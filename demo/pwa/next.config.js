@@ -12,6 +12,9 @@ const nextConfig = {
     register: true,
     skipWaiting: true,
   },
+  images: {
+    unoptimized: true,
+  },
 };
 
 module.exports = withPWA(nextConfig);

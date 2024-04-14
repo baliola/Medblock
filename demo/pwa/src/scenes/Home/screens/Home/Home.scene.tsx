@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/router';
-import { Share } from 'solar-icon-set/essentionalui';
-import { File } from 'solar-icon-set/files';
+import { File, Share } from 'solar-icon-set';
 
 import AppBarWithIcon from '@/components/AppBar/AppBarWithIcon';
 import ProfileBar from '@/components/AppBar/ProfileBar';
