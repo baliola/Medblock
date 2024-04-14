@@ -4,6 +4,7 @@ use api::{
     AuthorizedCallerRequest,
     ClaimConsentRequest,
     ClaimConsentResponse,
+    ConsentListResponse,
     CreateConsentResponse,
     EmrListConsentRequest,
     EmrListConsentResponse,
@@ -338,7 +339,15 @@ fn patient_list() -> PatientListResponse {
 fn is_consent_claimed(req: IsConsentClaimedRequest) -> IsConsentClaimedResponse {
     let caller = verified_caller().unwrap();
     let patient = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-    ConsentsApi::is_claimed(&req.code, &patient).into()
+
+    if let Some(consent) = ConsentsApi::resolve_session_with_code(&req.code, &patient) {
+        IsConsentClaimedResponse {
+            claimed: consent.claimed,
+            info: Some(consent),
+        }
+    } else {
+        Default::default()
+    }
 }
 
 #[ic_cdk::query(composite = true)]
@@ -477,17 +486,18 @@ fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
 fn get_patient_info_with_consent(req: GetPatientInfoBySessionRequest) -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
     let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
-    with_state(|s| s.registry.get_patient_info(consent.nik))
-        .unwrap()
-        .into()
+    let patient = with_state(|s| s.registry.get_patient_info(consent.nik.clone())).unwrap();
+    GetPatientInfoResponse::new(patient, consent.nik)
 }
 
 #[ic_cdk::query(guard = "only_patient")]
 fn get_patient_info() -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
-    with_state(|s| s.registry.get_patient_info_with_principal(caller))
-        .unwrap()
-        .into()
+    let (patient, nik) = with_state(|s|
+        s.registry.get_patient_info_with_principal(caller)
+    ).unwrap();
+    
+    GetPatientInfoResponse::new(patient, nik)
 }
 
 #[ic_cdk::update(guard = "only_patient")]
@@ -510,6 +520,15 @@ fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     ConsentsApi::claim_consent(&req.code, caller)
         .expect("consent already claimed or does not exists")
         .into()
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+fn consent_list() -> ConsentListResponse {
+    let caller = verified_caller().unwrap();
+    let patient = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    let consents = ConsentsApi::list_consent_with_patient(&patient);
+
+    consents.into()
 }
 
 ic_cdk::export_candid!();

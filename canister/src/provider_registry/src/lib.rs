@@ -4,6 +4,8 @@ use api::{
     AuthorizedCallerRequest,
     IssueEmrResponse,
     PingResult,
+    ProviderInfoRequest,
+    ProviderInfoResponse,
     RegisternewProviderRequest,
     RegisternewProviderResponse,
     SuspendRequest,
@@ -358,7 +360,7 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
     let id = with_id_generator_mut(|g| g.generate_id());
 
     with_state_mut(|s|
-        s.providers.register_new_provider(req.provider_principal, req.display_name, id)
+        s.providers.register_new_provider(req.provider_principal, req.display_name, req.address, id)
     ).unwrap();
 
     RegisternewProviderResponse {}
@@ -409,6 +411,11 @@ fn suspend_provider(req: SuspendRequest) {
 #[ic_cdk::update(guard = "only_canister_owner")]
 fn unsuspend_provider(req: UnSuspendRequest) {
     with_state_mut(|s| s.providers.unsuspend_provider(&req.principal)).unwrap()
+}
+
+#[ic_cdk::query]
+fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoResponse {
+    with_state(|s| s.providers.provider_info_with_principal(&req.provider).unwrap()).into()
 }
 
 ic_cdk::export_candid!();

@@ -1,8 +1,8 @@
 use candid::{ CandidType, Principal };
-use canister_common::{ common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId } };
+use canister_common::{ common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId }, from };
 use serde::Deserialize;
 
-use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
+use crate::{declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse }, registry::provider::Provider};
 
 #[derive(CandidType, Deserialize)]
 pub struct IssueEmrRequest {
@@ -55,6 +55,7 @@ pub struct PingResult {
 pub struct RegisternewProviderRequest {
     pub provider_principal: ic_principal::Principal,
     pub display_name: AsciiRecordsKey<64>,
+    pub address: AsciiRecordsKey<64>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -117,8 +118,21 @@ pub struct UnSuspendRequest {
     pub principal: Principal,
 }
 
-
 #[derive(CandidType, Deserialize)]
-pub struct AuthorizedCallerRequest{
+pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }
+
+#[derive(CandidType, Deserialize)]
+pub struct ProviderInfoRequest {
+    pub provider: Principal,
+}
+#
+[derive(CandidType, Deserialize)]
+pub struct ProviderInfoResponse {
+    pub provider: Provider,
+}
+
+from!(ProviderInfoResponse: Provider as value {
+    provider: value
+});

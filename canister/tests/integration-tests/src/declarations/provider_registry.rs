@@ -156,6 +156,33 @@ pub struct GetInformationResponse {
     pub version: Option<candid::Nat>,
 }
 #[derive(CandidType, Deserialize)]
+pub struct ProviderInfoRequest {
+    pub provider: Principal,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Status {
+    Active,
+    Suspended,
+}
+#[derive(CandidType, Deserialize)]
+pub struct V1 {
+    pub updated_at: u64,
+    pub internal_id: String,
+    pub display_name: String,
+    pub session: u64,
+    pub address: String,
+    pub registered_at: u64,
+    pub activation_status: Status,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Provider {
+    V1(V1),
+}
+#[derive(CandidType, Deserialize)]
+pub struct ProviderInfoResponse {
+    pub provider: Provider,
+}
+#[derive(CandidType, Deserialize)]
 pub struct EmrFragment {
     pub key: String,
     pub value: String,
@@ -185,6 +212,7 @@ pub struct PingResult {
 pub struct RegisternewProviderRequest {
     pub provider_principal: Principal,
     pub display_name: String,
+    pub address: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct RegisterNewProviderRet {}
@@ -236,6 +264,12 @@ impl ProviderRegistry {
         arg0: GetInformationRequest,
     ) -> Result<(GetInformationResponse,)> {
         ic_cdk::call(self.0, "getCanistergeekInformation", (arg0,)).await
+    }
+    pub async fn get_provider_info_with_principal(
+        &self,
+        arg0: ProviderInfoRequest,
+    ) -> Result<(ProviderInfoResponse,)> {
+        ic_cdk::call(self.0, "get_provider_info_with_principal", (arg0,)).await
     }
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
@@ -384,6 +418,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_canistergeek_information",
+                payload,
+            )
+        }
+        pub fn get_provider_info_with_principal(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: ProviderInfoRequest,
+        ) -> std::result::Result<ProviderInfoResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_provider_info_with_principal",
                 payload,
             )
         }

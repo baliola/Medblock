@@ -10,6 +10,14 @@ module.exports = {
     current: 'currentColor',
     extend: {
       colors: {
+        primary: {
+          normal: '#242DA8',
+          light: '#7178E1',
+        },
+        secondary: {
+          normal: '#D30837',
+          light: '#FED8E0',
+        },
         // light mode
         tremor: {
           brand: {

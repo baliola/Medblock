@@ -1,6 +1,8 @@
 #! bash
 root=$(git rev-parse --show-toplevel)
 
+cd $root/canister
+
 bash $root/canister/setup.sh
 # This script deploys the canister locally.
 FE_PORT=4943
