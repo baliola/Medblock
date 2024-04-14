@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::{
     consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
-    registry::{ Patient, V1 },
+    registry::{ Patient, NIK, V1 },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -168,11 +168,14 @@ pub struct UpdateInitialPatientInfoRequest {
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub patient: Patient,
+    pub nik: NIK,
 }
 
-from!(GetPatientInfoResponse: Patient as value {
-    patient: value
-});
+impl GetPatientInfoResponse {
+    pub fn new(patient: Patient, nik: NIK) -> Self {
+        Self { patient, nik }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoBySessionRequest {

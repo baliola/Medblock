@@ -92,7 +92,7 @@ type GetMetricsParameters = record {
   granularity : MetricsGranularity;
   dateFromMillis : nat;
 };
-type GetPatientInfoResponse = record { patient : Patient };
+type GetPatientInfoResponse = record { nik : text; patient : Patient };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
   canisterHeapMemorySize : vec nat64;
@@ -143,6 +143,7 @@ type UpdateInformationRequest = record {
 };
 type UpdateInitialPatientInfoRequest = record { info : V1 };
 type V1 = record {
+  name : text;
   martial_status : text;
   place_of_birth : text;
   address : text;

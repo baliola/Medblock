@@ -1,7 +1,29 @@
 use std::{ borrow::BorrowMut, cell::RefCell, time::Duration };
 
 use api::{
-    AuthorizedCallerRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetPatientInfoBySessionRequest, GetPatientInfoResponse, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, PatientListResponse, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RevokeConsentRequest, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest
+    AuthorizedCallerRequest,
+    ClaimConsentRequest,
+    ClaimConsentResponse,
+    ConsentListResponse,
+    CreateConsentResponse,
+    EmrListConsentRequest,
+    EmrListConsentResponse,
+    EmrListPatientRequest,
+    EmrListPatientResponse,
+    FinishSessionRequest,
+    GetPatientInfoBySessionRequest,
+    GetPatientInfoResponse,
+    IsConsentClaimedRequest,
+    IsConsentClaimedResponse,
+    IssueRequest,
+    PatientListResponse,
+    PingResult,
+    ReadEmrByIdRequest,
+    ReadEmrSessionRequest,
+    RegisterPatientRequest,
+    RevokeConsentRequest,
+    UpdateEmrRegistryRequest,
+    UpdateInitialPatientInfoRequest,
 };
 use candid::{ Decode, Encode };
 use canister_common::{
@@ -464,17 +486,18 @@ fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
 fn get_patient_info_with_consent(req: GetPatientInfoBySessionRequest) -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
     let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
-    with_state(|s| s.registry.get_patient_info(consent.nik))
-        .unwrap()
-        .into()
+    let patient = with_state(|s| s.registry.get_patient_info(consent.nik.clone())).unwrap();
+    GetPatientInfoResponse::new(patient, consent.nik)
 }
 
 #[ic_cdk::query(guard = "only_patient")]
 fn get_patient_info() -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
-    with_state(|s| s.registry.get_patient_info_with_principal(caller))
-        .unwrap()
-        .into()
+    let (patient, nik) = with_state(|s|
+        s.registry.get_patient_info_with_principal(caller)
+    ).unwrap();
+    
+    GetPatientInfoResponse::new(patient, nik)
 }
 
 #[ic_cdk::update(guard = "only_patient")]
