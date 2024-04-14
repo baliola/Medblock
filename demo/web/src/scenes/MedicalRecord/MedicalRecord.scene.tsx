@@ -12,6 +12,7 @@ import { PlusIcon } from '@heroicons/react/20/solid';
 import AuthBtnSubmit from '@/components/AuthButton/AuthBtnSubmit';
 import BtnSubmit from '@/components/AuthButton/SubmitBtn';
 import { EmrFragment } from 'declarations/emr_registry/emr_registry.did';
+import useEmr from '@/hooks/useEmr';
 
 const MedicalRecord: NextPageWithLayout = () => {
   const initialValue = {
@@ -26,6 +27,7 @@ const MedicalRecord: NextPageWithLayout = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [query, setQuery] = useState('');
+  const { createEmr } = useEmr();
 
   const toggleModal = () => {
     setShowModal(!showModal);
@@ -51,6 +53,7 @@ const MedicalRecord: NextPageWithLayout = () => {
     }
 
     console.log('emr fragments', emrFragments);
+    createEmr(emrFragments);
   };
 
   return (

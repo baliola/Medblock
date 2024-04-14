@@ -64,7 +64,7 @@ function PatientInfo() {
             <p
               className={`flex duration-200 rounded-md w-full py-2 px-6 items-center gap-2`}
             >
-              Name: -
+              Name: {patientInfo?.V1.name ?? '....'}
             </p>
           </div>
           <div className=" text-gray-500 font-medium space-y-2 md:px-2 text-sm">
