@@ -45,6 +45,8 @@ const useAuthentication = () => {
   const { login, logout, authenticated, identity, loginError } = useAuth({
     onLoginSuccess: (principal) => {
       console.log(`Logged in as ${principal}`);
+      console.log(`Authenticated status ${authenticated}`);
+
       toast.success('Login successfully');
       setIsloading(false);
       setTimeout(() => {

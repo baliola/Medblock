@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 // import Datepicker from 'react-tailwindcss-datepicker';
 
 const DetailPatient: NextPageWithLayout = () => {
-  const { generateMockMedicalRecords } = useMedicalRecordMock();
+  // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
 
   const [dateValue, setDateValue] = useState({
@@ -155,7 +155,7 @@ const DetailPatient: NextPageWithLayout = () => {
             <Card className="flex flex-col gap-2 mt-4">
               <Table
                 columns={patientColumn}
-                data={generateMockMedicalRecords}
+                data={[]}
                 isLoading={false}
                 currentPage={0}
                 // setCurrentPage={setCurrentPageAccountType}

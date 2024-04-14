@@ -52,8 +52,6 @@ const LoginForm: FC<LoginFormProps> = ({
   const { handleAuthenticate, handleLogin } = useAuthentication();
   const { identity } = useAuth();
 
-  console.log('identity', identity);
-
   useEffect(() => {
     localStorage.removeItem('user');
   }, []);
