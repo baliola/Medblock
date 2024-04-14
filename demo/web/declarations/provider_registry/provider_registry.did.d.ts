@@ -107,10 +107,16 @@ export interface PingResult {
   'patient_registry_status' : boolean,
   'emr_registry_status' : boolean,
 }
+export type Provider = { 'V1' : V1 };
+export interface ProviderInfoRequest { 'provider' : Principal }
+export interface ProviderInfoResponse { 'provider' : Provider }
 export interface RegisternewProviderRequest {
   'provider_principal' : Principal,
   'display_name' : string,
+  'address' : string,
 }
+export type Status = { 'Active' : null } |
+  { 'Suspended' : null };
 export interface StatusRequest {
   'memory_size' : boolean,
   'cycles' : boolean,
@@ -129,6 +135,15 @@ export interface UpdateEmrRequest {
 export interface UpdateInformationRequest {
   'metrics' : [] | [CollectMetricsRequestType],
 }
+export interface V1 {
+  'updated_at' : bigint,
+  'internal_id' : string,
+  'display_name' : string,
+  'session' : bigint,
+  'address' : string,
+  'registered_at' : bigint,
+  'activation_status' : Status,
+}
 export interface _SERVICE {
   'add_authorized_metrics_collector' : ActorMethod<
     [AuthorizedCallerRequest],
@@ -141,6 +156,10 @@ export interface _SERVICE {
   'getCanistergeekInformation' : ActorMethod<
     [GetInformationRequest],
     GetInformationResponse
+  >,
+  'get_provider_info_with_principal' : ActorMethod<
+    [ProviderInfoRequest],
+    ProviderInfoResponse
   >,
   'get_trusted_origins' : ActorMethod<[], Array<string>>,
   'issue_emr' : ActorMethod<[IssueEmrRequest], IssueEmrResponse>,

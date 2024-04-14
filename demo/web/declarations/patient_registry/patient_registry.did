@@ -30,6 +30,14 @@ type CanisterMetricsData = variant {
 type ClaimConsentRequest = record { code : text };
 type ClaimConsentResponse = record { session_id : text };
 type CollectMetricsRequestType = variant { force; normal };
+type Consent = record {
+  nik : text;
+  session_id : opt text;
+  code : text;
+  claimed : bool;
+  session_user : opt principal;
+};
+type ConsentListResponse = record { consents : vec Consent };
 type DailyMetricsData = record {
   updateCalls : nat64;
   canisterHeapMemorySize : NumericEntity;
@@ -84,7 +92,7 @@ type GetMetricsParameters = record {
   granularity : MetricsGranularity;
   dateFromMillis : nat;
 };
-type GetPatientInfoResponse = record { patient : Patient };
+type GetPatientInfoResponse = record { nik : text; patient : Patient };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
   canisterHeapMemorySize : vec nat64;
@@ -92,7 +100,7 @@ type HourlyMetricsData = record {
   canisterMemorySize : vec nat64;
   timeMillis : int;
 };
-type IsConsentClaimedResponse = record { claimed : bool };
+type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
 type IssueRequest = record { header : EmrHeader };
 type LogMessageData = record { timeNanos : nat64; message : text };
 type MetricsGranularity = variant { hourly; daily };
@@ -135,6 +143,7 @@ type UpdateInformationRequest = record {
 };
 type UpdateInitialPatientInfoRequest = record { info : V1 };
 type V1 = record {
+  name : text;
   martial_status : text;
   place_of_birth : text;
   address : text;
@@ -144,6 +153,7 @@ type V1 = record {
 service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
+  consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
   emr_list_patient : (EmrListPatientRequest) -> (EmrListPatientResponse) query;
   emr_list_with_session : (EmrListConsentRequest) -> (

@@ -106,6 +106,19 @@ export const idlFactory = ({ IDL }) => {
     'logs' : IDL.Opt(CanisterLogResponse),
     'version' : IDL.Opt(IDL.Nat),
   });
+  const ProviderInfoRequest = IDL.Record({ 'provider' : IDL.Principal });
+  const Status = IDL.Variant({ 'Active' : IDL.Null, 'Suspended' : IDL.Null });
+  const V1 = IDL.Record({
+    'updated_at' : IDL.Nat64,
+    'internal_id' : IDL.Text,
+    'display_name' : IDL.Text,
+    'session' : IDL.Nat64,
+    'address' : IDL.Text,
+    'registered_at' : IDL.Nat64,
+    'activation_status' : Status,
+  });
+  const Provider = IDL.Variant({ 'V1' : V1 });
+  const ProviderInfoResponse = IDL.Record({ 'provider' : Provider });
   const EmrFragment = IDL.Record({ 'key' : IDL.Text, 'value' : IDL.Text });
   const IssueEmrRequest = IDL.Record({
     'emr' : IDL.Vec(EmrFragment),
@@ -125,6 +138,7 @@ export const idlFactory = ({ IDL }) => {
   const RegisternewProviderRequest = IDL.Record({
     'provider_principal' : IDL.Principal,
     'display_name' : IDL.Text,
+    'address' : IDL.Text,
   });
   const SuspendRequest = IDL.Record({ 'principal' : IDL.Principal });
   const CollectMetricsRequestType = IDL.Variant({
@@ -158,6 +172,11 @@ export const idlFactory = ({ IDL }) => {
     'getCanistergeekInformation' : IDL.Func(
         [GetInformationRequest],
         [GetInformationResponse],
+        ['query'],
+      ),
+    'get_provider_info_with_principal' : IDL.Func(
+        [ProviderInfoRequest],
+        [ProviderInfoResponse],
         ['query'],
       ),
     'get_trusted_origins' : IDL.Func([], [IDL.Vec(IDL.Text)], []),

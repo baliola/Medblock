@@ -27,6 +27,14 @@ export interface ClaimConsentRequest { 'code' : string }
 export interface ClaimConsentResponse { 'session_id' : string }
 export type CollectMetricsRequestType = { 'force' : null } |
   { 'normal' : null };
+export interface Consent {
+  'nik' : string,
+  'session_id' : [] | [string],
+  'code' : string,
+  'claimed' : boolean,
+  'session_user' : [] | [Principal],
+}
+export interface ConsentListResponse { 'consents' : Array<Consent> }
 export interface DailyMetricsData {
   'updateCalls' : bigint,
   'canisterHeapMemorySize' : NumericEntity,
@@ -84,7 +92,7 @@ export interface GetMetricsParameters {
   'granularity' : MetricsGranularity,
   'dateFromMillis' : bigint,
 }
-export interface GetPatientInfoResponse { 'patient' : Patient }
+export interface GetPatientInfoResponse { 'nik' : string, 'patient' : Patient }
 export interface HourlyMetricsData {
   'updateCalls' : BigUint64Array | bigint[],
   'canisterHeapMemorySize' : BigUint64Array | bigint[],
@@ -92,7 +100,10 @@ export interface HourlyMetricsData {
   'canisterMemorySize' : BigUint64Array | bigint[],
   'timeMillis' : bigint,
 }
-export interface IsConsentClaimedResponse { 'claimed' : boolean }
+export interface IsConsentClaimedResponse {
+  'info' : [] | [Consent],
+  'claimed' : boolean,
+}
 export interface IssueRequest { 'header' : EmrHeader }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
 export type MetricsGranularity = { 'hourly' : null } |
@@ -136,6 +147,7 @@ export interface UpdateInformationRequest {
 }
 export interface UpdateInitialPatientInfoRequest { 'info' : V1 }
 export interface V1 {
+  'name' : string,
   'martial_status' : string,
   'place_of_birth' : string,
   'address' : string,
@@ -148,6 +160,7 @@ export interface _SERVICE {
     undefined
   >,
   'claim_consent' : ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>,
+  'consent_list' : ActorMethod<[], ConsentListResponse>,
   'create_consent' : ActorMethod<[], ClaimConsentRequest>,
   'emr_list_patient' : ActorMethod<
     [EmrListPatientRequest],
