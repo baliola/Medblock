@@ -1,6 +1,7 @@
-use std::{ path::Path, process::Command };
+use std::{ path::Path, process::Command, time::Duration };
 
 use candid::{ CandidType, Encode };
+use ic_agent::Identity;
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
 use integration_tests::declarations;
@@ -210,7 +211,7 @@ pub struct Registries {
     pub controller: Principal,
 }
 
-pub fn prepare_env() -> Registries {
+pub fn prepare() -> Registries {
     resolve_pocket_ic_path();
 
     let server = pocket_ic::PocketIcBuilder::new().with_application_subnet().build();
@@ -224,6 +225,12 @@ pub fn prepare_env() -> Registries {
 
     bind_canisters(&server, provider.clone(), patient.clone(), emr.clone(), controller.clone());
 
+    // to fully initialize the canisters
+    server.advance_time(Duration::from_secs(10));
+    for _ in 0..10 {
+        server.tick();
+    }
+
     Registries {
         ic: server,
         emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry(emr),
@@ -235,4 +242,14 @@ pub fn prepare_env() -> Registries {
         ),
         controller,
     }
+}
+
+pub fn random_identity() -> Principal {
+    let rand = ring::rand::SystemRandom::new();
+    let key = ring::signature::Ed25519KeyPair::generate_pkcs8(&rand).unwrap();
+    let key = ring::signature::Ed25519KeyPair::from_pkcs8(key.as_ref()).unwrap();
+
+    let identity = ic_agent::identity::BasicIdentity::from_key_pair(key);
+    
+    identity.sender().unwrap()
 }
