@@ -190,6 +190,7 @@ pub struct GetInformationResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct V1 {
+    pub name: String,
     pub martial_status: String,
     pub place_of_birth: String,
     pub address: String,
@@ -202,6 +203,7 @@ pub enum Patient {
 }
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
+    pub nik: String,
     pub patient: Patient,
 }
 #[derive(CandidType, Deserialize)]
