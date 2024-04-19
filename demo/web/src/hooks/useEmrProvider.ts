@@ -12,11 +12,14 @@ import { toast } from 'react-toastify';
 import { createActor } from 'declarations/provider_registry';
 import { providerCanisterId } from '@/lib/canister/provider.canister';
 import {
+  EmrHeader,
   EmrListProviderRequest,
   IssueEmrRequest,
+  UpdateEmrRequest,
 } from 'declarations/provider_registry/provider_registry.did';
 import { useEffect, useState } from 'react';
 
+// CALL EMR LIST From PROVIDER canister
 const useEmr = () => {
   const { identity, authenticated } = useAuth();
   const { provider } = useCentralStore();
@@ -39,6 +42,27 @@ const useEmr = () => {
     console.log('RESPONSE::::', response);
     console.log('-----------------');
     toast.success('Success Create Medical Record');
+    setTimeout(() => {
+      router.back();
+    }, 2000);
+    try {
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR::::', error);
+      console.log('-----------------');
+    }
+  }
+  async function update(emr: EmrFragment[], emrHeader: EmrHeader) {
+    const data: UpdateEmrRequest = {
+      fields: emr,
+      header: emrHeader,
+    };
+    console.log('data reques', data);
+    const response = await api.update_emr(data);
+    console.log('-----------------');
+    console.log('RESPONSE::::', response);
+    console.log('-----------------');
+    toast.success('Success Update Medical Record');
     setTimeout(() => {
       router.back();
     }, 2000);
@@ -74,6 +98,7 @@ const useEmr = () => {
 
   return {
     createEmr,
+    update,
   };
 };
 
