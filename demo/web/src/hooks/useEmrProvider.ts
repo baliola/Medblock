@@ -17,6 +17,7 @@ import {
 } from 'declarations/provider_registry/provider_registry.did';
 import { useEffect, useState } from 'react';
 
+// CALL EMR LIST From PROVIDER canister
 const useEmr = () => {
   const { identity, authenticated } = useAuth();
   const { provider } = useCentralStore();

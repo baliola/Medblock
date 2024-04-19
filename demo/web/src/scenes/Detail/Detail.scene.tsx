@@ -64,7 +64,13 @@ const DetailPatient: NextPageWithLayout = () => {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/medical-record/${info.row.original.emr_id}`);
+                router.push({
+                  pathname: `/medical-record/edit/${info.row.original.emr_id}`,
+                  query: {
+                    providerId: info.row.original.provider_id,
+                    userId: info.row.original.user_id,
+                  },
+                });
               }}
             />
           </div>

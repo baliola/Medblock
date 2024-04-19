@@ -39,7 +39,7 @@ const OptionField: React.FC<OptionFieldProps> = ({
         });
   return (
     <div className="flex flex-col">
-      <p className="capitalize text-gray-500">{fieldName}</p>
+      {/* <p className="capitalize text-gray-500">{fieldName}</p> */}
       <Combobox
         value={values.doctor}
         onChange={(value) => {

@@ -50,11 +50,11 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
   if (Component.disableLayout) {
     return (
-      <div suppressHydrationWarning>
-        <AgentProvider>
+      <AgentProvider>
+        <div suppressHydrationWarning>
           {getEmptyLayout(<Component {...pageProps} />)}
-        </AgentProvider>
-      </div>
+        </div>
+      </AgentProvider>
     );
   } else if (Component.patientLayout) {
     return (
