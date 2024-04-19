@@ -107,11 +107,7 @@ const useEMRPatient = () => {
     try {
       const response = await api.read_emr_by_id(data);
       console.log('-----------------');
-      console.log(
-        'RESPONSE:::: EMR DETAIL',
-        response.emr.body.find((fragment) => fragment.key === 'amnanesis')
-          ?.value,
-      );
+      console.log('RESPONSE:::: EMR DETAIL', response);
       console.log('-----------------');
       setEmr(response.emr);
       setInitialValues({

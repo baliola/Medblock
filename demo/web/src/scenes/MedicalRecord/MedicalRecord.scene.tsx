@@ -17,12 +17,14 @@ import useCallEMRCanister from '@/hooks/useEmrCanister';
 import { useRouter } from 'next/router';
 import useEMRPatient from '@/hooks/useEmrPatient';
 import { useAuth } from '@/config/agent';
+import SplashScreen from '../Splash/SplashScreen';
+import { EmrHeader } from 'declarations/provider_registry/provider_registry.did';
 
 const MedicalRecord: NextPageWithLayout = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [query, setQuery] = useState('');
-  const { createEmr } = useEmr();
+  const { createEmr, update } = useEmr();
   const { identity } = useAuth();
   const { GetEmrDetail, emr, initialValues, isLoading } = useEMRPatient();
   const router = useRouter();
@@ -64,13 +66,17 @@ const MedicalRecord: NextPageWithLayout = () => {
     }
 
     console.log('emr fragments', emrFragments);
-    createEmr(emrFragments);
+    if (router.asPath.includes('edit')) {
+      update(emrFragments, emr?.header as EmrHeader);
+    } else {
+      createEmr(emrFragments);
+    }
   };
 
   return (
     <>
       {isLoading ? (
-        <div>Loading...</div> // Display a loading indicator while fetching data
+        <SplashScreen /> // Display a loading indicator while fetching data
       ) : (
         <div className="flex flex-col w-full gap-6">
           <div className="flex flex-col gap-1">
@@ -102,7 +108,7 @@ const MedicalRecord: NextPageWithLayout = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex gap-3">
                       <p className="max-w-[164px] w-full">Med. Record Number</p>
-                      <p>: 1234xxxxxx</p>
+                      <p>: {emr?.header.emr_id ?? '- '}</p>
                     </div>
                     <div className="flex gap-3">
                       <p className="max-w-[164px] w-full">Location</p>
