@@ -49,3 +49,5 @@ storybook-static
 #cypress
 cypress/videos
 cypress/screenshots
+
+yarn.lock
