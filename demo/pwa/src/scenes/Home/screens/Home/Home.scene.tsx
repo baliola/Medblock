@@ -1,19 +1,30 @@
 'use client';
 
 import { useRouter } from 'next/router';
-import { Share } from 'solar-icon-set/essentionalui';
-import { File } from 'solar-icon-set/files';
+import { useEffect } from 'react';
+import { File, Share } from 'solar-icon-set';
 
 import AppBarWithIcon from '@/components/AppBar/AppBarWithIcon';
 import ProfileBar from '@/components/AppBar/ProfileBar';
 import PrimaryButton from '@/components/Button/PrimaryButton';
 import Images from '@/constants/images';
+import useEMRPatient from '@/hooks/useEmrPatient';
 import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import usePatient from '@/hooks/usePatient';
 
 export default function HomePage() {
   const router = useRouter();
   const data = [{ id: 1, title: 'My EMR' }];
+
+  const { shareConsetCode } = usePatient();
+
+  // useEffect(() => {
+  //   getPatientInfo();
+  //   console.log('====================================');
+  //   console.log('DATA INGBOX ===>> ', patientInfo);
+  //   console.log('====================================');
+  // }, []);
 
   return (
     <HomeLayout>
@@ -42,7 +53,7 @@ export default function HomePage() {
                 </div>
               }
               onSubmit={() => {
-                router.push('/home/consent-code');
+                shareConsetCode();
               }}
             />
           </div>

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /usr/bin/bash
 
 root=$(git rev-parse --show-toplevel)/canister
 canister=$1

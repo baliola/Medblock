@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import React, { CSSProperties, FC } from 'react';
-import { ArrowLeft } from 'solar-icon-set/arrows';
+import { ArrowLeft } from 'solar-icon-set';
 
 interface AppBarProps {
   title?: React.ReactElement<any, any>;

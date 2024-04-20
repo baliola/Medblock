@@ -20,10 +20,10 @@ export const HomeLayout: FC<HomeLayoutProps> = ({ children }) => {
     {
       id: 1,
       label: 'Home',
-      path: '/home',
+      path: '/',
       icon: (
         <Home
-          color={router.pathname === '/home' ? '#242DA8' : '#374151'}
+          color={router.pathname === '/' ? '#242DA8' : '#374151'}
           size={18}
           iconStyle="Bold"
         />

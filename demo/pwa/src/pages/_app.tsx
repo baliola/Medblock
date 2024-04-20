@@ -1,9 +1,17 @@
 import '@/globals.css';
+import 'react-toastify/dist/ReactToastify.css';
 
 import type { AppProps } from 'next/app';
-import Head from 'next/head';
+import { useEffect, useState } from 'react';
+import { ToastContainer } from 'react-toastify';
 
+import Header from '@/components/Head/Header';
+import { AgentProvider } from '@/config/agent';
+import { NFIDS } from '@/interface/nfid.interface';
 import CommonLayout from '@/layouts/CommonLayout';
+import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
+import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import SplashScreen from '@/scenes/Splash/Splash.scene';
 import { NextPageWithLayout } from '@/types';
 
 export type AppPropsWithLayout = AppProps & {
@@ -11,72 +19,85 @@ export type AppPropsWithLayout = AppProps & {
 };
 
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
-  const getLayout = Component.getLayout ?? CommonLayout;
-  return getLayout(
-    <>
-      <Head>
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Medblock Passport</title>
-        <meta name="description" content="Medblock Passport" />
-        <link rel="shortcut icon" href="/logo.png" />
-        <link rel="mask-icon" href="/logo.png" color="#FFFFFF" />
-        <meta name="theme-color" content="#ffffff" />
-        <link rel="apple-touch-icon" href="/logo.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/logo.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
-        <link rel="apple-touch-icon" sizes="167x167" href="/logo.png" />
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:url" content="https://medblock.ic" />
-        <meta name="twitter:title" content="Medblock Passport" />
-        <meta name="twitter:description" content="Medblock Passport" />
-        <meta name="twitter:image" content="/logo.png" />
-        <meta name="twitter:creator" content="@Baliola" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="Medblock Passport" />
-        <meta property="og:description" content="Medblock Passport" />
-        <meta property="og:site_name" content="Medblock Passport" />
-        <meta property="og:url" content="https://medblock.ic" />
-        <meta property="og:image" content="/logo.png" />
+  const [windowLoaded, setWindowLoaded] = useState<boolean>(false);
 
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="2048x2732"
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWindowLoaded(true);
+    }
+  }, []);
+
+  const getLayout = Component.getLayout ?? CommonLayout;
+  const getHomeLayout = Component.getLayout ?? HomeLayout;
+  const getScaffold = Component.getLayout ?? Scaffold;
+
+  const initNFID = async () => {
+    await NFIDS();
+  };
+
+  useEffect(() => {
+    if (windowLoaded) {
+      // initNFID();
+    }
+  }, [windowLoaded]);
+
+  if (!windowLoaded) {
+    return (
+      <>
+        <Header />
+        <SplashScreen />;
+      </>
+    );
+  }
+
+  if (Component.ScaffoldLayout) {
+    return (
+      <AgentProvider>
+        <div>
+          <Header />
+          <ToastContainer
+            position="top-center"
+            hideProgressBar={false}
+            pauseOnFocusLoss={false}
+            theme="light"
+            autoClose={true}
+          />
+          {getScaffold(<Component {...pageProps} />)}
+        </div>
+      </AgentProvider>
+    );
+  } else if (Component.HomeLayout) {
+    return (
+      <AgentProvider>
+        <>
+          <Header />
+          <ToastContainer
+            position="top-center"
+            hideProgressBar={false}
+            pauseOnFocusLoss={false}
+            theme="light"
+            autoClose={true}
+          />
+          {getHomeLayout(<Component {...pageProps} />)}
+        </>
+      </AgentProvider>
+    );
+  }
+
+  return getLayout(
+    <AgentProvider>
+      <>
+        <Header />
+        <ToastContainer
+          position="top-center"
+          hideProgressBar={false}
+          pauseOnFocusLoss={false}
+          theme="light"
+          autoClose={true}
         />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="1668x2224"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="1536x2048"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="1125x2436"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="1242x2208"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="750x1334"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/logo.png"
-          sizes="640x1136"
-        />
-      </Head>
-      <Component {...pageProps} />
-    </>,
+        {getLayout(<Component {...pageProps} />)}
+      </>
+    </AgentProvider>,
   );
 }
 

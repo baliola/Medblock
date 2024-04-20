@@ -8,11 +8,13 @@ import SecondaryButton from '@/components/Button/SecondaryButton';
 import DialogBasic from '@/components/Dialog/DialogBasic';
 import InfoItem from '@/components/mini/InfoItem';
 import Images from '@/constants/images';
+import useAuthentication from '@/hooks/useAuth';
 import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 export default function SettingPage() {
   const [open, setOpen] = useState<boolean>(false);
+  const { signOut } = useAuthentication();
 
   return (
     <HomeLayout>
@@ -61,7 +63,10 @@ export default function SettingPage() {
             onCancel={() => {
               setOpen(false);
             }}
-            onYes={() => {}}
+            onYes={() => {
+              setOpen(false);
+              signOut();
+            }}
             title="Alert"
             labelCancel="Cancel"
             labelYes="Logout"

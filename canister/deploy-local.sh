@@ -1,4 +1,4 @@
-#! usr/bin/bash
+#! /usr/bin/bash
 
 # This script deploys the canister locally.
 FE_PORT=4943

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'solar-icon-set/arrows';
+import { ArrowRight } from 'solar-icon-set';
 
 interface HeaderButtonProps {
   icon: string;

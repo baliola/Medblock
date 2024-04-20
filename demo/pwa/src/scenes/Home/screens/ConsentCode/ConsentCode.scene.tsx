@@ -8,6 +8,7 @@ import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 const ConsentCodePage = () => {
   const router = useRouter();
   const [showImage, setShowImage] = useState<boolean>(false);
+  const { consent } = router.query;
 
   useEffect(() => {
     // Check screen width and set showImage state accordingly
@@ -34,7 +35,9 @@ const ConsentCodePage = () => {
           <p className="text-white text-2xl text-center font-bold">
             Share this Consent Code to Medical Services
           </p>
-          <p className="text-white text-7xl my-6 font-bold">613487</p>
+          <p className="text-white text-7xl my-6 font-bold">
+            {consent ?? '000000'}
+          </p>
           <p className="text-white">
             Refresh the code in <span>28</span> second
           </p>
