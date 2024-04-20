@@ -5,7 +5,7 @@ import {
   Filter,
   InfoCircle,
   Sort,
-} from 'solar-icon-set/essentionalui';
+} from 'solar-icon-set';
 
 import AppBar from '@/components/AppBar/AppBar';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { CloseCircle } from 'solar-icon-set/essentionalui';
+import { CloseCircle } from 'solar-icon-set';
 
 import AppBar from '@/components/AppBar/AppBar';
 import ProfileBar from '@/components/AppBar/ProfileBar';
