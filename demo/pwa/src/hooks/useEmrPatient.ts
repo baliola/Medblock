@@ -90,6 +90,7 @@ const useEMRPatient = () => {
       console.log('-----------------');
       setEmrList(response.emrs);
     } catch (error) {
+      setEmrList([]);
       console.log('-----------------');
       console.log('ERROR::::', error);
       console.log('-----------------');
@@ -150,7 +151,7 @@ const useEMRPatient = () => {
   useEffect(() => {
     if (identity) {
       getPatientInfo();
-      // GetEmr();
+      GetEmr();
     }
   }, [identity]);
   return {
