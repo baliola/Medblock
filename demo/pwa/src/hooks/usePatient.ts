@@ -81,15 +81,17 @@ const usePatient = () => {
     }
   }
 
-  const createdummyConsent = async () => {
+  const shareConsetCode = async () => {
     try {
       const response = await api?.create_consent();
 
       console.log('-----------------');
       console.log('RESPONSE conscentt::::', response.code);
       console.log('-----------------');
-
-      // setPatientList(response.code);
+      toast.success('Successfully Share consent code');
+      setTimeout(() => {
+        router.push('/home/consent-code');
+      }, 3000);
     } catch (error) {
       console.log('-----------------');
       console.log('ERROR::::', error);
@@ -123,7 +125,7 @@ const usePatient = () => {
       console.log('RESPONSE conscentt::::', session);
       console.log('-----------------');
       // if (sessionId) {
-      setSessionId(session);
+      // setSessionId(session);
       localStorageHelper.setItem('session', session);
       // }
       // setPatientList(response.code);
@@ -203,7 +205,7 @@ const usePatient = () => {
   return {
     fetchPatient,
     patientList,
-    createdummyConsent,
+    shareConsetCode,
     claimConsent,
     registerPatient,
     updateInfoPatient,

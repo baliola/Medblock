@@ -11,12 +11,13 @@ import Images from '@/constants/images';
 import useEMRPatient from '@/hooks/useEmrPatient';
 import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import usePatient from '@/hooks/usePatient';
 
 export default function HomePage() {
   const router = useRouter();
   const data = [{ id: 1, title: 'My EMR' }];
 
-  const { patientInfo, getPatientInfo } = useEMRPatient();
+  const { shareConsetCode } = usePatient();
 
   // useEffect(() => {
   //   getPatientInfo();
@@ -52,7 +53,7 @@ export default function HomePage() {
                 </div>
               }
               onSubmit={() => {
-                router.push('/home/consent-code');
+                shareConsetCode();
               }}
             />
           </div>
