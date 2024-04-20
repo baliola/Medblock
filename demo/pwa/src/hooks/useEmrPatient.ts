@@ -55,7 +55,7 @@ const useEMRPatient = () => {
     try {
       console.log('FETCH PATIENT RUNNING 11.....');
 
-      const response = await api?.get_patient_info();
+      const response = await api.get_patient_info();
       console.log('-----------------');
       console.log('RESPONSE:::: INGBOX', response);
       console.log('-----------------');
@@ -162,6 +162,7 @@ const useEMRPatient = () => {
     emr,
     initialValues,
     isLoading,
+    nik,
   };
 };
 

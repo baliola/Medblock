@@ -29,7 +29,6 @@ const FillPersonalInformationPage = () => {
     try {
       await registerPatient(formData);
       setLoading(false);
-      router.push('/verified');
     } catch (error) {
       setLoading(false);
       const canisterError = createCanisterError(error);

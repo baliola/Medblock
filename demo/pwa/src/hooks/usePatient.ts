@@ -27,6 +27,7 @@ import {
 } from '@/lib/canister/patient.canister';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
 import { useCentralStore } from '@/Store';
+import { toast } from 'react-toastify';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -182,6 +183,10 @@ const usePatient = () => {
       console.log('-----------------');
       console.log('RESPONSE UPDATE PATIENT INFO::::', response);
       console.log('-----------------');
+      toast.success('SUCCESS REGISTRATION');
+      setTimeout(() => {
+        router.push('/verified');
+      }, 3000);
 
       // setPatientList(response.code);
     } catch (error) {
