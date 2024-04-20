@@ -84,13 +84,18 @@ const usePatient = () => {
   const shareConsetCode = async () => {
     try {
       const response = await api?.create_consent();
-
+      const consent = response?.code;
       console.log('-----------------');
       console.log('RESPONSE conscentt::::', response.code);
       console.log('-----------------');
       toast.success('Successfully Share consent code');
       setTimeout(() => {
-        router.push('/home/consent-code');
+        router.push({
+          pathname: `/home/consent-code`,
+          query: {
+            consent: consent,
+          },
+        });
       }, 3000);
     } catch (error) {
       console.log('-----------------');
