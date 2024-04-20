@@ -18,6 +18,7 @@ export default function HomePage() {
   const data = [{ id: 1, title: 'My EMR' }];
 
   const { shareConsetCode } = usePatient();
+  const { emrList } = useEMRPatient();
 
   // useEffect(() => {
   //   getPatientInfo();
@@ -61,17 +62,28 @@ export default function HomePage() {
       >
         <div className="mt-48 px-6">
           <div className="grid grid-cols-3 gap-4">
-            {data.map((item) => {
+            {emrList.map((item) => {
               return (
                 <div
                   onClick={() => {
-                    router.push(`/emr/${item.id}`);
+                    // router.push(`/emr/${item.emr_id}`);
+                    router.push({
+                      pathname: `/emr/${item.emr_id}`,
+                      query: {
+                        providerId: item.provider_id,
+                      },
+                    });
                   }}
-                  key={item.id}
+                  key={item.emr_id}
                   className="flex flex-col items-center bg-slate-200 rounded-xl p-4"
                 >
                   <File color="#242DA8" size={18} iconStyle="Bold" />
-                  <p className="text-gray-800 mt-2 text-sm"> {item.title} </p>
+                  <p className="text-gray-800 mt-2 text-sm">
+                    {' '}
+                    {item.emr_id.substring(0, 10) +
+                      '...' +
+                      item.emr_id.substring(30, 36)}{' '}
+                  </p>
                 </div>
               );
             })}

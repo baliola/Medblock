@@ -23,7 +23,7 @@ const HeaderButton: React.FC<HeaderButtonProps> = ({
     >
       <div className="flex flex-row space-x-2">
         <img src={icon} alt="" className="w-8" />
-        <p className="text-gray-800 text-xl">{label}</p>
+        <p className="text-gray-800 text-xl capitalize">{label}</p>
       </div>
       <ArrowRight color="black" iconStyle="Bold" size={18} />
     </div>
