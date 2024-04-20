@@ -1,5 +1,7 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
+import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import { Provider } from 'declarations/provider_registry/provider_registry.did';
 import { create } from 'zustand';
 
 type pageOptions =
@@ -17,6 +19,18 @@ type pageOptions =
 interface centralStore {
   activePage: pageOptions;
   setActivePage: (page: pageOptions) => void;
+
+  nik: string | undefined;
+  setNik: (nik: string) => void;
+
+  sessionId: string | undefined;
+  setSessionId: (session: string) => void;
+
+  provider: Provider | undefined;
+  setProvider: (provider: Provider) => void;
+
+  patientList: Patient[] | null;
+  setPatientList: (patient: Patient[]) => void;
 
   // Principal State
   userPrincipal: string | undefined;
@@ -41,6 +55,26 @@ interface centralStore {
 }
 
 export const useCentralStore = create<centralStore>((set, get) => ({
+  patientList: null,
+  setPatientList(patient) {
+    set({ patientList: patient });
+  },
+
+  nik: '',
+  setNik(nik) {
+    set({ nik: nik });
+  },
+
+  provider: undefined,
+  setProvider(provider) {
+    set({ provider: provider });
+  },
+
+  sessionId: undefined,
+  setSessionId(session) {
+    set({ sessionId: session });
+  },
+
   client: null,
   setClient(client) {
     set({

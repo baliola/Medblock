@@ -7,9 +7,9 @@ use canister_common::{
 use serde::Deserialize;
 
 use crate::{
-    consent::{ ConsentCode, SessionId },
+    consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
-    registry::{ Patient, V1 },
+    registry::{ Patient, NIK, V1 },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -168,11 +168,14 @@ pub struct UpdateInitialPatientInfoRequest {
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub patient: Patient,
+    pub nik: NIK,
 }
 
-from!(GetPatientInfoResponse: Patient as value {
-    patient: value
-});
+impl GetPatientInfoResponse {
+    pub fn new(patient: Patient, nik: NIK) -> Self {
+        Self { patient, nik }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoBySessionRequest {
@@ -193,10 +196,21 @@ pub struct IsConsentClaimedRequest {
     pub code: ConsentCode,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Default)]
 pub struct IsConsentClaimedResponse {
-    claimed: bool,
+    pub claimed: bool,
+    pub info: Option<Consent>,
 }
 from!(IsConsentClaimedResponse: bool as value {
     claimed: value
+    info: None
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct ConsentListResponse {
+    pub consents: Vec<Consent>,
+}
+
+from!(ConsentListResponse: Vec<Consent> as value {
+    consents: value
 });

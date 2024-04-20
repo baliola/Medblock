@@ -15,6 +15,18 @@ pub struct ClaimConsentResponse {
     pub session_id: String,
 }
 #[derive(CandidType, Deserialize)]
+pub struct Consent {
+    pub nik: String,
+    pub session_id: Option<String>,
+    pub code: String,
+    pub claimed: bool,
+    pub session_user: Option<Principal>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct ConsentListResponse {
+    pub consents: Vec<Consent>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct EmrListPatientRequest {
     pub page: u8,
     pub limit: u8,
@@ -178,6 +190,7 @@ pub struct GetInformationResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct V1 {
+    pub name: String,
     pub martial_status: String,
     pub place_of_birth: String,
     pub address: String,
@@ -190,10 +203,12 @@ pub enum Patient {
 }
 #[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
+    pub nik: String,
     pub patient: Patient,
 }
 #[derive(CandidType, Deserialize)]
 pub struct IsConsentClaimedResponse {
+    pub info: Option<Consent>,
     pub claimed: bool,
 }
 #[derive(CandidType, Deserialize)]
@@ -269,6 +284,9 @@ impl PatientRegistry {
         arg0: ClaimConsentRequest,
     ) -> Result<(ClaimConsentResponse,)> {
         ic_cdk::call(self.0, "claim_consent", (arg0,)).await
+    }
+    pub async fn consent_list(&self) -> Result<(ConsentListResponse,)> {
+        ic_cdk::call(self.0, "consent_list", ()).await
     }
     pub async fn create_consent(&self) -> Result<(ClaimConsentRequest,)> {
         ic_cdk::call(self.0, "create_consent", ()).await
@@ -445,6 +463,19 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "claim_consent", payload)
+        }
+        pub fn consent_list(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+        ) -> std::result::Result<ConsentListResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = ();
+            call_pocket_ic(server, f, self.0.clone(), sender, "consent_list", payload)
         }
         pub fn create_consent(
             &self,

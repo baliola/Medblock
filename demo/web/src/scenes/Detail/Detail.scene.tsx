@@ -13,52 +13,46 @@ import dateFormatter from '@/lib/dateFormatter';
 import { Health, SearchNormal1 } from 'iconsax-react';
 import { PlusIcon } from '@heroicons/react/20/solid';
 import { useRouter } from 'next/router';
+import useEMRPatient from '@/hooks/useEmrPatient';
+import { useCentralStore } from '@/Store';
+import { EmrHeader } from 'declarations/patient_registry/patient_registry.did';
 // import Datepicker from 'react-tailwindcss-datepicker';
 
 const DetailPatient: NextPageWithLayout = () => {
-  const { generateMockMedicalRecords } = useMedicalRecordMock();
+  // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
-
+  const { getPatientInfo, emrList } = useEMRPatient();
+  const { nik } = useCentralStore();
   const [dateValue, setDateValue] = useState({
     startDate: new Date(),
     endDate: new Date(),
   });
+  const { patientInfo } = useEMRPatient();
 
   const handleChangeDate = (newValue: any) => {
     console.log('newValue:', newValue);
     setDateValue(newValue);
   };
 
-  const patientColumn = useMemo<ColumnDef<MockMedicalRecord>[]>(
+  const patientColumn = useMemo<ColumnDef<EmrHeader>[]>(
     () => [
       {
-        header: 'No',
-        cell: (info) => <p className="font-normal w-auto">{info.row.index}</p>,
-      },
-      {
-        header: 'Date',
+        header: 'EMR ID',
         cell: (info) => (
-          <p className="font-normal">
-            {dateFormatter(info.row.original.createdAt)}
-          </p>
+          <p className="font-normal">{info.row.original.emr_id}</p>
         ), // Format the date as needed
       },
       {
-        header: 'Hospital',
+        header: 'Provider ID',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.hospitalName}</p>
+          <p className="font-normal">{info.row.original.provider_id}</p>
         ),
       },
+
       {
-        header: 'Physician',
+        header: 'User ID',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.doctorName}</p>
-        ),
-      },
-      {
-        header: 'Last update',
-        cell: (info) => (
-          <p className="font-normal">{info.row.original.diagnosis}</p>
+          <p className="font-normal">{info.row.original.user_id}</p>
         ),
       },
       {
@@ -70,7 +64,13 @@ const DetailPatient: NextPageWithLayout = () => {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/medical-record/${info.row.original.id}`);
+                router.push({
+                  pathname: `/medical-record/edit/${info.row.original.emr_id}`,
+                  query: {
+                    providerId: info.row.original.provider_id,
+                    userId: info.row.original.user_id,
+                  },
+                });
               }}
             />
           </div>
@@ -101,7 +101,7 @@ const DetailPatient: NextPageWithLayout = () => {
               <button
                 className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
                 onClick={() => {
-                  router.push(`/medical-record/add`);
+                  router.push(`/medical-record/add/${nik}`);
                 }}
               >
                 {/* <img src={} alt="" /> */}
@@ -155,7 +155,7 @@ const DetailPatient: NextPageWithLayout = () => {
             <Card className="flex flex-col gap-2 mt-4">
               <Table
                 columns={patientColumn}
-                data={generateMockMedicalRecords}
+                data={emrList ?? []}
                 isLoading={false}
                 currentPage={0}
                 // setCurrentPage={setCurrentPageAccountType}

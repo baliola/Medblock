@@ -202,6 +202,16 @@ impl ConsentsApi {
         with_consent_mut(|consents| consents.resolve_session(session_id, session_user))
     }
 
+    pub fn resolve_session_with_code(code: &ConsentCode, patient: &NIK) -> Option<Consent> {
+        ensure_initialized();
+        with_consent(|consents| consents.resolve_session_with_code(code, patient))
+    }
+
+    pub fn list_consent_with_patient(user: &NIK) -> Vec<Consent> {
+        ensure_initialized();
+        with_consent(|consents| consents.list_consent_with_patient(user))
+    }
+
     // we dont have expiry for now
     // fn remove_consent_after_expiry(code: ConsentCode) {
     //     ensure_initialized();
@@ -502,6 +512,15 @@ impl ConsentMap {
         }
     }
 
+    pub fn list_consent_with_patient(&self, user: &NIK) -> Vec<Consent> {
+        self.inner
+            .iter()
+            .filter(|(_, c)| c.nik.eq(user))
+            .map(|(_, consent)| consent)
+            .cloned()
+            .collect()
+    }
+
     /// wil return none if consent is already claimed or does not exist
     pub fn claim_consent(
         &mut self,
@@ -546,6 +565,17 @@ impl ConsentMap {
 
         // return the consent if it exists
         self.safe_get_consent_for(code, session_user).cloned()
+    }
+
+    pub fn resolve_session_with_code(&self, code: &ConsentCode, patient: &NIK) -> Option<Consent> {
+        let consent = self.inner.get(code).cloned();
+        
+        match consent {
+            Some(consent) => {
+                if consent.nik.eq(patient) { Some(consent) } else { None }
+            }
+            None => None,
+        }
     }
 }
 

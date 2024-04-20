@@ -31,7 +31,6 @@ const OptionField: React.FC<OptionFieldProps> = ({
   setFieldValue,
   setQuery,
 }) => {
-  console.log('doctors', options);
   const filter =
     query === ''
       ? options
@@ -40,10 +39,11 @@ const OptionField: React.FC<OptionFieldProps> = ({
         });
   return (
     <div className="flex flex-col">
-      <p className="capitalize text-gray-500">{fieldName}</p>
+      {/* <p className="capitalize text-gray-500">{fieldName}</p> */}
       <Combobox
         value={values.doctor}
         onChange={(value) => {
+          console.log('fielde name', fieldName);
           setFieldValue(fieldName, value);
         }}
       >
@@ -53,8 +53,8 @@ const OptionField: React.FC<OptionFieldProps> = ({
               className="flex w-full capitalize rounded-2xl border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 "
               displayValue={(doctor: any) => doctor.name}
               placeholder="Select admin doctor"
-              id="country"
-              name="country"
+              id="doctor"
+              name="doctor"
               onChange={(event) => {
                 setQuery(event.target.value);
                 handleChange(fieldName);

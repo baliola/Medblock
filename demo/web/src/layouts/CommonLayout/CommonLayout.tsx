@@ -1,11 +1,13 @@
 import Image from 'next/image';
-import { FC, ReactElement } from 'react';
+import { FC, ReactElement, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import styles from './CommonLayout.module.css';
 import { useCentralStore } from '@/Store';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Navbar from '@/components/Navbar/Navbar';
+import { useAuth } from '@/config/agent';
+import { useRouter } from 'next/router';
 
 interface CommonLayoutProps {
   children: ReactElement;
@@ -13,7 +15,17 @@ interface CommonLayoutProps {
 
 export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useCentralStore();
+  const { authenticate, authenticated, identity } = useAuth();
+  const router = useRouter();
 
+  useEffect(() => {
+    console.log('user not authorized', identity?.getPrincipal());
+
+    // if (identity?.getPrincipal().toText() === undefined) {
+    //   console.log('user not authorized');
+    //   router.push('/auth/login');
+    // }
+  }, []);
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -52,7 +64,7 @@ export const CommonLayout: FC<CommonLayoutProps> = ({ children }) => {
         </div>
         <div className="flex">
           <div className="w-full overflow-x-auto max-w-[1440px] mx-auto">
-            {/* <Navbar isOpen={isSidebarOpen} sidebarChange={toggleSidebar} /> */}
+            <Navbar isOpen={isSidebarOpen} sidebarChange={toggleSidebar} />
             {children}
           </div>
         </div>

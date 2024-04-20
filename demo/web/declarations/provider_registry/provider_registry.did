@@ -106,10 +106,15 @@ type PingResult = record {
   patient_registry_status : bool;
   emr_registry_status : bool;
 };
+type Provider = variant { V1 : V1 };
+type ProviderInfoRequest = record { provider : principal };
+type ProviderInfoResponse = record { provider : Provider };
 type RegisternewProviderRequest = record {
   provider_principal : principal;
   display_name : text;
+  address : text;
 };
+type Status = variant { Active; Suspended };
 type StatusRequest = record {
   memory_size : bool;
   cycles : bool;
@@ -125,6 +130,15 @@ type UpdateEmrRequest = record { fields : vec EmrFragment; header : EmrHeader };
 type UpdateInformationRequest = record {
   metrics : opt CollectMetricsRequestType;
 };
+type V1 = record {
+  updated_at : nat64;
+  internal_id : text;
+  display_name : text;
+  session : nat64;
+  address : text;
+  registered_at : nat64;
+  activation_status : Status;
+};
 service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   emr_list_provider : (EmrListProviderRequest) -> (
@@ -133,6 +147,10 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
+  get_provider_info_with_principal : (ProviderInfoRequest) -> (
+      ProviderInfoResponse,
+    ) query;
+  get_trusted_origins : () -> (vec text);
   issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
   metrics : () -> (text) query;
   ping : () -> (PingResult) composite_query;

@@ -1,4 +1,5 @@
 import useCountdown from '@/hooks/useCoundown';
+import usePatient, { ClaimConsentRequest } from '@/hooks/usePatient';
 import { XCircleIcon, XMarkIcon } from '@heroicons/react/20/solid';
 import { AxiosError } from 'axios';
 import React, {
@@ -28,6 +29,7 @@ const ModalAdd = ({
   const [errOtp, setErrOtp] = useState('');
   const { secondLeft, start } = useCountdown();
   const [correctOTP, setCorrectOtp] = useState('');
+  const { claimConsent } = usePatient();
   const [loading, setLoading] = useState(false);
 
   const toggleModalPhone = () => {
@@ -58,13 +60,19 @@ const ModalAdd = ({
   };
 
   const handleSendOTP = async () => {
-    setLoading(true);
-    // setShowModalPhone(false);
-    // setShowModalSuccess(true);
+    try {
+      setLoading(true);
+      const newData: ClaimConsentRequest = {
+        code: otp.join(''),
+      };
+      claimConsent(newData).then(() => {
+        setShowModalPhone(false);
 
-    const formData = {
-      otp: otp.join(''),
-    };
+        setShowModalSuccess(true);
+      });
+    } catch (error) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

@@ -35,9 +35,10 @@ impl PatientRegistry {
     pub fn get_patient_info_with_principal(
         &self,
         patient_principal: Principal
-    ) -> PatientBindingMapResult<Patient> {
+    ) -> PatientBindingMapResult<(Patient, NIK)> {
         let nik = self.owner_map.get_nik(&patient_principal)?;
-        self.info_map.get(nik.into_inner())
+        let patient = self.info_map.get(nik.clone().into_inner())?;
+        Ok((patient, nik.into_inner()))
     }
 
     pub fn get_patient_info(&self, patient: NIK) -> PatientBindingMapResult<Patient> {
@@ -432,6 +433,7 @@ impl Patient {
 
 #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Default, PartialOrd, Ord)]
 pub struct V1 {
+    pub name: AsciiRecordsKey<64>,
     pub place_of_birth: AsciiRecordsKey,
     pub date_of_birth: AsciiRecordsKey,
     pub address: AsciiRecordsKey<64>,
@@ -439,7 +441,7 @@ pub struct V1 {
     pub gender: AsciiRecordsKey<10>,
 }
 
-// 200 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
+// 270 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
 // benchmarked by tsting the encoded size of a struct with max size fields.
 impl_max_size!(for V1: 200);
 impl_mem_bound!(for V1: bounded; fixed_size: false);
@@ -449,13 +451,14 @@ impl_range_bound!(V1);
 mod v1_test {
     use super::*;
 
-    // ~192 bytes
+    // ~270 bytes
     #[test]
     fn test_len_encoded() {
         use candid::Encode;
         use candid::Decode;
 
         let patient = V1 {
+            name: AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap(),
             place_of_birth: AsciiRecordsKey::<32>::new("a".repeat(32)).unwrap(),
             date_of_birth: AsciiRecordsKey::<32>::new("a".repeat(32)).unwrap(),
             address: AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap(),
