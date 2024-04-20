@@ -43,7 +43,7 @@ const useEMRPatient = () => {
 
   const router = useRouter();
   const params = router.query;
-  const session = params.id;
+  const emrId = params.id;
   const { providerId, userId } = router.query;
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,7 +96,7 @@ const useEMRPatient = () => {
       console.log('-----------------');
     }
   }
-  async function GetEmrDetail(providerId: string, emrId: string) {
+  async function GetEmrDetail() {
     setIsLoading(true);
     console.log('principal detail', identity?.getPrincipal());
     const data: ReadEmrByIdRequest = {
@@ -153,7 +153,13 @@ const useEMRPatient = () => {
       getPatientInfo();
       GetEmr();
     }
+    if (emrId && providerId) GetEmrDetail();
   }, [identity]);
+
+  useEffect(() => {
+    if (emrId && providerId && identity) GetEmrDetail();
+  }, [emrId, providerId]);
+
   return {
     getPatientInfo,
     GetEmrDetail,

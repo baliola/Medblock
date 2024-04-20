@@ -9,9 +9,11 @@ import Images from '@/constants/images';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 import VisitSummaryItem from './components/VisitSummaryItem';
+import useEMRPatient from '@/hooks/useEmrPatient';
 
 const EmrDetailPage = () => {
   const router = useRouter();
+  const { emr } = useEMRPatient();
 
   return (
     <Scaffold
@@ -45,23 +47,39 @@ const EmrDetailPage = () => {
         />
         <HeaderButton
           icon={Images.hospital}
-          label={'Sanglah Hospital - Denpasar'}
+          label={
+            emr
+              ? (emr.body.find((fragment) => fragment.key === 'location')
+                  ?.value as string)
+              : ''
+          }
           onPress={() => {}}
         />
 
         <div className="flex flex-row mt-8 justify-between items-center">
           <MetaItem data="27 March 2024" label={'Latest Visit'} />
-          <MetaItem data="Karyada Indrawan" label={'Medical Officer'} />
+          <MetaItem
+            data={
+              emr
+                ? (emr.body.find((fragment) => fragment.key === 'doctor')
+                    ?.value as string)
+                : '-'
+            }
+            label={'Medical Officer'}
+          />
         </div>
 
         <div className="mt-8 mb-60">
           <p className="text-gray-800 text-xl font-bold">Visit Summary</p>
-
-          <VisitSummaryItem
-            label={'Reason to visit'}
-            data="Mengalami demam tinggi (diatas 38°C) mengalami nyeri kepala, otot dan sendi serta mengalami ruam kulit. Setiap makan malam selalu mual dan muntah, mudah merasa kelelahan"
-          />
-          <VisitSummaryItem
+          {emr?.body &&
+            emr.body.map((item, index) => (
+              <VisitSummaryItem
+                key={index}
+                label={item.key}
+                data={item.value}
+              />
+            ))}
+          {/* <VisitSummaryItem
             label={'Diagnosis'}
             data="Pemeriksaan fisik oleh dokter dan tes darah untuk memeriksa trombosit dan kadar hemoglobin serta tes serologi untuk mendeteksi virus dengue"
           />
@@ -76,7 +94,7 @@ Rawat inap jika diperlukan"
           <VisitSummaryItem
             label={'Medication'}
             data="Pengobatan simtomatik untuk meredakan demam, nyeri dan mual serta penggantian cairan intravena untuk mencegah dehidrasi, serta transfusi darah mungkon diperlukan"
-          />
+          /> */}
         </div>
       </div>
     </Scaffold>
