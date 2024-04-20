@@ -1,18 +1,29 @@
 'use client';
 
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 import { File, Share } from 'solar-icon-set';
 
 import AppBarWithIcon from '@/components/AppBar/AppBarWithIcon';
 import ProfileBar from '@/components/AppBar/ProfileBar';
 import PrimaryButton from '@/components/Button/PrimaryButton';
 import Images from '@/constants/images';
+import useEMRPatient from '@/hooks/useEmrPatient';
 import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 export default function HomePage() {
   const router = useRouter();
   const data = [{ id: 1, title: 'My EMR' }];
+
+  const { patientInfo, getPatientInfo } = useEMRPatient();
+
+  // useEffect(() => {
+  //   getPatientInfo();
+  //   console.log('====================================');
+  //   console.log('DATA INGBOX ===>> ', patientInfo);
+  //   console.log('====================================');
+  // }, []);
 
   return (
     <HomeLayout>

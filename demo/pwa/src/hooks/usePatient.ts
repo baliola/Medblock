@@ -133,28 +133,19 @@ const usePatient = () => {
       console.log('-----------------');
     }
   };
-  const generateRandomNumber = (): string => {
-    const randomNumber = Math.floor(
-      1000000000000000 + Math.random() * 9000000000000000,
-    );
-    return String(randomNumber);
-  };
 
   // Function to generate hash and encode to example format
-  const generateAndEncodeHash = (): string => {
-    // Generate a random 16-digit number
-    const randomNum = generateRandomNumber();
-
+  const generateAndEncodeHash = (nik: string): string => {
     // Generate the hash using Keccak
-    const hashBuffer = keccak256(randomNum);
+    const hashBuffer = keccak256(nik);
 
     // Encode the hash to hexadecimal string
     const encodedHash = Buffer.from(hashBuffer).toString('hex');
 
     return encodedHash;
   };
-  const registerDummyPatient = async () => {
-    const nik = generateAndEncodeHash();
+  const registerPatient = async (request: RegisterRequest) => {
+    const nik = generateAndEncodeHash(request.nik);
     console.log('nik generated', nik);
     const data: RegisterPatientRequest = {
       nik: nik,
@@ -163,9 +154,9 @@ const usePatient = () => {
       const response = await api?.register_patient(data);
 
       console.log('-----------------');
-      console.log('RESPONSE conscentt::::', response);
+      console.log('RESPONSE REGISTER::::', response);
       console.log('-----------------');
-      updateInfoDummyPatient();
+      updateInfoPatient(request);
 
       // setPatientList(response.code);
     } catch (error) {
@@ -175,29 +166,22 @@ const usePatient = () => {
     }
   };
 
-  const generateRandomString = (): string => {
-    return Math.random().toString(36).substr(2, 8);
-  };
-  const generateRandomV1Values = (): V1 => {
-    return {
-      name: generateRandomString(),
-      martial_status: generateRandomString(),
-      place_of_birth: generateRandomString(),
-      address: generateRandomString(),
-      gender: generateRandomString(),
-      date_of_birth: generateRandomString(),
-    };
-  };
-  const updateInfoDummyPatient = async () => {
-    const randomV1Values = generateRandomV1Values();
+  const updateInfoPatient = async (request: RegisterRequest) => {
     const data: UpdateInitialPatientInfoRequest = {
-      info: randomV1Values,
+      info: {
+        address: request.address,
+        date_of_birth: request.date_of_birth,
+        gender: request.gender,
+        martial_status: request.martial_status,
+        name: request.name,
+        place_of_birth: request.place_of_birth,
+      },
     };
     try {
       const response = await api?.update_initial_patient_info(data);
 
       console.log('-----------------');
-      console.log('RESPONSE conscentt::::', response);
+      console.log('RESPONSE UPDATE PATIENT INFO::::', response);
       console.log('-----------------');
 
       // setPatientList(response.code);
@@ -217,8 +201,8 @@ const usePatient = () => {
     patientList,
     createdummyConsent,
     claimConsent,
-    registerDummyPatient,
-    updateInfoDummyPatient,
+    registerPatient,
+    updateInfoPatient,
     claimConsentToGetSession,
     sessionId,
     toggleModal,

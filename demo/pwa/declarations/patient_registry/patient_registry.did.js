@@ -2,6 +2,14 @@ export const idlFactory = ({ IDL }) => {
   const AuthorizedCallerRequest = IDL.Record({ 'caller' : IDL.Principal });
   const ClaimConsentRequest = IDL.Record({ 'code' : IDL.Text });
   const ClaimConsentResponse = IDL.Record({ 'session_id' : IDL.Text });
+  const Consent = IDL.Record({
+    'nik' : IDL.Text,
+    'session_id' : IDL.Opt(IDL.Text),
+    'code' : IDL.Text,
+    'claimed' : IDL.Bool,
+    'session_user' : IDL.Opt(IDL.Principal),
+  });
+  const ConsentListResponse = IDL.Record({ 'consents' : IDL.Vec(Consent) });
   const EmrListPatientRequest = IDL.Record({
     'page' : IDL.Nat8,
     'limit' : IDL.Nat8,
@@ -120,6 +128,7 @@ export const idlFactory = ({ IDL }) => {
     'version' : IDL.Opt(IDL.Nat),
   });
   const V1 = IDL.Record({
+    'name' : IDL.Text,
     'martial_status' : IDL.Text,
     'place_of_birth' : IDL.Text,
     'address' : IDL.Text,
@@ -127,8 +136,14 @@ export const idlFactory = ({ IDL }) => {
     'date_of_birth' : IDL.Text,
   });
   const Patient = IDL.Variant({ 'V1' : V1 });
-  const GetPatientInfoResponse = IDL.Record({ 'patient' : Patient });
-  const IsConsentClaimedResponse = IDL.Record({ 'claimed' : IDL.Bool });
+  const GetPatientInfoResponse = IDL.Record({
+    'nik' : IDL.Text,
+    'patient' : Patient,
+  });
+  const IsConsentClaimedResponse = IDL.Record({
+    'info' : IDL.Opt(Consent),
+    'claimed' : IDL.Bool,
+  });
   const IssueRequest = IDL.Record({ 'header' : EmrHeader });
   const PatientListResponse = IDL.Record({ 'patients' : IDL.Vec(Patient) });
   const PingResult = IDL.Record({ 'emr_registry_status' : IDL.Bool });
@@ -168,6 +183,7 @@ export const idlFactory = ({ IDL }) => {
         [ClaimConsentResponse],
         [],
       ),
+    'consent_list' : IDL.Func([], [ConsentListResponse], ['query']),
     'create_consent' : IDL.Func([], [ClaimConsentRequest], []),
     'emr_list_patient' : IDL.Func(
         [EmrListPatientRequest],

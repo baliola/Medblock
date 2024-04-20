@@ -38,6 +38,16 @@ export interface ClaimConsentResponse {
   session_id: string;
 }
 export type CollectMetricsRequestType = { force: null } | { normal: null };
+export interface Consent {
+  nik: string;
+  session_id: [] | [string];
+  code: string;
+  claimed: boolean;
+  session_user: [] | [Principal];
+}
+export interface ConsentListResponse {
+  consents: Array<Consent>;
+}
 export interface DailyMetricsData {
   updateCalls: bigint;
   canisterHeapMemorySize: NumericEntity;
@@ -104,6 +114,7 @@ export interface GetMetricsParameters {
   dateFromMillis: bigint;
 }
 export interface GetPatientInfoResponse {
+  nik: string;
   patient: Patient;
 }
 export interface HourlyMetricsData {
@@ -114,6 +125,7 @@ export interface HourlyMetricsData {
   timeMillis: bigint;
 }
 export interface IsConsentClaimedResponse {
+  info: [] | [Consent];
   claimed: boolean;
 }
 export interface IssueRequest {
@@ -179,6 +191,7 @@ export interface UpdateInitialPatientInfoRequest {
   info: V1;
 }
 export interface V1 {
+  name: string;
   martial_status: string;
   place_of_birth: string;
   address: string;
@@ -191,6 +204,7 @@ export interface _SERVICE {
     undefined
   >;
   claim_consent: ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>;
+  consent_list: ActorMethod<[], ConsentListResponse>;
   create_consent: ActorMethod<[], ClaimConsentRequest>;
   emr_list_patient: ActorMethod<
     [EmrListPatientRequest],

@@ -1,16 +1,53 @@
 import { useRouter } from 'next/router';
-import React from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 
 import PrimaryButton from '@/components/Button/PrimaryButton';
 import InputText from '@/components/input/InputText';
 import Images from '@/constants/images';
+import usePatient from '@/hooks/usePatient';
+import { createCanisterError } from '@/interface/CanisterError';
+import { ErrorMessages } from '@/interface/constant';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 const FillPersonalInformationPage = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState<boolean>(false);
+  const { registerPatient } = usePatient();
+  const [formData, setFormData] = useState<RegisterRequest>({
+    name: '',
+    address: '',
+    date_of_birth: '',
+    gender: '',
+    martial_status: '',
+    nik: '',
+    place_of_birth: '',
+  });
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await registerPatient(formData);
+      setLoading(false);
+      router.push('/verified');
+    } catch (error) {
+      setLoading(false);
+      const canisterError = createCanisterError(error);
+      if (canisterError?.message.includes(ErrorMessages.ProviderDoesNotExist)) {
+        toast.error(canisterError.message);
+      } else {
+        console.log('-----------------');
+        console.log('ERROR::::', error);
+      }
+      console.log('====================================');
+      console.log('ERROR --> ', error);
+      console.log('====================================');
+    }
+  };
 
   return (
     <Scaffold
+      loading={loading}
       topBar={
         <div className="items-center w-screen flex justify-center my-4 bg-white">
           <img src={Images.logoPassport} alt="" className="max-w-[80px]" />
@@ -20,47 +57,82 @@ const FillPersonalInformationPage = () => {
         <div className="px-8 py-4">
           <PrimaryButton
             title="Submit"
-            onSubmit={() => router.push('/verified')}
+            onSubmit={() => {
+              handleSubmit();
+            }}
           />
         </div>
       }
     >
-      <div className="w-screen flex flex-col justify-between items-center mb-72 mt-24 px-6">
+      <div className="w-screen flex flex-col justify-between items-center mb-72 mt-24 px-6 pb-48">
         <p className="text-gray-800 mt-4 mb-6 font-bold text-sm">
           Verify your ID, Please fill the information below
         </p>
 
         <InputText
-          value=""
-          onChange={(e) => {}}
+          value={formData.name}
+          onChange={(e) => {
+            setFormData({ ...formData, name: e.target.value });
+          }}
           label="Full Name"
           classStyle="mb-4"
         />
         <InputText
-          value=""
-          onChange={(e) => {}}
+          value={formData.nik}
+          onChange={(e) => {
+            setFormData({ ...formData, nik: e.target.value });
+          }}
           label="Valid Identity Number"
           classStyle="mb-4"
         />
         <InputText
-          value=""
-          onChange={(e) => {}}
+          value={formData.address}
+          onChange={(e) => {
+            setFormData({ ...formData, address: e.target.value });
+          }}
           label="Address"
           classStyle="mb-4"
         />
         <InputText
-          value=""
-          onChange={(e) => {}}
-          label="Phone Number"
+          value={formData.gender}
+          onChange={(e) => {
+            setFormData({ ...formData, gender: e.target.value });
+          }}
+          label="Gender"
           classStyle="mb-4"
         />
         <InputText
+          value={formData.date_of_birth}
+          onChange={(e) => {
+            setFormData({ ...formData, date_of_birth: e.target.value });
+          }}
+          label="Birth Date"
+          classStyle="mb-4"
+          type="date"
+        />
+        <InputText
+          value={formData.place_of_birth}
+          onChange={(e) => {
+            setFormData({ ...formData, place_of_birth: e.target.value });
+          }}
+          label="Place Date"
+          classStyle="mb-4"
+        />
+        <InputText
+          value={formData.martial_status}
+          onChange={(e) => {
+            setFormData({ ...formData, martial_status: e.target.value });
+          }}
+          label="Martial Status"
+          classStyle="mb-4"
+        />
+        {/* <InputText
           value=""
           onChange={(e) => {}}
           label="Upload Your ID Card"
           classStyle="mb-4"
           type="file"
-        />
+        /> */}
         <div className="relative flex items-start">
           <div className="flex h-6 items-center">
             <input
