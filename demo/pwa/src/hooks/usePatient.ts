@@ -44,8 +44,7 @@ export interface EmrListPatientRequest {
 }
 
 const usePatient = () => {
-  const { patientList, setPatientList, sessionId, setSessionId } =
-    useCentralStore();
+  const { patientList, setPatientList } = useCentralStore();
   const { identity, authenticated } = useAuth();
   const router = useRouter();
   const canister = patientCanisterId;
@@ -204,7 +203,6 @@ const usePatient = () => {
     registerPatient,
     updateInfoPatient,
     claimConsentToGetSession,
-    sessionId,
     toggleModal,
     setShowModal,
     showModal,

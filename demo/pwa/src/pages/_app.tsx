@@ -37,7 +37,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
   useEffect(() => {
     if (windowLoaded) {
-      initNFID();
+      // initNFID();
     }
   }, [windowLoaded]);
 

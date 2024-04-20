@@ -17,7 +17,7 @@ export const loginHost =
 export const host =
   process.env.DFX_NETWORK === 'ic'
     ? 'https://identity.ic0.app'
-    : `http://bd3sg-teaaa-aaaaa-qaaba-cai.localhost:4943/`;
+    : `http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/`;
 
 export const AppAgent = (identity: Identity | null) => {
   console.log('identity from config', identity);

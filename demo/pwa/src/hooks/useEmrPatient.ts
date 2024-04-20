@@ -28,6 +28,7 @@ const useEMRPatient = () => {
   const { identity, authenticated } = useAuth();
   // const { setNik } = useCentralStore();
   const [patientInfo, setPatientInfo] = useState<Patient | null>();
+  const [nik, setNik] = useState('');
   const [emrList, setEmrList] = useState<EmrHeader[]>([]);
   const [emr, setEmr] = useState<EmrHeaderWithBody>();
   const [initialValues, setInitialValues] = useState({
@@ -51,28 +52,26 @@ const useEMRPatient = () => {
   async function getPatientInfo() {
     console.log('FETCH PATIENT RUNNING.....');
     console.log('principal ingbok', identity?.getPrincipal().toText());
-    // const localSessionId = localStorageHelper.getItem('session');
     try {
       console.log('FETCH PATIENT RUNNING 11.....');
-      // const data: ClaimConsentResponse = {
-      //   session_id: session as string,
-      // };
+
       const response = await api?.get_patient_info();
       console.log('-----------------');
       console.log('RESPONSE:::: INGBOX', response);
       console.log('-----------------');
-      // setPatientInfo(response.patient);
-      // setNik(response.nik);
+      setPatientInfo(response.patient);
+      setNik(response.nik);
 
       // setPatientList(response.patients);
     } catch (error) {
       const canisterError = createCanisterError(error);
-      console.log('CANISTER ERROR', error);
+      console.log('CANISTER ERROR', canisterError);
       if (canisterError?.message.includes(ErrorMessages.AnonimError)) {
         router.push('/auth/login');
         // toast.error('Provider info does not exist');
       } else {
         console.log('-----------------');
+        toast.error(canisterError?.message);
         console.log('ERROR:::: ingbok', error);
       }
     }
