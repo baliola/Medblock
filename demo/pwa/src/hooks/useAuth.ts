@@ -70,7 +70,9 @@ const useAuthentication = () => {
   };
 
   const handleLogin = async () => {
+    setIsloading(true);
     await login(hosts);
+    setIsloading(false);
   };
 
   //   console.log('NFID:::', nfid);
@@ -154,6 +156,7 @@ const useAuthentication = () => {
     handleAuthenticate,
     checkAuthentication,
     signOut,
+    loading,
     // nfid,
     initAuth,
     authenticated,

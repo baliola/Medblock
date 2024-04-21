@@ -8,9 +8,18 @@ import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 const ConsentCodePage = () => {
   const router = useRouter();
   const [showImage, setShowImage] = useState<boolean>(false);
+  const [seconds, setSeconds] = useState<number>(59);
   const { consent } = router.query;
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (seconds > 0) {
+      intervalId = setInterval(() => {
+        setSeconds((prevSeconds) => prevSeconds - 1);
+      }, 1000);
+    }
+
     // Check screen width and set showImage state accordingly
     const handleResize = () => {
       setShowImage(window.innerWidth > 350);
@@ -24,9 +33,14 @@ const ConsentCodePage = () => {
 
     // Clean up event listener
     return () => {
+      clearInterval(intervalId);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  const handleResendCode = () => {
+    setSeconds(59);
+  };
 
   return (
     <Scaffold style={{ background: '#242DA8' }}>
@@ -39,10 +53,15 @@ const ConsentCodePage = () => {
             {consent ?? '000000'}
           </p>
           <p className="text-white">
-            Refresh the code in <span>28</span> second
+            Refresh the code in <span>{seconds}</span> second
           </p>
 
-          <p className="underline text-yellow-500 my-6">Get new code</p>
+          <p
+            className="underline text-yellow-500 my-6"
+            onClick={() => handleResendCode()}
+          >
+            Get new code
+          </p>
 
           <BasicButton
             label={'Back'}
