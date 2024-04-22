@@ -92,7 +92,7 @@ impl ProviderRegistry {
                 Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
             }
 
-            let args = IssueRequest { header};
+            let args = IssueRequest { header };
             let result = patient_registry.notify_updated(args).await.map_err(CallError::from);
 
             match result {
@@ -674,6 +674,7 @@ mod provider_test {
         ).to_provider();
 
         let _encoded_provider_size = Encode!(&provider).unwrap();
+        println!("{:?}", _encoded_provider_size.len());
         let _ = providers.add_provider(provider.clone());
 
         let provider = providers.get_provider(internal_id).unwrap();
@@ -1005,12 +1006,12 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
-            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"));
+            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")).to_provider();
             let encoded = Encode!(&s).unwrap();
 
             println!("encoded len: {}", encoded.len());
 
-            let decoded = Decode!(&encoded, V1).unwrap();
+            let decoded = Decode!(&encoded, Provider).unwrap();
 
             assert_eq!(decoded, s);
         }
@@ -1018,7 +1019,9 @@ pub mod provider {
 
     // 260 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
     // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
-    impl_max_size!(for V1: 260);
+    // IMPORTANT : all new version of provider should measure the encoding size when it's been turned into the Provider enum, not the inner struct only.
+    // this is because testing only the size of the inner struct wouldn't include measuring enum serialization overhead.
+    impl_max_size!(for V1: 270);
     impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
     impl Billable for V1 {
