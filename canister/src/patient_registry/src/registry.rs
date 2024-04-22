@@ -333,7 +333,7 @@ pub struct HeaderStatus {
 }
 
 impl_max_size!(for HeaderStatus: 40);
-impl_mem_bound!(for HeaderStatus: bounded; fixed_size: true);
+impl_mem_bound!(for HeaderStatus: bounded; fixed_size: false);
 impl_range_bound!(HeaderStatus);
 
 #[cfg(test)]

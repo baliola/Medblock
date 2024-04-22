@@ -27,8 +27,7 @@ pub struct ConsentListResponse {
     pub consents: Vec<Consent>,
 }
 #[derive(CandidType, Deserialize)]
-pub struct EmrListConsentRequest {
-    pub session_id: String,
+pub struct EmrListPatientRequest {
     pub page: u8,
     pub limit: u8,
 }
@@ -52,6 +51,12 @@ pub struct EmrHeaderWithStatus {
 #[derive(CandidType, Deserialize)]
 pub struct EmrListPatientResponse {
     pub emrs: Vec<EmrHeaderWithStatus>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct EmrListConsentRequest {
+    pub session_id: String,
+    pub page: u8,
+    pub limit: u8,
 }
 #[derive(CandidType, Deserialize)]
 pub struct StatusRequest {
@@ -296,6 +301,12 @@ impl PatientRegistry {
     pub async fn create_consent(&self) -> Result<(ClaimConsentRequest,)> {
         ic_cdk::call(self.0, "create_consent", ()).await
     }
+    pub async fn emr_list_patient(
+        &self,
+        arg0: EmrListPatientRequest,
+    ) -> Result<(EmrListPatientResponse,)> {
+        ic_cdk::call(self.0, "emr_list_patient", (arg0,)).await
+    }
     pub async fn emr_list_with_session(
         &self,
         arg0: EmrListConsentRequest,
@@ -491,6 +502,27 @@ pub mod pocket_ic_bindings {
             };
             let payload = ();
             call_pocket_ic(server, f, self.0.clone(), sender, "create_consent", payload)
+        }
+        pub fn emr_list_patient(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: EmrListPatientRequest,
+        ) -> std::result::Result<EmrListPatientResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "emr_list_patient",
+                payload,
+            )
         }
         pub fn emr_list_with_session(
             &self,
