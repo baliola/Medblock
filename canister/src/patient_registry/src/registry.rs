@@ -398,6 +398,10 @@ impl HeaderStatusMap {
         let _ = self.0.insert(key, status.to_stable());
         Ok(())
     }
+
+    pub fn get(&self, header: &Stable<EmrHeader>) -> Option<Stable<HeaderStatus, Candid>> {
+        self.0.get(&header)
+    }
 }
 
 #[cfg(test)]

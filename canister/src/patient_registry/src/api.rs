@@ -2,14 +2,14 @@ use candid::{ CandidType, Principal };
 use canister_common::{
     common::{ EmrHeader, EmrId, ProviderId, UserId, H256 },
     from,
-    stable::{ Stable },
+    stable::{ EncodingMarker, Stable },
 };
 use serde::Deserialize;
 
 use crate::{
     consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
-    registry::{ Patient, NIK, V1 },
+    registry::{ HeaderStatus, Patient, NIK, V1 },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -37,22 +37,26 @@ pub struct EmrListPatientRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct EmrListPatientResponse {
-    emrs: Vec<EmrHeader>,
+    emrs: Vec<EmrHeaderWithStatus>,
 }
-
-impl From<Vec<Stable<EmrHeader>>> for EmrListPatientResponse {
-    fn from(value: Vec<Stable<EmrHeader>>) -> Self {
-        Self {
-            emrs: value
-                .into_iter()
-                .map(|x| x.into_inner())
-                .collect(),
-        }
-    }
-}
-from!(EmrListPatientResponse: Vec<EmrHeader> as value {
+from!(EmrListPatientResponse: Vec<EmrHeaderWithStatus> as value {
     emrs: value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct EmrHeaderWithStatus {
+    header: EmrHeader,
+    status: HeaderStatus,
+}
+
+impl EmrHeaderWithStatus {
+    pub fn new<E1: EncodingMarker, E2: EncodingMarker>(
+        header: Stable<EmrHeader, E1>,
+        status: Stable<HeaderStatus, E2>
+    ) -> Self {
+        Self { header: header.into_inner(), status: status.into_inner() }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct RegisterPatientRequest {
@@ -74,7 +78,6 @@ pub struct IssueRequest {
     pub header: EmrHeader,
 }
 pub type UpdateRequest = IssueRequest;
-
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateConsentResponse {

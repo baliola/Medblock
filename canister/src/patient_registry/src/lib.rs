@@ -6,6 +6,7 @@ use api::{
     ClaimConsentResponse,
     ConsentListResponse,
     CreateConsentResponse,
+    EmrHeaderWithStatus,
     EmrListConsentRequest,
     EmrListConsentResponse,
     EmrListPatientRequest,
@@ -295,13 +296,23 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     PatientRegistry::do_call_read_emr(args, registry).await
 }
 
-#[ic_cdk::query(guard = "only_patient")]
+// #[ic_cdk::query(guard = "only_patient")]
 fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
     with_state(move |s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
         .unwrap()
+        .into_iter()
+        .map(|header| {
+            let status = with_state(|s|
+                s.registry.header_status_map
+                    .get(&header)
+                    .expect("issued emr must have valid status")
+            );
+            EmrHeaderWithStatus::new(header, status)
+        })
+        .collect::<Vec<_>>()
         .into()
 }
 
@@ -422,6 +433,16 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
 
     with_state(|s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
         .unwrap()
+        .into_iter()
+        .map(|header| {
+            let status = with_state(|s|
+                s.registry.header_status_map
+                    .get(&header)
+                    .expect("issued emr must have valid status")
+            );
+            EmrHeaderWithStatus::new(header, status)
+        })
+        .collect::<Vec<_>>()
         .into()
 }
 
