@@ -368,8 +368,10 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrResponse {
-    let registry = with_state(|s| s.config.get().emr_registry());
-    let _result = ProviderRegistry::do_call_update_emr(req, registry).await;
+    let emr_registry = with_state(|s| s.config.get().emr_registry());
+    let patient_registry = with_state(|s| s.config.get().patient_registry());
+
+    ProviderRegistry::do_call_update_emr(req, emr_registry, patient_registry).await;
 
     crate::api::UpdateEmrResponse {}
 }

@@ -5,7 +5,7 @@ use candid::{ CandidType };
 use canister_common::random::CallError;
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ self, EmrId, PrincipalBytes };
+use canister_common::common::{ self, EmrHeader, EmrId, PrincipalBytes };
 use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -28,6 +28,7 @@ use canister_common::{
 
 use crate::api::{ IssueEmrRequest };
 use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
+use crate::declarations::patient_registry::IssueRequest;
 
 use self::provider::{ Provider, V1 };
 
@@ -70,16 +71,35 @@ impl ProviderRegistry {
 impl ProviderRegistry {
     pub async fn do_call_update_emr(
         req: crate::api::UpdateEmrRequest,
-        registry: crate::declarations::emr_registry::EmrRegistry
+        emr_registry: crate::declarations::emr_registry::EmrRegistry,
+        patient_registry: crate::declarations::patient_registry::PatientRegistry
     ) {
-        let args = req.to_args();
+        ic_cdk::spawn(async move {
+            let header = req.header.clone();
+            let header = crate::declarations::patient_registry::EmrHeader {
+                provider_id: header.provider_id.to_string(),
+                user_id: header.user_id.to_string(),
+                emr_id: header.emr_id.to_string(),
+                registry_id: header.registry_id.to_principal(),
+            };
 
-        let result = registry.update_emr(args).await.map_err(CallError::from);
+            let args = req.to_args();
 
-        match result {
-            Ok(_) => (),
-            Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
-        }
+            let result = emr_registry.update_emr(args).await.map_err(CallError::from);
+
+            match result {
+                Ok(_) => (),
+                Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
+            }
+
+            let args = IssueRequest { header};
+            let result = patient_registry.notify_updated(args).await.map_err(CallError::from);
+
+            match result {
+                Ok(_) => (),
+                Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
+            }
+        });
     }
 }
 
