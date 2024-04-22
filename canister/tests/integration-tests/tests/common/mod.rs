@@ -1,11 +1,18 @@
-use std::{ path::Path, process::Command, time::Duration };
+use std::{ path::Path, process::Command, str::FromStr, time::Duration };
 
 use candid::{ CandidType, Encode };
 use ic_agent::Identity;
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
-use integration_tests::declarations;
+use integration_tests::declarations::{
+    self,
+    patient_registry,
+    provider_registry::{ ProviderInfoRequest, RegisternewProviderRequest },
+};
 use pocket_ic::UserError;
+
+use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
+use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
 const PROVIDER_REGISTRY_WASM: &[u8] = include_bytes!(
     "../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm"
@@ -250,6 +257,71 @@ pub fn random_identity() -> Principal {
     let key = ring::signature::Ed25519KeyPair::from_pkcs8(key.as_ref()).unwrap();
 
     let identity = ic_agent::identity::BasicIdentity::from_key_pair(key);
-    
+
     identity.sender().unwrap()
+}
+
+pub struct Scenario;
+
+pub struct Provider(pub Principal);
+pub struct Patient(pub Principal);
+
+impl Scenario {
+    pub fn setup_one_provider_one_patient() -> (Registries, Provider, Patient) {
+        let registries = prepare();
+        let provider = Provider(random_identity());
+        let patient = Patient(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries.provider
+            .register_new_provider(&registries.ic, registries.controller.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let arg = ProviderInfoRequest {
+            provider: provider.0.clone(),
+        };
+
+        // prepare patient
+
+        let display = String::from("pasien").to_ascii_lowercase();
+        let address = String::from("jl.rumah").to_ascii_lowercase();
+
+        let nik = canister_common::common::H256
+            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
+            .unwrap();
+
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries.patient
+            .register_patient(&registries.ic, patient.0.clone(), PatientCall::Update, arg)
+            .unwrap();
+
+        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+            info: patient_registry::V1 {
+                name: display.clone(),
+                martial_status: "married".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address,
+                gender: "men".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+            },
+        };
+
+        registries.patient
+            .update_initial_patient_info(&registries.ic, patient.0.clone(), PatientCall::Update, arg)
+            .unwrap();
+
+        (registries, provider, patient)
+    }
 }
