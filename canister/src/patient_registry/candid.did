@@ -173,6 +173,7 @@ service : () -> {
     ) query;
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
+  notify_updated : (IssueRequest) -> ();
   patient_list : () -> (PatientListResponse) query;
   ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (

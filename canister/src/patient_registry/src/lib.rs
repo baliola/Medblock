@@ -24,6 +24,7 @@ use api::{
     RevokeConsentRequest,
     UpdateEmrRegistryRequest,
     UpdateInitialPatientInfoRequest,
+    UpdateRequest,
 };
 use candid::{ Decode, Encode };
 use canister_common::{
@@ -306,9 +307,12 @@ fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
 
 #[ic_cdk::update(guard = "only_provider_registry")]
 fn notify_issued(req: IssueRequest) {
-    with_state_mut(|s|
-        s.registry.issue_for(req.header.user_id.clone(), req.header)
-    ).unwrap();
+    with_state_mut(|s| s.registry.issue_for(req.header.user_id.clone(), req.header)).unwrap();
+}
+
+#[ic_cdk::update(guard = "only_provider_registry")]
+fn notify_updated(req: UpdateRequest) {
+    with_state_mut(|s| s.registry.header_status_map.update(req.header)).unwrap();
 }
 
 // TODO : unsafe, anybody can register as a patient and bind to any NIK, should discuss how do we gate this properly.
@@ -496,7 +500,7 @@ fn get_patient_info() -> GetPatientInfoResponse {
     let (patient, nik) = with_state(|s|
         s.registry.get_patient_info_with_principal(caller)
     ).unwrap();
-    
+
     GetPatientInfoResponse::new(patient, nik)
 }
 

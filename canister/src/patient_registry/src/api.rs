@@ -73,6 +73,8 @@ pub struct PingResult {
 pub struct IssueRequest {
     pub header: EmrHeader,
 }
+pub type UpdateRequest = IssueRequest;
+
 
 #[derive(CandidType, Deserialize)]
 pub struct CreateConsentResponse {
