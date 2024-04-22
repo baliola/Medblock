@@ -1,6 +1,6 @@
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ AsciiRecordsKey, EmrHeader, UserId, H256 },
+    common::{ AsciiRecordsKey, EmrHeader, Timestamp, UserId, H256 },
     impl_max_size,
     impl_mem_bound,
     impl_range_bound,
@@ -20,6 +20,7 @@ pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub emr_binding_map: EmrBindingMap,
     pub info_map: InfoMap,
+    pub header_status_map: HeaderStatusMap,
 }
 
 impl PatientRegistry {
@@ -30,6 +31,12 @@ impl PatientRegistry {
     ) -> PatientBindingMapResult {
         let nik = self.owner_map.get_nik(&patient_principal)?;
         self.info_map.set(nik.into_inner(), patient)
+    }
+
+    pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult {
+        self.emr_binding_map.issue_for(nik, header.clone())?;
+        self.header_status_map.add(header)?;
+        Ok(())
     }
 
     pub fn get_patient_info_with_principal(
@@ -90,6 +97,7 @@ impl PatientRegistry {
             owner_map: OwnerMap::init(memory_manager),
             emr_binding_map: EmrBindingMap::init(memory_manager),
             info_map: InfoMap::init(memory_manager),
+            header_status_map: HeaderStatusMap::init(memory_manager),
         }
     }
 }
@@ -314,6 +322,80 @@ impl EmrBindingMap {
         }
 
         self.0.insert(nik.to_stable(), header.to_stable());
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct HeaderStatus {
+    created_at: Timestamp,
+    updated_at: Timestamp,
+}
+
+impl_max_size!(for HeaderStatus: 40);
+impl_mem_bound!(for HeaderStatus: bounded; fixed_size: true);
+impl_range_bound!(HeaderStatus);
+
+#[cfg(test)]
+mod header_status_test {
+    use super::*;
+
+    #[test]
+    fn test_header_status() {
+        use candid::{ Encode, Decode };
+
+        let header_status = HeaderStatus {
+            created_at: Timestamp::new(),
+            updated_at: Timestamp::new(),
+        };
+
+        let encoded = Encode!(&header_status).unwrap();
+
+        println!("encoded: {:?}", encoded.len());
+
+        let decoded = Decode!(&encoded, HeaderStatus).unwrap();
+
+        assert_eq!(header_status, decoded);
+    }
+}
+
+///  this is used to track the status of the emr header. Must be updated every update.
+pub struct HeaderStatusMap(
+    ic_stable_structures::BTreeMap<Stable<EmrHeader>, Stable<HeaderStatus, Candid>, Memory>,
+);
+
+impl HeaderStatusMap {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
+    }
+
+    pub fn add(&mut self, header: EmrHeader) -> PatientBindingMapResult {
+        let key = header.to_stable();
+
+        if self.0.contains_key(&key) {
+            return Err(PatientRegistryError::EmrExists);
+        }
+
+        let status = HeaderStatus {
+            created_at: Timestamp::new(),
+            updated_at: Timestamp::new(),
+        };
+
+        let _ = self.0.insert(key, status.to_stable());
+        Ok(())
+    }
+
+    pub fn update(&mut self, header: EmrHeader) -> PatientBindingMapResult {
+        let key = header.to_stable();
+
+        let status = self.0.get(&key).ok_or(PatientRegistryError::UserDoesNotExist)?;
+
+        let status = HeaderStatus {
+            created_at: status.created_at,
+            updated_at: Timestamp::new(),
+        };
+
+        let _ = self.0.insert(key, status.to_stable());
         Ok(())
     }
 }
