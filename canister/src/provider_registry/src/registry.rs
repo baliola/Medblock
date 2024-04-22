@@ -5,7 +5,7 @@ use candid::{ CandidType };
 use canister_common::random::CallError;
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ self, EmrId, PrincipalBytes };
+use canister_common::common::{ self, EmrHeader, EmrId, PrincipalBytes };
 use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -28,6 +28,7 @@ use canister_common::{
 
 use crate::api::{ IssueEmrRequest };
 use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
+use crate::declarations::patient_registry::IssueRequest;
 
 use self::provider::{ Provider, V1 };
 
@@ -70,16 +71,35 @@ impl ProviderRegistry {
 impl ProviderRegistry {
     pub async fn do_call_update_emr(
         req: crate::api::UpdateEmrRequest,
-        registry: crate::declarations::emr_registry::EmrRegistry
+        emr_registry: crate::declarations::emr_registry::EmrRegistry,
+        patient_registry: crate::declarations::patient_registry::PatientRegistry
     ) {
-        let args = req.to_args();
+        ic_cdk::spawn(async move {
+            let header = req.header.clone();
+            let header = crate::declarations::patient_registry::EmrHeader {
+                provider_id: header.provider_id.to_string(),
+                user_id: header.user_id.to_string(),
+                emr_id: header.emr_id.to_string(),
+                registry_id: header.registry_id.to_principal(),
+            };
 
-        let result = registry.update_emr(args).await.map_err(CallError::from);
+            let args = req.to_args();
 
-        match result {
-            Ok(_) => (),
-            Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
-        }
+            let result = emr_registry.update_emr(args).await.map_err(CallError::from);
+
+            match result {
+                Ok(_) => (),
+                Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
+            }
+
+            let args = IssueRequest { header };
+            let result = patient_registry.notify_updated(args).await.map_err(CallError::from);
+
+            match result {
+                Ok(_) => (),
+                Err(e) => ic_cdk::trap(&format!("ERROR: error calling update_emr : {}", e)),
+            }
+        });
     }
 }
 
@@ -654,6 +674,7 @@ mod provider_test {
         ).to_provider();
 
         let _encoded_provider_size = Encode!(&provider).unwrap();
+        println!("{:?}", _encoded_provider_size.len());
         let _ = providers.add_provider(provider.clone());
 
         let provider = providers.get_provider(internal_id).unwrap();
@@ -985,12 +1006,12 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
-            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"));
+            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")).to_provider();
             let encoded = Encode!(&s).unwrap();
 
             println!("encoded len: {}", encoded.len());
 
-            let decoded = Decode!(&encoded, V1).unwrap();
+            let decoded = Decode!(&encoded, Provider).unwrap();
 
             assert_eq!(decoded, s);
         }
@@ -998,7 +1019,9 @@ pub mod provider {
 
     // 260 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
     // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
-    impl_max_size!(for V1: 260);
+    // IMPORTANT : all new version of provider should measure the encoding size when it's been turned into the Provider enum, not the inner struct only.
+    // this is because testing only the size of the inner struct wouldn't include measuring enum serialization overhead.
+    impl_max_size!(for V1: 270);
     impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
     impl Billable for V1 {

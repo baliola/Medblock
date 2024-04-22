@@ -53,13 +53,14 @@ type EmrHeader = record {
   registry_id : principal;
 };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type EmrHeaderWithStatus = record { status : HeaderStatus; header : EmrHeader };
 type EmrListConsentRequest = record {
   session_id : text;
   page : nat8;
   limit : nat8;
 };
 type EmrListPatientRequest = record { page : nat8; limit : nat8 };
-type EmrListPatientResponse = record { emrs : vec EmrHeader };
+type EmrListPatientResponse = record { emrs : vec EmrHeaderWithStatus };
 type GetInformationRequest = record {
   status : opt StatusRequest;
   metrics : opt MetricsRequest;
@@ -93,6 +94,7 @@ type GetMetricsParameters = record {
   dateFromMillis : nat;
 };
 type GetPatientInfoResponse = record { nik : text; patient : Patient };
+type HeaderStatus = record { updated_at : nat64; created_at : nat64 };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
   canisterHeapMemorySize : vec nat64;
@@ -173,6 +175,7 @@ service : () -> {
     ) query;
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
+  notify_updated : (IssueRequest) -> ();
   patient_list : () -> (PatientListResponse) query;
   ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (

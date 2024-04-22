@@ -10,9 +10,18 @@ use integration_tests::declarations::{
     },
 };
 
+use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
+use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
+
 mod common;
 
 mod test {
+    use integration_tests::declarations::{
+        self,
+        patient_registry::EmrListPatientRequest,
+        provider_registry::{ EmrFragment, IssueEmrRequest },
+    };
+
     use super::*;
     #[test]
     fn register_provider() {
@@ -105,5 +114,111 @@ mod test {
             .unwrap();
 
         assert_eq!(result.nik, nik.to_string());
+    }
+
+    #[test]
+    pub fn test_issued_update() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let emr = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        assert!(emr.emrs.len() == 1);
+
+        let old_emr = emr.emrs.first().unwrap();
+
+        // advance time
+        registry.ic.advance_time(Duration::from_secs(60));
+
+        // update emr
+        registry.provider
+            .update_emr(
+                &registry.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                declarations::provider_registry::UpdateEmrRequest {
+                    fields: vec![
+                        EmrFragment { key: "key".to_string(), value: "new value".to_string() },
+                        EmrFragment { key: "new key".to_string(), value: "new value".to_string() }
+                    ],
+                    header: declarations::provider_registry::EmrHeader {
+                        provider_id: response.emr_header.provider_id.clone(),
+                        user_id: response.emr_header.user_id.clone(),
+                        emr_id: response.emr_header.emr_id.clone(),
+                        registry_id: response.emr_header.registry_id.clone(),
+                    },
+                }
+            )
+            .unwrap();
+
+        let emr_list = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        let emr = emr_list.emrs.first().unwrap();
+
+        assert!(emr_list.emrs.len() == 1);
+        assert!(emr.status.updated_at > old_emr.status.updated_at);
+
+        let emr = registry.patient
+            .read_emr_by_id(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                declarations::patient_registry::ReadEmrByIdRequest {
+                    provider_id: emr.header.provider_id.clone(),
+                    emr_id: emr.header.emr_id.clone(),
+                    registry_id: emr.header.registry_id.clone(),
+                }
+            )
+            .unwrap();
+
+        // no partial eq is implemented for auto generated types, so we need to check manually
+        let mut key1 = false;
+        let mut key2 = false;
+
+        for emr in emr.emr.body {
+            if emr.key == "key" {
+                assert_eq!(emr.value, "new value");
+                key1 = true;
+            }
+
+            if emr.key == "new key" {
+                assert_eq!(emr.value, "new value");
+                key2 = true;
+            }
+        }
+
+        assert!(key1, "key 1 does not updated");
+        assert!(key2, "key 2 does not updated");
     }
 }

@@ -160,7 +160,7 @@ impl<const N: usize> AsciiRecordsKey<N> {
     pub fn to_ascii_str(&self) -> &str {
         // discard invalid bytes
         let buffer_ref = &self.key[..self.len as usize];
-        std::str::from_utf8(buffer_ref).expect("key should be ascii")
+        std::str::from_utf8(buffer_ref).expect("key shoulxd be ascii")
     }
 }
 

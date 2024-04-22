@@ -44,7 +44,7 @@ pub type Memory = ic_stable_structures::memory_manager::VirtualMemory<DefaultMem
 pub struct Scale;
 #[derive(Debug)]
 pub struct Candid;
-trait EncodingMarker {}
+pub trait EncodingMarker {}
 impl EncodingMarker for Scale {}
 impl EncodingMarker for Candid {}
 
@@ -67,6 +67,12 @@ impl<Data, Encoding> PartialEq
 {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(other.as_inner())
+    }
+}
+
+impl<Data: MemBoundMarker, Encoding: EncodingMarker> AsRef<Data> for Stable<Data, Encoding> {
+    fn as_ref(&self) -> &Data {
+        &self.0
     }
 }
 
@@ -159,7 +165,7 @@ impl<Data, Encoding> Stable<Data, Encoding> where Data: MemBoundMarker, Encoding
 
 impl<Data, Encoding> Clone
     for Stable<Data, Encoding>
-    where Data: Clone +  MemBoundMarker, Encoding: EncodingMarker
+    where Data: Clone + MemBoundMarker, Encoding: EncodingMarker
 {
     fn clone(&self) -> Self {
         Stable(self.0.clone(), PhantomData)

@@ -32,6 +32,11 @@ pub struct EmrListPatientRequest {
     pub limit: u8,
 }
 #[derive(CandidType, Deserialize)]
+pub struct HeaderStatus {
+    pub updated_at: u64,
+    pub created_at: u64,
+}
+#[derive(CandidType, Deserialize)]
 pub struct EmrHeader {
     pub provider_id: String,
     pub user_id: String,
@@ -39,8 +44,13 @@ pub struct EmrHeader {
     pub registry_id: Principal,
 }
 #[derive(CandidType, Deserialize)]
+pub struct EmrHeaderWithStatus {
+    pub status: HeaderStatus,
+    pub header: EmrHeader,
+}
+#[derive(CandidType, Deserialize)]
 pub struct EmrListPatientResponse {
-    pub emrs: Vec<EmrHeader>,
+    pub emrs: Vec<EmrHeaderWithStatus>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct EmrListConsentRequest {
@@ -335,6 +345,9 @@ impl PatientRegistry {
     }
     pub async fn notify_issued(&self, arg0: IssueRequest) -> Result<()> {
         ic_cdk::call(self.0, "notify_issued", (arg0,)).await
+    }
+    pub async fn notify_updated(&self, arg0: IssueRequest) -> Result<()> {
+        ic_cdk::call(self.0, "notify_updated", (arg0,)).await
     }
     pub async fn patient_list(&self) -> Result<(PatientListResponse,)> {
         ic_cdk::call(self.0, "patient_list", ()).await
@@ -675,6 +688,20 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "notify_issued", payload)
+        }
+        pub fn notify_updated(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: IssueRequest,
+        ) -> std::result::Result<(), pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "notify_updated", payload)
         }
         pub fn patient_list(
             &self,
