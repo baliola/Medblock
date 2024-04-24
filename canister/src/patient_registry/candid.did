@@ -53,7 +53,11 @@ type EmrHeader = record {
   registry_id : principal;
 };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
-type EmrHeaderWithStatus = record { status : HeaderStatus; header : EmrHeader };
+type EmrHeaderWithStatus = record {
+  status : HeaderStatus;
+  hospital_name : text;
+  header : EmrHeader;
+};
 type EmrListConsentRequest = record {
   session_id : text;
   page : nat8;
@@ -161,10 +165,12 @@ service : () -> {
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
   consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
-  emr_list_patient : (EmrListPatientRequest) -> (EmrListPatientResponse) query;
+  emr_list_patient : (EmrListPatientRequest) -> (
+      EmrListPatientResponse,
+    ) composite_query;
   emr_list_with_session : (EmrListConsentRequest) -> (
       EmrListConsentResponse,
-    ) query;
+    ) composite_query;
   finish_session : (ClaimConsentResponse) -> ();
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
