@@ -27,7 +27,10 @@ import { SetStateAction, useMemo, useState } from 'react';
 import ModalAdd from './components/Modal/ModalAdd';
 import { useRouter } from 'next/router';
 import usePatient from '@/hooks/usePatient';
-import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import {
+  Patient,
+  PatientWithNikAndSession,
+} from 'declarations/patient_registry/patient_registry.did';
 import ModalSuccess from './components/Modal/ModalSuccess';
 import ModalAddGetPatientSession from './components/Modal/ModalRequestSession';
 import useProvider from '@/hooks/useProvider';
@@ -60,7 +63,7 @@ export default function DashboardExample() {
 
   console.log('seesion id', sessionId);
 
-  const patientColumn = useMemo<ColumnDef<Patient>[]>(
+  const patientColumn = useMemo<ColumnDef<PatientWithNikAndSession>[]>(
     () => [
       {
         header: 'No',
@@ -71,25 +74,30 @@ export default function DashboardExample() {
       {
         header: 'Full Name',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.V1.name}</p>
+          <p className="font-normal">{info.row.original.info.V1.name}</p>
         ),
       },
       {
         header: 'Date of Birth',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.V1.date_of_birth}</p>
+          <p className="font-normal">
+            {info.row.original.info.V1.date_of_birth}
+          </p>
         ), // Format the date as needed
       },
       {
         header: 'Place of Birth',
         cell: (info) => (
-          <p className="font-normal"> {info.row.original.V1.place_of_birth}</p>
+          <p className="font-normal">
+            {' '}
+            {info.row.original.info.V1.place_of_birth}
+          </p>
         ),
       },
       {
         header: 'Address',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.V1.address}</p>
+          <p className="font-normal">{info.row.original.info.V1.address}</p>
         ),
       },
       {
@@ -107,7 +115,7 @@ export default function DashboardExample() {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/emr/1`);
+                router.push(`/emr/${info.row.original.session_id}`);
               }}
             />
             <User size="24" className="cursor-pointer" />
