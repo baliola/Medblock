@@ -54,7 +54,7 @@ const DetailPatient: NextPageWithLayout = () => {
       },
 
       {
-        header: 'Created At',
+        header: 'Issued At',
         cell: (info) => (
           <p className="font-normal">
             {formatDateFromBigInt(info.row.original.status.created_at)}
