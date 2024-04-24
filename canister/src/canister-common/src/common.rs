@@ -91,6 +91,14 @@ pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
     len: u8,
 }
 
+impl<const N: usize> TryFrom<String> for AsciiRecordsKey<N> {
+    type Error = AsciiKeyError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(&value)
+    }
+}
+
 impl<const N: usize> TryFrom<&str> for AsciiRecordsKey<N> {
     type Error = AsciiKeyError;
 

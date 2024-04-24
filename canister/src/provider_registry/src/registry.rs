@@ -65,6 +65,22 @@ impl ProviderRegistry {
                 .into_inner()
         )
     }
+
+    pub fn provider_info_with_internal_id(
+        &self,
+        internal_id: &InternalProviderId
+    ) -> ProviderRegistryResult<Provider> {
+        Ok(
+            self.providers
+                .get_provider(internal_id.clone())
+                .ok_or(
+                    RegistryError::ProviderBindingMapError(
+                        ProviderBindingMapError::ProviderDoesNotExist
+                    )
+                )?
+                .into_inner()
+        )
+    }
 }
 
 // update emr inter-canister call
@@ -1006,7 +1022,11 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
-            let s = V1::new(name.clone(), name, id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")).to_provider();
+            let s = V1::new(
+                name.clone(),
+                name,
+                id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")
+            ).to_provider();
             let encoded = Encode!(&s).unwrap();
 
             println!("encoded len: {}", encoded.len());

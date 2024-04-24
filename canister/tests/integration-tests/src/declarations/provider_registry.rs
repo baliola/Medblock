@@ -156,8 +156,8 @@ pub struct GetInformationResponse {
     pub version: Option<candid::Nat>,
 }
 #[derive(CandidType, Deserialize)]
-pub struct ProviderInfoRequest {
-    pub provider: Principal,
+pub struct GetProviderBatchRequest {
+    pub ids: Vec<String>,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Status {
@@ -177,6 +177,14 @@ pub struct V1 {
 #[derive(CandidType, Deserialize)]
 pub enum Provider {
     V1(V1),
+}
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderBatchResponse {
+    pub providers: Vec<Provider>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct ProviderInfoRequest {
+    pub provider: Principal,
 }
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoResponse {
@@ -264,6 +272,12 @@ impl ProviderRegistry {
         arg0: GetInformationRequest,
     ) -> Result<(GetInformationResponse,)> {
         ic_cdk::call(self.0, "getCanistergeekInformation", (arg0,)).await
+    }
+    pub async fn get_provider_batch(
+        &self,
+        arg0: GetProviderBatchRequest,
+    ) -> Result<(GetProviderBatchResponse,)> {
+        ic_cdk::call(self.0, "get_provider_batch", (arg0,)).await
     }
     pub async fn get_provider_info_with_principal(
         &self,
@@ -418,6 +432,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_canistergeek_information",
+                payload,
+            )
+        }
+        pub fn get_provider_batch(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: GetProviderBatchRequest,
+        ) -> std::result::Result<GetProviderBatchResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_provider_batch",
                 payload,
             )
         }

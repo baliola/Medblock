@@ -2,6 +2,8 @@ use std::{ borrow::Borrow, cell::RefCell, time::Duration };
 
 use api::{
     AuthorizedCallerRequest,
+    GetProviderBatchRequest,
+    GetProviderBatchResponse,
     IssueEmrResponse,
     PingResult,
     ProviderInfoRequest,
@@ -26,6 +28,7 @@ use canister_common::{
     statistics::{ self, traits::OpaqueMetrics },
 };
 
+use declarations::patient_registry::GetPatientInfoResponse;
 use ic_stable_structures::Cell;
 use memory::{ FreezeThresholdMemory, UpgradeMemory };
 use registry::ProviderRegistry;
@@ -420,4 +423,12 @@ fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoRes
     with_state(|s| s.providers.provider_info_with_principal(&req.provider).unwrap()).into()
 }
 
+#[ic_cdk::query]
+fn get_provider_batch(req: GetProviderBatchRequest) -> GetProviderBatchResponse {
+    req.ids
+        .into_iter()
+        .map(|id| { with_state(|s| s.providers.provider_info_with_internal_id(&id).unwrap()) })
+        .collect::<Vec<_>>()
+        .into()
+}
 ic_cdk::export_candid!();

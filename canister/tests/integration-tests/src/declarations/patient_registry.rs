@@ -59,6 +59,11 @@ pub struct EmrListConsentRequest {
     pub limit: u8,
 }
 #[derive(CandidType, Deserialize)]
+pub struct EmrListConsentResponse {
+    pub emr: Vec<EmrHeaderWithStatus>,
+    pub username: String,
+}
+#[derive(CandidType, Deserialize)]
 pub struct StatusRequest {
     pub memory_size: bool,
     pub cycles: bool,
@@ -310,7 +315,7 @@ impl PatientRegistry {
     pub async fn emr_list_with_session(
         &self,
         arg0: EmrListConsentRequest,
-    ) -> Result<(EmrListPatientResponse,)> {
+    ) -> Result<(EmrListConsentResponse,)> {
         ic_cdk::call(self.0, "emr_list_with_session", (arg0,)).await
     }
     pub async fn finish_session(&self, arg0: ClaimConsentResponse) -> Result<()> {
@@ -530,7 +535,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: EmrListConsentRequest,
-        ) -> std::result::Result<EmrListPatientResponse, pocket_ic::UserError> {
+        ) -> std::result::Result<EmrListConsentResponse, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,

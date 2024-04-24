@@ -59,6 +59,10 @@ type EmrListConsentRequest = record {
   page : nat8;
   limit : nat8;
 };
+type EmrListConsentResponse = record {
+  emr : vec EmrHeaderWithStatus;
+  username : text;
+};
 type EmrListPatientRequest = record { page : nat8; limit : nat8 };
 type EmrListPatientResponse = record { emrs : vec EmrHeaderWithStatus };
 type GetInformationRequest = record {
@@ -159,7 +163,7 @@ service : () -> {
   create_consent : () -> (ClaimConsentRequest);
   emr_list_patient : (EmrListPatientRequest) -> (EmrListPatientResponse) query;
   emr_list_with_session : (EmrListConsentRequest) -> (
-      EmrListPatientResponse,
+      EmrListConsentResponse,
     ) query;
   finish_session : (ClaimConsentResponse) -> ();
   getCanistergeekInformation : (GetInformationRequest) -> (
