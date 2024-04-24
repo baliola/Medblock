@@ -124,7 +124,12 @@ type NumericEntity = record {
   last : nat64;
 };
 type Patient = variant { V1 : V1 };
-type PatientListResponse = record { patients : vec Patient };
+type PatientListResponse = record { patients : vec PatientWithNikAndSession };
+type PatientWithNikAndSession = record {
+  nik : text;
+  session_id : text;
+  info : Patient;
+};
 type PingResult = record { emr_registry_status : bool };
 type ReadEmrByIdRequest = record {
   provider_id : text;
@@ -137,6 +142,8 @@ type ReadEmrSessionRequest = record {
   args : ReadEmrByIdRequest;
 };
 type RegisterPatientRequest = record { nik : text };
+type SearchPatientRequest = record { nik : text };
+type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
 type StatusRequest = record {
   memory_size : bool;
   cycles : bool;
@@ -197,6 +204,7 @@ service : () -> {
   register_patient : (RegisterPatientRequest) -> ();
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   revoke_consent : (ClaimConsentRequest) -> ();
+  search_patient : (SearchPatientRequest) -> (SearchPatientResponse) query;
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
   update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
