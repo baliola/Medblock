@@ -34,12 +34,14 @@ import {
 import ModalSuccess from './components/Modal/ModalSuccess';
 import ModalAddGetPatientSession from './components/Modal/ModalRequestSession';
 import useProvider from '@/hooks/useProvider';
+import SearchComponent from '@/components/Input/SearchInput';
 
 export default function DashboardExample() {
   // const { generateMockPatients } = usePatientMock();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSuccess, setShowModalSuccess] = useState<boolean>(false);
   const router = useRouter();
+  const [searchValue, setSeachValu] = useState('');
 
   const { GetProviderInfo } = useProvider();
   const {
@@ -51,6 +53,10 @@ export default function DashboardExample() {
     toggleModalSession,
     setShowModalSession,
     showModalSession,
+    searchPatient,
+    searchQuery,
+    setSearchQuery,
+    searchResult,
   } = usePatient();
 
   const toggleModal = () => {
@@ -134,7 +140,15 @@ export default function DashboardExample() {
           Medblock Patient Management
         </p>
         <div className="flex flex-row justify-between">
-          <div className="flex w-full">
+          <SearchComponent
+            fieldName=""
+            handleChange={searchPatient}
+            query={searchQuery}
+            options={searchResult}
+            setQuery={setSearchQuery}
+            // values={}
+          />
+          {/* <div className="flex w-full">
             <label className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">
               Search
             </label>
@@ -147,10 +161,15 @@ export default function DashboardExample() {
                 id="default-search"
                 className="flex w-full max-w-[300px] p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-2xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Search patient"
+                value={searchValue}
+                onChange={(e) => {
+                  setSeachValu(e.target.value);
+                  searchPatient(e.target.value);
+                }}
                 required
               />
             </div>
-          </div>
+          </div> */}
           <div className="flex w-full justify-end">
             <button
               className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"

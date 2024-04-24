@@ -23,6 +23,9 @@ interface centralStore {
   activePage: pageOptions;
   setActivePage: (page: pageOptions) => void;
 
+  isLoading: boolean;
+  setIsloading: (isLoading: boolean) => void;
+
   nik: string | undefined;
   setNik: (nik: string) => void;
 
@@ -34,6 +37,9 @@ interface centralStore {
 
   patientList: PatientWithNikAndSession[] | null;
   setPatientList: (patient: PatientWithNikAndSession[]) => void;
+
+  searchResult: PatientWithNikAndSession | null;
+  setSearchResult: (patient: PatientWithNikAndSession | null) => void;
 
   // Principal State
   userPrincipal: string | undefined;
@@ -106,4 +112,14 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   isSidebarOpen: false,
   toggleSidebar: () => set({ isSidebarOpen: !get().isSidebarOpen }),
   setIsSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+
+  searchResult: null,
+  setSearchResult(patient) {
+    set({ searchResult: patient });
+  },
+
+  isLoading: true,
+  setIsloading(isLoading) {
+    set({ isLoading: isLoading });
+  },
 }));
