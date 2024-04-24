@@ -15,7 +15,11 @@ import { PlusIcon } from '@heroicons/react/20/solid';
 import { useRouter } from 'next/router';
 import useEMRPatient from '@/hooks/useEmrPatient';
 import { useCentralStore } from '@/Store';
-import { EmrHeader } from 'declarations/patient_registry/patient_registry.did';
+import {
+  EmrHeader,
+  EmrHeaderWithStatus,
+} from 'declarations/patient_registry/patient_registry.did';
+import { formatDateFromBigInt } from '@/lib/bigintDateFormat';
 // import Datepicker from 'react-tailwindcss-datepicker';
 
 const DetailPatient: NextPageWithLayout = () => {
@@ -34,25 +38,27 @@ const DetailPatient: NextPageWithLayout = () => {
     setDateValue(newValue);
   };
 
-  const patientColumn = useMemo<ColumnDef<EmrHeader>[]>(
+  const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
     () => [
       {
         header: 'EMR ID',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.emr_id}</p>
+          <p className="font-normal">{info.row.original.header.emr_id}</p>
         ), // Format the date as needed
       },
       {
-        header: 'Provider ID',
+        header: 'Hospital name',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.provider_id}</p>
+          <p className="font-normal">{info.row.original.hospital_name}</p>
         ),
       },
 
       {
-        header: 'User ID',
+        header: 'Created At',
         cell: (info) => (
-          <p className="font-normal">{info.row.original.user_id}</p>
+          <p className="font-normal">
+            {formatDateFromBigInt(info.row.original.status.created_at)}
+          </p>
         ),
       },
       {
@@ -65,10 +71,10 @@ const DetailPatient: NextPageWithLayout = () => {
               className="cursor-pointer"
               onClick={() => {
                 router.push({
-                  pathname: `/medical-record/edit/${info.row.original.emr_id}`,
+                  pathname: `/medical-record/edit/${info.row.original.header.emr_id}`,
                   query: {
-                    providerId: info.row.original.provider_id,
-                    userId: info.row.original.user_id,
+                    providerId: info.row.original.header.provider_id,
+                    userId: info.row.original.header.user_id,
                   },
                 });
               }}

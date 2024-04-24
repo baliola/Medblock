@@ -101,7 +101,7 @@ const usePatient = () => {
       const response = await api?.claim_consent(code);
 
       console.log('-----------------');
-      console.log('RESPONSE conscentt::::', response);
+      console.log('RESPONSE conscentt Hello::::', response);
       console.log('-----------------');
 
       fetchPatient();

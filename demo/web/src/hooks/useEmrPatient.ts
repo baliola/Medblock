@@ -91,7 +91,7 @@ const useEMRPatient = () => {
       setEmrList(response.emrs);
     } catch (error) {
       console.log('-----------------');
-      console.log('ERROR::::', error);
+      console.log('ERROR:::: EMR', error);
       console.log('-----------------');
     }
   }
