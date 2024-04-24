@@ -3,21 +3,23 @@ use std::{ str::FromStr, time::Duration };
 
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ EmrHeader, Id },
+    common::{ EmrHeader, Id, PrincipalBytes },
+    deref,
     id_generator::IdGenerator,
     impl_max_size,
     impl_mem_bound,
     impl_range_bound,
     log,
     metrics,
+    mmgr::MemoryManager,
     opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
-    stable::{ Candid, Memory, Stable },
+    stable::{ Candid, Memory, Stable, StableSet },
     statistics::traits::Metrics,
 };
 use serde::Deserialize;
 
-use crate::registry::{ PatientRegistry, NIK };
+use crate::{ registry::{ PatientRegistry, NIK }, with_state };
 
 thread_local! {
     pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = const {
@@ -296,7 +298,7 @@ impl ConsentsApi {
 }
 
 pub type SessionId = Id;
-#[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Consent {
     pub code: ConsentCode,
     pub nik: NIK,
@@ -356,8 +358,20 @@ impl PartialConsent {
     }
 }
 
-// we intentionally use heap memory here as we dont need the persistance of s≥table memory here.
+pub struct ProviderConsentSet(StableSet<Stable<PrincipalBytes>, Stable<SessionId>>);
+
+impl ProviderConsentSet {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let set = StableSet::init::<Self>(memory_manager);
+
+        ProviderConsentSet(set)
+    }
+}
+deref!(mut ProviderConsentSet: StableSet<Stable<PrincipalBytes>, Stable<SessionId>>);
+
+// TODO: move all maps to stable memory
 pub struct ConsentMap {
+    provider_set: ProviderConsentSet,
     inner: std::collections::HashMap<ConsentCode, Consent>,
     sessions: std::collections::HashMap<SessionId, ConsentCode>,
     // TODO: remove this after demo, move all of the structure into stable memory
@@ -390,8 +404,9 @@ mod metrics {
 }
 
 impl ConsentMap {
-    pub fn new_with_seed(seed: u128) -> Self {
+    pub fn new_with_seed(seed: u128, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
+            provider_set: ProviderConsentSet::init(memory_manager),
             sessions: std::collections::HashMap::new(),
             inner: std::collections::HashMap::new(),
             rng: CanisterRandomSource::new_with_seed(seed),
@@ -407,11 +422,12 @@ impl ConsentMap {
             .collect()
     }
 
-    pub async fn new() -> Self {
+    pub fn new(rng: CanisterRandomSource, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
+            provider_set: ProviderConsentSet::init(memory_manager),
             sessions: std::collections::HashMap::new(),
             inner: std::collections::HashMap::new(),
-            rng: CanisterRandomSource::new().await,
+            rng,
         }
     }
 
@@ -419,7 +435,12 @@ impl ConsentMap {
     pub fn init() {
         ic_cdk_timers::set_timer(Duration::from_secs(3), || {
             ic_cdk::spawn(async move {
-                let new_cell = ConsentMap::new().await;
+                let rng = CanisterRandomSource::new().await;
+
+                let new_cell = with_state(|s| {
+                    let memory_manager = &s.memory_manager;
+                    ConsentMap::new(rng, memory_manager)
+                });
 
                 CONSENTS.replace(Some(new_cell));
 
@@ -542,10 +563,15 @@ impl ConsentMap {
 
         consent.claimed = true;
         consent.session_id = Some(session_id.clone());
-        consent.session_user = Some(session_user);
+        consent.session_user = Some(session_user.clone());
 
         assert!(self.sessions.get(&session_id).is_none(), "session id already exists");
         assert!(self.sessions.insert(session_id.clone(), code.to_owned()).is_none());
+
+        self.provider_set.insert(
+            PrincipalBytes::from(session_user).into(),
+            session_id.clone().into()
+        );
 
         Some(session_id)
     }
@@ -569,7 +595,7 @@ impl ConsentMap {
 
     pub fn resolve_session_with_code(&self, code: &ConsentCode, patient: &NIK) -> Option<Consent> {
         let consent = self.inner.get(code).cloned();
-        
+
         match consent {
             Some(consent) => {
                 if consent.nik.eq(patient) { Some(consent) } else { None }
@@ -582,13 +608,16 @@ impl ConsentMap {
 #[cfg(test)]
 mod tests {
     use candid::Principal;
-    use canister_common::id;
+    use canister_common::{ id, memory_manager };
+
+    use crate::memory;
 
     use super::*;
 
     #[test]
     fn test_consent() {
-        let mut consents = ConsentMap::new_with_seed(0);
+        let memory_manager = memory_manager!();
+        let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
         let nik = NIK::from_str(
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
@@ -607,7 +636,8 @@ mod tests {
 
     #[test]
     fn test_claim_consent() {
-        let mut consents = ConsentMap::new_with_seed(0);
+        let memory_manager = memory_manager!();
+        let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
         let nik = NIK::from_str(
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
@@ -629,7 +659,8 @@ mod tests {
 
     #[test]
     fn session() {
-        let mut consents = ConsentMap::new_with_seed(0);
+        let memory_manager = memory_manager!();
+        let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
         let nik = NIK::from_str(
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
@@ -654,12 +685,14 @@ mod tests {
         assert!(!consents.ensure_session_allowed(&code, &session_id));
         assert!(consents.resolve_session(&session_id, &Principal::anonymous()).is_none());
         assert!(consents.get_consent_uncheked(&code).is_none());
+        assert!(consents.provider_set.contains_key(PrincipalBytes::from(Principal::anonymous()).into(), session_id.into()))
     }
 
     #[test]
     #[should_panic]
     fn panic_wrong_session_user() {
-        let mut consents = ConsentMap::new_with_seed(0);
+        let memory_manager = memory_manager!();
+        let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
         let nik = NIK::from_str(
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"

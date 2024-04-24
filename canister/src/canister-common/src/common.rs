@@ -436,6 +436,9 @@ mod tests {
 
 #[derive(Encode, Debug, Decode, Clone, PartialEq, Eq, Serialize, PartialOrd, Ord, Default)]
 pub struct PrincipalBytes([u8; Principal::MAX_LENGTH_IN_BYTES]);
+impl_max_size!(for PrincipalBytes: 29);
+impl_mem_bound!(for PrincipalBytes: bounded; fixed_size: false);
+impl_range_bound!(PrincipalBytes);
 
 impl PrincipalBytes {
     pub fn new(principal: Principal) -> Self {

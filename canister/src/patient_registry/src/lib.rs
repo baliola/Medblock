@@ -68,7 +68,7 @@ register_log!("patient");
 const METRICS_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 minutes
 
 thread_local! {
-    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+    pub static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
     static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
         RefCell::new(None)
     };
