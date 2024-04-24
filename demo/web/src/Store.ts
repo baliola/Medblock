@@ -1,6 +1,9 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
-import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import {
+  Patient,
+  PatientWithNikAndSession,
+} from 'declarations/patient_registry/patient_registry.did';
 import { Provider } from 'declarations/provider_registry/provider_registry.did';
 import { create } from 'zustand';
 
@@ -29,8 +32,8 @@ interface centralStore {
   provider: Provider | undefined;
   setProvider: (provider: Provider) => void;
 
-  patientList: Patient[] | null;
-  setPatientList: (patient: Patient[]) => void;
+  patientList: PatientWithNikAndSession[] | null;
+  setPatientList: (patient: PatientWithNikAndSession[]) => void;
 
   // Principal State
   userPrincipal: string | undefined;

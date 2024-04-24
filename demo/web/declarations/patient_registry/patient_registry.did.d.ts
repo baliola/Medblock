@@ -53,13 +53,22 @@ export interface EmrHeaderWithBody {
   'body' : Array<EmrFragment>,
   'header' : EmrHeader,
 }
+export interface EmrHeaderWithStatus {
+  'status' : HeaderStatus,
+  'hospital_name' : string,
+  'header' : EmrHeader,
+}
 export interface EmrListConsentRequest {
   'session_id' : string,
   'page' : number,
   'limit' : number,
 }
+export interface EmrListConsentResponse {
+  'emr' : Array<EmrHeaderWithStatus>,
+  'username' : string,
+}
 export interface EmrListPatientRequest { 'page' : number, 'limit' : number }
-export interface EmrListPatientResponse { 'emrs' : Array<EmrHeader> }
+export interface EmrListPatientResponse { 'emrs' : Array<EmrHeaderWithStatus> }
 export interface GetInformationRequest {
   'status' : [] | [StatusRequest],
   'metrics' : [] | [MetricsRequest],
@@ -93,6 +102,7 @@ export interface GetMetricsParameters {
   'dateFromMillis' : bigint,
 }
 export interface GetPatientInfoResponse { 'nik' : string, 'patient' : Patient }
+export interface HeaderStatus { 'updated_at' : bigint, 'created_at' : bigint }
 export interface HourlyMetricsData {
   'updateCalls' : BigUint64Array | bigint[],
   'canisterHeapMemorySize' : BigUint64Array | bigint[],
@@ -118,7 +128,14 @@ export interface NumericEntity {
   'last' : bigint,
 }
 export type Patient = { 'V1' : V1 };
-export interface PatientListResponse { 'patients' : Array<Patient> }
+export interface PatientListResponse {
+  'patients' : Array<PatientWithNikAndSession>,
+}
+export interface PatientWithNikAndSession {
+  'nik' : string,
+  'session_id' : string,
+  'info' : Patient,
+}
 export interface PingResult { 'emr_registry_status' : boolean }
 export interface ReadEmrByIdRequest {
   'provider_id' : string,
@@ -131,6 +148,10 @@ export interface ReadEmrSessionRequest {
   'args' : ReadEmrByIdRequest,
 }
 export interface RegisterPatientRequest { 'nik' : string }
+export interface SearchPatientRequest { 'nik' : string }
+export interface SearchPatientResponse {
+  'patient_info' : PatientWithNikAndSession,
+}
 export interface StatusRequest {
   'memory_size' : boolean,
   'cycles' : boolean,
@@ -168,7 +189,7 @@ export interface _SERVICE {
   >,
   'emr_list_with_session' : ActorMethod<
     [EmrListConsentRequest],
-    EmrListPatientResponse
+    EmrListConsentResponse
   >,
   'finish_session' : ActorMethod<[ClaimConsentResponse], undefined>,
   'getCanistergeekInformation' : ActorMethod<
@@ -187,6 +208,7 @@ export interface _SERVICE {
   >,
   'metrics' : ActorMethod<[], string>,
   'notify_issued' : ActorMethod<[IssueRequest], undefined>,
+  'notify_updated' : ActorMethod<[IssueRequest], undefined>,
   'patient_list' : ActorMethod<[], PatientListResponse>,
   'ping' : ActorMethod<[], PingResult>,
   'read_emr_by_id' : ActorMethod<[ReadEmrByIdRequest], ReadEmrByIdResponse>,
@@ -200,6 +222,7 @@ export interface _SERVICE {
     undefined
   >,
   'revoke_consent' : ActorMethod<[ClaimConsentRequest], undefined>,
+  'search_patient' : ActorMethod<[SearchPatientRequest], SearchPatientResponse>,
   'updateCanistergeekInformation' : ActorMethod<
     [UpdateInformationRequest],
     undefined

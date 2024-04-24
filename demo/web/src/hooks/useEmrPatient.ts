@@ -12,6 +12,7 @@ import {
   EmrFragment,
   EmrHeader,
   EmrHeaderWithBody,
+  EmrHeaderWithStatus,
   EmrListConsentRequest,
   EmrListPatientRequest,
   EmrListPatientResponse,
@@ -27,7 +28,7 @@ const useEMRPatient = () => {
   const { identity, authenticated } = useAuth();
   const { setNik } = useCentralStore();
   const [patientInfo, setPatientInfo] = useState<Patient | null>();
-  const [emrList, setEmrList] = useState<EmrHeader[]>([]);
+  const [emrList, setEmrList] = useState<EmrHeaderWithStatus[]>([]);
   const [emr, setEmr] = useState<EmrHeaderWithBody>();
   const [initialValues, setInitialValues] = useState({
     location: 'denpasar',

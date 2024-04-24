@@ -73,6 +73,8 @@ export interface GetMetricsParameters {
   'granularity' : MetricsGranularity,
   'dateFromMillis' : bigint,
 }
+export interface GetProviderBatchRequest { 'ids' : Array<string> }
+export interface GetProviderBatchResponse { 'providers' : Array<Provider> }
 export interface Header {
   'provider_id' : string,
   'user_id' : string,
@@ -156,6 +158,10 @@ export interface _SERVICE {
   'getCanistergeekInformation' : ActorMethod<
     [GetInformationRequest],
     GetInformationResponse
+  >,
+  'get_provider_batch' : ActorMethod<
+    [GetProviderBatchRequest],
+    GetProviderBatchResponse
   >,
   'get_provider_info_with_principal' : ActorMethod<
     [ProviderInfoRequest],
