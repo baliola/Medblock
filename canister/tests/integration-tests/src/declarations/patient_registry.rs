@@ -46,6 +46,7 @@ pub struct EmrHeader {
 #[derive(CandidType, Deserialize)]
 pub struct EmrHeaderWithStatus {
     pub status: HeaderStatus,
+    pub hospital_name: String,
     pub header: EmrHeader,
 }
 #[derive(CandidType, Deserialize)]

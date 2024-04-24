@@ -194,6 +194,11 @@ mod tests_code {
 pub struct ConsentsApi;
 
 impl ConsentsApi {
+    pub fn is_session_user(user: &Stable<PrincipalBytes>) -> bool {
+        ensure_initialized();
+        with_consent(|consents| consents.is_session_user(user))
+    }
+
     pub fn metrics() -> String {
         ensure_initialized();
         with_consent(|consents| opaque_metrics!(consents))
@@ -361,6 +366,12 @@ impl PartialConsent {
 pub struct ProviderConsentSet(StableSet<Stable<PrincipalBytes>, Stable<SessionId>>);
 
 impl ProviderConsentSet {
+    pub fn is_session_user(&self, user: &Stable<PrincipalBytes>) -> bool {
+        self.range_key_exists(user)
+    }
+}
+
+impl ProviderConsentSet {
     pub fn init(memory_manager: &MemoryManager) -> Self {
         let set = StableSet::init::<Self>(memory_manager);
 
@@ -404,6 +415,10 @@ mod metrics {
 }
 
 impl ConsentMap {
+    pub fn is_session_user(&self, user: &Stable<PrincipalBytes>) -> bool {
+        self.provider_set.is_session_user(user)
+    }
+
     pub fn new_with_seed(seed: u128, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
             provider_set: ProviderConsentSet::init(memory_manager),
@@ -685,7 +700,12 @@ mod tests {
         assert!(!consents.ensure_session_allowed(&code, &session_id));
         assert!(consents.resolve_session(&session_id, &Principal::anonymous()).is_none());
         assert!(consents.get_consent_uncheked(&code).is_none());
-        assert!(consents.provider_set.contains_key(PrincipalBytes::from(Principal::anonymous()).into(), session_id.into()))
+        assert!(
+            consents.provider_set.contains_key(
+                PrincipalBytes::from(Principal::anonymous()).into(),
+                session_id.into()
+            )
+        )
     }
 
     #[test]
