@@ -1,8 +1,14 @@
 use candid::{ CandidType, Principal };
-use canister_common::{ common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId }, from };
+use canister_common::{
+    common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId },
+    from,
+};
 use serde::Deserialize;
 
-use crate::{declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse }, registry::provider::Provider};
+use crate::{
+    declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse },
+    registry::provider::Provider,
+};
 
 #[derive(CandidType, Deserialize)]
 pub struct IssueEmrRequest {
@@ -127,12 +133,24 @@ pub struct AuthorizedCallerRequest {
 pub struct ProviderInfoRequest {
     pub provider: Principal,
 }
-#
-[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize)]
 pub struct ProviderInfoResponse {
     pub provider: Provider,
 }
 
 from!(ProviderInfoResponse: Provider as value {
     provider: value
+});
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderBatchRequest {
+    pub ids: Vec<ProviderId>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderBatchResponse {
+    pub providers: Vec<Provider>,
+}
+
+from!(GetProviderBatchResponse: Vec<Provider> as value {
+    providers:value
 });

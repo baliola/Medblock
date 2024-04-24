@@ -497,6 +497,14 @@ pub enum Patient {
     V1(V1),
 }
 
+impl Patient {
+    pub fn name(&self) -> &AsciiRecordsKey<64> {
+        match self {
+            Self::V1(v1) => &v1.name,
+        }
+    }
+}
+
 impl From<V1> for Patient {
     fn from(v1: V1) -> Self {
         Self::V1(v1)
@@ -529,7 +537,7 @@ pub struct V1 {
 
 // 270 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
 // benchmarked by tsting the encoded size of a struct with max size fields.
-impl_max_size!(for V1: 200);
+impl_max_size!(for V1: 270);
 impl_mem_bound!(for V1: bounded; fixed_size: false);
 impl_range_bound!(V1);
 

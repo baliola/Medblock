@@ -112,6 +112,10 @@ impl CanisterConfig {
         crate::declarations::emr_registry::EmrRegistry(self.default_emr_registry)
     }
 
+    pub fn provider_registry(&self) -> crate::declarations::provider_registry::ProviderRegistry {
+        crate::declarations::provider_registry::ProviderRegistry(self.provider_registry)
+    }
+
     pub fn update_default_emr_registry_principal(&mut self, principal: Principal) {
         let prev_default = self.default_emr_registry;
 

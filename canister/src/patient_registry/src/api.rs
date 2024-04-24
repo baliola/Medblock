@@ -1,6 +1,6 @@
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ EmrHeader, EmrId, ProviderId, UserId, H256 },
+    common::{ AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256 },
     from,
     stable::{ EncodingMarker, Stable },
 };
@@ -47,14 +47,16 @@ from!(EmrListPatientResponse: Vec<EmrHeaderWithStatus> as value {
 pub struct EmrHeaderWithStatus {
     header: EmrHeader,
     status: HeaderStatus,
+    hospital_name: AsciiRecordsKey<64>,
 }
 
 impl EmrHeaderWithStatus {
     pub fn new<E1: EncodingMarker, E2: EncodingMarker>(
         header: Stable<EmrHeader, E1>,
-        status: Stable<HeaderStatus, E2>
+        status: Stable<HeaderStatus, E2>,
+        hospital_name: AsciiRecordsKey<64>
     ) -> Self {
-        Self { header: header.into_inner(), status: status.into_inner() }
+        Self { header: header.into_inner(), status: status.into_inner(), hospital_name }
     }
 }
 
@@ -104,7 +106,17 @@ pub struct EmrListConsentRequest {
     pub limit: u8,
 }
 
-pub type EmrListConsentResponse = EmrListPatientResponse;
+#[derive(CandidType, Deserialize)]
+pub struct EmrListConsentResponse {
+    emr: Vec<EmrHeaderWithStatus>,
+    username: AsciiRecordsKey<64>,
+}
+
+impl EmrListConsentResponse {
+    pub fn new(emr: Vec<EmrHeaderWithStatus>, username: AsciiRecordsKey<64>) -> Self {
+        Self { emr, username }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct DeriveVerificationKeyRequest {

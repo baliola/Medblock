@@ -36,11 +36,11 @@ use canister_common::{
     opaque_metrics,
     random::CanisterRandomSource,
     register_log,
-    stable::{ Candid, Memory, Stable },
+    stable::{ Candid, Memory, Stable, ToStable },
     statistics::{ self, traits::OpaqueMetrics },
 };
 use config::CanisterConfig;
-use declarations::emr_registry::{ ReadEmrByIdResponse };
+use declarations::{ emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest };
 
 use ic_stable_structures::Cell;
 use memory::UpgradeMemory;
@@ -296,21 +296,44 @@ async fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
     PatientRegistry::do_call_read_emr(args, registry).await
 }
 
-#[ic_cdk::query(guard = "only_patient")]
-fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
+#[ic_cdk::query(guard = "only_patient", composite = true)]
+async fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    with_state(move |s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
-        .unwrap()
-        .into_iter()
-        .map(|header| {
+    let emrs = with_state(move |s|
+        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
+    ).unwrap();
+
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+
+    let providers = emrs
+        .iter()
+        .map(|header| header.provider_id.to_string())
+        .collect::<Vec<_>>();
+
+    let providers = provider_registry
+        .get_provider_batch(GetProviderBatchRequest { ids: providers }).await
+        .expect("failed to get providers info")
+        .0.providers.into_iter()
+        .map(|provider| {
+            match provider {
+                declarations::provider_registry::Provider::V1(provider) =>
+                    provider.display_name.try_into().unwrap(),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    emrs.into_iter()
+        .zip(providers.into_iter())
+
+        .map(|(header, providers)| {
             let status = with_state(|s|
                 s.registry.header_status_map
                     .get(&header)
                     .expect("issued emr must have valid status")
             );
-            EmrHeaderWithStatus::new(header, status)
+            EmrHeaderWithStatus::new(header, status, providers)
         })
         .collect::<Vec<_>>()
         .into()
@@ -334,6 +357,7 @@ fn register_patient(req: RegisterPatientRequest) {
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 
+// TODO : optimize this, this is a very expensive operation
 #[ic_cdk::query]
 fn patient_list() -> PatientListResponse {
     let caller = verified_caller().unwrap();
@@ -425,25 +449,52 @@ async fn read_emr_with_session(
     ConsentsApi::read_emr_with_session(&req.session_id, req.args, registry, &caller).await.unwrap()
 }
 
-#[ic_cdk::query]
+#[ic_cdk::query(composite = true)]
 async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResponse {
     let caller = verified_caller().unwrap();
     let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
     let nik = consent.nik;
+    let info = with_state(|s| s.registry.info_map.get(nik.clone())).unwrap();
 
-    with_state(|s| s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit))
-        .unwrap()
+    let emrs = with_state(|s|
+        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
+    ).unwrap();
+
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+
+    let providers = emrs
+        .iter()
+        .map(|header| header.provider_id.to_string())
+        .collect::<Vec<_>>();
+
+    let providers = provider_registry
+        .get_provider_batch(GetProviderBatchRequest { ids: providers }).await
+        .expect("failed to get providers info")
+        .0.providers.into_iter()
+        .map(|provider| {
+            match provider {
+                declarations::provider_registry::Provider::V1(provider) =>
+                    provider.display_name.try_into().unwrap(),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let emrs = emrs
         .into_iter()
-        .map(|header| {
+        .zip(providers.into_iter())
+        .map(move |(header, providers)| {
             let status = with_state(|s|
                 s.registry.header_status_map
                     .get(&header)
                     .expect("issued emr must have valid status")
             );
-            EmrHeaderWithStatus::new(header, status)
+
+            EmrHeaderWithStatus::new(header, status, providers)
         })
         .collect::<Vec<_>>()
-        .into()
+        .into();
+
+    EmrListConsentResponse::new(emrs, info.name().to_owned())
 }
 
 #[cfg(feature = "vetkd")]

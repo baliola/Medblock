@@ -76,6 +76,8 @@ type GetMetricsParameters = record {
   granularity : MetricsGranularity;
   dateFromMillis : nat;
 };
+type GetProviderBatchRequest = record { ids : vec text };
+type GetProviderBatchResponse = record { providers : vec Provider };
 type Header = record {
   provider_id : text;
   user_id : text;
@@ -146,6 +148,9 @@ service : () -> {
     ) query;
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
+    ) query;
+  get_provider_batch : (GetProviderBatchRequest) -> (
+      GetProviderBatchResponse,
     ) query;
   get_provider_info_with_principal : (ProviderInfoRequest) -> (
       ProviderInfoResponse,
