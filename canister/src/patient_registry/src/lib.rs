@@ -18,18 +18,21 @@ use api::{
     IsConsentClaimedResponse,
     IssueRequest,
     PatientListResponse,
+    PatientWithNikAndSession,
     PingResult,
     ReadEmrByIdRequest,
     ReadEmrSessionRequest,
     RegisterPatientRequest,
     RevokeConsentRequest,
+    SearchPatientRequest,
+    SearchPatientResponse,
     UpdateEmrRegistryRequest,
     UpdateInitialPatientInfoRequest,
     UpdateRequest,
 };
 use candid::{ Decode, Encode };
 use canister_common::{
-    common::guard::verified_caller,
+    common::{ guard::verified_caller, PrincipalBytes },
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -68,7 +71,7 @@ register_log!("patient");
 const METRICS_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 minutes
 
 thread_local! {
-    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+    pub static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
     static ID_GENERATOR: RefCell<Option<IdGenerator<CanisterRandomSource>>> = const {
         RefCell::new(None)
     };
@@ -361,16 +364,57 @@ fn register_patient(req: RegisterPatientRequest) {
 #[ic_cdk::query]
 fn patient_list() -> PatientListResponse {
     let caller = verified_caller().unwrap();
-    let consents = ConsentsApi::user_list_with_consent(&caller);
-    let patients = consents
-        .into_iter()
-        .map(|c| c.nik)
-        .collect::<Vec<_>>();
+    let caller = PrincipalBytes::from(caller).into();
 
-    patients
+    if !ConsentsApi::is_session_user(&caller) {
+        ic_cdk::trap("only session user can call this method");
+    }
+
+    let caller = caller.into_inner().into();
+
+    let consents = ConsentsApi::user_list_with_consent(&caller);
+
+    consents
         .into_iter()
-        .map(|nik| { with_state(|s| s.registry.get_patient_info(nik)).unwrap() })
+        .map(|c| {
+            let nik = c.nik;
+            let session_id = c.session_id.expect("claimed session must have session id");
+            let patient = with_state(|s|
+                s.registry.get_patient_info(nik.clone()).expect("patient not found")
+            );
+
+            PatientWithNikAndSession::new(patient, nik, session_id)
+        })
         .collect::<Vec<_>>()
+        .into()
+}
+
+#[ic_cdk::query]
+fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
+    let caller = verified_caller().unwrap();
+    let caller = PrincipalBytes::from(caller).into();
+
+    if !ConsentsApi::is_session_user(&caller) {
+        ic_cdk::trap("only session user can call this method");
+    }
+
+    let caller = caller.into_inner().into();
+
+    let consents = ConsentsApi::user_list_with_consent(&caller);
+
+    consents
+        .into_iter()
+        .find(|c| c.nik == req.nik)
+        .map(|c| {
+            let nik = c.nik;
+            let session_id = c.session_id.expect("claimed session must have session id");
+            let patient = with_state(|s|
+                s.registry.get_patient_info(nik.clone()).expect("patient not found")
+            );
+
+            PatientWithNikAndSession::new(patient, nik, session_id)
+        })
+        .expect("patient not found")
         .into()
 }
 

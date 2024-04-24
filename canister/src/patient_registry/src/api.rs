@@ -201,12 +201,25 @@ pub struct GetPatientInfoBySessionRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct PatientListResponse {
-    pub patients: Vec<Patient>,
+    pub patients: Vec<PatientWithNikAndSession>,
 }
 
-from!(PatientListResponse: Vec<Patient> as value {
+from!(PatientListResponse: Vec<PatientWithNikAndSession> as value {
     patients: value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct PatientWithNikAndSession {
+    pub info: Patient,
+    pub nik: NIK,
+    pub session_id: SessionId,
+}
+
+impl PatientWithNikAndSession {
+    pub fn new(patient: Patient, nik: NIK, session_id: SessionId) -> Self {
+        Self { info: patient, nik, session_id }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct IsConsentClaimedRequest {
@@ -230,4 +243,18 @@ pub struct ConsentListResponse {
 
 from!(ConsentListResponse: Vec<Consent> as value {
     consents: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct SearchPatientRequest {
+    pub nik: H256,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct SearchPatientResponse {
+    pub patient_info: PatientWithNikAndSession,
+}
+
+from!(SearchPatientResponse: PatientWithNikAndSession as value {
+    patient_info: value
 });

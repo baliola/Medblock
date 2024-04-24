@@ -18,7 +18,7 @@ mod common;
 mod test {
     use integration_tests::declarations::{
         self,
-        patient_registry::EmrListPatientRequest,
+        patient_registry::{ ClaimConsentRequest, EmrListPatientRequest, SearchPatientRequest },
         provider_registry::{ EmrFragment, IssueEmrRequest },
     };
 
@@ -220,5 +220,48 @@ mod test {
 
         assert!(key1, "key 1 does not updated");
         assert!(key2, "key 2 does not updated");
+    }
+
+    #[test]
+    fn test_search_user() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let result = registry.patient
+            .create_consent(&registry.ic, patient.principal.clone(), PatientCall::Update)
+            .unwrap();
+
+        registry.patient
+            .claim_consent(
+                &registry.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                ClaimConsentRequest {
+                    code: result.code.clone(),
+                }
+            )
+            .unwrap();
+
+        let search_result = registry.patient.search_patient(
+            &registry.ic,
+            provider.0.clone(),
+            PatientCall::Query,
+            SearchPatientRequest {
+                nik: patient.nik.clone().to_string(),
+            }
+        ).unwrap();
+
+        assert_eq!(search_result.patient_info.nik, patient.nik.clone().to_string());
     }
 }

@@ -46,6 +46,7 @@ pub struct EmrHeader {
 #[derive(CandidType, Deserialize)]
 pub struct EmrHeaderWithStatus {
     pub status: HeaderStatus,
+    pub hospital_name: String,
     pub header: EmrHeader,
 }
 #[derive(CandidType, Deserialize)]
@@ -231,8 +232,14 @@ pub struct IssueRequest {
     pub header: EmrHeader,
 }
 #[derive(CandidType, Deserialize)]
+pub struct PatientWithNikAndSession {
+    pub nik: String,
+    pub session_id: String,
+    pub info: Patient,
+}
+#[derive(CandidType, Deserialize)]
 pub struct PatientListResponse {
-    pub patients: Vec<Patient>,
+    pub patients: Vec<PatientWithNikAndSession>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct PingResult {
@@ -266,6 +273,14 @@ pub struct ReadEmrSessionRequest {
 #[derive(CandidType, Deserialize)]
 pub struct RegisterPatientRequest {
     pub nik: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct SearchPatientRequest {
+    pub nik: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct SearchPatientResponse {
+    pub patient_info: PatientWithNikAndSession,
 }
 #[derive(CandidType, Deserialize)]
 pub enum CollectMetricsRequestType {
@@ -380,6 +395,12 @@ impl PatientRegistry {
     }
     pub async fn revoke_consent(&self, arg0: ClaimConsentRequest) -> Result<()> {
         ic_cdk::call(self.0, "revoke_consent", (arg0,)).await
+    }
+    pub async fn search_patient(
+        &self,
+        arg0: SearchPatientRequest,
+    ) -> Result<(SearchPatientResponse,)> {
+        ic_cdk::call(self.0, "search_patient", (arg0,)).await
     }
     pub async fn update_canistergeek_information(
         &self,
@@ -824,6 +845,20 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "revoke_consent", payload)
+        }
+        pub fn search_patient(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: SearchPatientRequest,
+        ) -> std::result::Result<SearchPatientResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "search_patient", payload)
         }
         pub fn update_canistergeek_information(
             &self,
