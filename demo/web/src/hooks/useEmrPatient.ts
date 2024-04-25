@@ -84,6 +84,7 @@ const useEMRPatient = () => {
     };
 
     try {
+      // NOTES GANTI KE EMR_LIST_PATIENT_WITH_SESSIONG
       const response = await api.emr_list_patient(data);
       console.log('-----------------');
       console.log('RESPONSE:::: EMR', response);
