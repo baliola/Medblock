@@ -31,12 +31,15 @@ const DetailPatient: NextPageWithLayout = () => {
     startDate: new Date(),
     endDate: new Date(),
   });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   const { patientInfo } = useEMRPatient();
 
   const handleChangeDate = (newValue: any) => {
     console.log('newValue:', newValue);
     setDateValue(newValue);
   };
+  const [searchQuery, setSearchQuery] = useState('');
 
   const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
     () => [
@@ -85,6 +88,41 @@ const DetailPatient: NextPageWithLayout = () => {
     ],
     [],
   );
+  const formatDateToString = (date: Date | null): string => {
+    if (!date) return ''; // If date is null, return an empty string
+
+    const day = ('0' + date.getDate()).slice(-2);
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  };
+
+  const filteredEmrList = useMemo(() => {
+    return emrList.filter((emr) => {
+      const isMatchHospitalName = emr.hospital_name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+      const isMatchDate =
+        !selectedDate ||
+        formatDateFromBigInt(emr.status.created_at) ===
+          formatDateToString(selectedDate);
+      console.log('ismacth date', formatDateFromBigInt(emr.status.created_at));
+      console.log('ismacth name', formatDateToString(selectedDate));
+
+      return isMatchHospitalName && isMatchDate;
+    });
+  }, [emrList, searchQuery, selectedDate]);
+
+  const handleChangeSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+  const handleChangeDates = (date: Date | null) => {
+    console.log('ismacth date change', date);
+    setSelectedDate(date);
+  };
+
   return (
     // <div className="grid md:grid-cols-[240px_1fr] w-screen overflow-x-hidden">
     <div className="flex p-4">
@@ -124,6 +162,12 @@ const DetailPatient: NextPageWithLayout = () => {
                     type="date"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-blue-500 focus:border-blue-500 block w-full  p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 "
                     placeholder="Select date"
+                    value={
+                      selectedDate
+                        ? selectedDate.toISOString().split('T')[0]
+                        : ''
+                    }
+                    onChange={(e) => handleChangeDates(e.target.valueAsDate)}
                   />
                 </div>
 
@@ -153,6 +197,8 @@ const DetailPatient: NextPageWithLayout = () => {
                     id="default-search"
                     className="flex w-full max-w-[300px] p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-2xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     placeholder="Search patient"
+                    value={searchQuery}
+                    onChange={handleChangeSearch}
                     required
                   />
                 </div>
@@ -161,7 +207,7 @@ const DetailPatient: NextPageWithLayout = () => {
             <Card className="flex flex-col gap-2 mt-4">
               <Table
                 columns={patientColumn}
-                data={emrList ?? []}
+                data={filteredEmrList}
                 isLoading={false}
                 currentPage={0}
                 // setCurrentPage={setCurrentPageAccountType}
