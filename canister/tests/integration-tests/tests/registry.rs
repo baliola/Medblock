@@ -309,4 +309,62 @@ mod test {
 
         assert!(emr.emrs.len() == 2);
     }
+
+    #[test]
+    fn test_add_emr_after_sharing_session() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let result = registry.patient
+            .create_consent(&registry.ic, patient.principal.clone(), PatientCall::Update)
+            .unwrap();
+
+        registry.patient
+            .claim_consent(
+                &registry.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                ClaimConsentRequest {
+                    code: result.code.clone(),
+                }
+            )
+            .unwrap();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let emr = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        assert!(emr.emrs.len() == 2);
+    }
 }

@@ -12,10 +12,6 @@ pub trait RandomSource {
 
     #[allow(async_fn_in_trait)]
     async fn reseed(&mut self) {}
-
-    fn state(&self) -> u128 {
-        0
-    }
 }
 
 pub struct CanisterRandomSource {

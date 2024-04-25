@@ -639,9 +639,14 @@ fn finish_session(req: FinishSessionRequest) {
 fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     let caller = verified_caller().unwrap();
 
-    ConsentsApi::claim_consent(&req.code, caller)
-        .expect("consent already claimed or does not exists")
-        .into()
+    let (session_id, nik) = ConsentsApi::claim_consent(&req.code, caller).expect(
+        "consent already claimed or does not exists"
+    );
+    let patient = with_state(|s| s.registry.get_patient_info(nik.clone()).unwrap())
+        .name()
+        .to_owned();
+
+    ClaimConsentResponse::new(session_id, patient)
 }
 
 #[ic_cdk::query(guard = "only_patient")]

@@ -154,11 +154,14 @@ pub struct ClaimConsentRequest {
 #[derive(CandidType, Deserialize)]
 pub struct ClaimConsentResponse {
     pub session_id: SessionId,
+    pub name: AsciiRecordsKey<64>,
 }
 
-from!(ClaimConsentResponse: SessionId as value {
-    session_id: value
-});
+impl ClaimConsentResponse {
+    pub fn new(session_id: SessionId, name: AsciiRecordsKey<64>) -> Self {
+        Self { session_id, name }
+    }
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct RevokeConsentRequest {

@@ -267,7 +267,10 @@ impl ConsentsApi {
         with_consent(|consents| consents.consent_list_with_user(user))
     }
 
-    pub fn claim_consent(code: &ConsentCode, session_user: Principal) -> Option<SessionId> {
+    pub fn claim_consent(
+        code: &ConsentCode,
+        session_user: Principal
+    ) -> Option<(Id, canister_common::common::H256)> {
         ensure_initialized();
 
         with_consent_mut(|consents| consents.claim_consent(code, session_user))
@@ -562,7 +565,7 @@ impl ConsentMap {
         &mut self,
         code: &ConsentCode,
         session_user: Principal
-    ) -> Option<SessionId> {
+    ) -> Option<(SessionId, NIK)> {
         let Some(consent) = self.inner.get_mut(code) else {
             return None;
         };
@@ -588,7 +591,9 @@ impl ConsentMap {
             session_id.clone().into()
         );
 
-        Some(session_id)
+        let nik = consent.nik.clone();
+
+        Some((session_id, nik))
     }
 
     /// resolve a given session id to consent if it has been claimed,
@@ -625,8 +630,6 @@ mod tests {
     use candid::Principal;
     use canister_common::{ memory_manager };
 
-    
-
     use super::*;
 
     #[test]
@@ -662,7 +665,7 @@ mod tests {
 
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
+        let (session_id, _) = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         assert_eq!(
             consents.get_consent_uncheked(&code).unwrap().session_id.as_ref().unwrap(),
@@ -684,7 +687,7 @@ mod tests {
         let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
+        let (session_id, _) = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         assert!(consents.ensure_session_allowed(&code, &session_id));
 
@@ -714,7 +717,7 @@ mod tests {
         let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
 
-        let session_id = consents.claim_consent(&code, Principal::anonymous()).unwrap();
+        let (session_id, _) = consents.claim_consent(&code, Principal::anonymous()).unwrap();
 
         consents.finish_session(
             &session_id,
