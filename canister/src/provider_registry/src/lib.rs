@@ -324,6 +324,14 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
+    for _ in 0..100 {
+        with_id_generator_mut(|g| {
+            let id = g.generate_id();
+            log!("first id: {:?}", id);
+            let id = g.generate_id();
+            log!("second id: {:?}", id);
+        });
+    }
     let emr_id = with_id_generator_mut(|generator| generator.generate_id());
     let args = with_state(|s| s.providers.build_args_call_emr_canister(req, emr_id)).unwrap();
 

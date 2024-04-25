@@ -22,6 +22,7 @@ ic-cdk-timers = { workspace = true }
 oorandom = { workspace = true }
 tiny-keccak = { workspace = true }
 hex = { workspace = true }
+rand = { workspace = true }
 
 [features]
 default = []

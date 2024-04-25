@@ -419,7 +419,7 @@ impl ConsentMap {
         self.provider_set.is_session_user(user)
     }
 
-    pub fn new_with_seed(seed: u128, memory_manager: &MemoryManager) -> Self {
+    pub fn new_with_seed(seed: u64, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
             provider_set: ProviderConsentSet::init(memory_manager),
             sessions: std::collections::HashMap::new(),

@@ -352,6 +352,7 @@ dependencies = [
  "ic_principal",
  "oorandom",
  "parity-scale-codec",
+ "rand",
  "serde",
  "thiserror",
  "tiny-keccak",

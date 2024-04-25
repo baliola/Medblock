@@ -12,11 +12,7 @@ use canister_common::{
         Id,
         ProviderId,
         UserId,
-    },
-    metrics,
-    mmgr::MemoryManager,
-    stable::{ Memory, Stable, ToStable },
-    statistics::traits::Metrics,
+    }, log, metrics, mmgr::MemoryManager, stable::{ Memory, Stable, ToStable }, statistics::traits::Metrics
 };
 
 use crate::header::Header;
@@ -149,6 +145,10 @@ impl CoreEmrRegistry {
             .with_user(key.user_id.clone().into_inner())
             .with_provider(key.provider_id.clone().into_inner())
             .with_emr_id(key.emr_id.clone().into_inner());
+        
+        let magic_key = key.clone().with_records_key(MAGIC_RECORDS_KEY.clone()).build().to_stable();
+
+        log!("emr id: {}", key.emr_id.clone().into_inner());
 
         if self.is_emr_exists(exists_key_check).is_ok() {
             return Err(CoreRegistryError::AlreadyExists);
@@ -161,11 +161,10 @@ impl CoreEmrRegistry {
             canister_id()
         );
 
+
+
         // insert magic key
-        self.0.insert(
-            key.clone().with_records_key(MAGIC_RECORDS_KEY.clone()).build().to_stable(),
-            MAGIC_RECORDS_KEY_VALUE.into()
-        );
+        self.0.insert(magic_key, MAGIC_RECORDS_KEY_VALUE.into());
 
         for fragment in emr.into_iter() {
             let (k, v) = (fragment.key, fragment.value);

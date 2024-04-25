@@ -15,6 +15,9 @@ impl<Source: RandomSource> IdGenerator<Source> {
     pub fn generate_id(&mut self) -> crate::common::Id {
         let random_bytes = self.0.get_random_bytes();
 
+        let state = self.0.state();
+        ic_cdk::println!("state: {:?}", state);
+        
         let mut bytes = [0; UUID_MAX_SOURCE_LEN];
         bytes.copy_from_slice(&random_bytes[0..UUID_MAX_SOURCE_LEN]);
 
@@ -23,7 +26,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
 
     pub fn generate_id_with_different_source<NewSource: RandomSource>(
         source: &mut NewSource
-    ) -> crate::common::Id  {
+    ) -> crate::common::Id {
         let random_bytes = source.get_random_bytes();
 
         let mut bytes = [0; UUID_MAX_SOURCE_LEN];

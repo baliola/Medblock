@@ -308,6 +308,7 @@ fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
 #[ic_cdk::update(guard = "only_authorized_caller")]
 fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
     let (key, emr) = req.to_args();
+    log!("creating emr");
 
     with_state_mut(|s| s.registry.add(key, emr))
         .unwrap()

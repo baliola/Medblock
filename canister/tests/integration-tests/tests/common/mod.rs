@@ -243,7 +243,7 @@ pub fn prepare() -> Registries {
     bind_canisters(&server, provider.clone(), patient.clone(), emr.clone(), controller.clone());
 
     // to fully initialize the canisters
-    server.advance_time(Duration::from_secs(10));
+    server.advance_time(Duration::from_secs(1000));
     for _ in 0..10 {
         server.tick();
     }
