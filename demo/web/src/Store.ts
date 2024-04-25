@@ -1,6 +1,9 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
-import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import {
+  Patient,
+  PatientWithNikAndSession,
+} from 'declarations/patient_registry/patient_registry.did';
 import { Provider } from 'declarations/provider_registry/provider_registry.did';
 import { create } from 'zustand';
 
@@ -20,6 +23,9 @@ interface centralStore {
   activePage: pageOptions;
   setActivePage: (page: pageOptions) => void;
 
+  isLoading: boolean;
+  setIsloading: (isLoading: boolean) => void;
+
   nik: string | undefined;
   setNik: (nik: string) => void;
 
@@ -29,8 +35,11 @@ interface centralStore {
   provider: Provider | undefined;
   setProvider: (provider: Provider) => void;
 
-  patientList: Patient[] | null;
-  setPatientList: (patient: Patient[]) => void;
+  patientList: PatientWithNikAndSession[] | null;
+  setPatientList: (patient: PatientWithNikAndSession[]) => void;
+
+  searchResult: PatientWithNikAndSession | null;
+  setSearchResult: (patient: PatientWithNikAndSession | null) => void;
 
   // Principal State
   userPrincipal: string | undefined;
@@ -103,4 +112,14 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   isSidebarOpen: false,
   toggleSidebar: () => set({ isSidebarOpen: !get().isSidebarOpen }),
   setIsSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+
+  searchResult: null,
+  setSearchResult(patient) {
+    set({ searchResult: patient });
+  },
+
+  isLoading: true,
+  setIsloading(isLoading) {
+    set({ isLoading: isLoading });
+  },
 }));

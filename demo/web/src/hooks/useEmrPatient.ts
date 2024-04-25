@@ -12,6 +12,7 @@ import {
   EmrFragment,
   EmrHeader,
   EmrHeaderWithBody,
+  EmrHeaderWithStatus,
   EmrListConsentRequest,
   EmrListPatientRequest,
   EmrListPatientResponse,
@@ -27,7 +28,7 @@ const useEMRPatient = () => {
   const { identity, authenticated } = useAuth();
   const { setNik } = useCentralStore();
   const [patientInfo, setPatientInfo] = useState<Patient | null>();
-  const [emrList, setEmrList] = useState<EmrHeader[]>([]);
+  const [emrList, setEmrList] = useState<EmrHeaderWithStatus[]>([]);
   const [emr, setEmr] = useState<EmrHeaderWithBody>();
   const [initialValues, setInitialValues] = useState({
     location: 'denpasar',
@@ -77,20 +78,22 @@ const useEMRPatient = () => {
   }
 
   async function GetEmr() {
-    const data: EmrListPatientRequest = {
+    const data: EmrListConsentRequest = {
+      session_id: session as string,
       page: 0,
       limit: 10,
     };
 
     try {
-      const response = await api.emr_list_patient(data);
+      // NOTES GANTI KE EMR_LIST_PATIENT_WITH_SESSIONG
+      const response = await api.emr_list_with_session(data);
       console.log('-----------------');
       console.log('RESPONSE:::: EMR', response);
       console.log('-----------------');
-      setEmrList(response.emrs);
+      setEmrList(response.emr);
     } catch (error) {
       console.log('-----------------');
-      console.log('ERROR::::', error);
+      console.log('ERROR:::: EMR', error);
       console.log('-----------------');
     }
   }

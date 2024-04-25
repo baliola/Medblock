@@ -28,28 +28,32 @@ class CanisterError extends Error {
   }
 }
 
-export function createCanisterError(error: unknown): CanisterError | null {
+class HttpAgentError extends Error {
+  requestId: string;
+  rejectCode: number;
+  rejectText: string;
+
+  constructor(
+    message: string,
+    requestId: string,
+    rejectCode: number,
+    rejectText: string,
+  ) {
+    super(message);
+    this.name = 'HttpAgentError';
+    this.requestId = requestId;
+    this.rejectCode = rejectCode;
+    this.rejectText = rejectText;
+  }
+}
+
+export function createCanisterError(
+  error: unknown,
+): CanisterError | HttpAgentError | null {
   const errorObj = error as Error;
   const errorMessage = errorObj.message;
 
   // Regular expression pattern to match the error format
-  const match = errorMessage.match(/Reject code: (\d+)\s+Reject text: (.+)/);
-
-  if (match) {
-    const [, rejectCode, rejectText] = match;
-    // Create CanisterError with reject code and text
-    return new CanisterError(
-      errorMessage,
-      '', // Empty placeholders for Canister, Method, Status, and Code as they are not available
-      '',
-      '',
-      '',
-      `Reject code: ${rejectCode}, Reject text: ${rejectText}`,
-    );
-  }
-
-  // Update the existing code to handle the Canister error format
-  // (assuming it's the same as before)
   const canisterMatch = errorMessage.match(
     /Canister: (.+)\s+Method: (.+)\s+"Status": "(.+)"\s+"Code": "(.+)"\s+"Message": "(.+)"/,
   );
@@ -70,6 +74,18 @@ export function createCanisterError(error: unknown): CanisterError | null {
       // Create CanisterError without reject code and text
       return new CanisterError(message, canister, method, status, code);
     }
+  }
+
+  // Regular expression pattern to match HTTP agent error format
+  const httpAgentMatch = errorMessage.match(
+    /AgentError ID: (.+)\s+Code: (\d+)\s+Body: (.+)/,
+  );
+
+  if (httpAgentMatch) {
+    const [, requestId, rejectCodeStr, rejectText] = httpAgentMatch;
+    const rejectCode = parseInt(rejectCodeStr, 10);
+    // Create HttpAgentError
+    return new HttpAgentError(errorMessage, requestId, rejectCode, rejectText);
   }
 
   return null;
