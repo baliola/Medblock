@@ -106,7 +106,7 @@ export const idlFactory = ({ IDL }) => {
     'logs' : IDL.Opt(CanisterLogResponse),
     'version' : IDL.Opt(IDL.Nat),
   });
-  const ProviderInfoRequest = IDL.Record({ 'provider' : IDL.Principal });
+  const GetProviderBatchRequest = IDL.Record({ 'ids' : IDL.Vec(IDL.Text) });
   const Status = IDL.Variant({ 'Active' : IDL.Null, 'Suspended' : IDL.Null });
   const V1 = IDL.Record({
     'updated_at' : IDL.Nat64,
@@ -118,6 +118,10 @@ export const idlFactory = ({ IDL }) => {
     'activation_status' : Status,
   });
   const Provider = IDL.Variant({ 'V1' : V1 });
+  const GetProviderBatchResponse = IDL.Record({
+    'providers' : IDL.Vec(Provider),
+  });
+  const ProviderInfoRequest = IDL.Record({ 'provider' : IDL.Principal });
   const ProviderInfoResponse = IDL.Record({ 'provider' : Provider });
   const EmrFragment = IDL.Record({ 'key' : IDL.Text, 'value' : IDL.Text });
   const IssueEmrRequest = IDL.Record({
@@ -172,6 +176,11 @@ export const idlFactory = ({ IDL }) => {
     'getCanistergeekInformation' : IDL.Func(
         [GetInformationRequest],
         [GetInformationResponse],
+        ['query'],
+      ),
+    'get_provider_batch' : IDL.Func(
+        [GetProviderBatchRequest],
+        [GetProviderBatchResponse],
         ['query'],
       ),
     'get_provider_info_with_principal' : IDL.Func(

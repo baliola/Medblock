@@ -68,22 +68,23 @@ export default function HomePage() {
                   onClick={() => {
                     // router.push(`/emr/${item.emr_id}`);
                     router.push({
-                      pathname: `/emr/${item.emr_id}`,
+                      pathname: `/emr/${item.header.emr_id}`,
                       query: {
-                        providerId: item.provider_id,
+                        providerId: item.header.provider_id,
                       },
                     });
                   }}
-                  key={item.emr_id}
+                  key={item.header.emr_id}
                   className="flex flex-col items-center bg-slate-200 rounded-xl p-4"
                 >
                   <File color="#242DA8" size={18} iconStyle="Bold" />
                   <p className="text-gray-800 mt-2 text-sm">
                     {' '}
-                    {item.emr_id.substring(0, 10) +
+                    {item.header.emr_id.substring(0, 5) +
                       '...' +
-                      item.emr_id.substring(30, 36)}{' '}
+                      item.header.emr_id.substring(31, 36)}{' '}
                   </p>
+                  <p className="text-gray-800 mt-2 text-sm"> </p>
                 </div>
               );
             })}
