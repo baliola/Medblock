@@ -78,18 +78,19 @@ const useEMRPatient = () => {
   }
 
   async function GetEmr() {
-    const data: EmrListPatientRequest = {
+    const data: EmrListConsentRequest = {
+      session_id: session as string,
       page: 0,
       limit: 10,
     };
 
     try {
       // NOTES GANTI KE EMR_LIST_PATIENT_WITH_SESSIONG
-      const response = await api.emr_list_patient(data);
+      const response = await api.emr_list_with_session(data);
       console.log('-----------------');
       console.log('RESPONSE:::: EMR', response);
       console.log('-----------------');
-      setEmrList(response.emrs);
+      setEmrList(response.emr);
     } catch (error) {
       console.log('-----------------');
       console.log('ERROR:::: EMR', error);
