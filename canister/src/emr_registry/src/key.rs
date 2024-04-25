@@ -11,12 +11,26 @@ use canister_common::{
     impl_mem_bound,
     zero_sized_state,
 };
+use serde::{ ser::SerializeStruct, Serializer };
 
 const DEFAULT_KEY_LEN: usize = 32;
 pub(crate) type RecordsKey = canister_common::common::RecordsKey<DEFAULT_KEY_LEN>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, Default)]
 pub struct CompositeKey(pub UserId, pub ProviderId, pub EmrId, pub RecordsKey);
+
+impl core::fmt::Display for CompositeKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "CompositeKey {{user_id : {}, provider_id: {}, emr_id: {}, records_key: {}}}",
+            self.0,
+            self.1,
+            self.2,
+            self.3
+        )
+    }
+}
 
 impl RangeBounds<CompositeKey> for CompositeKey {
     fn start_bound(&self) -> core::ops::Bound<&CompositeKey> {

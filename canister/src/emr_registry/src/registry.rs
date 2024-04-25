@@ -23,6 +23,9 @@ use crate::header::Header;
 
 use self::key::*;
 
+const MAGIC_RECORDS_KEY: RecordsKey = RecordsKey::static_key(*b"fcd25a10-7658-4384-97d8-9a161b2f");
+const MAGIC_RECORDS_KEY_VALUE: &'static str = "magic";
+
 use super::key::{
     ByEmr,
     ByRecordsKey,
@@ -50,7 +53,25 @@ pub type RegistryResult<T> = Result<T, CoreRegistryError>;
 pub mod key {
     use super::*;
 
+    pub type MagicKey = CompositeKeyBuilder<
+        ByRecordsKey,
+        Known<UserId>,
+        Known<ProviderId>,
+        Known<EmrId>,
+        Known<RecordsKey>
+    >;
+
     pub type EmrKey = CompositeKeyBuilder<ByEmr, Known<UserId>, Known<ProviderId>, Known<EmrId>>;
+
+    impl EmrKey {
+        pub fn to_magic(self) -> MagicKey {
+            MagicKey::new()
+                .with_user(self.user_id.into_inner())
+                .with_provider(self.provider_id.into_inner())
+                .with_emr_id(self.emr_id.into_inner())
+                .with_records_key(MAGIC_RECORDS_KEY)
+        }
+    }
     pub type AddEmrKey = CompositeKeyBuilder<
         ByRecordsKey,
         Known<UserId>,
@@ -113,7 +134,9 @@ impl Debug for CoreEmrRegistry {
         let mut result = f.debug_map();
 
         for (key, value) in self.0.iter() {
-            result.entry(&format!("{:?}", key), &format!("{:?}", value));
+            let key = format!("{key} => ");
+            let value = format!("{value}");
+            result.entry(&key, &value);
         }
 
         result.finish()
@@ -138,8 +161,18 @@ impl CoreEmrRegistry {
             canister_id()
         );
 
+        // insert magic key
+        self.0.insert(
+            key.clone().with_records_key(MAGIC_RECORDS_KEY.clone()).build().to_stable(),
+            MAGIC_RECORDS_KEY_VALUE.into()
+        );
+
         for fragment in emr.into_iter() {
             let (k, v) = (fragment.key, fragment.value);
+
+            if k.eq(&MAGIC_RECORDS_KEY) {
+                continue;
+            }
 
             let emr_key = key.clone().with_records_key(k).build();
             self.0.insert(emr_key.into(), v);
@@ -149,16 +182,12 @@ impl CoreEmrRegistry {
     }
 
     pub fn is_emr_exists(&self, key: EmrKey) -> RegistryResult<()> {
-        let key = key.build().to_stable();
-        match
-            self.0
-                .range(key..)
-                .max()
-                .is_some()
-        {
-            true => Ok(()),
-            false => Err(CoreRegistryError::NotExist),
-        }
+        let key = key.to_magic().build().to_stable();
+
+        self.0
+            .contains_key(&key)
+            .then(|| ())
+            .ok_or(CoreRegistryError::NotExist)
     }
 
     pub fn update(
@@ -193,6 +222,11 @@ impl CoreEmrRegistry {
 
         for fragment in values {
             let (k, v) = (fragment.key, fragment.value);
+
+            if k.eq(&MAGIC_RECORDS_KEY) {
+                continue;
+            }
+
             let records_key = key.clone().with_records_key(k);
             self.update(records_key, v);
         }
@@ -290,6 +324,7 @@ impl CoreEmrRegistry {
         let records = self.0
             .range(key.clone()..)
             .take_while(|(k, _)| k.emr_id() == key.emr_id())
+            .filter(|(k, _)| k.record_key().ne(&MAGIC_RECORDS_KEY))
             .map(|(k, v)| (k.record_key().to_owned(), v.clone()))
             .collect::<Vec<_>>();
 
@@ -427,6 +462,56 @@ mod tests {
     }
 
     #[test]
+    fn test_2_emr_exists() {
+        let memory_manager = MemoryManager::init();
+        let mut registry = CoreEmrRegistry::init(&memory_manager);
+
+        let user = id!("be06a4e7-bc46-4740-8397-ea00d9933cc1");
+        let user = canister_common::test_utils::hash(user.as_bytes());
+        let provider = id!("b0e6abc0-5b4f-49b8-b1cf-9f4a452ff22d");
+        let emr_id = id!("6c5dd2ec-0fe0-40dc-ae33-234252be26ed");
+
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .records_key()
+            .with_user(user.into())
+            .with_provider(provider.clone())
+            .with_emr_id(emr_id.clone());
+
+        let records = vec![
+            (AsciiRecordsKey::new("key1").unwrap(), ArbitraryEmrValue::from("value1")),
+            (AsciiRecordsKey::new("key4").unwrap(), ArbitraryEmrValue::from("value1"))
+        ];
+        let emr = EmrBody::from(records);
+
+        let header = registry.add(key.clone(), emr).unwrap();
+
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .emr()
+            .with_user(header.user_id.clone())
+            .with_provider(header.provider_id.clone())
+            .with_emr_id(header.emr_id.clone());
+
+        let result = registry.is_emr_exists(key.clone());
+
+        let inexistent_key = id!("61e092c4-22fe-4f51-8450-fea3d0d9eb0a");
+        let key = CompositeKeyBuilder::<UnknownUsage>
+            ::new()
+            .emr()
+            .with_user(header.user_id.clone())
+            .with_provider(header.provider_id.clone())
+            .with_emr_id(inexistent_key.clone());
+
+        let result = registry.is_emr_exists(key.clone());
+
+        println!("inexistent key: {}", key.build());
+        println!("{:#?}", registry);
+
+        assert!(result.is_err(), "emr should not exists");
+    }
+
+    #[test]
     fn test_upsert_emr() {
         let memory_manager = MemoryManager::init();
         let mut registry = CoreEmrRegistry::init(&memory_manager);
@@ -470,7 +555,7 @@ mod tests {
             .update_batch(header.to_partial_update_key(), new_fields.clone().into())
             .unwrap();
 
-        println!("{:?}", registry);
+        println!("{:#?}", registry);
         let emrs = registry.read_by_id(header.to_emr_key()).unwrap().into_inner_body();
 
         assert!(emrs.clone().into_inner().len() == total_fields.len());
@@ -480,24 +565,3 @@ mod tests {
         }
     }
 }
-
-// TODO: implement log for core registry
-// pub struct ActivityLog(
-//     // store the log in a vector
-//     logs: Vec<Log<String>>,
-// );
-
-// implement from struc to log
-// impl ActivityLog {
-//     pub fn new() -> Self {
-//         Self { logs: Vec::new() }
-//     }
-
-//     pub fn add(&mut self, log: Log<String>) {
-//         self.logs.push(log);
-//     }
-
-//     pub fn get_logs(&self) -> Vec<Log<String>> {
-//         self.logs.clone()
-//     }
-// }

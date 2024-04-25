@@ -160,7 +160,10 @@ from!(ClaimConsentResponse: SessionId as value {
     session_id: value
 });
 
-pub type RevokeConsentRequest = ClaimConsentRequest;
+#[derive(CandidType, Deserialize)]
+pub struct RevokeConsentRequest {
+    pub codes: Vec<ConsentCode>,
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct FinishSessionRequest {

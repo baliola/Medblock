@@ -275,6 +275,10 @@ pub struct RegisterPatientRequest {
     pub nik: String,
 }
 #[derive(CandidType, Deserialize)]
+pub struct RevokeConsentRequest {
+    pub codes: Vec<String>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {
     pub nik: String,
 }
@@ -393,7 +397,7 @@ impl PatientRegistry {
     ) -> Result<()> {
         ic_cdk::call(self.0, "remove_authorized_metrics_collector", (arg0,)).await
     }
-    pub async fn revoke_consent(&self, arg0: ClaimConsentRequest) -> Result<()> {
+    pub async fn revoke_consent(&self, arg0: RevokeConsentRequest) -> Result<()> {
         ic_cdk::call(self.0, "revoke_consent", (arg0,)).await
     }
     pub async fn search_patient(
@@ -837,7 +841,7 @@ pub mod pocket_ic_bindings {
             server: &pocket_ic::PocketIc,
             sender: ic_principal::Principal,
             call_type: Call,
-            arg0: ClaimConsentRequest,
+            arg0: RevokeConsentRequest,
         ) -> std::result::Result<(), pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,

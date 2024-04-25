@@ -1,9 +1,8 @@
-use candid::{CandidType, Principal};
+use candid::{ CandidType, Principal };
 use canister_common::{ common::{ EmrBody, EmrHeaderWithBody, EmrId, ProviderId, UserId }, from };
 use serde::Deserialize;
 
 use crate::registry::key;
-
 
 pub use crate::header;
 
@@ -40,15 +39,16 @@ pub struct CreateEmrRequest {
     pub user_id: UserId,
     pub provider_id: ProviderId,
     pub emr: EmrBody,
+    pub emr_id: EmrId,
 }
 
 impl CreateEmrRequest {
-    pub fn to_args(self, emr_id: EmrId) -> (key::AddEmrKey, EmrBody) {
+    pub fn to_args(self) -> (key::AddEmrKey, EmrBody) {
         let key = key::AddEmrKey
             ::new()
             .with_user(self.user_id)
             .with_provider(self.provider_id)
-            .with_emr_id(emr_id);
+            .with_emr_id(self.emr_id);
 
         (key, self.emr)
     }
@@ -98,8 +98,7 @@ from!(RemoveEmrResponse: bool as status {
     status : status
 });
 
-
 #[derive(CandidType, Deserialize)]
-pub struct AuthorizedCallerRequest{
+pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }

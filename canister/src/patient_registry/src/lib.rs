@@ -58,6 +58,7 @@ mod api;
 mod config;
 mod encryption;
 mod consent;
+mod log;
 
 type State = canister_common::common::State<
     registry::PatientRegistry,
@@ -622,7 +623,9 @@ fn get_patient_info() -> GetPatientInfoResponse {
 
 #[ic_cdk::update(guard = "only_patient")]
 fn revoke_consent(req: RevokeConsentRequest) {
-    ConsentsApi::revoke_consent(&req.code);
+    for code in req.codes {
+        ConsentsApi::revoke_consent(&code);
+    }
 }
 
 #[ic_cdk::update]

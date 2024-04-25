@@ -310,7 +310,7 @@ impl Scenario {
             .unwrap();
 
         let arg = ProviderInfoRequest {
-            provider: provider.0.clone(),
+            provider: vec![provider.0.clone()],
         };
 
         // prepare patient

@@ -142,6 +142,7 @@ type ReadEmrSessionRequest = record {
   args : ReadEmrByIdRequest;
 };
 type RegisterPatientRequest = record { nik : text };
+type RevokeConsentRequest = record { codes : vec text };
 type SearchPatientRequest = record { nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
 type StatusRequest = record {
@@ -203,7 +204,7 @@ service : () -> {
     ) composite_query;
   register_patient : (RegisterPatientRequest) -> ();
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
-  revoke_consent : (ClaimConsentRequest) -> ();
+  revoke_consent : (RevokeConsentRequest) -> ();
   search_patient : (SearchPatientRequest) -> (SearchPatientResponse) query;
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();

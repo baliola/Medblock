@@ -40,7 +40,7 @@ mod test {
             .unwrap();
 
         let arg = ProviderInfoRequest {
-            provider: Principal::anonymous(),
+            provider: vec![Principal::anonymous()],
         };
 
         let result = registries.provider
@@ -52,7 +52,7 @@ mod test {
             )
             .unwrap();
 
-        match result.provider {
+        match result.providers.first().unwrap() {
             integration_tests::declarations::provider_registry::Provider::V1(provider) => {
                 assert_eq!(provider.display_name, display);
                 assert_eq!(provider.address, address);
@@ -253,15 +253,60 @@ mod test {
             )
             .unwrap();
 
-        let search_result = registry.patient.search_patient(
-            &registry.ic,
-            provider.0.clone(),
-            PatientCall::Query,
-            SearchPatientRequest {
-                nik: patient.nik.clone().to_string(),
-            }
-        ).unwrap();
+        let search_result = registry.patient
+            .search_patient(
+                &registry.ic,
+                provider.0.clone(),
+                PatientCall::Query,
+                SearchPatientRequest {
+                    nik: patient.nik.clone().to_string(),
+                }
+            )
+            .unwrap();
 
         assert_eq!(search_result.patient_info.nik, patient.nik.clone().to_string());
+    }
+
+    #[test]
+    fn test_2_emr() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let emr = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        assert!(emr.emrs.len() == 2);
     }
 }

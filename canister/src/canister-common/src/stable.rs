@@ -52,6 +52,15 @@ impl EncodingMarker for Candid {}
 pub struct Stable<Data, Encoding = Scale>(Data, PhantomData<Encoding>)
     where Data: MemBoundMarker, Encoding: EncodingMarker;
 
+impl<Data, Encoding> core::fmt::Display
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker + core::fmt::Display, Encoding: EncodingMarker
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl<Data, Encoding> From<Data>
     for Stable<Data, Encoding>
     where Data: MemBoundMarker, Encoding: EncodingMarker

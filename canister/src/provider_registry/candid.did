@@ -109,8 +109,8 @@ type PingResult = record {
   emr_registry_status : bool;
 };
 type Provider = variant { V1 : V1 };
-type ProviderInfoRequest = record { provider : principal };
-type ProviderInfoResponse = record { provider : Provider };
+type ProviderInfoRequest = record { provider : vec principal };
+type ProviderInfoResponse = record { providers : vec Provider };
 type RegisternewProviderRequest = record {
   provider_principal : principal;
   display_name : text;
