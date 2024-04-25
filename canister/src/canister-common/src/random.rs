@@ -95,7 +95,7 @@ impl CanisterRandomSource {
 
     /// float prng, hashed with keccak
     pub fn random_bytes(&mut self) -> [u8; 32] {
-        let mut rng = &mut self.rng;
+        let rng = &mut self.rng;
 
         let mut bytes = [0; 32];
         rng.fill(&mut bytes);

@@ -39,7 +39,7 @@ use canister_common::{
     opaque_metrics,
     random::CanisterRandomSource,
     register_log,
-    stable::{ Candid, Memory, Stable, ToStable },
+    stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
 use config::CanisterConfig;
@@ -536,8 +536,7 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
 
             EmrHeaderWithStatus::new(header, status, providers)
         })
-        .collect::<Vec<_>>()
-        .into();
+        .collect::<Vec<_>>();
 
     EmrListConsentResponse::new(emrs, info.name().to_owned())
 }

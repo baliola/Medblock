@@ -3,7 +3,7 @@ use std::{ str::FromStr, time::Duration };
 
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ EmrHeader, Id, PrincipalBytes },
+    common::{ Id, PrincipalBytes },
     deref,
     id_generator::IdGenerator,
     impl_max_size,
@@ -14,7 +14,7 @@ use canister_common::{
     mmgr::MemoryManager,
     opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
-    stable::{ Candid, Memory, Stable, StableSet },
+    stable::{ Stable, StableSet },
     statistics::traits::Metrics,
 };
 use serde::Deserialize;
@@ -240,10 +240,10 @@ impl ConsentsApi {
         ensure_initialized();
 
         let partial = PartialConsent::new(nik);
-        let code = with_consent_mut(|consents| { consents.add_consent(partial) });
+
         // we dont have expiry for now
         // Self::remove_consent_after_expiry(code);
-        code
+        with_consent_mut(|consents| { consents.add_consent(partial) })
     }
 
     pub fn revoke_consent(code: &ConsentCode) {
@@ -578,7 +578,7 @@ impl ConsentMap {
 
         consent.claimed = true;
         consent.session_id = Some(session_id.clone());
-        consent.session_user = Some(session_user.clone());
+        consent.session_user = Some(session_user);
 
         assert!(self.sessions.get(&session_id).is_none(), "session id already exists");
         assert!(self.sessions.insert(session_id.clone(), code.to_owned()).is_none());
@@ -623,9 +623,9 @@ impl ConsentMap {
 #[cfg(test)]
 mod tests {
     use candid::Principal;
-    use canister_common::{ id, memory_manager };
+    use canister_common::{ memory_manager };
 
-    use crate::memory;
+    
 
     use super::*;
 
@@ -681,13 +681,6 @@ mod tests {
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
 
-        let header = EmrHeader {
-            user_id: nik.clone(),
-            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            registry_id: Principal::anonymous().into(),
-        };
-
         let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
 
@@ -717,13 +710,6 @@ mod tests {
         let nik = NIK::from_str(
             "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
         ).unwrap();
-
-        let header = EmrHeader {
-            user_id: nik.clone(),
-            emr_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            provider_id: id!("97780ca3-a626-4fc5-b150-7fa8bc665df6"),
-            registry_id: Principal::anonymous().into(),
-        };
 
         let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());

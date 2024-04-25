@@ -20,7 +20,7 @@ use crate::header::Header;
 use self::key::*;
 
 const MAGIC_RECORDS_KEY: RecordsKey = RecordsKey::static_key(*b"fcd25a10-7658-4384-97d8-9a161b2f");
-const MAGIC_RECORDS_KEY_VALUE: &'static str = "magic";
+const MAGIC_RECORDS_KEY_VALUE: &str = "magic";
 
 use super::key::{
     ByEmr,
@@ -131,7 +131,7 @@ impl Debug for CoreEmrRegistry {
 
         for (key, value) in self.0.iter() {
             let key = format!("{key} => ");
-            let value = format!("{value}");
+            let value = value.to_string();
             result.entry(&key, &value);
         }
 
@@ -185,7 +185,7 @@ impl CoreEmrRegistry {
 
         self.0
             .contains_key(&key)
-            .then(|| ())
+            .then_some(())
             .ok_or(CoreRegistryError::NotExist)
     }
 
@@ -492,7 +492,7 @@ mod tests {
             .with_provider(header.provider_id.clone())
             .with_emr_id(header.emr_id.clone());
 
-        let result = registry.is_emr_exists(key.clone());
+        let _result = registry.is_emr_exists(key.clone());
 
         let inexistent_key = id!("61e092c4-22fe-4f51-8450-fea3d0d9eb0a");
         let key = CompositeKeyBuilder::<UnknownUsage>

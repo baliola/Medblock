@@ -5,7 +5,7 @@ use candid::{ CandidType };
 use canister_common::random::CallError;
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ self, EmrHeader, EmrId, PrincipalBytes };
+use canister_common::common::{ self, EmrId, PrincipalBytes };
 use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };

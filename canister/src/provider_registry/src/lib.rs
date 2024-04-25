@@ -21,14 +21,13 @@ use canister_common::{
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
-    opaque_metrics,
     random::CanisterRandomSource,
     register_log,
     stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
 
-use declarations::patient_registry::GetPatientInfoResponse;
+
 use ic_stable_structures::Cell;
 use memory::{ FreezeThresholdMemory, UpgradeMemory };
 use registry::ProviderRegistry;

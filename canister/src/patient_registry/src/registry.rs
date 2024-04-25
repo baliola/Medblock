@@ -11,7 +11,7 @@ use canister_common::{
     stable::{ Candid, Memory, Stable, StableSet, ToStable },
     statistics::traits::{ Metrics, OpaqueMetrics },
 };
-use ic_stable_structures::memory_manager;
+
 use serde::Deserialize;
 
 use crate::{ api::ReadEmrByIdRequest };
@@ -400,7 +400,7 @@ impl HeaderStatusMap {
     }
 
     pub fn get(&self, header: &Stable<EmrHeader>) -> Option<Stable<HeaderStatus, Candid>> {
-        self.0.get(&header)
+        self.0.get(header)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{ path::Display, str::FromStr };
+use std::{ str::FromStr };
 
 use candid::{ CandidType, Principal };
 use ic_stable_structures::{ storable::Bound };
@@ -601,7 +601,7 @@ pub struct H256([u8; HASH_LEN]);
 
 impl core::fmt::Display for H256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
+        write!(f, "{}", hex::encode(self.0))
     }
 }
 
