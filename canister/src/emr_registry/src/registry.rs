@@ -12,7 +12,12 @@ use canister_common::{
         Id,
         ProviderId,
         UserId,
-    }, log, metrics, mmgr::MemoryManager, stable::{ Memory, Stable, ToStable }, statistics::traits::Metrics
+    },
+    log,
+    metrics,
+    mmgr::MemoryManager,
+    stable::{ Memory, Stable, ToStable },
+    statistics::traits::Metrics,
 };
 
 use crate::header::Header;
@@ -145,10 +150,8 @@ impl CoreEmrRegistry {
             .with_user(key.user_id.clone().into_inner())
             .with_provider(key.provider_id.clone().into_inner())
             .with_emr_id(key.emr_id.clone().into_inner());
-        
-        let magic_key = key.clone().with_records_key(MAGIC_RECORDS_KEY.clone()).build().to_stable();
 
-        log!("emr id: {}", key.emr_id.clone().into_inner());
+        let magic_key = key.clone().with_records_key(MAGIC_RECORDS_KEY.clone()).build().to_stable();
 
         if self.is_emr_exists(exists_key_check).is_ok() {
             return Err(CoreRegistryError::AlreadyExists);
@@ -160,8 +163,6 @@ impl CoreEmrRegistry {
             key.emr_id.clone().into_inner(),
             canister_id()
         );
-
-
 
         // insert magic key
         self.0.insert(magic_key, MAGIC_RECORDS_KEY_VALUE.into());
@@ -183,10 +184,7 @@ impl CoreEmrRegistry {
     pub fn is_emr_exists(&self, key: EmrKey) -> RegistryResult<()> {
         let key = key.to_magic().build().to_stable();
 
-        self.0
-            .contains_key(&key)
-            .then_some(())
-            .ok_or(CoreRegistryError::NotExist)
+        self.0.contains_key(&key).then_some(()).ok_or(CoreRegistryError::NotExist)
     }
 
     pub fn update(

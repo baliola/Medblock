@@ -19,7 +19,6 @@ ic-cdk = { workspace = true }
 ic_principal = { workspace = true }
 ciborium = "0.2.2"
 ic-cdk-timers = { workspace = true }
-oorandom = { workspace = true }
 tiny-keccak = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
