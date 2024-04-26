@@ -27,7 +27,6 @@ import { toast } from 'react-toastify';
 // Call emr and info patient from patient canister
 const useEMRPatient = () => {
   const { identity, authenticated } = useAuth();
-  const { setSessionId } = useCentralStore();
   const { setNik } = useCentralStore();
   const [patientInfo, setPatientInfo] = useState<Patient | null>();
   const [emrList, setEmrList] = useState<EmrHeaderWithStatus[]>([]);
