@@ -1,13 +1,16 @@
 export const idlFactory = ({ IDL }) => {
   const AuthorizedCallerRequest = IDL.Record({ 'caller' : IDL.Principal });
   const ClaimConsentRequest = IDL.Record({ 'code' : IDL.Text });
-  const ClaimConsentResponse = IDL.Record({ 'session_id' : IDL.Text });
+  const ClaimConsentResponse = IDL.Record({
+    'session_id' : IDL.Text,
+    'name' : IDL.Text,
+  });
   const Consent = IDL.Record({
     'nik' : IDL.Text,
     'session_id' : IDL.Opt(IDL.Text),
     'code' : IDL.Text,
     'claimed' : IDL.Bool,
-    'session_user' : IDL.Opt(IDL.Principal),
+    'session_user' : IDL.Opt(IDL.Text),
   });
   const ConsentListResponse = IDL.Record({ 'consents' : IDL.Vec(Consent) });
   const EmrListPatientRequest = IDL.Record({
@@ -41,6 +44,7 @@ export const idlFactory = ({ IDL }) => {
     'emr' : IDL.Vec(EmrHeaderWithStatus),
     'username' : IDL.Text,
   });
+  const FinishSessionRequest = IDL.Record({ 'session_id' : IDL.Text });
   const StatusRequest = IDL.Record({
     'memory_size' : IDL.Bool,
     'cycles' : IDL.Bool,
@@ -142,6 +146,18 @@ export const idlFactory = ({ IDL }) => {
     'logs' : IDL.Opt(CanisterLogResponse),
     'version' : IDL.Opt(IDL.Nat),
   });
+  const ActivityType = IDL.Variant({
+    'Updated' : IDL.Null,
+    'Accessed' : IDL.Null,
+    'Revoked' : IDL.Null,
+  });
+  const Activity = IDL.Record({
+    'activity_type' : ActivityType,
+    'provider_id' : IDL.Text,
+    'user_id' : IDL.Text,
+    'timestamp' : IDL.Nat64,
+  });
+  const LogResponse = IDL.Record({ 'logs' : IDL.Vec(Activity) });
   const V1 = IDL.Record({
     'name' : IDL.Text,
     'martial_status' : IDL.Text,
@@ -185,6 +201,7 @@ export const idlFactory = ({ IDL }) => {
     'args' : ReadEmrByIdRequest,
   });
   const RegisterPatientRequest = IDL.Record({ 'nik' : IDL.Text });
+  const RevokeConsentRequest = IDL.Record({ 'codes' : IDL.Vec(IDL.Text) });
   const SearchPatientRequest = IDL.Record({ 'nik' : IDL.Text });
   const SearchPatientResponse = IDL.Record({
     'patient_info' : PatientWithNikAndSession,
@@ -221,17 +238,18 @@ export const idlFactory = ({ IDL }) => {
         [EmrListConsentResponse],
         ['composite_query'],
       ),
-    'finish_session' : IDL.Func([ClaimConsentResponse], [], []),
+    'finish_session' : IDL.Func([FinishSessionRequest], [], []),
     'getCanistergeekInformation' : IDL.Func(
         [GetInformationRequest],
         [GetInformationResponse],
         ['query'],
       ),
+    'get_logs' : IDL.Func([], [LogResponse], ['query']),
     'get_patient_info' : IDL.Func([], [GetPatientInfoResponse], ['query']),
     'get_patient_info_with_consent' : IDL.Func(
-        [ClaimConsentResponse],
+        [FinishSessionRequest],
         [GetPatientInfoResponse],
-        ['query'],
+        ['composite_query'],
       ),
     'get_trusted_origins' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'is_consent_claimed' : IDL.Func(
@@ -242,7 +260,7 @@ export const idlFactory = ({ IDL }) => {
     'metrics' : IDL.Func([], [IDL.Text], ['query']),
     'notify_issued' : IDL.Func([IssueRequest], [], []),
     'notify_updated' : IDL.Func([IssueRequest], [], []),
-    'patient_list' : IDL.Func([], [PatientListResponse], ['query']),
+    'patient_list' : IDL.Func([], [PatientListResponse], ['composite_query']),
     'ping' : IDL.Func([], [PingResult], ['composite_query']),
     'read_emr_by_id' : IDL.Func(
         [ReadEmrByIdRequest],
@@ -260,11 +278,11 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'revoke_consent' : IDL.Func([ClaimConsentRequest], [], []),
+    'revoke_consent' : IDL.Func([RevokeConsentRequest], [], []),
     'search_patient' : IDL.Func(
         [SearchPatientRequest],
         [SearchPatientResponse],
-        ['query'],
+        ['composite_query'],
       ),
     'updateCanistergeekInformation' : IDL.Func(
         [UpdateInformationRequest],

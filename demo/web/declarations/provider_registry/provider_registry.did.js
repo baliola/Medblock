@@ -121,8 +121,10 @@ export const idlFactory = ({ IDL }) => {
   const GetProviderBatchResponse = IDL.Record({
     'providers' : IDL.Vec(Provider),
   });
-  const ProviderInfoRequest = IDL.Record({ 'provider' : IDL.Principal });
-  const ProviderInfoResponse = IDL.Record({ 'provider' : Provider });
+  const ProviderInfoRequest = IDL.Record({
+    'provider' : IDL.Vec(IDL.Principal),
+  });
+  const ProviderInfoResponse = IDL.Record({ 'providers' : IDL.Vec(Provider) });
   const EmrFragment = IDL.Record({ 'key' : IDL.Text, 'value' : IDL.Text });
   const IssueEmrRequest = IDL.Record({
     'emr' : IDL.Vec(EmrFragment),

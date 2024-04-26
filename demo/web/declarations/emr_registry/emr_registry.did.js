@@ -5,6 +5,7 @@ export const idlFactory = ({ IDL }) => {
     'emr' : IDL.Vec(EmrFragment),
     'provider_id' : IDL.Text,
     'user_id' : IDL.Text,
+    'emr_id' : IDL.Text,
   });
   const Header = IDL.Record({
     'provider_id' : IDL.Text,
