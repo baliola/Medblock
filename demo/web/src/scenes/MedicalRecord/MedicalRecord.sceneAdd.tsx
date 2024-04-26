@@ -153,15 +153,15 @@ const MedicalRecordAdd: NextPageWithLayout = () => {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col md:w-1/2 gap-20">
-                  {/* <div className="flex flex-col gap-4">
-                  <p className="max-w-[164px] w-full">Lab Result</p>
-                  <ImageGallery
-                    setShowModal={setShowModal}
-                    setSelectedImage={setSelectedImage}
-                    //   toggle={toggleModal}
-                  />
-                </div> */}
+                <div className="flex flex-col md:w-1/2 gap-8">
+                  <div className="flex flex-col gap-4">
+                    <p className="max-w-[164px] w-full">Lab Result</p>
+                    <ImageGallery
+                      setShowModal={setShowModal}
+                      setSelectedImage={setSelectedImage}
+                      //   toggle={toggleModal}
+                    />
+                  </div>
 
                   <div className="flex flex-col gap-4">
                     <p className="max-w-[164px] w-full font-semibold">
