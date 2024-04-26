@@ -102,7 +102,7 @@ const MedicalRecord = (props: MedicalRecordType) => {
                 <Link href="/" className="text-[#06B8EE] underline">
                   Patient EMR
                 </Link>{' '}
-                <span> / Add EMR</span>
+                <span> / Upadate EMR</span>
               </div>{' '}
             </div>
             <Formik initialValues={initialValues} onSubmit={handleSubmit}>
