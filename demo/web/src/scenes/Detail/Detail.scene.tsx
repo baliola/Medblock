@@ -19,7 +19,10 @@ import {
   EmrHeader,
   EmrHeaderWithStatus,
 } from 'declarations/patient_registry/patient_registry.did';
-import { formatDateFromBigInt } from '@/lib/bigintDateFormat';
+import {
+  formatDateFromBigInt,
+  formatDateFromBigIntWithTime,
+} from '@/lib/bigintDateFormat';
 import { useAuth } from '@/config/agent';
 // import Datepicker from 'react-tailwindcss-datepicker';
 export type DetailType = {
@@ -104,7 +107,7 @@ const DetailPatient = (props: DetailType) => {
         header: 'Issued At',
         cell: (info) => (
           <p className="font-normal">
-            {formatDateFromBigInt(info.row.original.status.created_at)}
+            {formatDateFromBigIntWithTime(info.row.original.status.created_at)}
           </p>
         ),
       },
@@ -226,7 +229,7 @@ const DetailPatient = (props: DetailType) => {
                 </div>
               </div>
             </div>
-            <Card className="flex flex-col gap-2 mt-4">
+            <Card className="flex flex-col gap-2 mt-4 mb-6">
               <Table
                 columns={patientColumn}
                 data={filteredEmrList}
