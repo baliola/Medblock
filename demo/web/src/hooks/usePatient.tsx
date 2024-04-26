@@ -125,6 +125,7 @@ const usePatient = () => {
       console.log('-----------------');
       console.log('RESPONSE conscentt Hello::::', response);
       console.log('-----------------');
+      localStorageHelper.setItem('session', response.session_id);
       setPatientName(response.name);
       fetchPatient();
 

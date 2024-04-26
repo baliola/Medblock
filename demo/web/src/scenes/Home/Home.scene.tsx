@@ -67,8 +67,6 @@ export default function DashboardExample() {
     setShowModalSuccess(!showModalSuccess);
   };
 
-  console.log('seesion id', sessionId);
-
   const patientColumn = useMemo<ColumnDef<PatientWithNikAndSession>[]>(
     () => [
       {
@@ -121,6 +119,7 @@ export default function DashboardExample() {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
+                localStorage.setItem('session', info.row.original.session_id);
                 router.push({
                   pathname: `/emr/${info.row.original.session_id}`,
                   query: {
