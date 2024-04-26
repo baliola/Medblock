@@ -26,17 +26,17 @@ pub struct PatientRegistry {
 impl PatientRegistry {
     pub fn construct_get_provider_batch_args(
         principals: Vec<Principal>
-    ) -> declarations::provider_registry::GetProviderBatchRequest {
-        declarations::provider_registry::GetProviderBatchRequest {
-            ids: principals.into_iter().map(|p| p.to_string()).collect(),
+    ) -> declarations::provider_registry::ProviderInfoRequest {
+        declarations::provider_registry::ProviderInfoRequest {
+            provider: principals,
         }
     }
 
     pub async fn do_call_get_provider_batch(
-        arg: declarations::provider_registry::GetProviderBatchRequest,
+        arg: declarations::provider_registry::ProviderInfoRequest,
         registry: declarations::provider_registry::ProviderRegistry
-    ) -> declarations::provider_registry::GetProviderBatchResponse {
-        match registry.get_provider_batch(arg).await.map_err(CallError::from) {
+    ) -> declarations::provider_registry::ProviderInfoResponse {
+        match registry.get_provider_info_with_principal(arg).await.map_err(CallError::from) {
             Ok((response,)) => response,
             Err(e) => {
                 ic_cdk::trap(&format!("ERROR: Error calling get_provider_batch: {:?}", e));

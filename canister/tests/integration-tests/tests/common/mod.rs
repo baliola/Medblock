@@ -273,6 +273,28 @@ pub fn random_identity() -> Principal {
 
 pub struct Scenario;
 
+pub struct ScenarioResult<Ext> {
+    pub registries: Registries,
+    pub provider: Provider,
+    pub patient: Patient,
+    pub ext: Ext,
+}
+
+use ext::*;
+pub mod ext {
+    use super::*;
+
+    pub struct EmrExt {
+        pub emr_header: declarations::provider_registry::Header,
+    }
+}
+
+impl<Ext> ScenarioResult<Ext> {
+    pub fn new(registries: Registries, provider: Provider, patient: Patient, ext: Ext) -> Self {
+        Self { registries, provider, patient, ext }
+    }
+}
+
 pub struct Provider(pub Principal);
 pub struct Patient {
     pub principal: Principal,
@@ -347,5 +369,25 @@ impl Scenario {
             .unwrap();
 
         (registries, provider, patient)
+    }
+
+    pub fn one_provider_one_patient_with_one_emr() -> ScenarioResult<EmrExt> {
+        let (registry, provider, patient) = Self::one_provider_one_patient();
+
+        let arg = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        ScenarioResult::new(registry, provider, patient, EmrExt {
+            emr_header: response.emr_header,
+        })
     }
 }

@@ -1,3 +1,10 @@
+type Activity = record {
+  activity_type : ActivityType;
+  provider_id : text;
+  user_id : text;
+  timestamp : nat64;
+};
+type ActivityType = variant { Updated; Accessed; Revoked };
 type AuthorizedCallerRequest = record { caller : principal };
 type CanisterLogFeature = variant {
   filterMessageByContains;
@@ -28,14 +35,14 @@ type CanisterMetricsData = variant {
   daily : vec DailyMetricsData;
 };
 type ClaimConsentRequest = record { code : text };
-type ClaimConsentResponse = record { session_id : text };
+type ClaimConsentResponse = record { session_id : text; name : text };
 type CollectMetricsRequestType = variant { force; normal };
 type Consent = record {
   nik : text;
   session_id : opt text;
   code : text;
   claimed : bool;
-  session_user : opt principal;
+  session_user : opt text;
 };
 type ConsentListResponse = record { consents : vec Consent };
 type DailyMetricsData = record {
@@ -69,6 +76,7 @@ type EmrListConsentResponse = record {
 };
 type EmrListPatientRequest = record { page : nat8; limit : nat8 };
 type EmrListPatientResponse = record { emrs : vec EmrHeaderWithStatus };
+type FinishSessionRequest = record { session_id : text };
 type GetInformationRequest = record {
   status : opt StatusRequest;
   metrics : opt MetricsRequest;
@@ -113,6 +121,7 @@ type HourlyMetricsData = record {
 type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
 type IssueRequest = record { header : EmrHeader };
 type LogMessageData = record { timeNanos : nat64; message : text };
+type LogResponse = record { logs : vec Activity };
 type MetricsGranularity = variant { hourly; daily };
 type MetricsRequest = record { parameters : GetMetricsParameters };
 type MetricsResponse = record { metrics : opt CanisterMetrics };
@@ -179,14 +188,15 @@ service : () -> {
   emr_list_with_session : (EmrListConsentRequest) -> (
       EmrListConsentResponse,
     ) composite_query;
-  finish_session : (ClaimConsentResponse) -> ();
+  finish_session : (FinishSessionRequest) -> ();
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
+  get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
-  get_patient_info_with_consent : (ClaimConsentResponse) -> (
+  get_patient_info_with_consent : (FinishSessionRequest) -> (
       GetPatientInfoResponse,
-    ) query;
+    ) composite_query;
   get_trusted_origins : () -> (vec text);
   is_consent_claimed : (ClaimConsentRequest) -> (
       IsConsentClaimedResponse,
@@ -194,7 +204,7 @@ service : () -> {
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
   notify_updated : (IssueRequest) -> ();
-  patient_list : () -> (PatientListResponse) query;
+  patient_list : () -> (PatientListResponse) composite_query;
   ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (
       ReadEmrByIdResponse,
@@ -205,7 +215,9 @@ service : () -> {
   register_patient : (RegisterPatientRequest) -> ();
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   revoke_consent : (RevokeConsentRequest) -> ();
-  search_patient : (SearchPatientRequest) -> (SearchPatientResponse) query;
+  search_patient : (SearchPatientRequest) -> (
+      SearchPatientResponse,
+    ) composite_query;
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
   update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
