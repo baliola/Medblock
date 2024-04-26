@@ -20,6 +20,12 @@ import { useAuth } from '@/config/agent';
 import SplashScreen from '../Splash/SplashScreen';
 import { EmrHeader } from 'declarations/provider_registry/provider_registry.did';
 
+export type MedicalRecordType = {
+  id: string;
+  emrId: string;
+  sessions: string;
+};
+
 const MedicalRecord: NextPageWithLayout = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');

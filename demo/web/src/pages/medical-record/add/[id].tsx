@@ -1,1 +1,1 @@
-export { default } from '@/scenes/MedicalRecord/MedicalRecord.scene';
+export { default } from '@/scenes/MedicalRecord/MedicalRecord.sceneAdd';

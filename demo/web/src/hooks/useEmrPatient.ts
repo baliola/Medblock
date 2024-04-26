@@ -97,19 +97,6 @@ const useEMRPatient = () => {
     }
   }
 
-  // useEffect(() => {
-  //   setIsLoading(true);
-  //   console.log('sessions', session);
-  //   if (session && identity) {
-  //     console.log('sessions run', session);
-  //     setSessionId(session as string);
-  //     if (!router.asPath.includes('edit')) {
-  //       getPatientInfo();
-  //     }
-  //     GetEmr();
-  //     setIsLoading(false);
-  //   }
-  // }, [identity]);
   return {
     getPatientInfo,
     // GetEmrDetail,

@@ -25,6 +25,16 @@ const useEmr = () => {
   const { provider } = useCentralStore();
   const { GetProviderInfo, providerName } = useProvider();
 
+  const [initialValues, setInitialValues] = useState({
+    // location: providerName ? providerName : '',
+    amnanesis: '',
+    medication: '',
+    oxygen: '',
+    temperature: '',
+    blood: '',
+    doctor: '',
+  });
+
   const router = useRouter();
   const params = router.query;
   const userId = params.id;
@@ -100,6 +110,7 @@ const useEmr = () => {
     createEmr,
     update,
     providerName,
+    initialValues,
   };
 };
 
