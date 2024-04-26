@@ -18,6 +18,7 @@ import {
   EmrListPatientResponse,
   Patient,
   ReadEmrByIdRequest,
+  ReadEmrSessionRequest,
 } from 'declarations/patient_registry/patient_registry.did';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -26,6 +27,7 @@ import { toast } from 'react-toastify';
 // Call emr and info patient from patient canister
 const useEMRPatient = () => {
   const { identity, authenticated } = useAuth();
+  const { setSessionId } = useCentralStore();
   const { setNik } = useCentralStore();
   const [patientInfo, setPatientInfo] = useState<Patient | null>();
   const [emrList, setEmrList] = useState<EmrHeaderWithStatus[]>([]);
@@ -43,7 +45,7 @@ const useEMRPatient = () => {
   const router = useRouter();
   const params = router.query;
   const session = params.id;
-  const { providerId, userId } = router.query;
+  const { name, sessions } = router.query;
   const [isLoading, setIsLoading] = useState(false);
 
   const api = createActor(patientCanisterId, { agent: AppAgent(identity) });
@@ -55,6 +57,7 @@ const useEMRPatient = () => {
       console.log('FETCH PATIENT RUNNING.....');
       const data: ClaimConsentResponse = {
         session_id: session as string,
+        name: name as string,
       };
       const response = await api?.get_patient_info_with_consent(data);
       console.log('-----------------');
@@ -83,12 +86,12 @@ const useEMRPatient = () => {
       page: 0,
       limit: 10,
     };
-
+    console.log('data get emr session', data.session_id);
     try {
       // NOTES GANTI KE EMR_LIST_PATIENT_WITH_SESSIONG
       const response = await api.emr_list_with_session(data);
       console.log('-----------------');
-      console.log('RESPONSE:::: EMR', response);
+      console.log('RESPONSE:::: EMR', response.emr);
       console.log('-----------------');
       setEmrList(response.emr);
     } catch (error) {
@@ -97,73 +100,30 @@ const useEMRPatient = () => {
       console.log('-----------------');
     }
   }
-  async function GetEmrDetail(providerId: string, emrId: string) {
-    setIsLoading(true);
-    console.log('principal detail', identity?.getPrincipal());
-    const data: ReadEmrByIdRequest = {
-      provider_id: providerId as string,
-      registry_id: identity?.getPrincipal() as Principal,
-      emr_id: emrId as string,
-    };
-
-    console.log('get detail data request', data);
-    try {
-      const response = await api.read_emr_by_id(data);
-      console.log('-----------------');
-      console.log('RESPONSE:::: EMR DETAIL', response);
-      console.log('-----------------');
-      setEmr(response.emr);
-      setInitialValues({
-        location: response.emr.body.find(
-          (fragment) => fragment.key === 'location',
-        )?.value as string,
-        amnanesis: response.emr.body.find(
-          (fragment) => fragment.key === 'amnanesis',
-        )?.value as string,
-        medication: response.emr.body.find(
-          (fragment) => fragment.key === 'medication',
-        )?.value as string,
-        oxygen: response.emr.body.find((fragment) => fragment.key === 'oxygen')
-          ?.value as string,
-        temperature: response.emr.body.find(
-          (fragment) => fragment.key === 'temperature',
-        )?.value as string,
-        blood: response.emr.body.find((fragment) => fragment.key === 'blood')
-          ?.value as string,
-        doctor: response.emr.body.find((fragment) => fragment.key === 'doctor')
-          ?.value as string,
-      });
-      setIsLoading(false);
-    } catch (error) {
-      const canisterError = createCanisterError(error);
-      console.log('CANISTER ERROR', canisterError?.message);
-      if (canisterError?.message.includes(ErrorMessages.AnonimError)) {
-        // router.push('/auth/login');
-        // toast.error('Provider info does not exist');
-      } else {
-        console.log('-----------------');
-        toast.error(canisterError?.message);
-        console.log('ERROR::::', error);
-      }
-      setIsLoading(false);
-    }
-  }
 
   useEffect(() => {
+    setIsLoading(true);
+    console.log('sessions', session);
     if (session && identity) {
-      getPatientInfo();
+      console.log('sessions run', session);
+      setSessionId(session as string);
+      if (!router.asPath.includes('edit')) {
+        getPatientInfo();
+      }
       GetEmr();
+      setIsLoading(false);
     }
   }, [session, identity]);
   return {
     getPatientInfo,
-    GetEmrDetail,
+    // GetEmrDetail,
     params,
     patientInfo,
     emrList,
     emr,
     initialValues,
     isLoading,
+    session,
   };
 };
 

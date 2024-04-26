@@ -23,7 +23,7 @@ import { useEffect, useState } from 'react';
 const useEmr = () => {
   const { identity, authenticated } = useAuth();
   const { provider } = useCentralStore();
-  const { GetProviderInfo } = useProvider();
+  const { GetProviderInfo, providerName } = useProvider();
 
   const router = useRouter();
   const params = router.query;
@@ -99,6 +99,7 @@ const useEmr = () => {
   return {
     createEmr,
     update,
+    providerName,
   };
 };
 

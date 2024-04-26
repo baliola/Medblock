@@ -24,12 +24,13 @@ const MedicalRecord: NextPageWithLayout = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [query, setQuery] = useState('');
-  const { createEmr, update } = useEmr();
+  const { createEmr, update, providerName } = useEmr();
   const { identity } = useAuth();
-  const { GetEmrDetail, emr, initialValues, isLoading } = useEMRPatient();
+  const { GetEmrDetail, emr, initialValues, isLoading, setIsLoading } =
+    useCallEMRCanister();
   const router = useRouter();
 
-  const { providerId, userId } = router.query;
+  const { providerId, sessions } = router.query;
 
   const params = router.query;
   const emrId = params.id;
@@ -40,11 +41,12 @@ const MedicalRecord: NextPageWithLayout = () => {
   };
   useEffect(() => {
     if (router.asPath.includes('edit')) {
+      setIsLoading(true);
       console.log('edit page');
-      if (providerId && userId)
+      if (providerId && sessions)
         GetEmrDetail(providerId as string, emrId as string);
     }
-  }, [identity]);
+  }, [sessions, identity]);
 
   const handleSubmit = async (values: any) => {
     console.log('values', values);
@@ -108,11 +110,16 @@ const MedicalRecord: NextPageWithLayout = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex gap-3">
                       <p className="max-w-[164px] w-full">Med. Record Number</p>
-                      <p>: {emr?.header.emr_id ?? '- '}</p>
+                      <p>: {emrId ?? '- '}</p>
                     </div>
                     <div className="flex gap-3">
                       <p className="max-w-[164px] w-full">Location</p>
-                      <p>: Rumah Sakit Pusat Jakarta Selatan</p>
+                      <p>
+                        :{' '}
+                        <span className="capitalize">
+                          {providerName ?? '-'}
+                        </span>
+                      </p>
                     </div>
                     <div className="flex gap-3 items-center">
                       <p className="max-w-[164px] w-full">Date</p>

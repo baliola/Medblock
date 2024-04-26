@@ -25,7 +25,7 @@ import { formatDateFromBigInt } from '@/lib/bigintDateFormat';
 const DetailPatient: NextPageWithLayout = () => {
   // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
-  const { getPatientInfo, emrList } = useEMRPatient();
+  const { getPatientInfo, emrList, session, isLoading } = useEMRPatient();
   const { nik } = useCentralStore();
   const [dateValue, setDateValue] = useState({
     startDate: new Date(),
@@ -34,12 +34,14 @@ const DetailPatient: NextPageWithLayout = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const { patientInfo } = useEMRPatient();
+  const { sessionId } = useCentralStore();
 
   const handleChangeDate = (newValue: any) => {
     console.log('newValue:', newValue);
     setDateValue(newValue);
   };
   const [searchQuery, setSearchQuery] = useState('');
+  console.log('session ui', sessionId);
 
   const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
     () => [
@@ -64,25 +66,32 @@ const DetailPatient: NextPageWithLayout = () => {
           </p>
         ),
       },
+
       {
         header: 'Action',
         cell: (info) => (
-          <div className="flex gap-2">
-            <Health
-              size="24"
-              color="#3E48D6"
-              className="cursor-pointer"
-              onClick={() => {
-                router.push({
-                  pathname: `/medical-record/edit/${info.row.original.header.emr_id}`,
-                  query: {
-                    providerId: info.row.original.header.provider_id,
-                    userId: info.row.original.header.user_id,
-                  },
-                });
-              }}
-            />
-          </div>
+          <>
+            {isLoading ? (
+              <p>Loading...</p>
+            ) : (
+              <div className="flex gap-2">
+                <Health
+                  size="24"
+                  color="#3E48D6"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    router.push({
+                      pathname: `/medical-record/edit/${info.row.original.header.emr_id}`,
+                      query: {
+                        providerId: info.row.original.header.provider_id,
+                        sessions: sessionId as string,
+                      },
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </>
         ),
       },
     ],

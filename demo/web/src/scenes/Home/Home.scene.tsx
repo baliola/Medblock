@@ -121,7 +121,12 @@ export default function DashboardExample() {
               color="#3E48D6"
               className="cursor-pointer"
               onClick={() => {
-                router.push(`/emr/${info.row.original.session_id}`);
+                router.push({
+                  pathname: `/emr/${info.row.original.session_id}`,
+                  query: {
+                    name: info.row.original.info.V1.name,
+                  },
+                });
               }}
             />
             <User size="24" className="cursor-pointer" />
