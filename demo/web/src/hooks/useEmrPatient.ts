@@ -1,10 +1,10 @@
 import { useCentralStore } from '@/Store';
 import { useAuth } from '@/config/agent';
 import { AppAgent } from '@/config/config';
-import { localStorageHelper } from '@/helpers/localStorage.helpers';
 import { createCanisterError } from '@/lib/CanisterError';
 import { patientCanisterId } from '@/lib/canister/patient.canister';
 import { ErrorMessages } from '@/lib/constant';
+import { DetailType } from '@/scenes/Detail/Detail.scene';
 import { Principal } from '@dfinity/principal';
 import { createActor } from 'declarations/patient_registry';
 import {
@@ -43,16 +43,13 @@ const useEMRPatient = () => {
   });
 
   const router = useRouter();
-  const params = router.query;
-  const session = params.id;
-  const { name, sessions } = router.query;
+
   const [isLoading, setIsLoading] = useState(false);
 
   const api = createActor(patientCanisterId, { agent: AppAgent(identity) });
 
-  async function getPatientInfo() {
+  async function getPatientInfo(session: string, name: string) {
     console.log('FETCH PATIENT RUNNING.....');
-    const localSessionId = localStorageHelper.getItem('session');
     try {
       console.log('FETCH PATIENT RUNNING.....');
       const data: ClaimConsentResponse = {
@@ -61,7 +58,7 @@ const useEMRPatient = () => {
       };
       const response = await api?.get_patient_info_with_consent(data);
       console.log('-----------------');
-      console.log('RESPONSE::::', response);
+      console.log('RESPONSE:::: INFO PATIEN', response);
       console.log('-----------------');
       setPatientInfo(response.patient);
       setNik(response.nik);
@@ -75,12 +72,12 @@ const useEMRPatient = () => {
         // toast.error('Provider info does not exist');
       } else {
         console.log('-----------------');
-        console.log('ERROR::::', error);
+        console.log('ERROR:::: INFO PATIENT', error);
       }
     }
   }
 
-  async function GetEmr() {
+  async function GetEmr(session: string) {
     const data: EmrListConsentRequest = {
       session_id: session as string,
       page: 0,
@@ -101,29 +98,28 @@ const useEMRPatient = () => {
     }
   }
 
-  useEffect(() => {
-    setIsLoading(true);
-    console.log('sessions', session);
-    if (session && identity) {
-      console.log('sessions run', session);
-      setSessionId(session as string);
-      if (!router.asPath.includes('edit')) {
-        getPatientInfo();
-      }
-      GetEmr();
-      setIsLoading(false);
-    }
-  }, [session, identity]);
+  // useEffect(() => {
+  //   setIsLoading(true);
+  //   console.log('sessions', session);
+  //   if (session && identity) {
+  //     console.log('sessions run', session);
+  //     setSessionId(session as string);
+  //     if (!router.asPath.includes('edit')) {
+  //       getPatientInfo();
+  //     }
+  //     GetEmr();
+  //     setIsLoading(false);
+  //   }
+  // }, [identity]);
   return {
     getPatientInfo,
     // GetEmrDetail,
-    params,
     patientInfo,
     emrList,
     emr,
     initialValues,
     isLoading,
-    session,
+    GetEmr,
   };
 };
 

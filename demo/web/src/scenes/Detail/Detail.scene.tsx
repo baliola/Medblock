@@ -1,5 +1,5 @@
 import { NextPageWithLayout } from '@/types';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PatientInfo from './component/PatientInfo';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
@@ -20,28 +20,70 @@ import {
   EmrHeaderWithStatus,
 } from 'declarations/patient_registry/patient_registry.did';
 import { formatDateFromBigInt } from '@/lib/bigintDateFormat';
+import { useAuth } from '@/config/agent';
 // import Datepicker from 'react-tailwindcss-datepicker';
+export type DetailType = {
+  name: string;
+  sessionId: string;
+};
 
-const DetailPatient: NextPageWithLayout = () => {
+const DetailPatient = (props: DetailType) => {
+  const { identity, authenticated } = useAuth();
+
+  const { name, sessionId } = props;
+
   // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
-  const { getPatientInfo, emrList, session, isLoading } = useEMRPatient();
+  const { getPatientInfo, emrList, isLoading, GetEmr } = useEMRPatient();
   const { nik } = useCentralStore();
-  const [dateValue, setDateValue] = useState({
-    startDate: new Date(),
-    endDate: new Date(),
-  });
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { patientInfo } = useEMRPatient();
-  const { sessionId } = useCentralStore();
-
-  const handleChangeDate = (newValue: any) => {
-    console.log('newValue:', newValue);
-    setDateValue(newValue);
-  };
   const [searchQuery, setSearchQuery] = useState('');
   console.log('session ui', sessionId);
+
+  const formatDateToString = (date: Date | null): string => {
+    if (!date) return ''; // If date is null, return an empty string
+
+    const day = ('0' + date.getDate()).slice(-2);
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  };
+
+  const filteredEmrList = useMemo(() => {
+    return emrList.filter((emr) => {
+      const isMatchHospitalName = emr.hospital_name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+      const isMatchDate =
+        !selectedDate ||
+        formatDateFromBigInt(emr.status.created_at) ===
+          formatDateToString(selectedDate);
+      console.log('ismacth date', formatDateFromBigInt(emr.status.created_at));
+      console.log('ismacth name', formatDateToString(selectedDate));
+
+      return isMatchHospitalName && isMatchDate;
+    });
+  }, [emrList, searchQuery, selectedDate]);
+
+  const handleChangeSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleChangeDates = (date: Date | null) => {
+    console.log('ismacth date change', date);
+    setSelectedDate(date);
+  };
+
+  useEffect(() => {
+    if (identity) {
+      // getPatientInfo(sessionId, name);
+      GetEmr(sessionId);
+    }
+  }, [identity]);
 
   const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
     () => [
@@ -97,40 +139,6 @@ const DetailPatient: NextPageWithLayout = () => {
     ],
     [],
   );
-  const formatDateToString = (date: Date | null): string => {
-    if (!date) return ''; // If date is null, return an empty string
-
-    const day = ('0' + date.getDate()).slice(-2);
-    const month = ('0' + (date.getMonth() + 1)).slice(-2);
-    const year = date.getFullYear();
-
-    return `${day}/${month}/${year}`;
-  };
-
-  const filteredEmrList = useMemo(() => {
-    return emrList.filter((emr) => {
-      const isMatchHospitalName = emr.hospital_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-
-      const isMatchDate =
-        !selectedDate ||
-        formatDateFromBigInt(emr.status.created_at) ===
-          formatDateToString(selectedDate);
-      console.log('ismacth date', formatDateFromBigInt(emr.status.created_at));
-      console.log('ismacth name', formatDateToString(selectedDate));
-
-      return isMatchHospitalName && isMatchDate;
-    });
-  }, [emrList, searchQuery, selectedDate]);
-
-  const handleChangeSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-  };
-  const handleChangeDates = (date: Date | null) => {
-    console.log('ismacth date change', date);
-    setSelectedDate(date);
-  };
 
   return (
     // <div className="grid md:grid-cols-[240px_1fr] w-screen overflow-x-hidden">
@@ -234,4 +242,3 @@ const DetailPatient: NextPageWithLayout = () => {
 };
 
 export default DetailPatient;
-DetailPatient.patientLayout = true;

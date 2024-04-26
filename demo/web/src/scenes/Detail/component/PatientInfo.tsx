@@ -27,17 +27,40 @@ import {
 } from 'iconsax-react';
 import Link from 'next/link';
 import { useCentralStore } from '@/Store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
 import useEMRPatient from '@/hooks/useEmrPatient';
+import { useAuth } from '@/config/agent';
 
 function PatientInfo() {
+  const { identity, authenticated } = useAuth();
+
   const router = useRouter();
   const { pathname } = router;
   const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
-  const { patientInfo } = useEMRPatient();
+  const { patientInfo, getPatientInfo } = useEMRPatient();
+  const { name } = router.query;
+  const params = router.query;
+  const sessionId = params.id;
 
+  const [shouldRunEffect, setShouldRunEffect] = useState(false);
+
+  // Check if identity is not null and other necessary conditions are met
+  useEffect(() => {
+    if (identity) {
+      setShouldRunEffect(true);
+    } else {
+      setShouldRunEffect(false);
+    }
+  }, [identity]);
+
+  useEffect(() => {
+    if (shouldRunEffect) {
+      getPatientInfo(sessionId as string, name as string);
+      // GetEmr(sessionId);
+    }
+  }, [shouldRunEffect]);
   // useEffect(() => {
   //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
   // }, [pathname])
