@@ -162,7 +162,12 @@ const DetailPatient = (props: DetailType) => {
               <button
                 className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
                 onClick={() => {
-                  router.push(`/medical-record/add/${nik}`);
+                  router.push({
+                    pathname: `/medical-record/add/${nik}`,
+                    query: {
+                      sessions: sessionId as string,
+                    },
+                  });
                 }}
               >
                 {/* <img src={} alt="" /> */}

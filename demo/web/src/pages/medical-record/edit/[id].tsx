@@ -23,5 +23,5 @@ const MedRecordPageEdit = (props: MedicalRecordType) => {
   console.log('med record  server side props:', props);
   return <MedicalRecord {...props} />;
 };
-MedRecordPageEdit.disableLayout = true;
+MedRecordPageEdit.patientLayout = true;
 export default MedRecordPageEdit;

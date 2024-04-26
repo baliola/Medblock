@@ -40,9 +40,9 @@ function PatientInfo() {
   const { pathname } = router;
   const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
   const { patientInfo, getPatientInfo } = useEMRPatient();
-  const { name } = router.query;
+  const { name, sessions } = router.query;
   const params = router.query;
-  const sessionId = params.id;
+  const session = params.id;
 
   const [shouldRunEffect, setShouldRunEffect] = useState(false);
 
@@ -57,7 +57,15 @@ function PatientInfo() {
 
   useEffect(() => {
     if (shouldRunEffect) {
-      getPatientInfo(sessionId as string, name as string);
+      const newsession =
+        router.asPath.includes('edit') || router.asPath.includes('add')
+          ? sessions
+          : session;
+      console.log('new session info', newsession);
+      console.log('session detail info', session);
+      console.log('session edit info', sessions);
+
+      getPatientInfo(newsession as string, name as string);
       // GetEmr(sessionId);
     }
   }, [shouldRunEffect]);

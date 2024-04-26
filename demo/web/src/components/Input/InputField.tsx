@@ -4,10 +4,12 @@ import { Field, FormikErrors } from 'formik';
 type InputFieldProps = {
   fieldName: string;
   label?: string;
-  handleChange: (field: string) => void;
+  handleChange?: (field: string) => void;
   errors: FormikErrors<any>;
   isPassword: boolean;
   isNumber?: boolean;
+  isDisable?: boolean;
+  values?: any;
 };
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -17,12 +19,14 @@ const InputField: React.FC<InputFieldProps> = ({
   isPassword,
   isNumber,
   label,
+  isDisable,
+  values,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="w-full">
-      {/* <p className="capitalize text-gray-500">{label ? label : fieldName}</p> */}
+    <div className="w-full ">
+      <p className="capitalize text-gray-500">{label ? label : fieldName}</p>
       {isPassword ? (
         <div
           className={`flex flex-flex gap-0 border rounded-tr-[3px] rounded-br-[3px] rounded-tl-[3px] rounded-bl-[3px]`}
@@ -44,14 +48,33 @@ const InputField: React.FC<InputFieldProps> = ({
           </button>
         </div>
       ) : (
-        <Field
-          name={fieldName}
-          onChange={handleChange}
-          type={isNumber ? 'number' : fieldName}
-          placholder={label}
-          // value={email && email}
-          className="mt-[6px] flex flex-row min-w-full h-[34px] text-[14px] border-b px-4 border-[#B4BAC6] focus:outline-none focus:border-primary focus:border-b-[1px]"
-        />
+        <>
+          {values ? (
+            <Field
+              name={fieldName}
+              onChange={handleChange}
+              type={isNumber ? 'number' : fieldName}
+              placholder={label}
+              disabled={isDisable ? isDisable : false}
+              value={values}
+              className={`capitalize mt-[6px] flex flex-row min-w-full h-[34px] p-6 text-[14px] border rounded-md px-4 border-[#B4BAC6] focus:outline-none focus:border-primary focus:border-b-[1px] ${
+                isDisable ? 'text-gray-400' : ''
+              }`}
+            />
+          ) : (
+            <Field
+              name={fieldName}
+              onChange={handleChange}
+              type={isNumber ? 'number' : fieldName}
+              placholder={label}
+              disabled={isDisable ? isDisable : false}
+              // value={values}
+              className={`mt-[6px] flex flex-row min-w-full h-[34px] p-6 text-[14px] border rounded-md px-4 border-[#B4BAC6] focus:outline-none focus:border-primary focus:border-b-[1px] ${
+                isDisable ? 'text-gray-400' : ''
+              }`}
+            />
+          )}
+        </>
       )}
 
       {/* {errors} */}
