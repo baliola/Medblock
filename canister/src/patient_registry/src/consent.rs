@@ -3,7 +3,7 @@ use std::{ str::FromStr, time::Duration };
 
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ Id, PrincipalBytes },
+    common::{ Id, PrincipalBytes, ProviderId },
     deref,
     id_generator::IdGenerator,
     impl_max_size,
@@ -14,7 +14,7 @@ use canister_common::{
     mmgr::MemoryManager,
     opaque_metrics,
     random::{ CanisterRandomSource, RandomSource },
-    stable::{ Stable, StableSet },
+    stable::{ Stable, StableSet, ToStable },
     statistics::traits::Metrics,
 };
 use serde::Deserialize;
@@ -194,7 +194,12 @@ mod tests_code {
 pub struct ConsentsApi;
 
 impl ConsentsApi {
-    pub fn is_session_user(user: &Stable<PrincipalBytes>) -> bool {
+    pub fn consent(code: &ConsentCode) -> Option<Consent> {
+        ensure_initialized();
+        with_consent(|consents| consents.consent(code).cloned())
+    }
+
+    pub fn is_session_user(user: &Stable<ProviderId>) -> bool {
         ensure_initialized();
         with_consent(|consents| consents.is_session_user(user))
     }
@@ -204,7 +209,7 @@ impl ConsentsApi {
         with_consent(|consents| opaque_metrics!(consents))
     }
 
-    pub fn resolve_session(session_id: &SessionId, session_user: &Principal) -> Option<Consent> {
+    pub fn resolve_session(session_id: &SessionId, session_user: &ProviderId) -> Option<Consent> {
         ensure_initialized();
         with_consent_mut(|consents| consents.resolve_session(session_id, session_user))
     }
@@ -262,21 +267,21 @@ impl ConsentsApi {
     }
 
     // TODO: temporary function to get patient list
-    pub fn user_list_with_consent(user: &Principal) -> Vec<Consent> {
+    pub fn user_list_with_consent(user: &ProviderId) -> Vec<Consent> {
         ensure_initialized();
         with_consent(|consents| consents.consent_list_with_user(user))
     }
 
     pub fn claim_consent(
         code: &ConsentCode,
-        session_user: Principal
+        session_user: ProviderId
     ) -> Option<(Id, canister_common::common::H256)> {
         ensure_initialized();
 
         with_consent_mut(|consents| consents.claim_consent(code, session_user))
     }
 
-    pub fn finish_sesion(session_id: &Id, session_user: &Principal) {
+    pub fn finish_sesion(session_id: &Id, session_user: &ProviderId) {
         ensure_initialized();
         with_consent_mut(|consents| consents.finish_session(session_id, session_user));
     }
@@ -285,7 +290,7 @@ impl ConsentsApi {
         session_id: &SessionId,
         req: crate::api::ReadEmrByIdRequest,
         registry: crate::declarations::emr_registry::EmrRegistry,
-        session_user: &Principal
+        session_user: &ProviderId
     ) -> Result<crate::declarations::emr_registry::ReadEmrByIdResponse, String> {
         ensure_initialized();
         let consent = with_consent_mut(|consents| {
@@ -306,13 +311,14 @@ impl ConsentsApi {
 }
 
 pub type SessionId = Id;
+
 #[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Consent {
     pub code: ConsentCode,
     pub nik: NIK,
     pub claimed: bool,
     pub session_id: Option<SessionId>,
-    pub session_user: Option<Principal>,
+    pub session_user: Option<ProviderId>,
 }
 #[cfg(test)]
 mod encode_test_consent {
@@ -366,10 +372,10 @@ impl PartialConsent {
     }
 }
 
-pub struct ProviderConsentSet(StableSet<Stable<PrincipalBytes>, Stable<SessionId>>);
+pub struct ProviderConsentSet(StableSet<Stable<ProviderId>, Stable<SessionId>>);
 
 impl ProviderConsentSet {
-    pub fn is_session_user(&self, user: &Stable<PrincipalBytes>) -> bool {
+    pub fn is_session_user(&self, user: &Stable<ProviderId>) -> bool {
         self.range_key_exists(user)
     }
 }
@@ -381,7 +387,7 @@ impl ProviderConsentSet {
         ProviderConsentSet(set)
     }
 }
-deref!(mut ProviderConsentSet: StableSet<Stable<PrincipalBytes>, Stable<SessionId>>);
+deref!(mut ProviderConsentSet: StableSet<Stable<ProviderId>, Stable<SessionId>>);
 
 // TODO: move all maps to stable memory
 pub struct ConsentMap {
@@ -418,7 +424,7 @@ mod metrics {
 }
 
 impl ConsentMap {
-    pub fn is_session_user(&self, user: &Stable<PrincipalBytes>) -> bool {
+    pub fn is_session_user(&self, user: &Stable<ProviderId>) -> bool {
         self.provider_set.is_session_user(user)
     }
 
@@ -432,7 +438,7 @@ impl ConsentMap {
     }
 
     //TODO: temporary function to get patient list
-    pub fn consent_list_with_user(&self, user: &Principal) -> Vec<Consent> {
+    pub fn consent_list_with_user(&self, user: &ProviderId) -> Vec<Consent> {
         self.inner
             .values()
             .filter(|consent| consent.session_user.as_ref().eq(&Some(user)))
@@ -469,6 +475,10 @@ impl ConsentMap {
         });
     }
 
+    pub fn consent(&self, code: &ConsentCode) -> Option<&Consent> {
+        self.inner.get(code)
+    }
+
     pub fn is_claimed(&self, code: &ConsentCode, patient: &NIK) -> bool {
         match self.inner.get(code) {
             Some(consent) => consent.claimed && consent.nik.eq(patient),
@@ -501,7 +511,7 @@ impl ConsentMap {
     pub fn safe_get_consent_for(
         &self,
         code: &ConsentCode,
-        session_user: &Principal
+        session_user: &ProviderId
     ) -> Option<&Consent> {
         let consent = self.get_consent_uncheked(code);
 
@@ -521,7 +531,7 @@ impl ConsentMap {
         self.inner.remove(code)
     }
 
-    pub fn ensure_correct_session_owner(&self, session_id: &Id, session_user: &Principal) -> bool {
+    pub fn ensure_correct_session_owner(&self, session_id: &Id, session_user: &ProviderId) -> bool {
         match self.sessions.get(session_id) {
             Some(consent) => {
                 match self.inner.get(consent) {
@@ -534,7 +544,7 @@ impl ConsentMap {
     }
 
     /// finish a session, will remove the session if the consent is already removed, panic if session is not owned by the user
-    pub fn finish_session(&mut self, session_id: &SessionId, session_user: &Principal) {
+    pub fn finish_session(&mut self, session_id: &SessionId, session_user: &ProviderId) {
         if !self.ensure_correct_session_owner(session_id, session_user) {
             ic_cdk::trap("invalid session owner");
         }
@@ -564,7 +574,7 @@ impl ConsentMap {
     pub fn claim_consent(
         &mut self,
         code: &ConsentCode,
-        session_user: Principal
+        session_user: ProviderId
     ) -> Option<(SessionId, NIK)> {
         let Some(consent) = self.inner.get_mut(code) else {
             return None;
@@ -581,15 +591,12 @@ impl ConsentMap {
 
         consent.claimed = true;
         consent.session_id = Some(session_id.clone());
-        consent.session_user = Some(session_user);
+        consent.session_user = Some(session_user.clone());
 
         assert!(self.sessions.get(&session_id).is_none(), "session id already exists");
         assert!(self.sessions.insert(session_id.clone(), code.to_owned()).is_none());
 
-        self.provider_set.insert(
-            PrincipalBytes::from(session_user).into(),
-            session_id.clone().into()
-        );
+        self.provider_set.insert(session_user.to_stable(), session_id.clone().into());
 
         let nik = consent.nik.clone();
 
@@ -601,7 +608,7 @@ impl ConsentMap {
     pub fn resolve_session(
         &mut self,
         session_id: &SessionId,
-        session_user: &Principal
+        session_user: &ProviderId
     ) -> Option<Consent> {
         let code = self.sessions.get(session_id);
 

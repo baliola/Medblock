@@ -14,13 +14,35 @@ use canister_common::{
 
 use serde::Deserialize;
 
-use crate::{ api::ReadEmrByIdRequest };
+use crate::{ api::ReadEmrByIdRequest, declarations };
 
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub emr_binding_map: EmrBindingMap,
     pub info_map: InfoMap,
     pub header_status_map: HeaderStatusMap,
+}
+
+impl PatientRegistry {
+    pub fn construct_get_provider_batch_args(
+        principals: Vec<Principal>
+    ) -> declarations::provider_registry::GetProviderBatchRequest {
+        declarations::provider_registry::GetProviderBatchRequest {
+            ids: principals.into_iter().map(|p| p.to_string()).collect(),
+        }
+    }
+
+    pub async fn do_call_get_provider_batch(
+        arg: declarations::provider_registry::GetProviderBatchRequest,
+        registry: declarations::provider_registry::ProviderRegistry
+    ) -> declarations::provider_registry::GetProviderBatchResponse {
+        match registry.get_provider_batch(arg).await.map_err(CallError::from) {
+            Ok((response,)) => response,
+            Err(e) => {
+                ic_cdk::trap(&format!("ERROR: Error calling get_provider_batch: {:?}", e));
+            }
+        }
+    }
 }
 
 impl PatientRegistry {
