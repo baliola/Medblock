@@ -109,7 +109,7 @@ const MedicalRecordAdd: NextPageWithLayout = () => {
                       />
                     </div>{' '}
                   </div>
-                  <div className="flex gap-3 items-center">
+                  {/* <div className="flex gap-3 items-center">
                     <p className="max-w-[164px] w-full">Physician</p>
                     <div className="flex relative max-w-sm gap-2 items-center">
                       :
@@ -123,7 +123,7 @@ const MedicalRecordAdd: NextPageWithLayout = () => {
                         values={values.doctor}
                       />
                     </div>{' '}
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex flex-col gap-4">
                   <InputTextArea
@@ -139,14 +139,14 @@ const MedicalRecordAdd: NextPageWithLayout = () => {
                 </div>
               </div>
               <div className="flex flex-col w-1/2 gap-20">
-                <div className="flex flex-col gap-4">
+                {/* <div className="flex flex-col gap-4">
                   <p className="max-w-[164px] w-full">Lab Result</p>
                   <ImageGallery
                     setShowModal={setShowModal}
                     setSelectedImage={setSelectedImage}
                     //   toggle={toggleModal}
                   />
-                </div>
+                </div> */}
                 <div className="flex flex-col gap-4">
                   <p className="max-w-[164px] w-full font-semibold">
                     Early Check up result

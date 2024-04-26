@@ -21,38 +21,48 @@ import SplashScreen from '../Splash/SplashScreen';
 import { EmrHeader } from 'declarations/provider_registry/provider_registry.did';
 
 export type MedicalRecordType = {
-  id: string;
+  providerId: string;
   emrId: string;
-  sessions: string;
+  sessionId: string;
 };
 
-const MedicalRecord: NextPageWithLayout = () => {
+const MedicalRecord = (props: MedicalRecordType) => {
+  console.log('MED RECORD UI PROPS', props);
+  const { providerId, sessionId, emrId } = props;
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [query, setQuery] = useState('');
   const { createEmr, update, providerName } = useEmr();
   const { identity } = useAuth();
-  const { GetEmrDetail, emr, initialValues, isLoading, setIsLoading } =
+  const { GetEmrDetail, initialValues, isLoading, setIsLoading, GetEmr, emr } =
     useCallEMRCanister();
+  const [shouldRunEffect, setShouldRunEffect] = useState(false);
+
   const router = useRouter();
 
-  const { providerId, sessions } = router.query;
+  console.log('hello edit');
 
-  const params = router.query;
-  const emrId = params.id;
   console.log('router as path', router.asPath);
 
   const toggleModal = () => {
     setShowModal(!showModal);
   };
+
   useEffect(() => {
-    if (router.asPath.includes('edit')) {
-      setIsLoading(true);
-      console.log('edit page');
-      if (providerId && sessions)
-        GetEmrDetail(providerId as string, emrId as string);
+    if (identity) {
+      setShouldRunEffect(true);
+    } else {
+      setShouldRunEffect(false);
     }
-  }, [sessions, identity]);
+  }, [identity]);
+
+  useEffect(() => {
+    if (shouldRunEffect) {
+      console.log('edit page');
+      GetEmr(sessionId as string);
+      GetEmrDetail(providerId as string, emrId as string);
+    }
+  }, [shouldRunEffect]);
 
   const handleSubmit = async (values: any) => {
     console.log('values', values);
@@ -61,7 +71,6 @@ const MedicalRecord: NextPageWithLayout = () => {
     // Iterate over the initial values object
     for (const [key, value] of Object.entries(initialValues)) {
       // Skip fields that are not included in the initial values
-
       if (key === 'doctor') continue;
 
       if (values[key] === undefined) continue;
@@ -69,16 +78,9 @@ const MedicalRecord: NextPageWithLayout = () => {
       // Create EmrFragment object and push it to the array
       emrFragments.push({ key, value: values[key] });
     }
-    if (values.doctor && values.doctor.name) {
-      emrFragments.push({ key: 'doctor', value: values.doctor.name });
-    }
 
     console.log('emr fragments', emrFragments);
-    if (router.asPath.includes('edit')) {
-      update(emrFragments, emr?.header as EmrHeader);
-    } else {
-      createEmr(emrFragments);
-    }
+    update(emrFragments, emr?.header as EmrHeader);
   };
 
   return (
@@ -123,7 +125,7 @@ const MedicalRecord: NextPageWithLayout = () => {
                       <p>
                         :{' '}
                         <span className="capitalize">
-                          {providerName ?? '-'}
+                          {values.location ?? '-'}
                         </span>
                       </p>
                     </div>
@@ -138,7 +140,7 @@ const MedicalRecord: NextPageWithLayout = () => {
                         />
                       </div>{' '}
                     </div>
-                    <div className="flex gap-3 items-center">
+                    {/* <div className="flex gap-3 items-center">
                       <p className="max-w-[164px] w-full">Physician</p>
                       <div className="flex relative max-w-sm gap-2 items-center">
                         :
@@ -149,10 +151,10 @@ const MedicalRecord: NextPageWithLayout = () => {
                           setQuery={setQuery}
                           setFieldValue={setFieldValue}
                           handleChange={handleChange('doctor')}
-                          values={values.location}
+                          values={values.doctor}
                         />
                       </div>{' '}
-                    </div>
+                    </div> */}
                   </div>
                   <div className="flex flex-col gap-4">
                     <InputTextArea
@@ -168,14 +170,14 @@ const MedicalRecord: NextPageWithLayout = () => {
                   </div>
                 </div>
                 <div className="flex flex-col w-1/2 gap-20">
-                  <div className="flex flex-col gap-4">
+                  {/* <div className="flex flex-col gap-4">
                     <p className="max-w-[164px] w-full">Lab Result</p>
                     <ImageGallery
                       setShowModal={setShowModal}
                       setSelectedImage={setSelectedImage}
                       //   toggle={toggleModal}
                     />
-                  </div>
+                  </div> */}
                   <div className="flex flex-col gap-4">
                     <p className="max-w-[164px] w-full font-semibold">
                       Early Check up result
@@ -214,7 +216,7 @@ const MedicalRecord: NextPageWithLayout = () => {
                   </div>
                   <div className="flex w-full justify-end items-end">
                     <BtnSubmit
-                      title={'Add Medical Record'}
+                      title={'Update Medical Record'}
                       onSubmit={handleSubmit}
                       disable={false}
                       color={'#242DA8'}
@@ -249,4 +251,3 @@ const MedicalRecord: NextPageWithLayout = () => {
 };
 
 export default MedicalRecord;
-MedicalRecord.disableLayout = true;

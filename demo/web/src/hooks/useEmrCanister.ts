@@ -40,10 +40,10 @@ const useCallEMRCanister = () => {
 
   console.log('Params provide', router);
   console.log('Params usr', sessions);
-  async function GetEmr() {
+  async function GetEmr(session: string) {
     console.log('running add emr from med record');
     const data: EmrListConsentRequest = {
-      session_id: sessions as string,
+      session_id: session as string,
       page: 0,
       limit: 10,
     };
@@ -122,15 +122,6 @@ const useCallEMRCanister = () => {
     }
   }
 
-  useEffect(() => {
-    // setIsLoading(true);
-    if (sessions && identity) {
-      GetEmr();
-      console.log('Params usr', identity.getPrincipal());
-      setIsLoading(false);
-    }
-  }, [sessions, identity]);
-
   return {
     providerId,
     setIsLoading,
@@ -141,6 +132,7 @@ const useCallEMRCanister = () => {
     initialValues,
     isLoading,
     GetEmrDetail,
+    GetEmr,
   };
 };
 
