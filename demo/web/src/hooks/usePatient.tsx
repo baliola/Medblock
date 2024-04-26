@@ -30,6 +30,7 @@ import { localStorageHelper } from '@/helpers/localStorage.helpers';
 import { rejects } from 'assert';
 import { createCanisterError } from '@/lib/CanisterError';
 import { toast } from 'react-toastify';
+import { ErrorMessages } from '@/lib/constant';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -56,6 +57,7 @@ const usePatient = () => {
     setSearchResult,
     isLoading,
     setIsloading,
+    setPatientName,
   } = useCentralStore();
   const { identity, authenticated } = useAuth();
   const router = useRouter();
@@ -89,7 +91,10 @@ const usePatient = () => {
     } catch (error) {
       const canisterError = createCanisterError(error);
       console.log('-----------------');
-      console.log('CANISTER ERROR::::', canisterError);
+      console.log('CANISTER ERROR::::', canisterError?.message);
+      if (canisterError?.message.includes(ErrorMessages.ProviderDoesNotExist)) {
+        router.push('/registration');
+      }
       console.log('-----------------');
       console.log('-----------------');
       console.log('ERROR::::', error);
@@ -120,7 +125,7 @@ const usePatient = () => {
       console.log('-----------------');
       console.log('RESPONSE conscentt Hello::::', response);
       console.log('-----------------');
-
+      setPatientName(response.name);
       fetchPatient();
 
       // setPatientList(response.code);

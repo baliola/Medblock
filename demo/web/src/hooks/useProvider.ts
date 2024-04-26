@@ -28,13 +28,13 @@ const useProvider = () => {
     console.log('PROVIDER PRINCIPAL', principal);
     console.log('FETCH PROVIDER RUNNING.....');
     const data: ProviderInfoRequest = {
-      provider: principal as Principal,
+      provider: [principal as Principal],
     };
     try {
       const response = await api.get_provider_info_with_principal(data);
       console.log('-----------------');
-      console.log('PROVIDER INFO RESPONSE::::', response.provider);
-      setProvider(response.provider);
+      console.log('PROVIDER INFO RESPONSE::::', response.providers);
+      setProvider(response.providers[0]);
       console.log('-----------------');
       console.log('FETCH PROVIDER ENDED.');
     } catch (error) {
