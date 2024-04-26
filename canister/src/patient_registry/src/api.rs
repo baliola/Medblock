@@ -9,6 +9,7 @@ use serde::Deserialize;
 use crate::{
     consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
+    log::Activity,
     registry::{ HeaderStatus, Patient, NIK, V1 },
 };
 
@@ -154,13 +155,19 @@ pub struct ClaimConsentRequest {
 #[derive(CandidType, Deserialize)]
 pub struct ClaimConsentResponse {
     pub session_id: SessionId,
+    pub name: AsciiRecordsKey<64>,
 }
 
-from!(ClaimConsentResponse: SessionId as value {
-    session_id: value
-});
+impl ClaimConsentResponse {
+    pub fn new(session_id: SessionId, name: AsciiRecordsKey<64>) -> Self {
+        Self { session_id, name }
+    }
+}
 
-pub type RevokeConsentRequest = ClaimConsentRequest;
+#[derive(CandidType, Deserialize)]
+pub struct RevokeConsentRequest {
+    pub codes: Vec<ConsentCode>,
+}
 
 #[derive(CandidType, Deserialize)]
 pub struct FinishSessionRequest {
@@ -257,4 +264,19 @@ pub struct SearchPatientResponse {
 
 from!(SearchPatientResponse: PatientWithNikAndSession as value {
     patient_info: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct LogResponse {
+    logs: Vec<Activity>,
+}
+
+impl LogResponse {
+    pub fn new(logs: Vec<Activity>) -> Self {
+        Self { logs }
+    }
+}
+
+from!(LogResponse: Vec<Activity> as value {
+    logs: value
 });

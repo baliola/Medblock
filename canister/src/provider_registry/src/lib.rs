@@ -21,14 +21,12 @@ use canister_common::{
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
-    opaque_metrics,
     random::CanisterRandomSource,
     register_log,
     stable::{ Candid, Memory, Stable },
     statistics::{ self, traits::OpaqueMetrics },
 };
 
-use declarations::patient_registry::GetPatientInfoResponse;
 use ic_stable_structures::Cell;
 use memory::{ FreezeThresholdMemory, UpgradeMemory };
 use registry::ProviderRegistry;
@@ -324,7 +322,8 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
-    let args = with_state(|s| s.providers.build_args_call_emr_canister(req)).unwrap();
+    let emr_id = with_id_generator_mut(|generator| generator.generate_id());
+    let args = with_state(|s| s.providers.build_args_call_emr_canister(req, emr_id)).unwrap();
 
     // safe to unwrap as the provider id comes from canister
     let provider_principal = verified_caller().unwrap();
@@ -420,7 +419,13 @@ fn unsuspend_provider(req: UnSuspendRequest) {
 
 #[ic_cdk::query]
 fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoResponse {
-    with_state(|s| s.providers.provider_info_with_principal(&req.provider).unwrap()).into()
+    req.provider
+        .into_iter()
+        .map(|principal|
+            with_state(|s| s.providers.provider_info_with_principal(&principal).unwrap())
+        )
+        .collect::<Vec<_>>()
+        .into()
 }
 
 #[ic_cdk::query]

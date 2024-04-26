@@ -11,16 +11,38 @@ use canister_common::{
     stable::{ Candid, Memory, Stable, StableSet, ToStable },
     statistics::traits::{ Metrics, OpaqueMetrics },
 };
-use ic_stable_structures::memory_manager;
+
 use serde::Deserialize;
 
-use crate::{ api::ReadEmrByIdRequest };
+use crate::{ api::ReadEmrByIdRequest, declarations };
 
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub emr_binding_map: EmrBindingMap,
     pub info_map: InfoMap,
     pub header_status_map: HeaderStatusMap,
+}
+
+impl PatientRegistry {
+    pub fn construct_get_provider_batch_args(
+        principals: Vec<Principal>
+    ) -> declarations::provider_registry::ProviderInfoRequest {
+        declarations::provider_registry::ProviderInfoRequest {
+            provider: principals,
+        }
+    }
+
+    pub async fn do_call_get_provider_batch(
+        arg: declarations::provider_registry::ProviderInfoRequest,
+        registry: declarations::provider_registry::ProviderRegistry
+    ) -> declarations::provider_registry::ProviderInfoResponse {
+        match registry.get_provider_info_with_principal(arg).await.map_err(CallError::from) {
+            Ok((response,)) => response,
+            Err(e) => {
+                ic_cdk::trap(&format!("ERROR: Error calling get_provider_batch: {:?}", e));
+            }
+        }
+    }
 }
 
 impl PatientRegistry {
@@ -400,7 +422,7 @@ impl HeaderStatusMap {
     }
 
     pub fn get(&self, header: &Stable<EmrHeader>) -> Option<Stable<HeaderStatus, Candid>> {
-        self.0.get(&header)
+        self.0.get(header)
     }
 }
 

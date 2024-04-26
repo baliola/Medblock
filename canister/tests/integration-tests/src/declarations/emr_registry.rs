@@ -16,6 +16,7 @@ pub struct CreateEmrRequest {
     pub emr: Vec<EmrFragment>,
     pub provider_id: String,
     pub user_id: String,
+    pub emr_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct Header {

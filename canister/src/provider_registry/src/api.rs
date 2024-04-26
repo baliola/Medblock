@@ -1,6 +1,6 @@
 use candid::{ CandidType, Principal };
 use canister_common::{
-    common::{ AsciiRecordsKey, EmrBody, EmrFragment, ProviderId, UserId },
+    common::{ AsciiRecordsKey, EmrBody, EmrFragment, EmrId, ProviderId, UserId },
     from,
 };
 use serde::Deserialize;
@@ -17,7 +17,7 @@ pub struct IssueEmrRequest {
 }
 
 impl IssueEmrRequest {
-    pub fn to_args(self, provider_id: ProviderId) -> CreateEmrRequest {
+    pub fn to_args(self, provider_id: ProviderId, emr_id: EmrId) -> CreateEmrRequest {
         let emr = self.emr
             .into_inner()
             .into_iter()
@@ -28,6 +28,7 @@ impl IssueEmrRequest {
             .collect::<Vec<_>>();
 
         CreateEmrRequest {
+            emr_id: emr_id.to_string(),
             emr,
             provider_id: provider_id.to_string(),
             user_id: self.user_id.to_string(),
@@ -131,15 +132,15 @@ pub struct AuthorizedCallerRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoRequest {
-    pub provider: Principal,
+    pub provider: Vec<Principal>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoResponse {
-    pub provider: Provider,
+    pub providers: Vec<Provider>,
 }
 
-from!(ProviderInfoResponse: Provider as value {
-    provider: value
+from!(ProviderInfoResponse: Vec<Provider> as value {
+    providers: value
 });
 #[derive(CandidType, Deserialize)]
 pub struct GetProviderBatchRequest {

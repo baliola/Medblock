@@ -2,9 +2,8 @@ use std::{ fmt::{ Display, Formatter } };
 
 use candid::CandidType;
 use ic_cdk::api::call::RejectionCode;
+use rand::{ rngs::StdRng, Rng, SeedableRng };
 use tiny_keccak::Hasher;
-
-
 
 pub trait RandomSource {
     fn get_random_bytes(&mut self) -> [u8; 32];
@@ -16,7 +15,7 @@ pub trait RandomSource {
 }
 
 pub struct CanisterRandomSource {
-    rng: oorandom::Rand64,
+    rng: StdRng,
 }
 
 impl RandomSource for CanisterRandomSource {
@@ -30,7 +29,7 @@ impl RandomSource for CanisterRandomSource {
 
     fn raw_random_u64(&mut self) -> u64 {
         // to ensure that the random number is more than 6 digit
-        self.rng.rand_range(1_000_000_000_u64..u64::MAX)
+        self.rng.gen_range(1_000_000_000_u64..u64::MAX)
     }
 }
 
@@ -74,11 +73,16 @@ impl CanisterRandomSource {
             "internal rng initialization should succeed"
         );
 
-        let mut seed = [0; 16];
+        let mut out = [0; 32];
 
-        seed.copy_from_slice(&bytes[0..16]);
+        let mut hasher = tiny_keccak::Keccak::v512();
+        hasher.update(&bytes);
+        hasher.finalize(&mut out);
 
-        let rng = oorandom::Rand64::new(u128::from_ne_bytes(seed));
+        let mut seed = [0; 8];
+        seed.copy_from_slice(&out[0..8]);
+
+        let rng = StdRng::seed_from_u64(u64::from_ne_bytes(seed));
 
         Self {
             rng,
@@ -87,9 +91,11 @@ impl CanisterRandomSource {
 
     /// float prng, hashed with keccak
     pub fn random_bytes(&mut self) -> [u8; 32] {
-        let mut rng = self.rng;
+        let rng = &mut self.rng;
 
-        let bytes = rng.rand_float().to_le_bytes();
+        let mut bytes = [0; 32];
+        rng.fill(&mut bytes);
+
         let mut out = [0; 32];
 
         let mut hasher = tiny_keccak::Keccak::v512();
@@ -102,17 +108,24 @@ impl CanisterRandomSource {
     }
 
     pub async fn reseed(&mut self) {
-        let bytes = Self::random_ic_bytes().await.expect("internal rng reseed should succeed");
+        let bytes = Self::random_ic_bytes().await.expect(
+            "internal rng initialization should succeed"
+        );
 
-        let mut seed = [0; 16];
+        let mut out = [0; 32];
 
-        seed.copy_from_slice(&bytes[0..16]);
+        let mut hasher = tiny_keccak::Keccak::v512();
+        hasher.update(&bytes);
+        hasher.finalize(&mut out);
 
-        self.rng = oorandom::Rand64::new(u128::from_ne_bytes(seed));
+        let mut seed = [0; 8];
+        seed.copy_from_slice(&out[0..8]);
+
+        self.rng = StdRng::seed_from_u64(u64::from_ne_bytes(seed));
     }
 
-    pub fn new_with_seed(seed: u128) -> Self {
-        let rng = oorandom::Rand64::new(seed);
+    pub fn new_with_seed(seed: u64) -> Self {
+        let rng = StdRng::seed_from_u64(seed);
 
         Self {
             rng,
@@ -134,12 +147,20 @@ impl CanisterRandomSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    pub const STATIC_SEED: u128 = 30000;
+    pub const STATIC_SEED: u64 = 30000;
 
     #[test]
     fn test_random_bytes() {
         let mut source = CanisterRandomSource::new_with_seed(STATIC_SEED);
-        let bytes = source.random_bytes();
-        assert_ne!(bytes, [0; 32]);
+
+        let mut prev = source.get_random_bytes();
+
+        for _ in 0..1000 {
+            let bytes = source.get_random_bytes();
+
+            assert_ne!(prev, bytes);
+
+            prev = bytes;
+        }
     }
 }

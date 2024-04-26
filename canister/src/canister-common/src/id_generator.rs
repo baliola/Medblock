@@ -23,7 +23,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
 
     pub fn generate_id_with_different_source<NewSource: RandomSource>(
         source: &mut NewSource
-    ) -> crate::common::Id  {
+    ) -> crate::common::Id {
         let random_bytes = source.get_random_bytes();
 
         let mut bytes = [0; UUID_MAX_SOURCE_LEN];

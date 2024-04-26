@@ -91,6 +91,15 @@ pub struct AsciiRecordsKey<const N: usize = DEFAULT_RECORDS_LEN> {
     len: u8,
 }
 
+impl<const N: usize> AsciiRecordsKey<N> {
+    pub const fn static_key(str: [u8; N]) -> Self {
+        Self {
+            key: str,
+            len: N as u8,
+        }
+    }
+}
+
 impl<const N: usize> TryFrom<String> for AsciiRecordsKey<N> {
     type Error = AsciiKeyError;
 
@@ -196,6 +205,12 @@ impl_max_size!(for Id: 16);
 impl_mem_bound!(for Id: bounded; fixed_size: true);
 impl_range_bound!(Id);
 
+impl core::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Uuid::from_bytes_ref(&self.0))
+    }
+}
+
 #[macro_export]
 macro_rules! id {
     ($lit:literal) => {
@@ -237,12 +252,6 @@ impl CandidType for Id {
 
     fn _ty() -> candid::types::Type {
         candid::types::TypeInner::Text.into()
-    }
-}
-
-impl ToString for Id {
-    fn to_string(&self) -> String {
-        Uuid::from_bytes_ref(&self.0).to_string()
     }
 }
 
@@ -590,6 +599,12 @@ pub const HASH_LEN: usize = 32;
 #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
 pub struct H256([u8; HASH_LEN]);
 
+impl core::fmt::Display for H256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
 impl H256 {
     pub fn as_bytes(&self) -> &[u8; HASH_LEN] {
         &self.0
@@ -616,12 +631,6 @@ impl_mem_bound!(for H256: bounded; fixed_size: true);
 deref!(H256: [u8; HASH_LEN]);
 impl_range_bound!(H256);
 from!(H256: [u8; HASH_LEN]);
-
-impl ToString for H256 {
-    fn to_string(&self) -> String {
-        hex::encode(self.0)
-    }
-}
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum H256Error {

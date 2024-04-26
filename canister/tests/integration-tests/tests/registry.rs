@@ -18,8 +18,13 @@ mod common;
 mod test {
     use integration_tests::declarations::{
         self,
-        patient_registry::{ ClaimConsentRequest, EmrListPatientRequest, SearchPatientRequest },
-        provider_registry::{ EmrFragment, IssueEmrRequest },
+        patient_registry::{
+            ActivityType,
+            ClaimConsentRequest,
+            EmrListPatientRequest,
+            SearchPatientRequest,
+        },
+        provider_registry::{ EmrFragment, IssueEmrRequest, UpdateEmrRequest },
     };
 
     use super::*;
@@ -40,7 +45,7 @@ mod test {
             .unwrap();
 
         let arg = ProviderInfoRequest {
-            provider: Principal::anonymous(),
+            provider: vec![Principal::anonymous()],
         };
 
         let result = registries.provider
@@ -52,7 +57,7 @@ mod test {
             )
             .unwrap();
 
-        match result.provider {
+        match result.providers.first().unwrap() {
             integration_tests::declarations::provider_registry::Provider::V1(provider) => {
                 assert_eq!(provider.display_name, display);
                 assert_eq!(provider.address, address);
@@ -253,15 +258,239 @@ mod test {
             )
             .unwrap();
 
-        let search_result = registry.patient.search_patient(
-            &registry.ic,
-            provider.0.clone(),
-            PatientCall::Query,
-            SearchPatientRequest {
-                nik: patient.nik.clone().to_string(),
-            }
-        ).unwrap();
+        let search_result = registry.patient
+            .search_patient(
+                &registry.ic,
+                provider.0.clone(),
+                PatientCall::Query,
+                SearchPatientRequest {
+                    nik: patient.nik.clone().to_string(),
+                }
+            )
+            .unwrap();
 
         assert_eq!(search_result.patient_info.nik, patient.nik.clone().to_string());
+    }
+
+    #[test]
+    fn test_2_emr() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let emr = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        assert!(emr.emrs.len() == 2);
+    }
+
+    #[test]
+    fn test_add_emr_after_sharing_session() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let result = registry.patient
+            .create_consent(&registry.ic, patient.principal.clone(), PatientCall::Update)
+            .unwrap();
+
+        registry.patient
+            .claim_consent(
+                &registry.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                ClaimConsentRequest {
+                    code: result.code.clone(),
+                }
+            )
+            .unwrap();
+
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        let response = registry.provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+
+        let emr = registry.patient
+            .emr_list_patient(
+                &registry.ic,
+                patient.principal.clone(),
+                PatientCall::Query,
+                EmrListPatientRequest {
+                    page: 0,
+                    limit: 10,
+                }
+            )
+            .unwrap();
+
+        assert!(emr.emrs.len() == 2);
+    }
+
+    #[test]
+    fn test_log() {
+        let scenario = common::Scenario::one_provider_one_patient_with_one_emr();
+
+        let response = scenario.registries.patient
+            .get_logs(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Query
+            )
+            .unwrap();
+
+        assert!(response.logs.len() == 0);
+
+        let response = scenario.registries.patient
+            .create_consent(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Update
+            )
+            .unwrap();
+
+        let code = response.code;
+
+        let response = scenario.registries.patient
+            .claim_consent(
+                &scenario.registries.ic,
+                scenario.provider.0.clone(),
+                PatientCall::Update,
+                ClaimConsentRequest { code: code.clone() }
+            )
+            .unwrap();
+
+        let session_id = response.session_id;
+
+        let response = scenario.registries.patient
+            .get_logs(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Query
+            )
+            .unwrap();
+
+        assert!(response.logs.len() == 1);
+
+        let log = response.logs.first().unwrap();
+
+        match log.activity_type {
+            ActivityType::Updated => unreachable!("should not have updated log"),
+            ActivityType::Accessed => (),
+            ActivityType::Revoked => unreachable!("should not have revoked log"),
+        }
+
+        scenario.registries.provider
+            .update_emr(
+                &scenario.registries.ic,
+                scenario.provider.0.clone(),
+                ProviderCall::Update,
+                UpdateEmrRequest {
+                    fields: vec![EmrFragment {
+                        key: "new key".to_string(),
+                        value: "new value".to_string(),
+                    }],
+                    header: declarations::provider_registry::EmrHeader {
+                        provider_id: scenario.ext.emr_header.provider_id.clone(),
+                        user_id: scenario.ext.emr_header.user_id.clone(),
+                        emr_id: scenario.ext.emr_header.emr_id.clone(),
+                        registry_id: scenario.ext.emr_header.registry_id.clone(),
+                    },
+                }
+            )
+            .unwrap();
+
+        let response = scenario.registries.patient
+            .get_logs(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Query
+            )
+            .unwrap();
+
+        assert!(response.logs.len() == 2);
+
+        let log = response.logs.get(1).unwrap();
+
+        match log.activity_type {
+            ActivityType::Updated => (),
+            ActivityType::Accessed => unreachable!("should not have accessed log"),
+            ActivityType::Revoked => unreachable!("should not have revoked log"),
+        }
+
+        scenario.registries.patient
+            .revoke_consent(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Update,
+                declarations::patient_registry::RevokeConsentRequest {
+                    codes: vec![code.clone()],
+                }
+            )
+            .unwrap();
+
+        let response = scenario.registries.patient
+            .get_logs(
+                &scenario.registries.ic,
+                scenario.patient.principal.clone(),
+                PatientCall::Query
+            )
+            .unwrap();
+
+        assert!(response.logs.len() == 3);
+
+        let log = response.logs.get(2).unwrap();
+
+        match log.activity_type {
+            ActivityType::Updated => unreachable!("should not have updated log"),
+            ActivityType::Accessed => unreachable!("should not have accessed log"),
+            ActivityType::Revoked => (),
+        }
     }
 }

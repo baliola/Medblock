@@ -25,6 +25,12 @@ pub trait ToStable {
         Stable::new(self)
     }
 
+    fn to_stable_ref<Encoding: EncodingMarker>(&self) -> &Stable<Self, Encoding>
+        where Self: Sized + MemBoundMarker
+    {
+        unsafe { std::mem::transmute(self) }
+    }
+
     fn from_stable<Encoding: EncodingMarker>(stable: Stable<Self, Encoding>) -> Self
         where Self: Sized + MemBoundMarker
     {
@@ -49,8 +55,18 @@ impl EncodingMarker for Scale {}
 impl EncodingMarker for Candid {}
 
 #[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, Debug)]
+#[repr(transparent)]
 pub struct Stable<Data, Encoding = Scale>(Data, PhantomData<Encoding>)
     where Data: MemBoundMarker, Encoding: EncodingMarker;
+
+impl<Data, Encoding> core::fmt::Display
+    for Stable<Data, Encoding>
+    where Data: MemBoundMarker + core::fmt::Display, Encoding: EncodingMarker
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<Data, Encoding> From<Data>
     for Stable<Data, Encoding>
@@ -225,6 +241,8 @@ impl<Data> Storable
 
 #[cfg(test)]
 mod stable_test {
+    use crate::{ impl_max_size, impl_mem_bound };
+
     use super::*;
 
     #[test]
@@ -260,6 +278,21 @@ mod stable_test {
         let bytes = stable.to_bytes();
         let stable2 = Stable::from_bytes(bytes);
         assert_eq!(stable, stable2);
+    }
+
+    #[test]
+    fn test_transmute() {
+        #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug, Encode, Decode)]
+        pub struct Number(u64);
+        impl_max_size!(for Number: u64);
+        impl_mem_bound!(for Number: bounded; fixed_size: true);
+
+        let number_raw = Number(10);
+        let number_ref = number_raw.to_stable_ref();
+
+        let number_stable = Stable::<_, Scale>::new(Number(10));
+
+        assert!(number_stable.eq(number_ref));
     }
 
     #[test]

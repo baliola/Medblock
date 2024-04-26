@@ -13,6 +13,7 @@ pub struct ClaimConsentRequest {
 #[derive(CandidType, Deserialize)]
 pub struct ClaimConsentResponse {
     pub session_id: String,
+    pub name: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct Consent {
@@ -20,7 +21,7 @@ pub struct Consent {
     pub session_id: Option<String>,
     pub code: String,
     pub claimed: bool,
-    pub session_user: Option<Principal>,
+    pub session_user: Option<String>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct ConsentListResponse {
@@ -63,6 +64,10 @@ pub struct EmrListConsentRequest {
 pub struct EmrListConsentResponse {
     pub emr: Vec<EmrHeaderWithStatus>,
     pub username: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct FinishSessionRequest {
+    pub session_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct StatusRequest {
@@ -205,6 +210,23 @@ pub struct GetInformationResponse {
     pub version: Option<candid::Nat>,
 }
 #[derive(CandidType, Deserialize)]
+pub enum ActivityType {
+    Updated,
+    Accessed,
+    Revoked,
+}
+#[derive(CandidType, Deserialize)]
+pub struct Activity {
+    pub activity_type: ActivityType,
+    pub provider_id: String,
+    pub user_id: String,
+    pub timestamp: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub struct LogResponse {
+    pub logs: Vec<Activity>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct V1 {
     pub name: String,
     pub martial_status: String,
@@ -275,6 +297,10 @@ pub struct RegisterPatientRequest {
     pub nik: String,
 }
 #[derive(CandidType, Deserialize)]
+pub struct RevokeConsentRequest {
+    pub codes: Vec<String>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {
     pub nik: String,
 }
@@ -333,7 +359,7 @@ impl PatientRegistry {
     ) -> Result<(EmrListConsentResponse,)> {
         ic_cdk::call(self.0, "emr_list_with_session", (arg0,)).await
     }
-    pub async fn finish_session(&self, arg0: ClaimConsentResponse) -> Result<()> {
+    pub async fn finish_session(&self, arg0: FinishSessionRequest) -> Result<()> {
         ic_cdk::call(self.0, "finish_session", (arg0,)).await
     }
     pub async fn get_canistergeek_information(
@@ -342,12 +368,15 @@ impl PatientRegistry {
     ) -> Result<(GetInformationResponse,)> {
         ic_cdk::call(self.0, "getCanistergeekInformation", (arg0,)).await
     }
+    pub async fn get_logs(&self) -> Result<(LogResponse,)> {
+        ic_cdk::call(self.0, "get_logs", ()).await
+    }
     pub async fn get_patient_info(&self) -> Result<(GetPatientInfoResponse,)> {
         ic_cdk::call(self.0, "get_patient_info", ()).await
     }
     pub async fn get_patient_info_with_consent(
         &self,
-        arg0: ClaimConsentResponse,
+        arg0: FinishSessionRequest,
     ) -> Result<(GetPatientInfoResponse,)> {
         ic_cdk::call(self.0, "get_patient_info_with_consent", (arg0,)).await
     }
@@ -393,7 +422,7 @@ impl PatientRegistry {
     ) -> Result<()> {
         ic_cdk::call(self.0, "remove_authorized_metrics_collector", (arg0,)).await
     }
-    pub async fn revoke_consent(&self, arg0: ClaimConsentRequest) -> Result<()> {
+    pub async fn revoke_consent(&self, arg0: RevokeConsentRequest) -> Result<()> {
         ic_cdk::call(self.0, "revoke_consent", (arg0,)).await
     }
     pub async fn search_patient(
@@ -576,7 +605,7 @@ pub mod pocket_ic_bindings {
             server: &pocket_ic::PocketIc,
             sender: ic_principal::Principal,
             call_type: Call,
-            arg0: ClaimConsentResponse,
+            arg0: FinishSessionRequest,
         ) -> std::result::Result<(), pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
@@ -606,6 +635,19 @@ pub mod pocket_ic_bindings {
                 payload,
             )
         }
+        pub fn get_logs(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+        ) -> std::result::Result<LogResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = ();
+            call_pocket_ic(server, f, self.0.clone(), sender, "get_logs", payload)
+        }
         pub fn get_patient_info(
             &self,
             server: &pocket_ic::PocketIc,
@@ -631,7 +673,7 @@ pub mod pocket_ic_bindings {
             server: &pocket_ic::PocketIc,
             sender: ic_principal::Principal,
             call_type: Call,
-            arg0: ClaimConsentResponse,
+            arg0: FinishSessionRequest,
         ) -> std::result::Result<GetPatientInfoResponse, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
@@ -837,7 +879,7 @@ pub mod pocket_ic_bindings {
             server: &pocket_ic::PocketIc,
             sender: ic_principal::Principal,
             call_type: Call,
-            arg0: ClaimConsentRequest,
+            arg0: RevokeConsentRequest,
         ) -> std::result::Result<(), pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,

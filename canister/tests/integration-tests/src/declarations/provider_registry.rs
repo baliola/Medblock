@@ -184,11 +184,11 @@ pub struct GetProviderBatchResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoRequest {
-    pub provider: Principal,
+    pub provider: Vec<Principal>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoResponse {
-    pub provider: Provider,
+    pub providers: Vec<Provider>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct EmrFragment {

@@ -5,7 +5,7 @@ use candid::{ CandidType };
 use canister_common::random::CallError;
 use canister_common::stable::Candid;
 use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ self, EmrHeader, EmrId, PrincipalBytes };
+use canister_common::common::{ self, EmrId, PrincipalBytes };
 use ic_principal::Principal;
 use ic_stable_structures::{ BTreeMap };
 use parity_scale_codec::{ Decode, Encode };
@@ -123,14 +123,15 @@ impl ProviderRegistry {
 impl ProviderRegistry {
     pub fn build_args_call_emr_canister(
         &self,
-        req: IssueEmrRequest
+        req: IssueEmrRequest,
+        emr_id: EmrId
     ) -> ProviderRegistryResult<CreateEmrRequest> {
         // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
         let provider_principal = common::guard::verified_caller().unwrap();
         let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
 
         // assemble args and call emr canister to issue emr
-        Ok(req.to_args(provider.into_inner()))
+        Ok(req.to_args(provider.into_inner(), emr_id))
     }
 
     fn to_issue_request(

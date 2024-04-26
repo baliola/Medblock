@@ -17,6 +17,7 @@ use api::{
     IsConsentClaimedRequest,
     IsConsentClaimedResponse,
     IssueRequest,
+    LogResponse,
     PatientListResponse,
     PatientWithNikAndSession,
     PingResult,
@@ -32,7 +33,7 @@ use api::{
 };
 use candid::{ Decode, Encode };
 use canister_common::{
-    common::{ guard::verified_caller, PrincipalBytes },
+    common::{ guard::verified_caller, PrincipalBytes, ProviderId },
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -43,9 +44,13 @@ use canister_common::{
     statistics::{ self, traits::OpaqueMetrics },
 };
 use config::CanisterConfig;
-use declarations::{ emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest };
+use declarations::{
+    emr_registry::ReadEmrByIdResponse,
+    provider_registry::{ self, GetProviderBatchRequest },
+};
 
 use ic_stable_structures::Cell;
+use log::PatientLog;
 use memory::UpgradeMemory;
 use registry::PatientRegistry;
 
@@ -58,12 +63,14 @@ mod api;
 mod config;
 mod encryption;
 mod consent;
+mod log;
 
-type State = canister_common::common::State<
-    registry::PatientRegistry,
-    Cell<Stable<CanisterConfig, Candid>, Memory>,
-    ()
->;
+pub struct State {
+    pub registry: registry::PatientRegistry,
+    pub config: Cell<Stable<CanisterConfig, Candid>, Memory>,
+    pub memory_manager: MemoryManager,
+    pub patient_log: PatientLog,
+}
 
 register_log!("patient");
 
@@ -146,7 +153,7 @@ fn init_state() -> State {
     State {
         registry: PatientRegistry::init(&memory_manager),
         config: CanisterConfig::init(&memory_manager),
-        freeze_threshold: (),
+        patient_log: PatientLog::init(&memory_manager),
         memory_manager,
     }
 }
@@ -349,6 +356,13 @@ fn notify_issued(req: IssueRequest) {
 
 #[ic_cdk::update(guard = "only_provider_registry")]
 fn notify_updated(req: UpdateRequest) {
+    with_state_mut(|s|
+        s.patient_log.record(
+            log::ActivityType::Updated,
+            req.header.provider_id.clone(),
+            req.header.user_id.clone()
+        )
+    );
     with_state_mut(|s| s.registry.header_status_map.update(req.header)).unwrap();
 }
 
@@ -361,18 +375,22 @@ fn register_patient(req: RegisterPatientRequest) {
 }
 
 // TODO : optimize this, this is a very expensive operation
-#[ic_cdk::query]
-fn patient_list() -> PatientListResponse {
+#[ic_cdk::query(composite = true)]
+async fn patient_list() -> PatientListResponse {
     let caller = verified_caller().unwrap();
-    let caller = PrincipalBytes::from(caller).into();
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider: ProviderId = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
 
-    if !ConsentsApi::is_session_user(&caller) {
+    if !ConsentsApi::is_session_user(provider.to_stable_ref()) {
         ic_cdk::trap("only session user can call this method");
     }
 
-    let caller = caller.into_inner().into();
-
-    let consents = ConsentsApi::user_list_with_consent(&caller);
+    let consents = ConsentsApi::user_list_with_consent(&provider);
 
     consents
         .into_iter()
@@ -389,18 +407,21 @@ fn patient_list() -> PatientListResponse {
         .into()
 }
 
-#[ic_cdk::query]
-fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
+#[ic_cdk::query(composite = true)]
+async fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
     let caller = verified_caller().unwrap();
-    let caller = PrincipalBytes::from(caller).into();
-
-    if !ConsentsApi::is_session_user(&caller) {
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider: ProviderId = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
+    if !ConsentsApi::is_session_user(provider.to_stable_ref()) {
         ic_cdk::trap("only session user can call this method");
     }
 
-    let caller = caller.into_inner().into();
-
-    let consents = ConsentsApi::user_list_with_consent(&caller);
+    let consents = ConsentsApi::user_list_with_consent(&provider);
 
     consents
         .into_iter()
@@ -489,14 +510,37 @@ async fn read_emr_with_session(
     req: ReadEmrSessionRequest
 ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
     let caller = verified_caller().unwrap();
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
+
     let registry = with_state(|s| s.config.get().emr_registry());
-    ConsentsApi::read_emr_with_session(&req.session_id, req.args, registry, &caller).await.unwrap()
+    ConsentsApi::read_emr_with_session(
+        &req.session_id,
+        req.args,
+        registry,
+        &provider
+    ).await.unwrap()
 }
 
 #[ic_cdk::query(composite = true)]
 async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResponse {
     let caller = verified_caller().unwrap();
-    let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
+
+    let consent = ConsentsApi::resolve_session(&req.session_id, &provider).expect(
+        "invalid session"
+    );
     let nik = consent.nik;
     let info = with_state(|s| s.registry.info_map.get(nik.clone())).unwrap();
 
@@ -535,8 +579,7 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
 
             EmrHeaderWithStatus::new(header, status, providers)
         })
-        .collect::<Vec<_>>()
-        .into();
+        .collect::<Vec<_>>();
 
     EmrListConsentResponse::new(emrs, info.name().to_owned())
 }
@@ -602,10 +645,22 @@ fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
     with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
 }
 
-#[ic_cdk::query]
-fn get_patient_info_with_consent(req: GetPatientInfoBySessionRequest) -> GetPatientInfoResponse {
+#[ic_cdk::query(composite = true)]
+async fn get_patient_info_with_consent(
+    req: GetPatientInfoBySessionRequest
+) -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
-    let consent = ConsentsApi::resolve_session(&req.session_id, &caller).expect("invalid session");
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
+
+    let consent = ConsentsApi::resolve_session(&req.session_id, &provider).expect(
+        "invalid session"
+    );
     let patient = with_state(|s| s.registry.get_patient_info(consent.nik.clone())).unwrap();
     GetPatientInfoResponse::new(patient, consent.nik)
 }
@@ -622,24 +677,77 @@ fn get_patient_info() -> GetPatientInfoResponse {
 
 #[ic_cdk::update(guard = "only_patient")]
 fn revoke_consent(req: RevokeConsentRequest) {
-    ConsentsApi::revoke_consent(&req.code);
+    for code in req.codes {
+        let user_consent = ConsentsApi::consent(&code).expect("consent not found");
+        ConsentsApi::revoke_consent(&code);
+
+        if !user_consent.claimed && user_consent.session_user.is_none() {
+            continue;
+        }
+
+        with_state_mut(|s|
+            s.patient_log.record(
+                log::ActivityType::Revoked,
+                user_consent.session_user.unwrap(),
+                user_consent.nik
+            )
+        );
+    }
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+fn get_logs() -> LogResponse {
+    let caller = verified_caller().unwrap();
+    let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    let logs = match with_state(|s| s.patient_log.get_logs(&nik)) {
+        Some(logs) =>
+            logs
+                .into_iter()
+                .map(|log| log.into_inner())
+                .collect(),
+        None => vec![],
+    };
+
+    LogResponse::new(logs)
 }
 
 #[ic_cdk::update]
-fn finish_session(req: FinishSessionRequest) {
+async fn finish_session(req: FinishSessionRequest) {
     let caller = verified_caller().unwrap();
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
 
-    ConsentsApi::finish_sesion(&req.session_id, &caller)
+    ConsentsApi::finish_sesion(&req.session_id, &provider);
 }
 
 // TODO : move this into provider registry
 #[ic_cdk::update]
-fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
+async fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     let caller = verified_caller().unwrap();
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+    let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
+    let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
+    let provider: ProviderId = match provider.providers.first().unwrap() {
+        declarations::provider_registry::Provider::V1(provider) =>
+            provider.internal_id.clone().try_into().unwrap(),
+    };
 
-    ConsentsApi::claim_consent(&req.code, caller)
-        .expect("consent already claimed or does not exists")
-        .into()
+    let (session_id, nik) = ConsentsApi::claim_consent(&req.code, provider.clone()).expect(
+        "consent already claimed or does not exists"
+    );
+
+    with_state_mut(|s| s.patient_log.record(log::ActivityType::Accessed, provider, nik.clone()));
+
+    let patient = with_state(|s| s.registry.get_patient_info(nik).unwrap())
+        .name()
+        .to_owned();
+
+    ClaimConsentResponse::new(session_id, patient)
 }
 
 #[ic_cdk::query(guard = "only_patient")]
