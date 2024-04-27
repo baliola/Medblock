@@ -8,6 +8,8 @@ import {
   patient_registry,
 } from 'declarations/patient_registry';
 import {
+  Activity,
+  ActivityType,
   EmrListConsentRequest,
   PatientListResponse,
   RegisterPatientRequest,
@@ -39,6 +41,14 @@ export interface ClaimConsentRequest {
   code: string;
 }
 
+export enum ActivityTypes {
+  Updated = 'Updated',
+  Accessed = 'Accessed',
+  Revoked = 'Revoked',
+}
+
+type ActivityKey = 'Updated' | 'Accessed' | 'Revoked';
+
 export interface EmrListPatientRequest {
   page: number;
   limit: number;
@@ -50,6 +60,7 @@ const usePatient = () => {
   const router = useRouter();
   const canister = patientCanisterId;
   const api = createActor(canister, { agent: AppAgent(identity) });
+  const [notifications, setNotifications] = useState<Activity[]>();
   // const [sessionId, setSessionId] = useState<string | undefined>();
 
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -61,25 +72,6 @@ const usePatient = () => {
   const toggleModalSession = () => {
     setShowModalSession(!showModalSession);
   };
-
-  async function fetchPatient() {
-    console.log('FETCH PATIENT RUNNING.....');
-    try {
-      console.log('FETCH PATIENT RUNNING.....');
-
-      const response = await api?.patient_list();
-
-      console.log('-----------------');
-      console.log('RESPONSE::::', response);
-      console.log('-----------------');
-
-      setPatientList(response.patients);
-    } catch (error) {
-      console.log('-----------------');
-      console.log('ERROR::::', error);
-      console.log('-----------------');
-    }
-  }
 
   const shareConsetCode = async () => {
     try {
@@ -97,43 +89,6 @@ const usePatient = () => {
           },
         });
       }, 3000);
-    } catch (error) {
-      console.log('-----------------');
-      console.log('ERROR::::', error);
-      console.log('-----------------');
-    }
-  };
-
-  const claimConsent = async (code: ClaimConsentRequest) => {
-    try {
-      const response = await api?.claim_consent(code);
-
-      console.log('-----------------');
-      console.log('RESPONSE conscentt::::', response);
-      console.log('-----------------');
-
-      fetchPatient();
-
-      // setPatientList(response.code);
-    } catch (error) {
-      console.log('-----------------');
-      console.log('ERROR::::', error);
-      console.log('-----------------');
-    }
-  };
-
-  const claimConsentToGetSession = async (code: ClaimConsentRequest) => {
-    try {
-      const response = await api?.claim_consent(code);
-      const session = await response?.session_id;
-      console.log('-----------------');
-      console.log('RESPONSE conscentt::::', session);
-      console.log('-----------------');
-      // if (sessionId) {
-      // setSessionId(session);
-      localStorageHelper.setItem('session', session);
-      // }
-      // setPatientList(response.code);
     } catch (error) {
       console.log('-----------------');
       console.log('ERROR::::', error);
@@ -202,25 +157,56 @@ const usePatient = () => {
       console.log('-----------------');
     }
   };
+  async function getNotifications() {
+    try {
+      const response = await api.get_logs();
+      console.log('-----------------');
+      console.log('Notification info', response);
+      console.log('-----------------');
+      setNotifications(response.logs);
+    } catch (error) {
+      console.log('-----------------');
+      console.log('ERROR:::: EMR', error);
+      console.log('-----------------');
+    }
+  }
 
-  useEffect(() => {
-    if (identity) fetchPatient();
-  }, [identity]);
+  function getActivityText(activity: ActivityType): string {
+    switch (Object.keys(activity)[0]) {
+      case ActivityTypes.Updated:
+        return 'Your Medical Record Has Been Updated';
+      case ActivityTypes.Accessed:
+        return 'Your EMR Has Been Accessed';
+      case ActivityTypes.Revoked:
+        return 'Your EMR Has Been Revoked';
+      default:
+        throw new Error('Unknown activity type');
+    }
+  }
+
+  function findUpdatedNotification(activity: ActivityType) {
+    const activityKey: ActivityKey = Object.keys(activity)[0] as ActivityKey;
+    console.log('notification activity', activityKey);
+    return activityKey as string;
+  }
 
   return {
-    fetchPatient,
+    // fetchPatient,
     patientList,
     shareConsetCode,
-    claimConsent,
+    // claimConsent,
     registerPatient,
     updateInfoPatient,
-    claimConsentToGetSession,
     toggleModal,
     setShowModal,
     showModal,
     toggleModalSession,
     setShowModalSession,
     showModalSession,
+    getNotifications,
+    notifications,
+    getActivityText,
+    findUpdatedNotification,
   };
 };
 

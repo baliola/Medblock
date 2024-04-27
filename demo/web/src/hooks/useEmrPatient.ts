@@ -106,6 +106,7 @@ const useEMRPatient = () => {
     initialValues,
     isLoading,
     GetEmr,
+    // getNotifications,
   };
 };
 

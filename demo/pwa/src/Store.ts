@@ -1,6 +1,9 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
-import { Patient } from 'declarations/patient_registry/patient_registry.did';
+import {
+  Patient,
+  PatientWithNikAndSession,
+} from 'declarations/patient_registry/patient_registry.did';
 import { create } from 'zustand';
 
 type pageOptions =
@@ -19,8 +22,8 @@ interface CentralStore {
   activePage: pageOptions;
   setActivePage: (page: pageOptions) => void;
 
-  patientList: Patient[] | null;
-  setPatientList: (patient: Patient[]) => void;
+  patientList: PatientWithNikAndSession[] | null;
+  setPatientList: (patient: PatientWithNikAndSession[]) => void;
 
   // Principal State
   userPrincipal: string | undefined;
