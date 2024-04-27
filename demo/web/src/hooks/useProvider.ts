@@ -18,6 +18,7 @@ import { toast } from 'react-toastify';
 const useProvider = () => {
   const { identity, authenticated } = useAuth();
   const { setProvider } = useCentralStore();
+  const [providerName, setProviderName] = useState('');
   const principal = useUserPrincipal();
   const [alertShow, setAlertShow] = useState(false);
   const router = useRouter();
@@ -28,13 +29,14 @@ const useProvider = () => {
     console.log('PROVIDER PRINCIPAL', principal);
     console.log('FETCH PROVIDER RUNNING.....');
     const data: ProviderInfoRequest = {
-      provider: principal as Principal,
+      provider: [principal as Principal],
     };
     try {
       const response = await api.get_provider_info_with_principal(data);
       console.log('-----------------');
-      console.log('PROVIDER INFO RESPONSE::::', response.provider);
-      setProvider(response.provider);
+      console.log('PROVIDER INFO RESPONSE::::', response.providers);
+      setProvider(response.providers[0]);
+      setProviderName(response.providers[0].V1.display_name);
       console.log('-----------------');
       console.log('FETCH PROVIDER ENDED.');
     } catch (error) {
@@ -55,6 +57,7 @@ const useProvider = () => {
 
   return {
     GetProviderInfo,
+    providerName,
     // registerProvider,
   };
 };

@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Magnifer } from 'solar-icon-set/search';
 
 import AppBarWithIcon from '@/components/AppBar/AppBarWithIcon';
@@ -9,6 +9,10 @@ import DialogBasic from '@/components/Dialog/DialogBasic';
 import InputText from '@/components/input/InputText';
 import Images from '@/constants/images';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import useRevoke from '@/hooks/useRovoke';
+import { useAuth } from '@/config/agent';
+import { toast } from 'react-toastify';
+import useProvider from '@/hooks/useProvider';
 
 const data = [
   {
@@ -37,20 +41,68 @@ const data = [
 const RevokeAccess = () => {
   const router = useRouter();
   const [open, setOpen] = useState<boolean>(false);
-  const [openError, setOpenError] = useState<boolean>(false);
+  const [providerNames, setProviderNames] = useState<{
+    [key: string]: string;
+  }>({});
+  // const [openError, setOpenError] = useState<boolean>(false);
+  const [selectedHospitals, setSelectedHospitals] = useState<string[]>([]);
+  const { identity } = useAuth();
+  const {
+    GetConsentList,
+    consenst,
+    RevokeAccessHostpital,
+    openError,
+    setOpenError,
+  } = useRevoke();
+  const { GetProviderInfo } = useProvider();
 
   const handleRevoke = () => {
     setOpen(false);
-    setOpenError(true);
-  };
+    RevokeAccessHostpital(selectedHospitals);
 
+    // setOpenError(true);
+  };
+  useEffect(() => {
+    console.log('Notification running to get provider info.....');
+
+    if (consenst) {
+      const fetchProviderNames = async () => {
+        const names: { [key: string]: string } = {};
+        for (const consent of consenst) {
+          const name = await GetProviderInfo(
+            consent?.session_user[0] as string,
+          );
+          names[consent.session_user[0] as string] = name || '';
+        }
+        setProviderNames(names);
+      };
+      fetchProviderNames();
+    }
+  }, [consenst]);
+
+  useEffect(() => {
+    if (identity) GetConsentList();
+  }, [identity]);
+
+  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { checked, id } = event.target;
+    if (checked) {
+      setSelectedHospitals((prevSelected) => [...prevSelected, id]);
+    } else {
+      setSelectedHospitals((prevSelected) =>
+        prevSelected.filter((hospitalId) => hospitalId !== id),
+      );
+    }
+  };
+  console.log('SELECTED HOST', selectedHospitals);
   return (
     <Scaffold
       topBar={
         <AppBarWithIcon
           title={
             <p>
-              Find and select hospital that you want to revoke your EMR access
+              Find and select hospital that you want to revoke your EMR access{' '}
+              {selectedHospitals.length}
             </p>
           }
           child={
@@ -68,6 +120,7 @@ const RevokeAccess = () => {
         <div className="p-6">
           <PrimaryButton
             title={'Revoke my EMR'}
+            disable={selectedHospitals.length === 0 ? true : false}
             onSubmit={() => {
               setOpen(true);
             }}
@@ -77,30 +130,36 @@ const RevokeAccess = () => {
     >
       <>
         <div className="p-6 mt-52">
-          {data.map((item) => (
-            <div
-              key={item.id}
-              className="w-full flex flex-row items-center mb-6 space-x-4"
-            >
-              <input
-                id={item.id}
-                aria-describedby="comments-description"
-                name={item.title}
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-primary-normal focus:ring-primary-normal"
-              />
-              <img src={Images.hospital} alt="" className="w-16" />
-              <div>
-                <p className="text-gray-800 font-bold"> {item.title} </p>
-                <p className="text-gray-800 text-xs my-1">
+          {consenst &&
+            consenst.map((item, index) => (
+              <div
+                key={index}
+                className="w-full flex flex-row items-center mb-6 space-x-4"
+              >
+                <input
+                  id={item.code}
+                  aria-describedby="comments-description"
+                  name={item.code}
+                  type="checkbox"
+                  onChange={handleCheckboxChange}
+                  checked={selectedHospitals.includes(item.code)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-normal focus:ring-primary-normal"
+                />
+                <img src={Images.hospital} alt="" className="w-16" />
+                <div>
+                  <p className="text-gray-800 font-bold">
+                    {' '}
+                    {providerNames[item.session_user[0] as string] ?? ''}
+                  </p>
+                  {/* <p className="text-gray-800 text-xs my-1">
                   Last Visited: {item.latest}{' '}
                 </p>
                 <p className="text-gray-800 text-xs">
                   Physician: {item.physician}{' '}
-                </p>
+                </p>  */}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
         <DialogBasic
           open={open}

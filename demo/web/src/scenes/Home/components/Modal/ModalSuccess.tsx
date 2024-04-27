@@ -1,3 +1,4 @@
+import { useCentralStore } from '@/Store';
 import {
   CheckBadgeIcon,
   CheckCircleIcon,
@@ -12,6 +13,7 @@ type ModalSuccessType = {
   sessionId?: string | null;
 };
 export default function ModalSuccess(props: ModalSuccessType) {
+  const { patientName } = useCentralStore();
   const router = useRouter();
   const goToDetail = () => {
     router.push(`/emr/${props.sessionId}`);
@@ -26,7 +28,9 @@ export default function ModalSuccess(props: ModalSuccessType) {
         <form action="">
           <div className="flex-col flex justify-center items-center px-2 pt-4 text-center text-slate-600 text-sm ">
             <CheckCircleIcon className="text-[#242DA8] w-32" />
-            <p>Congratulation! Now you have access to Mr. Agus Susanto EMR.</p>
+            <p>
+              Congratulation! Now you have access to {patientName ?? ''} EMR.
+            </p>
           </div>
 
           <div className="flex justify-center w-full p-6 space-x-3">

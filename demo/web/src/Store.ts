@@ -26,6 +26,9 @@ interface centralStore {
   isLoading: boolean;
   setIsloading: (isLoading: boolean) => void;
 
+  patientName: string;
+  setPatientName: (name: string) => void;
+
   nik: string | undefined;
   setNik: (nik: string) => void;
 
@@ -67,6 +70,11 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   patientList: null,
   setPatientList(patient) {
     set({ patientList: patient });
+  },
+
+  patientName: '',
+  setPatientName(name) {
+    set({ patientName: name });
   },
 
   nik: '',

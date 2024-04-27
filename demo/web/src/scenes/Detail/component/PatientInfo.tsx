@@ -27,17 +27,54 @@ import {
 } from 'iconsax-react';
 import Link from 'next/link';
 import { useCentralStore } from '@/Store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { logo } from '@/lib/assets';
 import useEMRPatient from '@/hooks/useEmrPatient';
+import { useAuth } from '@/config/agent';
 
 function PatientInfo() {
+  const { identity, authenticated } = useAuth();
+
   const router = useRouter();
   const { pathname } = router;
   const { setIsSidebarOpen, isSidebarOpen } = useCentralStore();
-  const { patientInfo } = useEMRPatient();
+  const { patientInfo, getPatientInfo } = useEMRPatient();
+  const { name, sessions } = router.query;
+  const params = router.query;
+  const session = params.id;
+  const newsession =
+    router.asPath.includes('edit') || router.asPath.includes('add')
+      ? sessions
+      : session;
 
+  const [shouldRunEffect, setShouldRunEffect] = useState(false);
+
+  // Check if identity is not null and other necessary conditions are met
+  // useEffect(() => {
+  //   console.log('use effect running session');
+  //   if (identity && newsession) {
+  //     console.log('use effect running session ad identitiy');
+
+  //     setShouldRunEffect(true);
+  //   } else {
+  //     console.log('use effect running session tidak identitiy');
+
+  //     setShouldRunEffect(false);
+  //   }
+  // }, [identity, newsession]);
+
+  useEffect(() => {
+    if (identity && newsession) {
+      console.log('running patient info from identity');
+      console.log('new session info', newsession);
+      console.log('session detail info', session);
+      console.log('session edit info', sessions);
+
+      getPatientInfo(newsession as string, name as string);
+      // GetEmr(sessionId);
+    }
+  }, [identity, newsession]);
   // useEffect(() => {
   //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
   // }, [pathname])

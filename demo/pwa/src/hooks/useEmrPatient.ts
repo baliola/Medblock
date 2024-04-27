@@ -2,6 +2,7 @@ import { Principal } from '@dfinity/principal';
 import { createActor } from 'declarations/patient_registry';
 import {
   ClaimConsentResponse,
+  Consent,
   EmrFragment,
   EmrHeader,
   EmrHeaderWithBody,
@@ -32,6 +33,7 @@ const useEMRPatient = () => {
   const [nik, setNik] = useState('');
   const [emrList, setEmrList] = useState<EmrHeaderWithStatus[]>([]);
   const [emr, setEmr] = useState<EmrHeaderWithBody>();
+  const [consenst, setConsents] = useState<Consent[]>();
   const [initialValues, setInitialValues] = useState({
     location: 'denpasar',
     amnanesis: '',
@@ -97,6 +99,7 @@ const useEMRPatient = () => {
       console.log('-----------------');
     }
   }
+
   async function GetEmrDetail() {
     setIsLoading(true);
     console.log('principal detail', identity?.getPrincipal());

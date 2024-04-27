@@ -110,8 +110,8 @@ export interface PingResult {
   'emr_registry_status' : boolean,
 }
 export type Provider = { 'V1' : V1 };
-export interface ProviderInfoRequest { 'provider' : Principal }
-export interface ProviderInfoResponse { 'provider' : Provider }
+export interface ProviderInfoRequest { 'provider' : Array<Principal> }
+export interface ProviderInfoResponse { 'providers' : Array<Provider> }
 export interface RegisternewProviderRequest {
   'provider_principal' : Principal,
   'display_name' : string,

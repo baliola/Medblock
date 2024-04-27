@@ -1,5 +1,5 @@
 import { NextPageWithLayout } from '@/types';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PatientInfo from './component/PatientInfo';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
@@ -19,75 +19,32 @@ import {
   EmrHeader,
   EmrHeaderWithStatus,
 } from 'declarations/patient_registry/patient_registry.did';
-import { formatDateFromBigInt } from '@/lib/bigintDateFormat';
+import {
+  formatDateFromBigInt,
+  formatDateFromBigIntWithTime,
+} from '@/lib/bigintDateFormat';
+import { useAuth } from '@/config/agent';
 // import Datepicker from 'react-tailwindcss-datepicker';
+export type DetailType = {
+  name: string;
+  sessionId: string;
+};
 
-const DetailPatient: NextPageWithLayout = () => {
+const DetailPatient = (props: DetailType) => {
+  const { identity, authenticated } = useAuth();
+
+  const { name, sessionId } = props;
+
   // const { generateMockMedicalRecords } = useMedicalRecordMock();
   const router = useRouter();
-  const { getPatientInfo, emrList } = useEMRPatient();
+  const { getPatientInfo, emrList, isLoading, GetEmr } = useEMRPatient();
   const { nik } = useCentralStore();
-  const [dateValue, setDateValue] = useState({
-    startDate: new Date(),
-    endDate: new Date(),
-  });
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { patientInfo } = useEMRPatient();
-
-  const handleChangeDate = (newValue: any) => {
-    console.log('newValue:', newValue);
-    setDateValue(newValue);
-  };
   const [searchQuery, setSearchQuery] = useState('');
+  console.log('session ui', sessionId);
 
-  const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
-    () => [
-      {
-        header: 'EMR ID',
-        cell: (info) => (
-          <p className="font-normal">{info.row.original.header.emr_id}</p>
-        ), // Format the date as needed
-      },
-      {
-        header: 'Hospital name',
-        cell: (info) => (
-          <p className="font-normal">{info.row.original.hospital_name}</p>
-        ),
-      },
-
-      {
-        header: 'Issued At',
-        cell: (info) => (
-          <p className="font-normal">
-            {formatDateFromBigInt(info.row.original.status.created_at)}
-          </p>
-        ),
-      },
-      {
-        header: 'Action',
-        cell: (info) => (
-          <div className="flex gap-2">
-            <Health
-              size="24"
-              color="#3E48D6"
-              className="cursor-pointer"
-              onClick={() => {
-                router.push({
-                  pathname: `/medical-record/edit/${info.row.original.header.emr_id}`,
-                  query: {
-                    providerId: info.row.original.header.provider_id,
-                    userId: info.row.original.header.user_id,
-                  },
-                });
-              }}
-            />
-          </div>
-        ),
-      },
-    ],
-    [],
-  );
   const formatDateToString = (date: Date | null): string => {
     if (!date) return ''; // If date is null, return an empty string
 
@@ -118,10 +75,73 @@ const DetailPatient: NextPageWithLayout = () => {
   const handleChangeSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
+
   const handleChangeDates = (date: Date | null) => {
     console.log('ismacth date change', date);
     setSelectedDate(date);
   };
+
+  useEffect(() => {
+    if (identity) {
+      // getPatientInfo(sessionId, name);
+      GetEmr(sessionId);
+    }
+  }, [identity]);
+
+  const patientColumn = useMemo<ColumnDef<EmrHeaderWithStatus>[]>(
+    () => [
+      {
+        header: 'EMR ID',
+        cell: (info) => (
+          <p className="font-normal">{info.row.original.header.emr_id}</p>
+        ), // Format the date as needed
+      },
+      {
+        header: 'Hospital name',
+        cell: (info) => (
+          <p className="font-normal">{info.row.original.hospital_name}</p>
+        ),
+      },
+
+      {
+        header: 'Issued At',
+        cell: (info) => (
+          <p className="font-normal">
+            {formatDateFromBigIntWithTime(info.row.original.status.created_at)}
+          </p>
+        ),
+      },
+
+      {
+        header: 'Action',
+        cell: (info) => (
+          <>
+            {isLoading ? (
+              <p>Loading...</p>
+            ) : (
+              <div className="flex gap-2">
+                <Health
+                  size="24"
+                  color="#3E48D6"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    router.push({
+                      pathname: `/medical-record/edit/${info.row.original.header.emr_id}`,
+                      query: {
+                        providerId: info.row.original.header.provider_id,
+                        sessions: sessionId as string,
+                      },
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     // <div className="grid md:grid-cols-[240px_1fr] w-screen overflow-x-hidden">
@@ -145,7 +165,12 @@ const DetailPatient: NextPageWithLayout = () => {
               <button
                 className="flex  items-center border-[2px] p-2 w-auto outline-hover justify-center align-middle  bg-[#242DA8] transition-all ease-in duration-200 text-white rounded-2xl  border-none text-[14px] font-normal hover:bg-opacity-40"
                 onClick={() => {
-                  router.push(`/medical-record/add/${nik}`);
+                  router.push({
+                    pathname: `/medical-record/add/${nik}`,
+                    query: {
+                      sessions: sessionId as string,
+                    },
+                  });
                 }}
               >
                 {/* <img src={} alt="" /> */}
@@ -204,7 +229,7 @@ const DetailPatient: NextPageWithLayout = () => {
                 </div>
               </div>
             </div>
-            <Card className="flex flex-col gap-2 mt-4">
+            <Card className="flex flex-col gap-2 mt-4 mb-6">
               <Table
                 columns={patientColumn}
                 data={filteredEmrList}
@@ -225,4 +250,3 @@ const DetailPatient: NextPageWithLayout = () => {
 };
 
 export default DetailPatient;
-DetailPatient.patientLayout = true;

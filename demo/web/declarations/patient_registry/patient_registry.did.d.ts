@@ -2,6 +2,15 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
+export interface Activity {
+  'activity_type' : ActivityType,
+  'provider_id' : string,
+  'user_id' : string,
+  'timestamp' : bigint,
+}
+export type ActivityType = { 'Updated' : null } |
+  { 'Accessed' : null } |
+  { 'Revoked' : null };
 export interface AuthorizedCallerRequest { 'caller' : Principal }
 export type CanisterLogFeature = { 'filterMessageByContains' : null } |
   { 'filterMessageByRegex' : null };
@@ -24,7 +33,7 @@ export interface CanisterMetrics { 'data' : CanisterMetricsData }
 export type CanisterMetricsData = { 'hourly' : Array<HourlyMetricsData> } |
   { 'daily' : Array<DailyMetricsData> };
 export interface ClaimConsentRequest { 'code' : string }
-export interface ClaimConsentResponse { 'session_id' : string }
+export interface ClaimConsentResponse { 'session_id' : string, 'name' : string }
 export type CollectMetricsRequestType = { 'force' : null } |
   { 'normal' : null };
 export interface Consent {
@@ -32,7 +41,7 @@ export interface Consent {
   'session_id' : [] | [string],
   'code' : string,
   'claimed' : boolean,
-  'session_user' : [] | [Principal],
+  'session_user' : [] | [string],
 }
 export interface ConsentListResponse { 'consents' : Array<Consent> }
 export interface DailyMetricsData {
@@ -69,6 +78,7 @@ export interface EmrListConsentResponse {
 }
 export interface EmrListPatientRequest { 'page' : number, 'limit' : number }
 export interface EmrListPatientResponse { 'emrs' : Array<EmrHeaderWithStatus> }
+export interface FinishSessionRequest { 'session_id' : string }
 export interface GetInformationRequest {
   'status' : [] | [StatusRequest],
   'metrics' : [] | [MetricsRequest],
@@ -116,6 +126,7 @@ export interface IsConsentClaimedResponse {
 }
 export interface IssueRequest { 'header' : EmrHeader }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
+export interface LogResponse { 'logs' : Array<Activity> }
 export type MetricsGranularity = { 'hourly' : null } |
   { 'daily' : null };
 export interface MetricsRequest { 'parameters' : GetMetricsParameters }
@@ -148,6 +159,7 @@ export interface ReadEmrSessionRequest {
   'args' : ReadEmrByIdRequest,
 }
 export interface RegisterPatientRequest { 'nik' : string }
+export interface RevokeConsentRequest { 'codes' : Array<string> }
 export interface SearchPatientRequest { 'nik' : string }
 export interface SearchPatientResponse {
   'patient_info' : PatientWithNikAndSession,
@@ -191,14 +203,15 @@ export interface _SERVICE {
     [EmrListConsentRequest],
     EmrListConsentResponse
   >,
-  'finish_session' : ActorMethod<[ClaimConsentResponse], undefined>,
+  'finish_session' : ActorMethod<[FinishSessionRequest], undefined>,
   'getCanistergeekInformation' : ActorMethod<
     [GetInformationRequest],
     GetInformationResponse
   >,
+  'get_logs' : ActorMethod<[], LogResponse>,
   'get_patient_info' : ActorMethod<[], GetPatientInfoResponse>,
   'get_patient_info_with_consent' : ActorMethod<
-    [ClaimConsentResponse],
+    [FinishSessionRequest],
     GetPatientInfoResponse
   >,
   'get_trusted_origins' : ActorMethod<[], Array<string>>,
@@ -221,7 +234,7 @@ export interface _SERVICE {
     [AuthorizedCallerRequest],
     undefined
   >,
-  'revoke_consent' : ActorMethod<[ClaimConsentRequest], undefined>,
+  'revoke_consent' : ActorMethod<[RevokeConsentRequest], undefined>,
   'search_patient' : ActorMethod<[SearchPatientRequest], SearchPatientResponse>,
   'updateCanistergeekInformation' : ActorMethod<
     [UpdateInformationRequest],

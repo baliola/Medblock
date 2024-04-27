@@ -23,7 +23,17 @@ import { useEffect, useState } from 'react';
 const useEmr = () => {
   const { identity, authenticated } = useAuth();
   const { provider } = useCentralStore();
-  const { GetProviderInfo } = useProvider();
+  const { GetProviderInfo, providerName } = useProvider();
+
+  const [initialValues, setInitialValues] = useState({
+    // location: providerName ? providerName : '',
+    amnanesis: '',
+    medication: '',
+    oxygen: '',
+    temperature: '',
+    blood: '',
+    doctor: '',
+  });
 
   const router = useRouter();
   const params = router.query;
@@ -99,6 +109,8 @@ const useEmr = () => {
   return {
     createEmr,
     update,
+    providerName,
+    initialValues,
   };
 };
 

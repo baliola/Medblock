@@ -29,6 +29,7 @@ export interface CreateEmrRequest {
   'emr' : Array<EmrFragment>,
   'provider_id' : string,
   'user_id' : string,
+  'emr_id' : string,
 }
 export interface CreateEmrResponse { 'header' : Header }
 export interface DailyMetricsData {
