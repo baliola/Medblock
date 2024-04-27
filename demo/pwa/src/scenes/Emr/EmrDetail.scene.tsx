@@ -22,7 +22,7 @@ const EmrDetailPage = () => {
           <AppBar title={<p className="text-lg text-gray-800">My EMR</p>} />
           <ProfileBar
             onPressTrailing={() => {
-              router.push(`/emr/${1}/revoke-access`);
+              router.push(`/emr/${emr?.header.emr_id}/revoke-access`);
             }}
             trailingButton={
               <div className="flex flex-col rounded-xl bg-secondary-light py-4 px-2 items-center w-20">

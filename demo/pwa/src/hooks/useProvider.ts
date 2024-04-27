@@ -25,6 +25,23 @@ const useProvider = () => {
       console.log('error provider info pwa', error);
     }
   }
+  // async function GetProviderInfoWithSession(codes: string[]) {
+  //   const data: RevokeConsentRequest = {
+  //     codes: codes,
+  //   };
+  //   try {
+  //     const response = await api.get_provider_info_with_principal(data);
+  //     console.log('-----------------');
+  //     console.log('RESPONSE:::: CONSENT LIST', response);
+  //     console.log('-----------------');
+  //     //   setConsents(response.consents);
+  //   } catch (error) {
+  //     //   setConsents([]);
+  //     console.log('-----------------');
+  //     console.log('ERROR::::', error);
+  //     console.log('-----------------');
+  //   }
+  // }
 
   return { GetProviderInfo };
 };

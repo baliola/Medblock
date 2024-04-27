@@ -64,6 +64,7 @@ const RevokeAccessScreen = () => {
     setShowClosedEmr(false);
     navigation.goBack();
   };
+  
 
   const renderItem = ({item}: {item: any}) => (
     <StyledView className="w-full flex flex-row items-center mb-6 space-x-4">
