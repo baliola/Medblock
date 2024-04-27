@@ -51,16 +51,22 @@ function PatientInfo() {
   const [shouldRunEffect, setShouldRunEffect] = useState(false);
 
   // Check if identity is not null and other necessary conditions are met
-  useEffect(() => {
-    if (identity && newsession) {
-      setShouldRunEffect(true);
-    } else {
-      setShouldRunEffect(false);
-    }
-  }, [identity, newsession]);
+  // useEffect(() => {
+  //   console.log('use effect running session');
+  //   if (identity && newsession) {
+  //     console.log('use effect running session ad identitiy');
+
+  //     setShouldRunEffect(true);
+  //   } else {
+  //     console.log('use effect running session tidak identitiy');
+
+  //     setShouldRunEffect(false);
+  //   }
+  // }, [identity, newsession]);
 
   useEffect(() => {
-    if (shouldRunEffect) {
+    if (identity && newsession) {
+      console.log('running patient info from identity');
       console.log('new session info', newsession);
       console.log('session detail info', session);
       console.log('session edit info', sessions);
@@ -68,7 +74,7 @@ function PatientInfo() {
       getPatientInfo(newsession as string, name as string);
       // GetEmr(sessionId);
     }
-  }, [shouldRunEffect]);
+  }, [identity, newsession]);
   // useEffect(() => {
   //     if (!isSidebarOpen) setIsSidebarOpen(!isSidebarOpen)
   // }, [pathname])

@@ -74,6 +74,8 @@ const NotificationPage = () => {
   }, [identity]);
 
   useEffect(() => {
+    console.log('Notification running to get provider info.....');
+
     if (notifications) {
       const fetchProviderNames = async () => {
         const names: { [key: string]: string } = {};
@@ -85,9 +87,10 @@ const NotificationPage = () => {
       };
       fetchProviderNames();
     }
-  }, [notifications, GetProviderInfo]);
+  }, [notifications]);
 
   function getIconForActivity(activity: ActivityType) {
+    console.log('Notification running to get icon.....');
     switch (Object.keys(activity)[0]) {
       case 'Accessed':
         return <CheckCircle color="green" size={18} iconStyle="Bold" />;
@@ -101,7 +104,10 @@ const NotificationPage = () => {
   }
 
   const formatDateFromBigIntWithTime = (timestamp: bigint): string => {
+    console.log('Notification running to get time info.....');
+
     // Convert the BigInt to a number
+
     const second = Number(timestamp);
 
     // Convert nanoseconds to milliseconds

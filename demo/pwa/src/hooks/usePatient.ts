@@ -172,6 +172,8 @@ const usePatient = () => {
   }
 
   function getActivityText(activity: ActivityType): string {
+    console.log('Notification running to get text info.....');
+
     switch (Object.keys(activity)[0]) {
       case ActivityTypes.Updated:
         return 'Your Medical Record Has Been Updated';

@@ -48,9 +48,9 @@ const useEMRPatient = () => {
   const api = createActor(patientCanisterId, { agent: AppAgent(identity) });
 
   async function getPatientInfo(session: string, name: string) {
-    console.log('FETCH PATIENT RUNNING.....', session);
+    console.log('FETCH PATIENT INFO RUNNING.....', session);
     try {
-      console.log('FETCH PATIENT RUNNING.....');
+      console.log('FETCH PATIENT INFO RUNNING..... 2');
       const data: ClaimConsentResponse = {
         session_id: session as string,
         name: name as string,
@@ -65,7 +65,7 @@ const useEMRPatient = () => {
       // setPatientList(response.patients);
     } catch (error) {
       const canisterError = createCanisterError(error);
-      console.log('CANISTER ERROR', canisterError?.message);
+      console.log('INFO PATIENT ERROR', canisterError?.message);
       if (canisterError?.message.includes(ErrorMessages.AnonimError)) {
         router.push('/auth/login');
         // toast.error('Provider info does not exist');
