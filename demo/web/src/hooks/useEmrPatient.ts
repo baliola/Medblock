@@ -48,7 +48,7 @@ const useEMRPatient = () => {
   const api = createActor(patientCanisterId, { agent: AppAgent(identity) });
 
   async function getPatientInfo(session: string, name: string) {
-    console.log('FETCH PATIENT RUNNING.....');
+    console.log('FETCH PATIENT RUNNING.....', session);
     try {
       console.log('FETCH PATIENT RUNNING.....');
       const data: ClaimConsentResponse = {

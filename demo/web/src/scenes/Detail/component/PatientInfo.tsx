@@ -43,24 +43,24 @@ function PatientInfo() {
   const { name, sessions } = router.query;
   const params = router.query;
   const session = params.id;
+  const newsession =
+    router.asPath.includes('edit') || router.asPath.includes('add')
+      ? sessions
+      : session;
 
   const [shouldRunEffect, setShouldRunEffect] = useState(false);
 
   // Check if identity is not null and other necessary conditions are met
   useEffect(() => {
-    if (identity) {
+    if (identity && newsession) {
       setShouldRunEffect(true);
     } else {
       setShouldRunEffect(false);
     }
-  }, [identity]);
+  }, [identity, newsession]);
 
   useEffect(() => {
     if (shouldRunEffect) {
-      const newsession =
-        router.asPath.includes('edit') || router.asPath.includes('add')
-          ? sessions
-          : session;
       console.log('new session info', newsession);
       console.log('session detail info', session);
       console.log('session edit info', sessions);

@@ -98,7 +98,12 @@ const SearchComponent: React.FC<SearchComponentProps> = ({
                               selected ? 'font-medium' : 'font-normal'
                             }`}
                             onClick={() => {
-                              router.push(`/emr/${options.session_id}`);
+                              router.push({
+                                pathname: `/emr/${options.session_id}`,
+                                query: {
+                                  name: options.info.V1.name,
+                                },
+                              });
                             }}
                           >
                             {options.info.V1.name}
