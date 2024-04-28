@@ -12,6 +12,7 @@ interface InputTextProps {
   suffix?: React.ReactElement<any, any>;
   error?: string;
   enable?: boolean;
+  isError?: boolean;
   autoFocus?: boolean;
   outlined?: boolean;
   numberOfLine?: number;
@@ -33,6 +34,7 @@ const InputText: React.FC<InputTextProps> = ({
   onChange,
   outlined = false,
   numberOfLine,
+  isError,
   type,
 }) => {
   return (
@@ -56,6 +58,7 @@ const InputText: React.FC<InputTextProps> = ({
           }
           placeholder={placeholder}
         />
+        {isError && <p className="text-red-500">{error}</p>}
       </div>
     </div>
   );
