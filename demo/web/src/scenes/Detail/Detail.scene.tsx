@@ -155,7 +155,7 @@ const DetailPatient = (props: DetailType) => {
                 Medical Record List
               </p>{' '}
               <div className="flex text-sm font-medium  gap-2">
-                <Link href="/" className="text-[#06B8EE] underline">
+                <Link href="/home" className="text-[#06B8EE] underline">
                   Patient Management
                 </Link>{' '}
                 <span> &gt; Patient EMR</span>

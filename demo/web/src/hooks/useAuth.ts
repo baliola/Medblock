@@ -50,7 +50,7 @@ const useAuthentication = () => {
       toast.success('Login successfully');
       setIsloading(false);
       setTimeout(() => {
-        router.push('/');
+        router.push('/home');
       }, 3000);
     },
     onLoginError: (error: any) =>
@@ -164,7 +164,8 @@ const useAuthentication = () => {
     logout().then(() => {
       toast.success('Logout successfully');
       setTimeout(() => {
-        router.push('/auth/login');
+        // router.push('/auth/login');
+        router.push('/');
       }, 3000);
     });
     // try {

@@ -34,14 +34,14 @@ const useRegister = () => {
       console.log('-----------------');
       toast.success('Registrations Success');
       setTimeout(() => {
-        router.push('/');
+        router.push('/home');
       }, 3000);
     } catch (error) {
       const canisterError = createCanisterError(error);
       if (canisterError?.message.includes(ErrorMessages.AnonymusCaller)) {
         console.log('-----------------');
         console.log('CANISTER ERROR::::', canisterError.message);
-        router.push('/auth/login');
+        router.push('/');
       } else {
         console.log('-----------------');
         console.log('ERROR::::', error);

@@ -82,16 +82,20 @@ const FillPersonalInformationPage = () => {
             setFormData({ ...formData, nik: e.target.value });
           }}
           label="Valid Identity Number"
-          classStyle="mb-4"
+          classStyle={`mb-4 ${
+            formData.nik.length !== 16 ? 'border-red-500' : ''
+          }`}
+          isError={formData.nik.length !== 16}
+          error="Valid Identity Number must be exactly 16 characters long."
         />
-        <InputText
-          value={formData.address}
-          onChange={(e) => {
-            setFormData({ ...formData, address: e.target.value });
-          }}
-          label="Address"
-          classStyle="mb-4"
-        />
+        {/* <div> */}
+
+        {/* {formData.nik.length !== 16 && (
+          <p className="text-red-500">
+            Valid Identity Number must be exactly 16 characters long.
+          </p>
+        )} */}
+        {/* </div> */}
         <InputText
           value={formData.gender}
           onChange={(e) => {
@@ -124,6 +128,8 @@ const FillPersonalInformationPage = () => {
           }}
           label="Martial Status"
           classStyle="mb-4"
+          isError={formData.martial_status.length > 10}
+          error="Martioal must be less than 10 characters long."
         />
         {/* <InputText
           value=""

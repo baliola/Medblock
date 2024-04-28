@@ -1,1 +1,1 @@
-export { default } from '@/scenes/Home/Home.scene';
+export { default } from '@/scenes/Login/Login.scene';
