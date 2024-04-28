@@ -44,6 +44,8 @@ const useEMRPatient = () => {
     doctor: '',
   });
 
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
   const params = router.query;
   const emrId = params.id;
@@ -53,6 +55,7 @@ const useEMRPatient = () => {
   const api = createActor(patientCanisterId, { agent: AppAgent(identity) });
 
   async function getPatientInfo() {
+    setLoading(true);
     console.log('FETCH PATIENT RUNNING.....');
     console.log('principal ingbok', identity?.getPrincipal().toText());
     try {
@@ -64,9 +67,11 @@ const useEMRPatient = () => {
       console.log('-----------------');
       setPatientInfo(response.patient);
       setNik(response.nik);
+      setLoading(false);
 
       // setPatientList(response.patients);
     } catch (error) {
+      setLoading(false);
       const canisterError = createCanisterError(error);
       console.log('CANISTER ERROR', canisterError);
       if (canisterError?.message.includes(ErrorMessages.AnonimError)) {
@@ -74,7 +79,7 @@ const useEMRPatient = () => {
         // toast.error('Provider info does not exist');
       } else {
         console.log('-----------------');
-        toast.error(canisterError?.message);
+        // toast.error(canisterError?.message);
         console.log('ERROR:::: ingbok', error);
       }
     }
@@ -173,6 +178,7 @@ const useEMRPatient = () => {
     emr,
     initialValues,
     isLoading,
+    loading,
     nik,
   };
 };
