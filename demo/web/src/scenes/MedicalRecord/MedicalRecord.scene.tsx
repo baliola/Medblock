@@ -95,11 +95,11 @@ const MedicalRecord = (props: MedicalRecordType) => {
                 Medical Record List
               </p>{' '}
               <div className="flex text-sm font-medium  gap-2">
-                <Link href="/" className="text-[#06B8EE] underline">
+                <Link href="/home" className="text-[#06B8EE] underline">
                   Patient Management
                 </Link>{' '}
                 /
-                <Link href="/" className="text-[#06B8EE] underline">
+                <Link href="/home" className="text-[#06B8EE] underline">
                   Patient EMR
                 </Link>{' '}
                 <span> / Upadate EMR</span>
