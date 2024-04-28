@@ -1,8 +1,3 @@
-import { useAuth } from '@/config/agent';
-import { AppAgent } from '@/config/config';
-import { createCanisterError } from '@/interface/CanisterError';
-import { ErrorMessages } from '@/interface/constant';
-import { patientCanisterId } from '@/lib/canister/patient.canister';
 import { createActor } from 'declarations/patient_registry';
 import {
   Consent,
@@ -10,6 +5,12 @@ import {
 } from 'declarations/patient_registry/patient_registry.did';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+
+import { useAuth } from '@/config/agent';
+import { AppAgent } from '@/config/config';
+import { createCanisterError } from '@/interface/CanisterError';
+import { ErrorMessages } from '@/interface/constant';
+import { patientCanisterId } from '@/lib/canister/patient.canister';
 
 const useRevoke = () => {
   const [openError, setOpenError] = useState<boolean>(false);

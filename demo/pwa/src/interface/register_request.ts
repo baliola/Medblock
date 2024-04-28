@@ -7,3 +7,5 @@ type RegisterRequest = {
   gender: string;
   date_of_birth: string;
 };
+
+export default RegisterRequest;

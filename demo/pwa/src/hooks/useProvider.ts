@@ -1,8 +1,9 @@
+import { createActor } from 'declarations/provider_registry';
+import { GetProviderBatchRequest } from 'declarations/provider_registry/provider_registry.did';
+
 import { useAuth } from '@/config/agent';
 import { AppAgent } from '@/config/config';
 import { providerCanisterId } from '@/lib/canister/provider.canister';
-import { createActor } from 'declarations/provider_registry';
-import { GetProviderBatchRequest } from 'declarations/provider_registry/provider_registry.did';
 
 const useProvider = () => {
   const { identity } = useAuth();

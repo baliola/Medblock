@@ -9,16 +9,16 @@ import ProfileBar from '@/components/AppBar/ProfileBar';
 import PrimaryButton from '@/components/Button/PrimaryButton';
 import Images from '@/constants/images';
 import useEMRPatient from '@/hooks/useEmrPatient';
+import usePatient from '@/hooks/usePatient';
 import { HomeLayout } from '@/layouts/HomeLayout/HomeLayout';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
-import usePatient from '@/hooks/usePatient';
 
 export default function HomePage() {
   const router = useRouter();
   const data = [{ id: 1, title: 'My EMR' }];
 
-  const { shareConsetCode } = usePatient();
-  const { emrList } = useEMRPatient();
+  const { shareConsetCode, loading: loadingConsentCode } = usePatient();
+  const { emrList, loading } = useEMRPatient();
 
   // useEffect(() => {
   //   getPatientInfo();
@@ -30,6 +30,7 @@ export default function HomePage() {
   return (
     <HomeLayout>
       <Scaffold
+        loading={loading || loadingConsentCode}
         topBar={
           <AppBarWithIcon
             child={

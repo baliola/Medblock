@@ -19,6 +19,7 @@ import {
 import keccak256 from 'keccak256';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 
 import { useAuth } from '@/config/agent';
 import { AppAgent } from '@/config/config';
@@ -29,7 +30,6 @@ import {
 } from '@/lib/canister/patient.canister';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
 import { useCentralStore } from '@/Store';
-import { toast } from 'react-toastify';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
@@ -63,6 +63,7 @@ const usePatient = () => {
   const [notifications, setNotifications] = useState<Activity[]>();
   // const [sessionId, setSessionId] = useState<string | undefined>();
 
+  const [loading, setLoading] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalSession, setShowModalSession] = useState<boolean>(false);
 
@@ -74,12 +75,14 @@ const usePatient = () => {
   };
 
   const shareConsetCode = async () => {
+    setLoading(true);
     try {
       const response = await api?.create_consent();
       const consent = response?.code;
       console.log('-----------------');
       console.log('RESPONSE conscentt::::', response.code);
       console.log('-----------------');
+      setLoading(false);
       toast.success('Successfully Share consent code');
       setTimeout(() => {
         router.push({
@@ -90,6 +93,7 @@ const usePatient = () => {
         });
       }, 3000);
     } catch (error) {
+      setLoading(false);
       console.log('-----------------');
       console.log('ERROR::::', error);
       console.log('-----------------');
@@ -194,6 +198,7 @@ const usePatient = () => {
 
   return {
     // fetchPatient,
+    loading,
     patientList,
     shareConsetCode,
     // claimConsent,

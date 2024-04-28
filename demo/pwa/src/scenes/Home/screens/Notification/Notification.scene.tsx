@@ -1,3 +1,4 @@
+import { ActivityType } from 'declarations/patient_registry/patient_registry.did';
 import React, { useEffect, useState } from 'react';
 import {
   CheckCircle,
@@ -8,11 +9,10 @@ import {
 } from 'solar-icon-set';
 
 import AppBar from '@/components/AppBar/AppBar';
-import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
-import usePatient from '@/hooks/usePatient';
 import { useAuth } from '@/config/agent';
-import { ActivityType } from 'declarations/patient_registry/patient_registry.did';
+import usePatient from '@/hooks/usePatient';
 import useProvider from '@/hooks/useProvider';
+import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 const data = [
   {

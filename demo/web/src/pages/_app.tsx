@@ -14,6 +14,7 @@ import { NFIDS } from '@/interface/nfid.interface';
 import { useEffect, useState } from 'react';
 import { AgentProvider } from '@/config/agent';
 import SplashScreen from '@/scenes/Splash/SplashScreen';
+import Header from '@/components/Header/Header';
 
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -45,12 +46,16 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
   if (!windowLoaded) {
     // Render a loading state while waiting for window to load
-    return <SplashScreen />;
+    return <>
+      <Header />
+    <SplashScreen />;
+    </>
   }
 
   if (Component.disableLayout) {
     return (
       <AgentProvider>
+        <Header />
         <div suppressHydrationWarning>
           {getEmptyLayout(<Component {...pageProps} />)}
         </div>
@@ -59,12 +64,14 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   } else if (Component.patientLayout) {
     return (
       <AgentProvider>
+        <Header />
         {getPatientLayout(<Component {...pageProps} />)}
       </AgentProvider>
     );
   }
   return (
     <AgentProvider>
+      <Header />
       <ToastContainer
         position="top-center"
         hideProgressBar={false}
