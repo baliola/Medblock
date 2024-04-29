@@ -9,7 +9,7 @@ const registrationValidation = Yup.object().shape({
   martial_status: Yup.string().required(' Martial status is required'),
   gender: Yup.string().required(' Gender is required'),
   place_of_birth: Yup.string().required(' Place of birth is required'),
-  date_of_birth: Yup.string().required(' Date of Birtch is required'),
+  date_of_birth: Yup.string().required(' Date of birth is required'),
 });
 
 export default registrationValidation;
