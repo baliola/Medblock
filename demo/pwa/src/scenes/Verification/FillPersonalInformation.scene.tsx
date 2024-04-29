@@ -9,6 +9,7 @@ import usePatient from '@/hooks/usePatient';
 import { createCanisterError } from '@/interface/CanisterError';
 import { ErrorMessages } from '@/interface/constant';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import RegisterRequest from '@/interface/register_request';
 
 const FillPersonalInformationPage = () => {
   const router = useRouter();
