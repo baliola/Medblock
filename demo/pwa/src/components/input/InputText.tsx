@@ -16,12 +16,14 @@ interface InputTextProps {
   autoFocus?: boolean;
   outlined?: boolean;
   numberOfLine?: number;
+  name?: string;
   type?: React.HTMLInputTypeAttribute;
 }
 
 const InputText: React.FC<InputTextProps> = ({
   id,
   label,
+  name,
   placeholder,
   classStyle,
   isSecure = false,
@@ -48,8 +50,8 @@ const InputText: React.FC<InputTextProps> = ({
       <div className="mt-2">
         <input
           type={type}
-          value={value}
-          name={label}
+          // value={value}
+          name={name}
           onChange={onChange}
           id={id}
           className={
@@ -58,7 +60,6 @@ const InputText: React.FC<InputTextProps> = ({
           }
           placeholder={placeholder}
         />
-        {isError && <p className="text-red-500">{error}</p>}
       </div>
     </div>
   );
