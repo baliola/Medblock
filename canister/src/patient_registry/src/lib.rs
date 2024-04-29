@@ -260,7 +260,9 @@ async fn get_trusted_origins() -> Vec<String> {
         // Origins should be in the format defined by the Window.postMessage method (https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#the_dispatched_event)
         String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943"), // to be replaced with your frontend origin(s)
         // TODO: make a config out of this
-        String::from("http://localhost:3000")
+        String::from("http://localhost:3000"),
+        String::from("https://demo-app.medblock.id"),
+        String::from("https://demo-web.medblock.id"),
     ]
 }
 
