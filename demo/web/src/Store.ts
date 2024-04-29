@@ -60,6 +60,10 @@ interface centralStore {
   identity: Identity | undefined;
   setIdentity: (activeIdentity: Identity) => void;
 
+  // Error State
+  isErrorConsent: boolean;
+  setIsError: (error: boolean) => void;
+
   // Sidebar State
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -129,5 +133,9 @@ export const useCentralStore = create<centralStore>((set, get) => ({
   isLoading: true,
   setIsloading(isLoading) {
     set({ isLoading: isLoading });
+  },
+  isErrorConsent: false,
+  setIsError(error) {
+    set({ isErrorConsent: error });
   },
 }));
