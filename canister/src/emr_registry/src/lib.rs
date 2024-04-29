@@ -19,15 +19,11 @@ use canister_common::{
     random::CanisterRandomSource,
     register_log,
     stable::{ Candid, Memory, Stable },
-    statistics,
+    statistics::{ self, traits::OpaqueMetrics },
 };
 use canistergeek_ic_rust::{ api_type::UpdateInformationRequest, monitor::data_type::DayData };
 use config::CanisterConfig;
-use ic_cdk::{
-    init,
-    query,
-    update,
-};
+use ic_cdk::{ init, query, update };
 use ic_stable_structures::{ Cell };
 use memory::UpgradeMemory;
 use std::{ cell::RefCell, io::Write };
@@ -95,7 +91,6 @@ fn initialize_id_generator() {
 }
 fn init_state() -> self::State {
     let memory_manager = MemoryManager::init();
-    
 
     State::new(
         registry::CoreEmrRegistry::init(&memory_manager),
@@ -345,6 +340,7 @@ fn metrics() -> String {
             opaque_metrics!(s.registry),
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
+            OpaqueMetrics::measure(s.config.get().as_ref()),
         ].join("\n")
     })
 }
