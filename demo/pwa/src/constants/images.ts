@@ -1,5 +1,5 @@
 export default class Images {
-  static readonly logoPassport = '/assets/medblock_passport.svg';
+  static readonly logoPassport = '/assets/medblock_passport_new.svg';
   static readonly dummyProfile = '/assets/dummy_profile.svg';
   static readonly verified = '/assets/verified.svg';
   static readonly medblock = '/assets/medblock.svg';
