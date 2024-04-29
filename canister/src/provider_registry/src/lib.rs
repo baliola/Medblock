@@ -359,7 +359,7 @@ async fn ping() -> PingResult {
     }
 }
 
-#[ic_cdk::update(guard = "only_canister_owner")]
+#[ic_cdk::update]
 async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewProviderResponse {
     let id = with_id_generator_mut(|g| g.generate_id());
 
