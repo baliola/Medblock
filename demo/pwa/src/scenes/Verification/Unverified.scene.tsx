@@ -3,9 +3,8 @@ import React from 'react';
 
 import PrimaryButton from '@/components/Button/PrimaryButton';
 import Images from '@/constants/images';
-import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 import useEMRPatient from '@/hooks/useEmrPatient';
-import { Download } from 'solar-icon-set/arrowsaction';
+import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 const UnverifiedPage = () => {
   const { patientInfo, loading } = useEMRPatient();

@@ -8,6 +8,7 @@ import Images from '@/constants/images';
 import usePatient from '@/hooks/usePatient';
 import { createCanisterError } from '@/interface/CanisterError';
 import { ErrorMessages } from '@/interface/constant';
+import RegisterRequest from '@/interface/register_request';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 const FillPersonalInformationPage = () => {

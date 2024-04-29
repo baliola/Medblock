@@ -15,7 +15,7 @@ import SplashScreen from '@/scenes/Splash/Splash.scene';
 import { NextPageWithLayout } from '@/types';
 
 export type AppPropsWithLayout = AppProps & {
-  Component: NextPageWithLayout;
+  Component: NextPageWithLayout | any;
 };
 
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
@@ -60,7 +60,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
             hideProgressBar={false}
             pauseOnFocusLoss={false}
             theme="light"
-            autoClose={true}
+            autoClose={1}
           />
           {getScaffold(<Component {...pageProps} />)}
         </div>
@@ -76,7 +76,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
             hideProgressBar={false}
             pauseOnFocusLoss={false}
             theme="light"
-            autoClose={true}
+            autoClose={1}
           />
           {getHomeLayout(<Component {...pageProps} />)}
         </>
@@ -93,7 +93,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
           hideProgressBar={false}
           pauseOnFocusLoss={false}
           theme="light"
-          autoClose={true}
+          autoClose={1}
         />
         {getLayout(<Component {...pageProps} />)}
       </>

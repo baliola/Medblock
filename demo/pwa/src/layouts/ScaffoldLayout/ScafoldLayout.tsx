@@ -1,14 +1,16 @@
-import React, { CSSProperties, FC, ReactElement } from 'react';
+import React from 'react';
+
+import GeneralLoading from '@/components/loading/GeneralLoading';
 
 interface ScaffoldProps {
-  topBar?: ReactElement<any, any>;
-  children?: ReactElement<any, any>;
-  bottomChild?: ReactElement<any, any>;
+  topBar?: React.ReactElement<any, any>;
+  children?: React.ReactElement<any, any>;
+  bottomChild?: React.ReactElement<any, any>;
   loading?: boolean;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
 }
 
-const Scaffold: FC<ScaffoldProps> = ({
+const Scaffold: React.FC<ScaffoldProps> = ({
   style,
   bottomChild,
   children,
@@ -24,7 +26,7 @@ const Scaffold: FC<ScaffoldProps> = ({
       {bottomChild != null ? (
         <div className="fixed bottom-0 w-full h-auto z-10">{bottomChild}</div>
       ) : null}
-      {/* {loading ? <GeneralLoading loading={loading} /> : null} */}
+      {loading ? <GeneralLoading loading={loading} /> : null}
     </div>
   );
 };

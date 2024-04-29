@@ -6,9 +6,9 @@ interface DialogBasicProps {
   open: boolean;
   title?: string;
   labelYes?: string;
-  labelCancel: string;
+  labelCancel?: string;
   child: ReactElement;
-  onCancel: () => void;
+  onCancel?: () => void;
   onYes?: () => void;
 }
 
@@ -30,7 +30,7 @@ const DialogBasic: FC<DialogBasicProps> = ({
         className="relative z-50"
         initialFocus={cancelButtonRef}
         onClose={() => {
-          onCancel();
+          onCancel ? onCancel() : null;
         }}
       >
         <Transition.Child
@@ -88,14 +88,18 @@ const DialogBasic: FC<DialogBasicProps> = ({
                       {labelYes}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:ml-3 sm:mt-0 sm:w-auto"
-                    onClick={() => onCancel()}
-                    ref={cancelButtonRef}
-                  >
-                    {labelCancel}
-                  </button>
+                  {onCancel ? (
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:ml-3 sm:mt-0 sm:w-auto"
+                      onClick={() => {
+                        onCancel();
+                      }}
+                      ref={cancelButtonRef}
+                    >
+                      {labelCancel}
+                    </button>
+                  ) : null}
                 </div>
               </Dialog.Panel>
             </Transition.Child>

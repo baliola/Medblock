@@ -3,9 +3,9 @@ import React, { CSSProperties, FC } from 'react';
 import { ArrowLeft } from 'solar-icon-set';
 
 interface AppBarProps {
-  title?: React.ReactElement<any, any>;
+  title?: React.ReactElement<any, any> | null;
   inverse?: boolean;
-  trailing?: React.ReactElement<any, any>;
+  trailing?: React.ReactElement<any, any> | null;
   classStyle?: string;
   style?: CSSProperties;
 }

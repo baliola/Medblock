@@ -6,10 +6,10 @@ import ProfileBar from '@/components/AppBar/ProfileBar';
 import HeaderButton from '@/components/Button/HeaderButton';
 import MetaItem from '@/components/mini/MetaItem';
 import Images from '@/constants/images';
+import useEMRPatient from '@/hooks/useEmrPatient';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
 
 import VisitSummaryItem from './components/VisitSummaryItem';
-import useEMRPatient from '@/hooks/useEmrPatient';
 
 const EmrDetailPage = () => {
   const router = useRouter();
