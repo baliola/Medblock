@@ -1,6 +1,6 @@
 import { HttpAgent, Identity } from '@dfinity/agent';
 
-const APP_NAME = 'NFID example';
+const APP_NAME = 'Medblock';
 const APP_LOGO = 'https://nfid.one/icons/favicon-96x96.png';
 const CONFIG_QUERY = `?applicationName=${APP_NAME}&applicationLogo=${APP_LOGO}`;
 
@@ -12,15 +12,15 @@ export const dfxNetwork =
 export const loginHost =
   process.env.DFX_NETWORK === 'ic'
     ? identityProvider
-    : `http://bd3sg-teaaa-aaaaa-qaaba-cai.localhost:4943/`;
+    : `http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/`;
 
 export const host =
   process.env.DFX_NETWORK === 'ic'
-    ? 'https://identity.ic0.app'
+    ? identityProvider
     : `http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/`;
 
 export const AppAgent = (identity: Identity | null) => {
-  console.log('identity from config', identity);
+  // console.log('identity from config', identity);
   let newAgents = new HttpAgent({ host, identity: identity as Identity });
   return newAgents;
 };
