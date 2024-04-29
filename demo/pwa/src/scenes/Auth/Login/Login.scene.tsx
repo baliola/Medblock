@@ -26,12 +26,12 @@ const LoginPage = () => {
           title="Login"
         />
 
-        <PrimaryButton
+        {/* <PrimaryButton
           onSubmit={() => {
             handleLoginII();
           }}
           title="Login with Internet Identity"
-        />
+        /> */}
       </div>
     </Scaffold>
   );
