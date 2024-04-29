@@ -41,6 +41,8 @@ const InputDropdown: React.FC<Props> = ({
           classStyle
         }
       >
+        <option value="">{placeholder || 'Select Option'}</option>{' '}
+        {/* Default option */}
         {options.map((option, index) => (
           <option key={index} value={option}>
             {option}

@@ -139,6 +139,7 @@ const FillPersonalInformationPage = () => {
               name={'gender'}
               id="gender"
               onChange={handleChange}
+              placeholder="Please select your gender"
               label="Gender"
               options={['Male', 'Female', 'Others']}
               classStyle="mb-2"
@@ -181,6 +182,7 @@ const FillPersonalInformationPage = () => {
               id="martial_status"
               onChange={handleChange}
               label="Marital Status"
+              placeholder="Please select your marital status"
               options={['Single', 'Married', 'Divorced', 'Widowed']}
               classStyle="mb-2"
             />
