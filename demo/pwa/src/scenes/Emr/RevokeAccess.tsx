@@ -132,33 +132,37 @@ const RevokeAccess = () => {
         <div className="p-6 mt-52">
           {consenst &&
             consenst.map((item, index) => (
-              <div
-                key={index}
-                className="w-full flex flex-row items-center mb-6 space-x-4"
-              >
-                <input
-                  id={item.code}
-                  aria-describedby="comments-description"
-                  name={item.code}
-                  type="checkbox"
-                  onChange={handleCheckboxChange}
-                  checked={selectedHospitals.includes(item.code)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-normal focus:ring-primary-normal"
-                />
-                <img src={Images.hospital} alt="" className="w-16" />
-                <div>
-                  <p className="text-gray-800 font-bold">
-                    {' '}
-                    {providerNames[item.session_user[0] as string] ?? ''}
-                  </p>
-                  {/* <p className="text-gray-800 text-xs my-1">
+              <>
+                {item.claimed && (
+                  <div
+                    key={index}
+                    className="w-full flex flex-row items-center mb-6 space-x-4"
+                  >
+                    <input
+                      id={item.code}
+                      aria-describedby="comments-description"
+                      name={item.code}
+                      type="checkbox"
+                      onChange={handleCheckboxChange}
+                      checked={selectedHospitals.includes(item.code)}
+                      className="h-4 w-4 rounded border-gray-300 text-primary-normal focus:ring-primary-normal"
+                    />
+                    <img src={Images.hospital} alt="" className="w-16" />
+                    <div>
+                      <p className="text-gray-800 font-bold">
+                        {' '}
+                        {providerNames[item.session_user[0] as string] ?? ''}
+                      </p>
+                      {/* <p className="text-gray-800 text-xs my-1">
                   Last Visited: {item.latest}{' '}
                 </p>
                 <p className="text-gray-800 text-xs">
                   Physician: {item.physician}{' '}
                 </p>  */}
-                </div>
-              </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ))}
         </div>
         <DialogBasic
