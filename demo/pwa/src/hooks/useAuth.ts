@@ -73,11 +73,13 @@ const useAuthentication = () => {
     await login(hosts);
   };
 
+  const handleLoginII = async () => {
+    await login(hosts);
+  };
   //   console.log('NFID:::', nfid);
   const handleAuthenticate = useCallback(async () => {
     console.log('AUTHENTICATING........');
     setIsloading(true);
-
     const testNewNfid = await NFIDS();
     setNfid(testNewNfid);
     try {
@@ -155,6 +157,7 @@ const useAuthentication = () => {
     checkAuthentication,
     signOut,
     // nfid,
+    handleLoginII,
     initAuth,
     authenticated,
     handleLogin,

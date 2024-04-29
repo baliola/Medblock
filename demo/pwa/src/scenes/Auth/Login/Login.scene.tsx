@@ -11,18 +11,26 @@ import { useCentralStore } from '@/Store';
 const LoginPage = () => {
   const router = useRouter();
   const { setClient, setUserPrincipal } = useCentralStore();
-  const { handleAuthenticate, handleLogin } = useAuthentication();
+  const { handleAuthenticate, handleLogin, handleLoginII } =
+    useAuthentication();
   const { identity } = useAuth();
 
   return (
     <Scaffold>
-      <div className="h-screen w-screen flex flex-col justify-center items-center p-6">
+      <div className="h-screen w-screen flex flex-col justify-center items-center p-6 gap-4">
         <img src={Images.logoPassport} alt="" className="max-w-[200px] mb-10" />
         <PrimaryButton
           onSubmit={() => {
             handleLogin();
           }}
           title="Login"
+        />
+
+        <PrimaryButton
+          onSubmit={() => {
+            handleLoginII();
+          }}
+          title="Login with Internet Identity"
         />
       </div>
     </Scaffold>
