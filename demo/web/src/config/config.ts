@@ -10,12 +10,12 @@ export const dfxNetwork =
   process.env.NODE_ENV === 'development' ? 'local' : 'ic';
 
 export const loginHost =
-  process.env.DFX_NETWORK === 'ic'
+  process.env.NEXT_APP_DFX_NETWORK === 'ic'
     ? identityProvider
     : `http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/`;
 
 export const host =
-  process.env.DFX_NETWORK === 'ic'
+  process.env.NEXT_APP_DFX_NETWORK === 'ic'
     ? identityProvider
     : `http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943/`;
 

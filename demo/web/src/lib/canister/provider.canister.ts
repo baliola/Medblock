@@ -5,6 +5,6 @@ export const providerCanisterIdLocal =
 export const providerCanisterIdMainnet = 'tawg2-3aaaa-aaaak-akn7q-cai';
 
 export const providerCanisterId =
-  process.env.DFX_NETWORK === 'ic'
+  process.env.NEXT_APP_DFX_NETWORK === 'ic'
     ? providerCanisterIdMainnet
     : providerCanisterIdLocal;
