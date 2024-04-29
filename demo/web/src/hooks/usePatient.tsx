@@ -58,6 +58,7 @@ const usePatient = () => {
     isLoading,
     setIsloading,
     setPatientName,
+    setIsError,
   } = useCentralStore();
   const { identity, authenticated } = useAuth();
   const router = useRouter();
@@ -128,9 +129,11 @@ const usePatient = () => {
       localStorageHelper.setItem('session', response.session_id);
       setPatientName(response.name);
       fetchPatient();
+      setIsError(false);
 
       // setPatientList(response.code);
     } catch (error) {
+      setIsError(true);
       console.log('-----------------');
       console.log('ERROR::::', error);
       console.log('-----------------');
