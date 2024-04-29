@@ -24,13 +24,13 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/config/agent';
 import { AppAgent } from '@/config/config';
 import { localStorageHelper } from '@/helpers/localStorage.helpers';
+import RegisterRequest from '@/interface/register_request';
 import {
   patientCanisterId,
   patientCanisterIdMainnet,
 } from '@/lib/canister/patient.canister';
 import { providerCanisterIdMainnet } from '@/lib/canister/provider.canister';
 import { useCentralStore } from '@/Store';
-import RegisterRequest from '@/interface/register_request';
 // import * as CBOR from 'cbor-js'; // Make sure to import the cbor-js library
 
 type Response = unknown; // whatever the canister method returns
