@@ -10,6 +10,7 @@ import { createCanisterError } from '@/interface/CanisterError';
 import { ErrorMessages } from '@/interface/constant';
 import RegisterRequest from '@/interface/register_request';
 import Scaffold from '@/layouts/ScaffoldLayout/ScafoldLayout';
+import InputDropdown from '@/components/input/InputDropdown';
 
 const FillPersonalInformationPage = () => {
   const router = useRouter();
@@ -26,6 +27,7 @@ const FillPersonalInformationPage = () => {
   });
 
   const handleSubmit = async () => {
+    console.log('data', formData);
     setLoading(true);
     try {
       await registerPatient(formData);
@@ -78,6 +80,14 @@ const FillPersonalInformationPage = () => {
           classStyle="mb-4"
         />
         <InputText
+          value={formData.address}
+          onChange={(e) => {
+            setFormData({ ...formData, address: e.target.value });
+          }}
+          label="Address"
+          classStyle="mb-4"
+        />
+        <InputText
           value={formData.nik}
           onChange={(e) => {
             setFormData({ ...formData, nik: e.target.value });
@@ -97,12 +107,21 @@ const FillPersonalInformationPage = () => {
           </p>
         )} */}
         {/* </div> */}
-        <InputText
+        {/* <InputText
           value={formData.gender}
           onChange={(e) => {
             setFormData({ ...formData, gender: e.target.value });
           }}
           label="Gender"
+          classStyle="mb-4"
+        /> */}
+        <InputDropdown
+          value={formData.gender}
+          onChange={(e) => {
+            setFormData({ ...formData, gender: e.target.value });
+          }}
+          label="Gender"
+          options={['Male', 'Female', 'Others']}
           classStyle="mb-4"
         />
         <InputText
@@ -122,7 +141,16 @@ const FillPersonalInformationPage = () => {
           label="Place Date"
           classStyle="mb-4"
         />
-        <InputText
+        <InputDropdown
+          value={formData.martial_status}
+          onChange={(e) => {
+            setFormData({ ...formData, martial_status: e.target.value });
+          }}
+          label="Marital Status"
+          options={['Single', 'Married', 'Divorced', 'Widowed']}
+          classStyle="mb-4"
+        />
+        {/* <InputText
           value={formData.martial_status}
           onChange={(e) => {
             setFormData({ ...formData, martial_status: e.target.value });
@@ -131,7 +159,7 @@ const FillPersonalInformationPage = () => {
           classStyle="mb-4"
           isError={formData.martial_status.length > 10}
           error="Martioal must be less than 10 characters long."
-        />
+        /> */}
         {/* <InputText
           value=""
           onChange={(e) => {}}
