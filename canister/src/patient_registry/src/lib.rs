@@ -33,7 +33,7 @@ use api::{
 };
 use candid::{ Decode, Encode };
 use canister_common::{
-    common::{ guard::verified_caller, PrincipalBytes, ProviderId },
+    common::{ guard::verified_caller, ProviderId },
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -46,7 +46,7 @@ use canister_common::{
 use config::CanisterConfig;
 use declarations::{
     emr_registry::ReadEmrByIdResponse,
-    provider_registry::{ self, GetProviderBatchRequest },
+    provider_registry::{ GetProviderBatchRequest },
 };
 
 use ic_stable_structures::Cell;

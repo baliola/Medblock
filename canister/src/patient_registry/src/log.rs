@@ -37,12 +37,7 @@ impl PatientLog {
         self.log_map_index
             .get_batch(user)
             .map(|indexes| self.activity_log.get_batch(&indexes))
-            .map(|activities|
-                activities
-                    .into_iter()
-                    .filter_map(|activity| activity)
-                    .collect()
-            )
+            .map(|activities| activities.into_iter().flatten().collect())
     }
 }
 
@@ -164,9 +159,9 @@ impl AsRef<u64> for U64 {
 }
 from!(U64:u64);
 
-impl Into<u64> for U64 {
-    fn into(self) -> u64 {
-        self.0
+impl From<U64> for u64 {
+    fn from(val: U64) -> Self {
+        val.0
     }
 }
 
@@ -185,16 +180,12 @@ impl LogMapIndex {
     pub fn get_batch(&self, nik: &NIK) -> Option<Vec<u64>> {
         let idxs = self.0.get_set_associated_by_key(nik.to_stable_ref());
 
-        if let Some(idxs) = idxs {
-            Some(
-                idxs
-                    .into_iter()
-                    .map(|idx| idx.into_inner().into())
-                    .collect()
-            )
-        } else {
-            None
-        }
+        idxs.map(|idxs|
+            idxs
+                .into_iter()
+                .map(|idx| idx.into_inner().into())
+                .collect()
+        )
     }
 }
 
@@ -212,9 +203,10 @@ mod test {
         let memory_manager = memory_manager!();
         let mut activity_log = ActivityLogEntry::init(&memory_manager);
 
+        let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
         let activity = Activity::new(
             ActivityType::Updated,
-            Principal::anonymous().into(),
+            provider_id,
             UserId::from_str(
                 "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
             ).unwrap()
@@ -230,10 +222,11 @@ mod test {
     fn test_batch() {
         let memory_manager = memory_manager!();
         let mut activity_log = ActivityLogEntry::init(&memory_manager);
+        let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
 
         let activity = Activity::new(
             ActivityType::Updated,
-            Principal::anonymous().into(),
+            provider_id,
             UserId::from_str(
                 "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
             ).unwrap()
