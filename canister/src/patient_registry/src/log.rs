@@ -37,12 +37,7 @@ impl PatientLog {
         self.log_map_index
             .get_batch(user)
             .map(|indexes| self.activity_log.get_batch(&indexes))
-            .map(|activities|
-                activities
-                    .into_iter()
-                    .flatten()
-                    .collect()
-            )
+            .map(|activities| activities.into_iter().flatten().collect())
     }
 }
 
@@ -185,10 +180,12 @@ impl LogMapIndex {
     pub fn get_batch(&self, nik: &NIK) -> Option<Vec<u64>> {
         let idxs = self.0.get_set_associated_by_key(nik.to_stable_ref());
 
-        idxs.map(|idxs| idxs
-                    .into_iter()
-                    .map(|idx| idx.into_inner().into())
-                    .collect())
+        idxs.map(|idxs|
+            idxs
+                .into_iter()
+                .map(|idx| idx.into_inner().into())
+                .collect()
+        )
     }
 }
 
@@ -206,9 +203,10 @@ mod test {
         let memory_manager = memory_manager!();
         let mut activity_log = ActivityLogEntry::init(&memory_manager);
 
+        let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
         let activity = Activity::new(
             ActivityType::Updated,
-            Principal::anonymous().into(),
+            provider_id,
             UserId::from_str(
                 "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
             ).unwrap()
@@ -224,10 +222,11 @@ mod test {
     fn test_batch() {
         let memory_manager = memory_manager!();
         let mut activity_log = ActivityLogEntry::init(&memory_manager);
+        let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
 
         let activity = Activity::new(
             ActivityType::Updated,
-            Principal::anonymous().into(),
+            provider_id,
             UserId::from_str(
                 "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
             ).unwrap()
