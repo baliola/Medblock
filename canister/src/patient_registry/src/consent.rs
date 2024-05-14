@@ -405,11 +405,25 @@ impl InnerConsentMap {
 
 deref!(mut InnerConsentMap: ic_stable_structures::BTreeMap<Stable<ConsentCode, Candid>, Stable<Consent, Candid>, Memory>);
 
+pub struct SessionMap(
+    ic_stable_structures::BTreeMap<Stable<SessionId>, Stable<ConsentCode, Candid>, Memory>,
+);
+
+impl SessionMap {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let map = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new);
+
+        SessionMap(map)
+    }
+}
+
+deref!(mut SessionMap: ic_stable_structures::BTreeMap<Stable<SessionId>, Stable<ConsentCode,Candid>, Memory>);
+
 // TODO: move all maps to stable memory
 pub struct ConsentMap {
     provider_set: ProviderConsentSet,
     inner: InnerConsentMap,
-    sessions: std::collections::HashMap<SessionId, ConsentCode>,
+    sessions: SessionMap,
     // TODO: remove this after demo, move all of the structure into stable memory
     // and then move the consent related functions to provider registry either all of them or part of it
     rng: CanisterRandomSource,
@@ -447,7 +461,7 @@ impl ConsentMap {
     pub fn new_with_seed(seed: u64, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
             provider_set: ProviderConsentSet::init(memory_manager),
-            sessions: std::collections::HashMap::new(),
+            sessions: SessionMap::init(memory_manager),
             inner: InnerConsentMap::init(memory_manager),
             rng: CanisterRandomSource::new_with_seed(seed),
         }
@@ -465,7 +479,7 @@ impl ConsentMap {
     pub fn new(rng: CanisterRandomSource, memory_manager: &MemoryManager) -> Self {
         ConsentMap {
             provider_set: ProviderConsentSet::init(memory_manager),
-            sessions: std::collections::HashMap::new(),
+            sessions: SessionMap::init(memory_manager),
             inner: InnerConsentMap::init(memory_manager),
             rng,
         }
@@ -548,9 +562,9 @@ impl ConsentMap {
     }
 
     pub fn ensure_correct_session_owner(&self, session_id: &Id, session_user: &ProviderId) -> bool {
-        match self.sessions.get(session_id) {
+        match self.sessions.get(session_id.to_stable_ref()) {
             Some(consent) => {
-                match self.inner.get(consent.to_stable_ref()) {
+                match self.inner.get(consent.to_stable_ref::<Candid>()) {
                     Some(consent) => consent.session_user.as_ref().eq(&Some(session_user)),
                     None => false,
                 }
@@ -569,7 +583,7 @@ impl ConsentMap {
     }
 
     pub fn finish_session_unchecked(&mut self, session_id: &SessionId) {
-        let code = self.sessions.remove(session_id);
+        let code = self.sessions.remove(session_id.to_stable_ref());
 
         // remove the consent if the session is finished, no-op if the consent is already removed
         if let Some(ref code) = code {
@@ -610,8 +624,11 @@ impl ConsentMap {
 
         let nik = consent.nik.clone();
 
-        assert!(self.sessions.get(&session_id).is_none(), "session id already exists");
-        assert!(self.sessions.insert(session_id.clone(), code.to_owned()).is_none());
+        assert!(
+            self.sessions.get(session_id.to_stable_ref()).is_none(),
+            "session id already exists"
+        );
+        assert!(self.sessions.insert(session_id.clone().to_stable(), code.to_owned().to_stable()).is_none());
 
         self.inner.insert(code.to_stable(), consent);
 
@@ -627,14 +644,14 @@ impl ConsentMap {
         session_id: &SessionId,
         session_user: &ProviderId
     ) -> Option<Consent> {
-        let code = self.sessions.get(session_id);
+        let code = self.sessions.get(session_id.to_stable_ref());
 
         let Some(code) = code else {
             return None;
         };
 
         // return the consent if it exists
-        self.safe_get_consent_for(code, session_user)
+        self.safe_get_consent_for(code.as_inner(), session_user)
     }
 
     pub fn resolve_session_with_code(&self, code: &ConsentCode, patient: &NIK) -> Option<Consent> {

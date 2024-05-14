@@ -2,7 +2,7 @@ use canister_common::generate_memory_id;
 
 use crate::{
     config::CanisterConfig,
-    consent::{ InnerConsentMap, ProviderConsentSet },
+    consent::{ InnerConsentMap, ProviderConsentSet, SessionMap },
     log::{ ActivityEntryMemory, ActivityIndexMemory, LogMapIndex },
     registry::{ EmrBindingMap, HeaderStatusMap, InfoMap, OwnerMap },
 };
@@ -19,5 +19,6 @@ generate_memory_id!(
     ActivityEntryMemory,
     ActivityIndexMemory,
     LogMapIndex,
-    InnerConsentMap
+    InnerConsentMap,
+    SessionMap
 );
