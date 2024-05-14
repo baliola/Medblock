@@ -13,7 +13,6 @@ use canister_common::{
         ProviderId,
         UserId,
     },
-    log,
     metrics,
     mmgr::MemoryManager,
     stable::{ Memory, Stable, ToStable },

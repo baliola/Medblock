@@ -40,7 +40,7 @@ impl PatientLog {
             .map(|activities|
                 activities
                     .into_iter()
-                    .filter_map(|activity| activity)
+                    .flatten()
                     .collect()
             )
     }
@@ -164,9 +164,9 @@ impl AsRef<u64> for U64 {
 }
 from!(U64:u64);
 
-impl Into<u64> for U64 {
-    fn into(self) -> u64 {
-        self.0
+impl From<U64> for u64 {
+    fn from(val: U64) -> Self {
+        val.0
     }
 }
 
@@ -185,16 +185,10 @@ impl LogMapIndex {
     pub fn get_batch(&self, nik: &NIK) -> Option<Vec<u64>> {
         let idxs = self.0.get_set_associated_by_key(nik.to_stable_ref());
 
-        if let Some(idxs) = idxs {
-            Some(
-                idxs
+        idxs.map(|idxs| idxs
                     .into_iter()
                     .map(|idx| idx.into_inner().into())
-                    .collect()
-            )
-        } else {
-            None
-        }
+                    .collect())
     }
 }
 

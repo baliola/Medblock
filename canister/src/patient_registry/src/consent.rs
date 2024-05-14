@@ -1,9 +1,9 @@
 use core::str;
 use std::{ str::FromStr, time::Duration };
 
-use candid::{ CandidType, Principal };
+use candid::{ CandidType };
 use canister_common::{
-    common::{ Id, PrincipalBytes, ProviderId },
+    common::{ Id, ProviderId },
     deref,
     id_generator::IdGenerator,
     impl_max_size,
