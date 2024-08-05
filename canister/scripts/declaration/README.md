@@ -12,3 +12,4 @@ or if you're in mac then
 ```bash
 bash generate_declaration.sh <out-dir>
 ```
+
