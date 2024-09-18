@@ -1,42 +1,33 @@
-use std::{ borrow::Borrow, cell::RefCell, time::Duration };
+use std::{borrow::Borrow, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest,
-    GetProviderBatchRequest,
-    GetProviderBatchResponse,
-    IssueEmrResponse,
-    PingResult,
-    ProviderInfoRequest,
-    ProviderInfoResponse,
-    RegisternewProviderRequest,
-    RegisternewProviderResponse,
-    SuspendRequest,
-    UnSuspendRequest,
-    UpdateEmrRegistryRequest,
+    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, IssueEmrResponse,
+    PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest,
+    RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest,
     UpdatePatientRegistryRequest,
 };
-use candid::{ Decode, Encode };
+use candid::{Decode, Encode};
 use canister_common::{
-    common::{ freeze::FreezeThreshold, guard::verified_caller },
+    common::{freeze::FreezeThreshold, guard::verified_caller},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
     random::CanisterRandomSource,
     register_log,
-    stable::{ Candid, Memory, Stable },
-    statistics::{ self, traits::OpaqueMetrics },
+    stable::{Candid, Memory, Stable},
+    statistics::{self, traits::OpaqueMetrics},
 };
 
 use ic_stable_structures::Cell;
-use memory::{ FreezeThresholdMemory, UpgradeMemory };
+use memory::{FreezeThresholdMemory, UpgradeMemory};
 use registry::ProviderRegistry;
 
-mod declarations;
-mod registry;
-mod config;
-mod types;
-mod memory;
 pub mod api;
+mod config;
+mod declarations;
+mod memory;
+mod registry;
+mod types;
 
 /// TODO: benchmark this
 const CANISTER_CYCLE_THRESHOLD: u128 = 300_000;
@@ -70,7 +61,12 @@ pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
 ///
 /// Precondition: the id generator is already initialized.
 pub fn with_id_generator_mut<R>(f: impl FnOnce(&mut IdGenerator<CanisterRandomSource>) -> R) -> R {
-    ID_GENERATOR.with(|cell| f(cell.borrow_mut().as_mut().expect("id generator not initialized")))
+    ID_GENERATOR.with(|cell| {
+        f(cell
+            .borrow_mut()
+            .as_mut()
+            .expect("id generator not initialized"))
+    })
 }
 
 /// A helper method to mutate the state.
@@ -87,7 +83,9 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("http://bw4dl-smaaa-aaaaa-qaacq-cai.localhost:4943"), // to be replaced with your frontend origin(s) // TODO: make a config out of this
         String::from("http://localhost:3000"),
         String::from("https://demo-app.medblock.id"),
-        String::from("https://demo-web.medblock.id")
+        String::from("https://demo-web.medblock.id"),
+        String::from("http://54.255.210.149:3001/ "),
+        String::from("http://54.255.210.149:3000/ "),
     ]
 }
 
@@ -155,11 +153,17 @@ fn serialize_canister_metrics() {
     let write = writer.write(&encoded_len.to_le_bytes());
     match write {
         Ok(_) => {
-            log!("encoded canister metrics length written successfully : {} bytes", encoded_len);
+            log!(
+                "encoded canister metrics length written successfully : {} bytes",
+                encoded_len
+            );
         }
 
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics length {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics length {:?}",
+                e
+            );
         }
     }
 
@@ -169,7 +173,10 @@ fn serialize_canister_metrics() {
             log!("encoded canister metrics written");
         }
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics {:?}",
+                e
+            );
         }
     }
 }
@@ -181,7 +188,7 @@ fn start_collect_metrics_job() {
         canistergeek_ic_rust::update_information(
             canistergeek_ic_rust::api_type::UpdateInformationRequest {
                 metrics: Some(canistergeek_ic_rust::api_type::CollectMetricsRequestType::force),
-            }
+            },
         );
 
         log!("metrics updated");
@@ -199,10 +206,20 @@ fn deserialize_canister_metrics() {
 
     let mut state_buf = vec![0; u32::from_le_bytes(len_buf) as usize];
     let read_len = reader.read(&mut state_buf).unwrap();
-    log!("readed encoded canister metrics length: {:?} bytes", read_len);
+    log!(
+        "readed encoded canister metrics length: {:?} bytes",
+        read_len
+    );
 
-    let (monitor_stable_data, logger_stable_data) =
-        Decode!(&state_buf, (u8, std::collections::BTreeMap<u32, canistergeek_ic_rust::monitor::data_type::DayData>), (u8, canistergeek_ic_rust::logger::LogMessageStorage)).unwrap();
+    let (monitor_stable_data, logger_stable_data) = Decode!(
+        &state_buf,
+        (
+            u8,
+            std::collections::BTreeMap<u32, canistergeek_ic_rust::monitor::data_type::DayData>
+        ),
+        (u8, canistergeek_ic_rust::logger::LogMessageStorage)
+    )
+    .unwrap();
 
     canistergeek_ic_rust::monitor::post_upgrade_stable_data(monitor_stable_data);
     canistergeek_ic_rust::logger::post_upgrade_stable_data(logger_stable_data);
@@ -231,7 +248,7 @@ fn init_state() -> State {
         config: config::CanisterConfig::init(&memory_manager),
         freeze_threshold: FreezeThreshold::init::<FreezeThresholdMemory>(
             CANISTER_CYCLE_THRESHOLD,
-            &memory_manager
+            &memory_manager,
         ),
         memory_manager,
     }
@@ -278,9 +295,12 @@ fn add_authorized_metrics_collector(req: AuthorizedCallerRequest) {
     });
 }
 
-#[ic_cdk::query(guard = "only_authorized_metrics_collector", name = "getCanistergeekInformation")]
+#[ic_cdk::query(
+    guard = "only_authorized_metrics_collector",
+    name = "getCanistergeekInformation"
+)]
 pub async fn canister_geek_metrics(
-    request: canistergeek_ic_rust::api_type::GetInformationRequest
+    request: canistergeek_ic_rust::api_type::GetInformationRequest,
 ) -> canistergeek_ic_rust::api_type::GetInformationResponse<'static> {
     canistergeek_ic_rust::get_information(request)
 }
@@ -290,7 +310,7 @@ pub async fn canister_geek_metrics(
     name = "updateCanistergeekInformation"
 )]
 pub async fn update_canistergeek_information(
-    request: canistergeek_ic_rust::api_type::UpdateInformationRequest
+    request: canistergeek_ic_rust::api_type::UpdateInformationRequest,
 ) {
     canistergeek_ic_rust::update_information(request);
 }
@@ -304,7 +324,8 @@ fn metrics() -> String {
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
             <config::CanisterConfig as OpaqueMetrics>::measure(&config),
-        ].join("\n")
+        ]
+        .join("\n")
     })
 }
 
@@ -315,7 +336,8 @@ fn emr_list_provider(req: types::EmrListProviderRequest) -> types::EmrListProvid
 
         let limit = state.config.get().max_item_per_response().min(req.limit);
 
-        state.providers
+        state
+            .providers
             .get_issued(&provider, req.page, limit as u64)
             .unwrap()
             .into()
@@ -335,12 +357,13 @@ async fn issue_emr(req: api::IssueEmrRequest) -> api::IssueEmrResponse {
 
     let response = ProviderRegistry::do_call_create_emr(args, emr_registry, patient_registry).await;
 
-    with_state_mut(|s|
+    with_state_mut(|s| {
         s.providers.issue_emr(
             response.header.emr_id.clone().try_into().unwrap(),
-            &provider_principal
+            &provider_principal,
         )
-    ).unwrap();
+    })
+    .unwrap();
 
     IssueEmrResponse::from(response)
 }
@@ -363,9 +386,11 @@ async fn ping() -> PingResult {
 async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewProviderResponse {
     let id = with_id_generator_mut(|g| g.generate_id());
 
-    with_state_mut(|s|
-        s.providers.register_new_provider(req.provider_principal, req.display_name, req.address, id)
-    ).unwrap();
+    with_state_mut(|s| {
+        s.providers
+            .register_new_provider(req.provider_principal, req.display_name, req.address, id)
+    })
+    .unwrap();
 
     RegisternewProviderResponse {}
 }
@@ -403,8 +428,10 @@ fn update_patient_registry_principal(req: UpdatePatientRegistryRequest) {
 
         match s.config.set(config) {
             Ok(_) => (),
-            Err(e) =>
-                ic_cdk::trap(&format!("failed to update patient registry principal: {:?}", e)),
+            Err(e) => ic_cdk::trap(&format!(
+                "failed to update patient registry principal: {:?}",
+                e
+            )),
         }
     })
 }
@@ -423,9 +450,13 @@ fn unsuspend_provider(req: UnSuspendRequest) {
 fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoResponse {
     req.provider
         .into_iter()
-        .map(|principal|
-            with_state(|s| s.providers.provider_info_with_principal(&principal).unwrap())
-        )
+        .map(|principal| {
+            with_state(|s| {
+                s.providers
+                    .provider_info_with_principal(&principal)
+                    .unwrap()
+            })
+        })
         .collect::<Vec<_>>()
         .into()
 }
@@ -434,7 +465,7 @@ fn get_provider_info_with_principal(req: ProviderInfoRequest) -> ProviderInfoRes
 fn get_provider_batch(req: GetProviderBatchRequest) -> GetProviderBatchResponse {
     req.ids
         .into_iter()
-        .map(|id| { with_state(|s| s.providers.provider_info_with_internal_id(&id).unwrap()) })
+        .map(|id| with_state(|s| s.providers.provider_info_with_internal_id(&id).unwrap()))
         .collect::<Vec<_>>()
         .into()
 }

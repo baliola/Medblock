@@ -1,53 +1,29 @@
-use std::{ borrow::BorrowMut, cell::RefCell, time::Duration };
+use std::{borrow::BorrowMut, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest,
-    ClaimConsentRequest,
-    ClaimConsentResponse,
-    ConsentListResponse,
-    CreateConsentResponse,
-    EmrHeaderWithStatus,
-    EmrListConsentRequest,
-    EmrListConsentResponse,
-    EmrListPatientRequest,
-    EmrListPatientResponse,
-    FinishSessionRequest,
-    GetPatientInfoBySessionRequest,
-    GetPatientInfoResponse,
-    IsConsentClaimedRequest,
-    IsConsentClaimedResponse,
-    IssueRequest,
-    LogResponse,
-    PatientListResponse,
-    PatientWithNikAndSession,
-    PingResult,
-    ReadEmrByIdRequest,
-    ReadEmrSessionRequest,
-    RegisterPatientRequest,
-    RevokeConsentRequest,
-    SearchPatientRequest,
-    SearchPatientResponse,
-    UpdateEmrRegistryRequest,
-    UpdateInitialPatientInfoRequest,
-    UpdateRequest,
+    AuthorizedCallerRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse,
+    CreateConsentResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse,
+    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
+    GetPatientInfoBySessionRequest, GetPatientInfoResponse, IsConsentClaimedRequest,
+    IsConsentClaimedResponse, IssueRequest, LogResponse, PatientListResponse,
+    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
+    RegisterPatientRequest, RevokeConsentRequest, SearchPatientRequest, SearchPatientResponse,
+    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateRequest,
 };
-use candid::{ Decode, Encode };
+use candid::{Decode, Encode};
 use canister_common::{
-    common::{ guard::verified_caller, ProviderId },
+    common::{guard::verified_caller, ProviderId},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
     opaque_metrics,
     random::CanisterRandomSource,
     register_log,
-    stable::{ Candid, Memory, Stable, ToStable },
-    statistics::{ self, traits::OpaqueMetrics },
+    stable::{Candid, Memory, Stable, ToStable},
+    statistics::{self, traits::OpaqueMetrics},
 };
 use config::CanisterConfig;
-use declarations::{
-    emr_registry::ReadEmrByIdResponse,
-    provider_registry::{ GetProviderBatchRequest },
-};
+use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest};
 
 use ic_stable_structures::Cell;
 use log::PatientLog;
@@ -56,14 +32,14 @@ use registry::PatientRegistry;
 
 use crate::consent::ConsentsApi;
 
-mod registry;
-mod memory;
-mod declarations;
 mod api;
 mod config;
-mod encryption;
 mod consent;
+mod declarations;
+mod encryption;
 mod log;
+mod memory;
+mod registry;
 
 pub struct State {
     pub registry: registry::PatientRegistry,
@@ -95,7 +71,12 @@ pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
 ///
 /// Precondition: the id generator is already initialized.
 pub fn with_id_generator_mut<R>(f: impl FnOnce(&mut IdGenerator<CanisterRandomSource>) -> R) -> R {
-    ID_GENERATOR.with(|cell| f(cell.borrow_mut().as_mut().expect("id generator not initialized")))
+    ID_GENERATOR.with(|cell| {
+        f(cell
+            .borrow_mut()
+            .as_mut()
+            .expect("id generator not initialized"))
+    })
 }
 
 /// A helper method to mutate the state.
@@ -178,11 +159,17 @@ fn serialize_canister_metrics() {
     let write = writer.write(&encoded_len.to_le_bytes());
     match write {
         Ok(_) => {
-            log!("encoded canister metrics length written successfully : {} bytes", encoded_len);
+            log!(
+                "encoded canister metrics length written successfully : {} bytes",
+                encoded_len
+            );
         }
 
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics length {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics length {:?}",
+                e
+            );
         }
     }
 
@@ -192,7 +179,10 @@ fn serialize_canister_metrics() {
             log!("encoded canister metrics written");
         }
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics {:?}",
+                e
+            );
         }
     }
 }
@@ -204,7 +194,7 @@ fn start_collect_metrics_job() {
         canistergeek_ic_rust::update_information(
             canistergeek_ic_rust::api_type::UpdateInformationRequest {
                 metrics: Some(canistergeek_ic_rust::api_type::CollectMetricsRequestType::force),
-            }
+            },
         );
 
         log!("metrics updated");
@@ -222,10 +212,20 @@ fn deserialize_canister_metrics() {
 
     let mut state_buf = vec![0; u32::from_le_bytes(len_buf) as usize];
     let read_len = reader.read(&mut state_buf).unwrap();
-    log!("readed encoded canister metrics length: {:?} bytes", read_len);
+    log!(
+        "readed encoded canister metrics length: {:?} bytes",
+        read_len
+    );
 
-    let (monitor_stable_data, logger_stable_data) =
-        Decode!(&state_buf, (u8, std::collections::BTreeMap<u32, canistergeek_ic_rust::monitor::data_type::DayData>), (u8, canistergeek_ic_rust::logger::LogMessageStorage)).unwrap();
+    let (monitor_stable_data, logger_stable_data) = Decode!(
+        &state_buf,
+        (
+            u8,
+            std::collections::BTreeMap<u32, canistergeek_ic_rust::monitor::data_type::DayData>
+        ),
+        (u8, canistergeek_ic_rust::logger::LogMessageStorage)
+    )
+    .unwrap();
 
     canistergeek_ic_rust::monitor::post_upgrade_stable_data(monitor_stable_data);
     canistergeek_ic_rust::logger::post_upgrade_stable_data(logger_stable_data);
@@ -263,6 +263,8 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("http://localhost:3000"),
         String::from("https://demo-app.medblock.id"),
         String::from("https://demo-web.medblock.id"),
+        String::from("https://dev-web.medblock.id"),
+        String::from("https:/-app.medblock.id"),
     ]
 }
 
@@ -313,9 +315,12 @@ async fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse 
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    let emrs = with_state(move |s|
-        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
-    ).unwrap();
+    let emrs = with_state(move |s| {
+        s.registry
+            .emr_binding_map
+            .emr_list(&nik, req.page, req.limit)
+    })
+    .unwrap();
 
     let provider_registry = with_state(|s| s.config.get().provider_registry());
 
@@ -325,26 +330,28 @@ async fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse 
         .collect::<Vec<_>>();
 
     let providers = provider_registry
-        .get_provider_batch(GetProviderBatchRequest { ids: providers }).await
+        .get_provider_batch(GetProviderBatchRequest { ids: providers })
+        .await
         .expect("failed to get providers info")
-        .0.providers.into_iter()
-        .map(|provider| {
-            match provider {
-                declarations::provider_registry::Provider::V1(provider) =>
-                    provider.display_name.try_into().unwrap(),
+        .0
+        .providers
+        .into_iter()
+        .map(|provider| match provider {
+            declarations::provider_registry::Provider::V1(provider) => {
+                provider.display_name.try_into().unwrap()
             }
         })
         .collect::<Vec<_>>();
 
     emrs.into_iter()
         .zip(providers.into_iter())
-
         .map(|(header, providers)| {
-            let status = with_state(|s|
-                s.registry.header_status_map
+            let status = with_state(|s| {
+                s.registry
+                    .header_status_map
                     .get(&header)
                     .expect("issued emr must have valid status")
-            );
+            });
             EmrHeaderWithStatus::new(header, status, providers)
         })
         .collect::<Vec<_>>()
@@ -358,13 +365,13 @@ fn notify_issued(req: IssueRequest) {
 
 #[ic_cdk::update(guard = "only_provider_registry")]
 fn notify_updated(req: UpdateRequest) {
-    with_state_mut(|s|
+    with_state_mut(|s| {
         s.patient_log.record(
             log::ActivityType::Updated,
             req.header.provider_id.clone(),
-            req.header.user_id.clone()
+            req.header.user_id.clone(),
         )
-    );
+    });
     with_state_mut(|s| s.registry.header_status_map.update(req.header)).unwrap();
 }
 
@@ -384,8 +391,9 @@ async fn patient_list() -> PatientListResponse {
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider: ProviderId = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
     if !ConsentsApi::is_session_user(provider.to_stable_ref()) {
@@ -399,9 +407,11 @@ async fn patient_list() -> PatientListResponse {
         .map(|c| {
             let nik = c.nik;
             let session_id = c.session_id.expect("claimed session must have session id");
-            let patient = with_state(|s|
-                s.registry.get_patient_info(nik.clone()).expect("patient not found")
-            );
+            let patient = with_state(|s| {
+                s.registry
+                    .get_patient_info(nik.clone())
+                    .expect("patient not found")
+            });
 
             PatientWithNikAndSession::new(patient, nik, session_id)
         })
@@ -416,8 +426,9 @@ async fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider: ProviderId = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
     if !ConsentsApi::is_session_user(provider.to_stable_ref()) {
         ic_cdk::trap("only session user can call this method");
@@ -431,9 +442,11 @@ async fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
         .map(|c| {
             let nik = c.nik;
             let session_id = c.session_id.expect("claimed session must have session id");
-            let patient = with_state(|s|
-                s.registry.get_patient_info(nik.clone()).expect("patient not found")
-            );
+            let patient = with_state(|s| {
+                s.registry
+                    .get_patient_info(nik.clone())
+                    .expect("patient not found")
+            });
 
             PatientWithNikAndSession::new(patient, nik, session_id)
         })
@@ -475,13 +488,17 @@ fn metrics() -> String {
             OpaqueMetrics::measure(&**s.config.get()),
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
-        ].join("\n")
+        ]
+        .join("\n")
     })
 }
 
-#[ic_cdk::query(guard = "only_authorized_metrics_collector", name = "getCanistergeekInformation")]
+#[ic_cdk::query(
+    guard = "only_authorized_metrics_collector",
+    name = "getCanistergeekInformation"
+)]
 pub async fn canister_geek_metrics(
-    request: canistergeek_ic_rust::api_type::GetInformationRequest
+    request: canistergeek_ic_rust::api_type::GetInformationRequest,
 ) -> canistergeek_ic_rust::api_type::GetInformationResponse<'static> {
     canistergeek_ic_rust::get_information(request)
 }
@@ -491,7 +508,7 @@ pub async fn canister_geek_metrics(
     name = "updateCanistergeekInformation"
 )]
 pub async fn update_canistergeek_information(
-    request: canistergeek_ic_rust::api_type::UpdateInformationRequest
+    request: canistergeek_ic_rust::api_type::UpdateInformationRequest,
 ) {
     canistergeek_ic_rust::update_information(request);
 }
@@ -509,24 +526,22 @@ async fn create_consent() -> CreateConsentResponse {
 
 #[ic_cdk::query(composite = true)]
 async fn read_emr_with_session(
-    req: ReadEmrSessionRequest
+    req: ReadEmrSessionRequest,
 ) -> crate::declarations::emr_registry::ReadEmrByIdResponse {
     let caller = verified_caller().unwrap();
     let provider_registry = with_state(|s| s.config.get().provider_registry());
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
     let registry = with_state(|s| s.config.get().emr_registry());
-    ConsentsApi::read_emr_with_session(
-        &req.session_id,
-        req.args,
-        registry,
-        &provider
-    ).await.unwrap()
+    ConsentsApi::read_emr_with_session(&req.session_id, req.args, registry, &provider)
+        .await
+        .unwrap()
 }
 
 #[ic_cdk::query(composite = true)]
@@ -536,19 +551,22 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
-    let consent = ConsentsApi::resolve_session(&req.session_id, &provider).expect(
-        "invalid session"
-    );
+    let consent =
+        ConsentsApi::resolve_session(&req.session_id, &provider).expect("invalid session");
     let nik = consent.nik;
     let info = with_state(|s| s.registry.info_map.get(nik.clone())).unwrap();
 
-    let emrs = with_state(|s|
-        s.registry.emr_binding_map.emr_list(&nik, req.page, req.limit)
-    ).unwrap();
+    let emrs = with_state(|s| {
+        s.registry
+            .emr_binding_map
+            .emr_list(&nik, req.page, req.limit)
+    })
+    .unwrap();
 
     let provider_registry = with_state(|s| s.config.get().provider_registry());
 
@@ -558,13 +576,15 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
         .collect::<Vec<_>>();
 
     let providers = provider_registry
-        .get_provider_batch(GetProviderBatchRequest { ids: providers }).await
+        .get_provider_batch(GetProviderBatchRequest { ids: providers })
+        .await
         .expect("failed to get providers info")
-        .0.providers.into_iter()
-        .map(|provider| {
-            match provider {
-                declarations::provider_registry::Provider::V1(provider) =>
-                    provider.display_name.try_into().unwrap(),
+        .0
+        .providers
+        .into_iter()
+        .map(|provider| match provider {
+            declarations::provider_registry::Provider::V1(provider) => {
+                provider.display_name.try_into().unwrap()
             }
         })
         .collect::<Vec<_>>();
@@ -573,11 +593,12 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
         .into_iter()
         .zip(providers.into_iter())
         .map(move |(header, providers)| {
-            let status = with_state(|s|
-                s.registry.header_status_map
+            let status = with_state(|s| {
+                s.registry
+                    .header_status_map
                     .get(&header)
                     .expect("issued emr must have valid status")
-            );
+            });
 
             EmrHeaderWithStatus::new(header, status, providers)
         })
@@ -590,10 +611,12 @@ async fn emr_list_with_session(req: EmrListConsentRequest) -> EmrListConsentResp
 #[ic_cdk::update]
 /// Derive the encryption key with the session id securely transported by encrypting the decryption key, used to decrypt emr
 async fn derive_encryption_key_with_session(
-    req: DeriveSecretKeyRequest
+    req: DeriveSecretKeyRequest,
 ) -> DeriveSecretKeyResponse {
     let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
-    vetkd::EncryptionApi::encrypted_emr_decryption_key(req.transport_key, &consent.nik).await.into()
+    vetkd::EncryptionApi::encrypted_emr_decryption_key(req.transport_key, &consent.nik)
+        .await
+        .into()
 }
 
 #[cfg(feature = "vetkd")]
@@ -606,10 +629,12 @@ async fn derive_encryption_key_for_self() {
 #[ic_cdk::update]
 /// Derive the encryption verification key with the session id, used to verify the encrypted emr decryption key
 async fn derive_encryption_verification_key_with_session(
-    req: DeriveVerificationKeyRequest
+    req: DeriveVerificationKeyRequest,
 ) -> DeriveVerificationKeyResponse {
     let consent = ConsentsApi::resolve_session(&req.session_id).expect("session not found");
-    vetkd::EncryptionApi::verification_key_for(&consent.nik).await.into()
+    vetkd::EncryptionApi::verification_key_for(&consent.nik)
+        .await
+        .into()
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
@@ -649,20 +674,20 @@ fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
 
 #[ic_cdk::query(composite = true)]
 async fn get_patient_info_with_consent(
-    req: GetPatientInfoBySessionRequest
+    req: GetPatientInfoBySessionRequest,
 ) -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
     let provider_registry = with_state(|s| s.config.get().provider_registry());
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
-    let consent = ConsentsApi::resolve_session(&req.session_id, &provider).expect(
-        "invalid session"
-    );
+    let consent =
+        ConsentsApi::resolve_session(&req.session_id, &provider).expect("invalid session");
     let patient = with_state(|s| s.registry.get_patient_info(consent.nik.clone())).unwrap();
     GetPatientInfoResponse::new(patient, consent.nik)
 }
@@ -670,9 +695,8 @@ async fn get_patient_info_with_consent(
 #[ic_cdk::query(guard = "only_patient")]
 fn get_patient_info() -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
-    let (patient, nik) = with_state(|s|
-        s.registry.get_patient_info_with_principal(caller)
-    ).unwrap();
+    let (patient, nik) =
+        with_state(|s| s.registry.get_patient_info_with_principal(caller)).unwrap();
 
     GetPatientInfoResponse::new(patient, nik)
 }
@@ -687,13 +711,13 @@ fn revoke_consent(req: RevokeConsentRequest) {
             continue;
         }
 
-        with_state_mut(|s|
+        with_state_mut(|s| {
             s.patient_log.record(
                 log::ActivityType::Revoked,
                 user_consent.session_user.unwrap(),
-                user_consent.nik
+                user_consent.nik,
             )
-        );
+        });
     }
 }
 
@@ -702,11 +726,7 @@ fn get_logs() -> LogResponse {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
     let logs = match with_state(|s| s.patient_log.get_logs(&nik)) {
-        Some(logs) =>
-            logs
-                .into_iter()
-                .map(|log| log.into_inner())
-                .collect(),
+        Some(logs) => logs.into_iter().map(|log| log.into_inner()).collect(),
         None => vec![],
     };
 
@@ -720,8 +740,9 @@ async fn finish_session(req: FinishSessionRequest) {
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
     ConsentsApi::finish_sesion(&req.session_id, &provider);
@@ -735,15 +756,18 @@ async fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     let args = PatientRegistry::construct_get_provider_batch_args(vec![caller]);
     let provider = PatientRegistry::do_call_get_provider_batch(args, provider_registry).await;
     let provider: ProviderId = match provider.providers.first().unwrap() {
-        declarations::provider_registry::Provider::V1(provider) =>
-            provider.internal_id.clone().try_into().unwrap(),
+        declarations::provider_registry::Provider::V1(provider) => {
+            provider.internal_id.clone().try_into().unwrap()
+        }
     };
 
-    let (session_id, nik) = ConsentsApi::claim_consent(&req.code, provider.clone()).expect(
-        "consent already claimed or does not exists"
-    );
+    let (session_id, nik) = ConsentsApi::claim_consent(&req.code, provider.clone())
+        .expect("consent already claimed or does not exists");
 
-    with_state_mut(|s| s.patient_log.record(log::ActivityType::Accessed, provider, nik.clone()));
+    with_state_mut(|s| {
+        s.patient_log
+            .record(log::ActivityType::Accessed, provider, nik.clone())
+    });
 
     let patient = with_state(|s| s.registry.get_patient_info(nik).unwrap())
         .name()
