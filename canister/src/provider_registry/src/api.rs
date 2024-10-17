@@ -155,3 +155,13 @@ pub struct GetProviderBatchResponse {
 from!(GetProviderBatchResponse: Vec<Provider> as value {
     providers:value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderListResponse {
+    pub providers: Vec<Provider>,
+}
+
+from!(GetProviderListResponse: Vec<Provider> as value {
+    providers:value
+});
+

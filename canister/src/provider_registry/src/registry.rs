@@ -48,6 +48,10 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    pub fn get_all_providers(&self) -> ProviderRegistryResult<Vec<Provider>> {
+        Ok(self.providers.get_all_providers().into_iter().map(|p| p.into_inner()).collect())
+    }
+
     pub fn provider_info_with_principal(
         &self,
         principal: &Principal
@@ -664,6 +668,10 @@ impl Providers {
 
     pub fn get_provider(&self, provider: InternalProviderId) -> Option<Stable<Provider, Candid>> {
         self.map.get(&provider.to_stable())
+    }
+
+    pub fn get_all_providers(&self) -> Vec<Stable<Provider, Candid>> {
+        self.map.iter().map(|(_, v)| v.clone()).collect()
     }
 }
 

@@ -170,11 +170,13 @@ type UpdateInformationRequest = record {
 };
 type UpdateInitialPatientInfoRequest = record { info : V1 };
 type V1 = record {
+  kyc_date : text;
   name : text;
   martial_status : text;
   place_of_birth : text;
   address : text;
   gender : text;
+  kyc_status : text;
   date_of_birth : text;
 };
 service : () -> {

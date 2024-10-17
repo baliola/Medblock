@@ -155,6 +155,7 @@ service : () -> {
   get_provider_info_with_principal : (ProviderInfoRequest) -> (
       ProviderInfoResponse,
     ) query;
+  get_provider_list : () -> (ProviderInfoResponse) query;
   get_trusted_origins : () -> (vec text);
   issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
   metrics : () -> (text) query;
