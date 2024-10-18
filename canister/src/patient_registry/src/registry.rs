@@ -555,8 +555,6 @@ pub struct V1 {
     pub address: AsciiRecordsKey<64>,
     pub martial_status: AsciiRecordsKey<10>,
     pub gender: AsciiRecordsKey<10>,
-    pub kyc_status: AsciiRecordsKey<10>, // DENIED, PENDING, APPROVED
-    pub kyc_date: AsciiRecordsKey<32>,
 }
 
 // 270 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
@@ -582,8 +580,6 @@ mod v1_test {
             address: AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap(),
             martial_status: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
             gender: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
-            kyc_status: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
-            kyc_date: AsciiRecordsKey::<32>::new("a".repeat(10)).unwrap(),  
         };
 
         let encoded = Encode!(&patient).unwrap();
