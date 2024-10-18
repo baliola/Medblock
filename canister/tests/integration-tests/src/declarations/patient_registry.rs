@@ -228,11 +228,13 @@ pub struct LogResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct V1 {
+    pub kyc_date: String,
     pub name: String,
     pub martial_status: String,
     pub place_of_birth: String,
     pub address: String,
     pub gender: String,
+    pub kyc_status: String,
     pub date_of_birth: String,
 }
 #[derive(CandidType, Deserialize)]

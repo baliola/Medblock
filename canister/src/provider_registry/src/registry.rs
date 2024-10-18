@@ -729,6 +729,46 @@ mod provider_test {
 
         println!("{:?}", <Providers as OpaqueMetrics>::measure(&providers));
     }
+
+    #[test]
+    fn test_get_all_providers() {
+        let memory_manager = MemoryManager::init();
+        let mut providers = Providers::init(&memory_manager);
+
+        let mut id_bytes = [0; 10];
+        id_bytes.fill(0);
+
+        let internal_id = Id::new(&id_bytes);
+        let name = "a".repeat(64);
+        let provider = V1::new(
+            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
+            AsciiRecordsKey::<64>::new(name).unwrap(),
+            internal_id.clone()
+        ).to_provider();
+
+        providers.add_provider(provider.clone()).unwrap();
+        
+        let all_providers = providers.get_all_providers();
+        assert_eq!(all_providers.len(), 1);
+        assert_eq!(all_providers[0], provider.to_stable());
+
+        let mut id_bytes = [0; 10];
+        id_bytes.fill(1);
+
+        let internal_id = Id::new(&id_bytes);
+        let name = "b".repeat(64);
+        let provider = V1::new(
+            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
+            AsciiRecordsKey::<64>::new(name).unwrap(),
+            internal_id.clone()
+        ).to_provider();
+
+        providers.add_provider(provider.clone()).unwrap();
+
+        let all_providers = providers.get_all_providers();
+        assert_eq!(all_providers.len(), 2);
+        assert_eq!(all_providers[1], provider.to_stable());
+    }
 }
 
 // TODO : make a documentation for updating provider version.
