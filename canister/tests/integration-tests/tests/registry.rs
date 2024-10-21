@@ -493,4 +493,48 @@ mod test {
             ActivityType::Revoked => (),
         }
     }
+
+    #[test]
+    fn test_get_provider_list() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+
+        // Register a few more providers
+        let provider2 = common::Provider(common::random_identity());
+        let provider3 = common::Provider(common::random_identity());
+
+        let register_provider = |provider: &common::Provider| {
+            let arg = RegisternewProviderRequest {
+                provider_principal: provider.0.clone(),
+                display_name: format!("Provider {}", provider.0),
+                address: format!("Address {}", provider.0),
+            };
+
+            registry.provider
+                .register_new_provider(&registry.ic, registry.controller.clone(), Call::Update, arg)
+                .unwrap();
+        };
+
+        register_provider(&provider2);
+        register_provider(&provider3);
+
+        // Get the provider list
+        let result = registry.provider
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query)
+            .unwrap();
+
+        // Check that we have at least 3 providers (the original one plus the two we just added)
+        assert!(result.providers.len() >= 3);
+
+        // Check that our newly added providers are in the list
+        let provider_ids: Vec<String> = result.providers
+            .iter()
+            .map(|p| match p {
+                integration_tests::declarations::provider_registry::Provider::V1(p) => p.internal_id.clone()
+            })
+            .collect();
+
+        assert!(provider_ids.contains(&provider.0.to_string()));
+        assert!(provider_ids.contains(&provider2.0.to_string()));
+        assert!(provider_ids.contains(&provider3.0.to_string()));
+    }
 }

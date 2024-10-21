@@ -285,6 +285,9 @@ impl ProviderRegistry {
     ) -> Result<(ProviderInfoResponse,)> {
         ic_cdk::call(self.0, "get_provider_info_with_principal", (arg0,)).await
     }
+    pub async fn get_provider_list(&self) -> Result<(ProviderInfoResponse,)> {
+        ic_cdk::call(self.0, "get_provider_list", ()).await
+    }
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
     }
@@ -474,6 +477,26 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_provider_info_with_principal",
+                payload,
+            )
+        }
+        pub fn get_provider_list(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+        ) -> std::result::Result<ProviderInfoResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = ();
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_provider_list",
                 payload,
             )
         }
