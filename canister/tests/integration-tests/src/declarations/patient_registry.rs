@@ -234,6 +234,8 @@ pub struct V1 {
     pub address: String,
     pub gender: String,
     pub date_of_birth: String,
+    pub kyc_status: String,
+    pub kyc_date: String,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Patient {
