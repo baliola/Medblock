@@ -356,6 +356,8 @@ impl Scenario {
                 address,
                 gender: "men".to_ascii_lowercase(),
                 date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
             },
         };
 
