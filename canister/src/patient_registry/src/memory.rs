@@ -4,7 +4,7 @@ use crate::{
     config::CanisterConfig,
     consent::{ InnerConsentMap, ProviderConsentSet, SessionMap },
     log::{ ActivityEntryMemory, ActivityIndexMemory, LogMapIndex },
-    registry::{ EmrBindingMap, HeaderStatusMap, InfoMap, OwnerMap },
+    registry::{ EmrBindingMap, HeaderStatusMap, InfoMap, OwnerMap, AdminMap },
 };
 
 pub struct UpgradeMemory;
@@ -12,6 +12,7 @@ generate_memory_id!(
     UpgradeMemory,
     EmrBindingMap,
     OwnerMap,
+    AdminMap,
     CanisterConfig,
     InfoMap,
     HeaderStatusMap,

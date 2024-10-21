@@ -10,6 +10,7 @@ use integration_tests::declarations::{
     },
 };
 
+use integration_tests::declarations::patient_registry::KycStatus;
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
@@ -98,7 +99,7 @@ mod test {
                 address,
                 gender: "men".to_ascii_lowercase(),
                 date_of_birth: "1990-01-01".to_string(),
-                kyc_status: "PENDING".to_string(),
+                kyc_status: KycStatus::Pending,
                 kyc_date: "2024-01-01".to_string(),
             },
         };
@@ -538,5 +539,140 @@ mod test {
         assert!(provider_ids.contains(&provider.0.to_string()));
         assert!(provider_ids.contains(&provider2.0.to_string()));
         assert!(provider_ids.contains(&provider3.0.to_string()));
+    }
+
+    #[test]
+    fn test_update_kyc_status() {
+        let registries = common::prepare();
+        
+        // register patient first, todo!: probably can utilize some scenario bs for this as this is literally a copy of test_register_patient
+        let display = String::from("John Doe").to_ascii_lowercase();
+        let address = String::from("1234 Elm St").to_ascii_lowercase();
+
+        let nik = canister_common::common::H256
+            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
+            .unwrap();
+
+        let register_arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        let patient_principal = common::random_identity();
+
+        registries.patient
+            .register_patient(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Update,
+                register_arg
+            )
+            .unwrap();
+
+        // update initial patient info
+        let initial_info = patient_registry::UpdateInitialPatientInfoRequest {
+            info: patient_registry::V1 {
+                name: display.clone(),
+                martial_status: "single".to_string(),
+                place_of_birth: "New York".to_ascii_lowercase(),
+                address,
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries.patient
+            .update_initial_patient_info(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Update,
+                initial_info
+            )
+            .unwrap();
+
+        // update kyc status
+        let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
+            principal: patient_principal.clone(),
+            kyc_status: patient_registry::KycStatus::Approved,
+        };
+
+        let response = registries.patient
+            .update_kyc_status(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Update,
+                update_kyc_arg
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = response.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Approved => {},
+                _ => panic!("Expected KYC status to be Approved"),
+            }
+        } else {
+            panic!("Unexpected patient version");
+        }
+
+        // verify kyc status
+        let patient_info = registries.patient
+            .get_patient_info(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Query
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = patient_info.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Approved => {},
+                _ => panic!("Expected KYC status to be Approved"),
+            }
+        } else {
+            panic!("Unexpected patient version");
+        }
+
+        // update kyc status to denied
+        let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
+            principal: patient_principal.clone(),
+            kyc_status: patient_registry::KycStatus::Denied,
+        };
+
+        let response = registries.patient
+            .update_kyc_status(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Update,
+                update_kyc_arg
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = response.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Denied => {},
+                _ => panic!("Expected KYC status to be Denied"),
+            }
+        } else {
+            panic!("Unexpected patient version");
+        }
+
+        // verify final kyc status
+        let patient_info = registries.patient
+            .get_patient_info(
+                &registries.ic,
+                patient_principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Query
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = patient_info.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Denied => {},
+                _ => panic!("Expected KYC status to be Denied"),
+            }
+        } else {
+            panic!("Unexpected patient version");
+        }
     }
 }

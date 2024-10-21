@@ -120,6 +120,7 @@ type HourlyMetricsData = record {
 };
 type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
 type IssueRequest = record { header : EmrHeader };
+type KycStatus = variant { Approved; Denied; Pending };
 type LogMessageData = record { timeNanos : nat64; message : text };
 type LogResponse = record { logs : vec Activity };
 type MetricsGranularity = variant { hourly; daily };
@@ -169,12 +170,19 @@ type UpdateInformationRequest = record {
   metrics : opt CollectMetricsRequestType;
 };
 type UpdateInitialPatientInfoRequest = record { info : V1 };
+type UpdateKycStatusRequest = record {
+  "principal" : principal;
+  kyc_status : KycStatus;
+};
+type UpdateKycStatusResponse = record { patient : Patient };
 type V1 = record {
+  kyc_date : text;
   name : text;
   martial_status : text;
   place_of_birth : text;
   address : text;
   gender : text;
+  kyc_status : KycStatus;
   date_of_birth : text;
 };
 service : () -> {
@@ -221,5 +229,6 @@ service : () -> {
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
   update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
+  update_kyc_status : (UpdateKycStatusRequest) -> (UpdateKycStatusResponse);
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
 }
