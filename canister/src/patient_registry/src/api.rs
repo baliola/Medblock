@@ -283,7 +283,7 @@ from!(LogResponse: Vec<Activity> as value {
 
 #[derive(CandidType, Deserialize)]
 pub struct UpdateKycStatusRequest {
-    pub principal: Principal,
+    pub nik: H256,
     pub kyc_status: KycStatus,
 }
 

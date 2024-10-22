@@ -794,12 +794,11 @@ fn consent_list() -> ConsentListResponse {
 
 #[ic_cdk::update(guard = "only_admin")]
 fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
-    let nik = with_state(|s| s.registry.owner_map.get_nik(&req.principal)).unwrap();
-    let nik = nik.into_inner();
-    let patient = with_state(|s| s.registry.get_patient_info(nik)).unwrap();
+    let patient = with_state(|s| s.registry.get_patient_info(req.nik)).unwrap();
     let mut updated_patient = patient.clone();
     updated_patient.update_kyc_status(req.kyc_status);
-    with_state_mut(|s| s.registry.initial_patient_info(req.principal, updated_patient.clone())).unwrap();
+    let principal = with_state(|s| s.registry.owner_map.get_principal(req.nik)).unwrap();
+    with_state_mut(|s| s.registry.initial_patient_info(req.nik, updated_patient.clone())).unwrap();
     UpdateKycStatusResponse::new(updated_patient)
 }
 
