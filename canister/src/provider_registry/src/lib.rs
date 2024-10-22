@@ -387,7 +387,12 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
     with_state_mut(|s| {
         s.providers
-            .register_new_provider(req.provider_principal, req.display_name, req.address, id)
+            .register_new_provider(
+                req.provider_principal,
+                req.display_name,
+                req.address,
+                id
+            )
     })
     .unwrap();
 
@@ -469,8 +474,7 @@ fn get_provider_batch(req: GetProviderBatchRequest) -> GetProviderBatchResponse 
         .into()
 }
 
-// #[ic_cdk::query(guard = "only_canister_owner")]
-#[ic_cdk::query]
+#[ic_cdk::query(guard = "only_canister_owner")]
 fn get_provider_list() -> GetProviderListResponse {
     let providers = with_state(|s| s.providers.get_all_providers().unwrap());
     GetProviderListResponse::from(providers)

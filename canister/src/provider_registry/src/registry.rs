@@ -281,7 +281,7 @@ impl ProviderRegistry {
         // IMPORTANT: dont forget to change to newer version if updating provider version.
 
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = V1::new(display_name, address, id).to_provider();
+        let provider = V1::new(display_name, address, id, provider_principal).to_provider();
 
         // bind the principal to the internal id
         self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
@@ -691,11 +691,13 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
+        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
         let name = "a".repeat(64);
         let provider = V1::new(
             AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal.clone()
         ).to_provider();
 
         let _encoded_provider_size = Encode!(&provider).unwrap();
@@ -716,10 +718,12 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
+        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
         let provider = V1::new(
             AsciiRecordsKey::<64>::new("test").unwrap(),
             AsciiRecordsKey::<64>::new("test").unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal
         ).to_provider();
 
         let _bytes_allocated_approx =
@@ -739,11 +743,13 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
+        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
         let name = "a".repeat(64);
         let provider = V1::new(
             AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal
         ).to_provider();
 
         providers.add_provider(provider.clone()).unwrap();
@@ -760,7 +766,8 @@ mod provider_test {
         let provider = V1::new(
             AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal
         ).to_provider();
 
         providers.add_provider(provider.clone()).unwrap();
@@ -1031,13 +1038,17 @@ pub mod provider {
         updated_at: Timestamp,
         // TODO : discuss this as to what data is gonna be collected
         // provider_details:
+
+        // return principal id of the provider as well: requested by Rama
+        provider_principal: ProviderPrincipal,
     }
 
     impl V1 {
         pub fn new(
             display_name: AsciiRecordsKey<64>,
             address: AsciiRecordsKey<64>,
-            internal_id: InternalProviderId
+            internal_id: InternalProviderId,
+            provider_principal: ProviderPrincipal,
         ) -> Self {
             Self {
                 activation_status: Status::Active,
@@ -1047,6 +1058,7 @@ pub mod provider {
                 session: Session::default(),
                 registered_at: Timestamp::new(),
                 updated_at: Timestamp::new(),
+                provider_principal,
             }
         }
 
@@ -1071,10 +1083,12 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
+            let provider_principal = ProviderPrincipal::from_text("aaaaa-aa").unwrap();
             let s = V1::new(
                 name.clone(),
                 name,
-                id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")
+                id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"),
+                provider_principal
             ).to_provider();
             let encoded = Encode!(&s).unwrap();
 
@@ -1090,7 +1104,7 @@ pub mod provider {
     // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
     // IMPORTANT : all new version of provider should measure the encoding size when it's been turned into the Provider enum, not the inner struct only.
     // this is because testing only the size of the inner struct wouldn't include measuring enum serialization overhead.
-    impl_max_size!(for V1: 270);
+    impl_max_size!(for V1: 272);
     impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
     impl Billable for V1 {

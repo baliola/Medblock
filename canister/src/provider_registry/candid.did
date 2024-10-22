@@ -134,6 +134,7 @@ type UpdateInformationRequest = record {
 };
 type V1 = record {
   updated_at : nat64;
+  provider_principal : principal;
   internal_id : text;
   display_name : text;
   session : nat64;
