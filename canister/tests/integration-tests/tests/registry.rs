@@ -526,24 +526,33 @@ mod test {
 
         // first page
         let result = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 0, page_size)
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
+                page: 0,
+                limit: page_size,
+            })
             .unwrap();
 
-        assert_eq!(result.providers.len(), page_size);
+        assert_eq!(result.providers.len() as u64, page_size);
 
         // second page
         let result2 = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 1, page_size)
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
+                page: 1,
+                limit: page_size,
+            })
             .unwrap();
 
-        assert_eq!(result2.providers.len(), page_size);
+        assert_eq!(result2.providers.len() as u64, page_size);
 
         // the third page (should have only one provider)
         let result3 = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 2, page_size)
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
+                page: 2,
+                limit: page_size,
+            })
             .unwrap();
 
-        assert_eq!(result3.providers.len(), 1);
+        assert_eq!(result3.providers.len() as u64, 1);
 
         let mut all_provider_ids: Vec<String> = result.providers
             .iter()
