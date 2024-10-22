@@ -1,4 +1,4 @@
-use std::ops::{ Add };
+use std::ops::{ Add, Bound };
 
 use candid::{ CandidType };
 
@@ -48,8 +48,11 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
-    pub fn get_all_providers(&self) -> ProviderRegistryResult<Vec<Provider>> {
-        Ok(self.providers.get_all_providers().into_iter().map(|p| p.into_inner()).collect())
+    pub fn get_all_providers(&self, page: u64, limit: u64) -> ProviderRegistryResult<Vec<Provider>> {
+        Ok(self.providers.get_all_providers_paginated(page, limit)
+            .into_iter()
+            .map(|p| p.into_inner())
+            .collect())
     }
 
     pub fn provider_info_with_principal(
@@ -670,8 +673,13 @@ impl Providers {
         self.map.get(&provider.to_stable())
     }
 
-    pub fn get_all_providers(&self) -> Vec<Stable<Provider, Candid>> {
-        self.map.iter().map(|(_, v)| v.clone()).collect()
+    // get all providers pagination
+    pub fn get_all_providers_paginated(&self, page: u64, limit: u64) -> Vec<Stable<Provider, Candid>> {
+        self.map.iter()
+            .skip((page * limit) as usize)
+            .take(limit as usize)
+            .map(|(_, v)| v.clone())
+            .collect()
     }
 }
 
@@ -735,46 +743,51 @@ mod provider_test {
     }
 
     #[test]
-    fn test_get_all_providers() {
+    fn test_get_all_providers_paginated() {
         let memory_manager = MemoryManager::init();
         let mut providers = Providers::init(&memory_manager);
 
-        let mut id_bytes = [0; 10];
-        id_bytes.fill(0);
+        // create an array of valid principal values
+        let principal_strings = [
+            "2vxsx-fae",
+            "h5aet-waaaa-aaaab-qaamq-cai",
+            "rrkah-fqaaa-aaaaa-aaaaq-cai",
+            "aaaaa-aa",
+            "qoctq-giaaa-aaaaa-aaaea-cai"
+        ];
 
-        let internal_id = Id::new(&id_bytes);
-        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
-        let name = "a".repeat(64);
-        let provider = V1::new(
-            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
-            AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone(),
-            provider_principal
-        ).to_provider();
+        // add 5 providers
+        for (i, principal_str) in principal_strings.iter().enumerate() {
+            let id_bytes = [i as u8; 10];
+            let internal_id = Id::new(&id_bytes);
+            let provider_principal = Principal::from_text(principal_str).unwrap();
+            let name = format!("Provider {}", i);
+            let provider = V1::new(
+                AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
+                AsciiRecordsKey::<64>::new(name).unwrap(),
+                internal_id.clone(),
+                provider_principal
+            ).to_provider();
 
-        providers.add_provider(provider.clone()).unwrap();
-        
-        let all_providers = providers.get_all_providers();
-        assert_eq!(all_providers.len(), 1);
-        assert_eq!(all_providers[0], provider.to_stable());
+            providers.add_provider(provider).unwrap();
+        }
 
-        let mut id_bytes = [0; 10];
-        id_bytes.fill(1);
+        // test first page
+        let page1 = providers.get_all_providers_paginated(0, 2);
+        assert_eq!(page1.len(), 2);
+        assert_eq!(page1[0].internal_id(), &Id::new(&[0; 10]));
+        assert_eq!(page1[1].internal_id(), &Id::new(&[1; 10]));
 
-        let internal_id = Id::new(&id_bytes);
-        let name = "b".repeat(64);
-        let provider = V1::new(
-            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
-            AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone(),
-            provider_principal
-        ).to_provider();
+        // test second page
+        let page2 = providers.get_all_providers_paginated(1, 2);
+        assert_eq!(page2.len(), 2);
+        assert_eq!(page2[0].internal_id(), &Id::new(&[2; 10]));
+        assert_eq!(page2[1].internal_id(), &Id::new(&[3; 10]));
 
-        providers.add_provider(provider.clone()).unwrap();
-
-        let all_providers = providers.get_all_providers();
-        assert_eq!(all_providers.len(), 2);
-        assert_eq!(all_providers[1], provider.to_stable());
+        // test last page
+        let page3 = providers.get_all_providers_paginated(2, 2);
+        assert_eq!(page3.len(), 1);
+        assert_eq!(page3[0].internal_id(), &Id::new(&[4; 10]));
     }
 }
 
@@ -1163,3 +1176,4 @@ pub mod provider {
         }
     }
 }
+

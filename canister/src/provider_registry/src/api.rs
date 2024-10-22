@@ -157,6 +157,12 @@ from!(GetProviderBatchResponse: Vec<Provider> as value {
 });
 
 #[derive(CandidType, Deserialize)]
+pub struct GetProviderListRequest {
+    pub page: u64,
+    pub limit: u64,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct GetProviderListResponse {
     pub providers: Vec<Provider>,
 }

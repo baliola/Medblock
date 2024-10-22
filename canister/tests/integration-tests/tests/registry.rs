@@ -496,13 +496,20 @@ mod test {
 
     #[test]
     fn test_get_provider_list() {
-        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+        let (registry, provider, _patient) = common::Scenario::one_provider_one_patient();
 
-        // Register a few more providers
-        let provider2 = common::Provider(common::random_identity());
-        let provider3 = common::Provider(common::random_identity());
+        let principal_strings = [
+            "2vxsx-fae",
+            "h5aet-waaaa-aaaab-qaamq-cai",
+            "rrkah-fqaaa-aaaaa-aaaaq-cai"
+        ];
 
-        let register_provider = |provider: &common::Provider| {
+        let additional_providers: Vec<common::Provider> = principal_strings
+            .iter()
+            .map(|s| common::Provider(Principal::from_text(s).unwrap()))
+            .collect();
+
+        for provider in &additional_providers {
             let arg = RegisternewProviderRequest {
                 provider_principal: provider.0.clone(),
                 display_name: format!("Provider {}", provider.0),
@@ -512,29 +519,51 @@ mod test {
             registry.provider
                 .register_new_provider(&registry.ic, registry.controller.clone(), Call::Update, arg)
                 .unwrap();
-        };
+        }
 
-        register_provider(&provider2);
-        register_provider(&provider3);
+        // pagination
+        let page_size = 2;
 
-        // Get the provider list
+        // first page
         let result = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query)
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 0, page_size)
             .unwrap();
 
-        // Check that we have at least 3 providers (the original one plus the two we just added)
-        assert!(result.providers.len() >= 3);
+        assert_eq!(result.providers.len(), page_size);
 
-        // Check that our newly added providers are in the list
-        let provider_ids: Vec<String> = result.providers
+        // second page
+        let result2 = registry.provider
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 1, page_size)
+            .unwrap();
+
+        assert_eq!(result2.providers.len(), page_size);
+
+        // the third page (should have only one provider)
+        let result3 = registry.provider
+            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, 2, page_size)
+            .unwrap();
+
+        assert_eq!(result3.providers.len(), 1);
+
+        let mut all_provider_ids: Vec<String> = result.providers
             .iter()
+            .chain(result2.providers.iter())
+            .chain(result3.providers.iter())
             .map(|p| match p {
                 integration_tests::declarations::provider_registry::Provider::V1(p) => p.internal_id.clone()
             })
             .collect();
 
-        assert!(provider_ids.contains(&provider.0.to_string()));
-        assert!(provider_ids.contains(&provider2.0.to_string()));
-        assert!(provider_ids.contains(&provider3.0.to_string()));
+        all_provider_ids.sort();
+
+        let mut expected_ids = vec![
+            provider.0.to_string(),
+            additional_providers[0].0.to_string(),
+            additional_providers[1].0.to_string(),
+            additional_providers[2].0.to_string(),
+        ];
+        expected_ids.sort();
+
+        assert_eq!(all_provider_ids, expected_ids);
     }
 }

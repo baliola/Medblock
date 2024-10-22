@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, GetProviderListResponse, IssueEmrResponse, PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest, RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest, UpdatePatientRegistryRequest
+    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, GetProviderListRequest, GetProviderListResponse, IssueEmrResponse, PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest, RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest, UpdatePatientRegistryRequest
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -475,8 +475,8 @@ fn get_provider_batch(req: GetProviderBatchRequest) -> GetProviderBatchResponse 
 }
 
 #[ic_cdk::query(guard = "only_canister_owner")]
-fn get_provider_list() -> GetProviderListResponse {
-    let providers = with_state(|s| s.providers.get_all_providers().unwrap());
+fn get_provider_list(req: GetProviderListRequest) -> GetProviderListResponse {
+    let providers = with_state(|s| s.providers.get_all_providers(req.page, req.limit).unwrap());
     GetProviderListResponse::from(providers)
 }
 
