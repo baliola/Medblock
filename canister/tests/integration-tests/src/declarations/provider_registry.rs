@@ -197,6 +197,12 @@ pub struct GetProviderListRequest {
     pub limit: u64,
 }
 #[derive(CandidType, Deserialize)]
+pub struct GetProviderListResponse {
+    pub total_pages: u64,
+    pub total_provider_count: u64,
+    pub providers: Vec<Provider>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct EmrFragment {
     pub key: String,
     pub value: String,
@@ -294,7 +300,7 @@ impl ProviderRegistry {
     pub async fn get_provider_list(
         &self,
         arg0: GetProviderListRequest,
-    ) -> Result<(ProviderInfoResponse,)> {
+    ) -> Result<(GetProviderListResponse,)> {
         ic_cdk::call(self.0, "get_provider_list", (arg0,)).await
     }
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
@@ -495,7 +501,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: GetProviderListRequest,
-        ) -> std::result::Result<ProviderInfoResponse, pocket_ic::UserError> {
+        ) -> std::result::Result<GetProviderListResponse, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,

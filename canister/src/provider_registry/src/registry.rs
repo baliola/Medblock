@@ -26,7 +26,7 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
-use crate::api::{ IssueEmrRequest };
+use crate::api::{ IssueEmrRequest, GetProviderListResponse };
 use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
 use crate::declarations::patient_registry::IssueRequest;
 
@@ -48,11 +48,14 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
-    pub fn get_all_providers(&self, page: u64, limit: u64) -> ProviderRegistryResult<Vec<Provider>> {
-        Ok(self.providers.get_all_providers_paginated(page, limit)
-            .into_iter()
-            .map(|p| p.into_inner())
-            .collect())
+    pub fn get_all_providers(&self, page: u64, limit: u64) -> ProviderRegistryResult<GetProviderListResponse> {
+        let paginated = self.providers.get_all_providers_paginated(page, limit);
+        
+        Ok(GetProviderListResponse {
+            providers: paginated.providers.into_iter().map(|p| p.into_inner()).collect(),
+            total_pages: paginated.total_pages,
+            total_provider_count: paginated.total_provider_count,
+        })
     }
 
     pub fn provider_info_with_principal(
@@ -614,7 +617,12 @@ impl Metrics<LengthMetrics> for Providers {
         self.map.len().to_string()
     }
 }
-
+    #[derive(Debug)]
+    pub struct PaginatedProviders {
+        pub providers: Vec<Stable<Provider, Candid>>,
+        pub total_pages: u64,
+        pub total_provider_count: u64,
+    }
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
         match self.is_exist(provider.internal_id().clone()) {
@@ -673,15 +681,37 @@ impl Providers {
         self.map.get(&provider.to_stable())
     }
 
-    // get all providers pagination
-    pub fn get_all_providers_paginated(&self, page: u64, limit: u64) -> Vec<Stable<Provider, Candid>> {
-        self.map.iter()
-            .skip((page * limit) as usize)
-            .take(limit as usize)
-            .map(|(_, v)| v.clone())
-            .collect()
+  
+    pub fn get_all_providers_paginated(&self, page: u64, limit: u64) -> PaginatedProviders {
+        let total_provider_count = self.map.len() as u64;
+        
+            // Calculate total pages (ceiling division)
+            let total_pages = (total_provider_count + limit - 1) / limit;
+            
+            let skip_count = (page * limit) as usize;
+            
+            let remaining_items = if skip_count < total_provider_count as usize {
+                total_provider_count as usize - skip_count
+            } else {
+                0
+            };
+            
+            let items_to_take = std::cmp::min(limit as usize, remaining_items);
+            
+            let providers = self.map.iter()
+                .skip(skip_count)
+                .take(items_to_take)
+                .map(|(_, v)| v.clone())
+                .collect::<Vec<_>>();
+            
+            PaginatedProviders {
+                providers,
+                total_pages,
+                total_provider_count,
+            }
+        }
     }
-}
+
 
 #[cfg(test)]
 mod provider_test {
@@ -742,6 +772,23 @@ mod provider_test {
         println!("{:?}", <Providers as OpaqueMetrics>::measure(&providers));
     }
 
+    /// Test the pagination functionality of the `get_all_providers_paginated` method.
+    ///
+    /// This test does the following:
+    /// 1. Initializes a `Providers` instance.
+    /// 2. Adds 5 providers with different principals.
+    /// 3. Tests pagination with a page size of 2:
+    ///    - Verifies the first page (2 providers)
+    ///    - Verifies the second page (2 providers)
+    ///    - Verifies the last page (1 provider)
+    /// 4. For each page, it checks:
+    ///    - The number of providers returned
+    ///    - The total number of pages
+    ///    - The total provider count
+    ///    - The correctness of the returned provider IDs
+    ///
+    /// This ensures that the pagination works correctly for different page sizes and handles
+    /// the last page with fewer items properly.
     #[test]
     fn test_get_all_providers_paginated() {
         let memory_manager = MemoryManager::init();
@@ -772,22 +819,44 @@ mod provider_test {
             providers.add_provider(provider).unwrap();
         }
 
+        // print out and verify the providers
+        assert_eq!(providers.map.len(), 5);
+
+        let page_size = 2;
+
         // test first page
-        let page1 = providers.get_all_providers_paginated(0, 2);
-        assert_eq!(page1.len(), 2);
-        assert_eq!(page1[0].internal_id(), &Id::new(&[0; 10]));
-        assert_eq!(page1[1].internal_id(), &Id::new(&[1; 10]));
+        let page1 = providers.get_all_providers_paginated(0, page_size);
+        assert_eq!(page1.providers.len(), 2, "First page should have 2 providers");
+        assert_eq!(page1.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page1.total_provider_count, 5, "Should have 5 providers total");
+
+        // verify first page providers
+        let first_provider = page1.providers[0].internal_id().clone();
+        let second_provider = page1.providers[1].internal_id().clone();
+        assert_eq!(first_provider, Id::new(&[0; 10]));
+        assert_eq!(second_provider, Id::new(&[1; 10]));
 
         // test second page
-        let page2 = providers.get_all_providers_paginated(1, 2);
-        assert_eq!(page2.len(), 2);
-        assert_eq!(page2[0].internal_id(), &Id::new(&[2; 10]));
-        assert_eq!(page2[1].internal_id(), &Id::new(&[3; 10]));
+        let page2 = providers.get_all_providers_paginated(1, page_size);
+        assert_eq!(page2.providers.len(), 2, "Second page should have 2 providers");
+        assert_eq!(page2.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page2.total_provider_count, 5, "Should have 5 providers total");
+
+        // verify second page providers
+        let third_provider = page2.providers[0].internal_id().clone();
+        let fourth_provider = page2.providers[1].internal_id().clone();
+        assert_eq!(third_provider, Id::new(&[2; 10]));
+        assert_eq!(fourth_provider, Id::new(&[3; 10]));
 
         // test last page
-        let page3 = providers.get_all_providers_paginated(2, 2);
-        assert_eq!(page3.len(), 1);
-        assert_eq!(page3[0].internal_id(), &Id::new(&[4; 10]));
+        let page3 = providers.get_all_providers_paginated(2, page_size);
+        assert_eq!(page3.providers.len(), 1, "Last page should have 1 provider");
+        assert_eq!(page3.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page3.total_provider_count, 5, "Should have 5 providers total");
+
+        // verify last page provider
+        let fifth_provider = page3.providers[0].internal_id().clone();
+        assert_eq!(fifth_provider, Id::new(&[4; 10]));
     }
 }
 
@@ -1176,4 +1245,7 @@ pub mod provider {
         }
     }
 }
+
+
+
 

@@ -165,9 +165,14 @@ pub struct GetProviderListRequest {
 #[derive(CandidType, Deserialize)]
 pub struct GetProviderListResponse {
     pub providers: Vec<Provider>,
+    pub total_pages: u64,
+    pub total_provider_count: u64,
 }
 
-from!(GetProviderListResponse: Vec<Provider> as value {
-    providers:value
-});
+impl GetProviderListResponse {
+    pub fn new(providers: Vec<Provider>, total_pages: u64, total_provider_count: u64) -> Self {
+        Self { providers, total_pages, total_provider_count }
+    }
+}
+
 

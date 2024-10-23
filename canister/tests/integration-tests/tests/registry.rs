@@ -509,6 +509,8 @@ mod test {
             .map(|s| common::Provider(Principal::from_text(s).unwrap()))
             .collect();
 
+        println!("DEBUG: Initial provider: {}", provider.0);
+
         for provider in &additional_providers {
             let arg = RegisternewProviderRequest {
                 provider_principal: provider.0.clone(),
@@ -519,60 +521,101 @@ mod test {
             registry.provider
                 .register_new_provider(&registry.ic, registry.controller.clone(), Call::Update, arg)
                 .unwrap();
+            
+            println!("DEBUG: Added provider: {}", provider.0);
         }
 
-        // pagination
+        // First, let's verify our total count
+        let total_result = registry.provider
+            .get_provider_list(
+                &registry.ic, 
+                registry.controller.clone(), 
+                Call::Query, 
+                declarations::provider_registry::GetProviderListRequest {
+                    page: 0,
+                    limit: 10, // Large enough to get all providers
+                }
+            )
+            .unwrap();
+
+        println!("DEBUG: Total providers found: {}", total_result.providers.len());
+        assert_eq!(total_result.providers.len(), 4, "Should have 4 providers in total (1 initial + 3 additional)");
+
         let page_size = 2;
 
         // first page
         let result = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
-                page: 0,
-                limit: page_size,
-            })
+            .get_provider_list(
+                &registry.ic, 
+                registry.controller.clone(), 
+                Call::Query, 
+                declarations::provider_registry::GetProviderListRequest {
+                    page: 0,
+                    limit: page_size,
+                }
+            )
             .unwrap();
 
-        assert_eq!(result.providers.len() as u64, page_size);
+        println!("DEBUG: First page providers count: {}", result.providers.len());
+        println!("DEBUG: Total pages: {}", result.total_pages);
+        println!("DEBUG: Total providers: {}", result.total_provider_count);
+
+        assert_eq!(result.providers.len() as u64, page_size, "First page should have {} providers", page_size);
+        assert_eq!(result.total_pages, 2, "Should have 2 pages with page_size of 2 and 4 total providers");
+        assert_eq!(result.total_provider_count, 4, "Should have 4 providers in total");
 
         // second page
         let result2 = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
-                page: 1,
-                limit: page_size,
-            })
+            .get_provider_list(
+                &registry.ic, 
+                registry.controller.clone(), 
+                Call::Query, 
+                declarations::provider_registry::GetProviderListRequest {
+                    page: 1,
+                    limit: page_size,
+                }
+            )
             .unwrap();
 
-        assert_eq!(result2.providers.len() as u64, page_size);
+        println!("DEBUG: Second page providers count: {}", result2.providers.len());
+        assert_eq!(result2.providers.len() as u64, page_size, "Second page should have {} providers", page_size);
 
-        // the third page (should have only one provider)
+        // third page (should have zero providers since we've already seen all 4)
         let result3 = registry.provider
-            .get_provider_list(&registry.ic, registry.controller.clone(), Call::Query, declarations::provider_registry::GetProviderListRequest {
-                page: 2,
-                limit: page_size,
-            })
+            .get_provider_list(
+                &registry.ic, 
+                registry.controller.clone(), 
+                Call::Query, 
+                declarations::provider_registry::GetProviderListRequest {
+                    page: 2,
+                    limit: page_size,
+                }
+            )
             .unwrap();
 
-        assert_eq!(result3.providers.len() as u64, 1);
+        println!("DEBUG: Third page providers count: {}", result3.providers.len());
+        assert_eq!(result3.providers.len() as u64, 0, "Third page should have 0 providers since all providers were in first two pages");
 
-        let mut all_provider_ids: Vec<String> = result.providers
+        // Collect all provider principals from just the first two pages
+        let mut all_provider_principals: Vec<String> = result.providers
             .iter()
             .chain(result2.providers.iter())
-            .chain(result3.providers.iter())
             .map(|p| match p {
-                integration_tests::declarations::provider_registry::Provider::V1(p) => p.internal_id.clone()
+                integration_tests::declarations::provider_registry::Provider::V1(p) => p.provider_principal.to_string()
             })
             .collect();
 
-        all_provider_ids.sort();
+        all_provider_principals.sort();
 
-        let mut expected_ids = vec![
+        let mut expected_principals = vec![
             provider.0.to_string(),
             additional_providers[0].0.to_string(),
             additional_providers[1].0.to_string(),
             additional_providers[2].0.to_string(),
         ];
-        expected_ids.sort();
+        expected_principals.sort();
 
-        assert_eq!(all_provider_ids, expected_ids);
+        assert_eq!(all_provider_principals, expected_principals, "Provider principals should match");
     }
 }
+
