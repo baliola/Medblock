@@ -1,4 +1,4 @@
-use std::ops::{ Add };
+use std::ops::{ Add, Bound };
 
 use candid::{ CandidType };
 
@@ -26,7 +26,7 @@ use canister_common::{
     mmgr::MemoryManager,
 };
 
-use crate::api::{ IssueEmrRequest };
+use crate::api::{ IssueEmrRequest, GetProviderListResponse };
 use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
 use crate::declarations::patient_registry::IssueRequest;
 
@@ -48,8 +48,14 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
-    pub fn get_all_providers(&self) -> ProviderRegistryResult<Vec<Provider>> {
-        Ok(self.providers.get_all_providers().into_iter().map(|p| p.into_inner()).collect())
+    pub fn get_all_providers(&self, page: u64, limit: u64) -> ProviderRegistryResult<GetProviderListResponse> {
+        let paginated = self.providers.get_all_providers_paginated(page, limit);
+        
+        Ok(GetProviderListResponse {
+            providers: paginated.providers.into_iter().map(|p| p.into_inner()).collect(),
+            total_pages: paginated.total_pages,
+            total_provider_count: paginated.total_provider_count,
+        })
     }
 
     pub fn provider_info_with_principal(
@@ -281,7 +287,7 @@ impl ProviderRegistry {
         // IMPORTANT: dont forget to change to newer version if updating provider version.
 
         // create a new provider, note that this might change version depending on the version of the emr used.
-        let provider = V1::new(display_name, address, id).to_provider();
+        let provider = V1::new(display_name, address, id, provider_principal).to_provider();
 
         // bind the principal to the internal id
         self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
@@ -611,7 +617,12 @@ impl Metrics<LengthMetrics> for Providers {
         self.map.len().to_string()
     }
 }
-
+    #[derive(Debug)]
+    pub struct PaginatedProviders {
+        pub providers: Vec<Stable<Provider, Candid>>,
+        pub total_pages: u64,
+        pub total_provider_count: u64,
+    }
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
         match self.is_exist(provider.internal_id().clone()) {
@@ -670,10 +681,37 @@ impl Providers {
         self.map.get(&provider.to_stable())
     }
 
-    pub fn get_all_providers(&self) -> Vec<Stable<Provider, Candid>> {
-        self.map.iter().map(|(_, v)| v.clone()).collect()
+  
+    pub fn get_all_providers_paginated(&self, page: u64, limit: u64) -> PaginatedProviders {
+        let total_provider_count = self.map.len() as u64;
+        
+            // Calculate total pages (ceiling division)
+            let total_pages = (total_provider_count + limit - 1) / limit;
+            
+            let skip_count = (page * limit) as usize;
+            
+            let remaining_items = if skip_count < total_provider_count as usize {
+                total_provider_count as usize - skip_count
+            } else {
+                0
+            };
+            
+            let items_to_take = std::cmp::min(limit as usize, remaining_items);
+            
+            let providers = self.map.iter()
+                .skip(skip_count)
+                .take(items_to_take)
+                .map(|(_, v)| v.clone())
+                .collect::<Vec<_>>();
+            
+            PaginatedProviders {
+                providers,
+                total_pages,
+                total_provider_count,
+            }
+        }
     }
-}
+
 
 #[cfg(test)]
 mod provider_test {
@@ -691,11 +729,13 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
+        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
         let name = "a".repeat(64);
         let provider = V1::new(
             AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal.clone()
         ).to_provider();
 
         let _encoded_provider_size = Encode!(&provider).unwrap();
@@ -716,10 +756,12 @@ mod provider_test {
         id_bytes.fill(0);
 
         let internal_id = Id::new(&id_bytes);
+        let provider_principal = Principal::from_text("aaaaa-aa").unwrap();
         let provider = V1::new(
             AsciiRecordsKey::<64>::new("test").unwrap(),
             AsciiRecordsKey::<64>::new("test").unwrap(),
-            internal_id.clone()
+            internal_id.clone(),
+            provider_principal
         ).to_provider();
 
         let _bytes_allocated_approx =
@@ -730,44 +772,91 @@ mod provider_test {
         println!("{:?}", <Providers as OpaqueMetrics>::measure(&providers));
     }
 
+    /// Test the pagination functionality of the `get_all_providers_paginated` method.
+    ///
+    /// This test does the following:
+    /// 1. Initializes a `Providers` instance.
+    /// 2. Adds 5 providers with different principals.
+    /// 3. Tests pagination with a page size of 2:
+    ///    - Verifies the first page (2 providers)
+    ///    - Verifies the second page (2 providers)
+    ///    - Verifies the last page (1 provider)
+    /// 4. For each page, it checks:
+    ///    - The number of providers returned
+    ///    - The total number of pages
+    ///    - The total provider count
+    ///    - The correctness of the returned provider IDs
+    ///
+    /// This ensures that the pagination works correctly for different page sizes and handles
+    /// the last page with fewer items properly.
     #[test]
-    fn test_get_all_providers() {
+    fn test_get_all_providers_paginated() {
         let memory_manager = MemoryManager::init();
         let mut providers = Providers::init(&memory_manager);
 
-        let mut id_bytes = [0; 10];
-        id_bytes.fill(0);
+        // create an array of valid principal values
+        let principal_strings = [
+            "2vxsx-fae",
+            "h5aet-waaaa-aaaab-qaamq-cai",
+            "rrkah-fqaaa-aaaaa-aaaaq-cai",
+            "aaaaa-aa",
+            "qoctq-giaaa-aaaaa-aaaea-cai"
+        ];
 
-        let internal_id = Id::new(&id_bytes);
-        let name = "a".repeat(64);
-        let provider = V1::new(
-            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
-            AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
-        ).to_provider();
+        // add 5 providers
+        for (i, principal_str) in principal_strings.iter().enumerate() {
+            let id_bytes = [i as u8; 10];
+            let internal_id = Id::new(&id_bytes);
+            let provider_principal = Principal::from_text(principal_str).unwrap();
+            let name = format!("Provider {}", i);
+            let provider = V1::new(
+                AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
+                AsciiRecordsKey::<64>::new(name).unwrap(),
+                internal_id.clone(),
+                provider_principal
+            ).to_provider();
 
-        providers.add_provider(provider.clone()).unwrap();
-        
-        let all_providers = providers.get_all_providers();
-        assert_eq!(all_providers.len(), 1);
-        assert_eq!(all_providers[0], provider.to_stable());
+            providers.add_provider(provider).unwrap();
+        }
 
-        let mut id_bytes = [0; 10];
-        id_bytes.fill(1);
+        // print out and verify the providers
+        assert_eq!(providers.map.len(), 5);
 
-        let internal_id = Id::new(&id_bytes);
-        let name = "b".repeat(64);
-        let provider = V1::new(
-            AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
-            AsciiRecordsKey::<64>::new(name).unwrap(),
-            internal_id.clone()
-        ).to_provider();
+        let page_size = 2;
 
-        providers.add_provider(provider.clone()).unwrap();
+        // test first page
+        let page1 = providers.get_all_providers_paginated(0, page_size);
+        assert_eq!(page1.providers.len(), 2, "First page should have 2 providers");
+        assert_eq!(page1.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page1.total_provider_count, 5, "Should have 5 providers total");
 
-        let all_providers = providers.get_all_providers();
-        assert_eq!(all_providers.len(), 2);
-        assert_eq!(all_providers[1], provider.to_stable());
+        // verify first page providers
+        let first_provider = page1.providers[0].internal_id().clone();
+        let second_provider = page1.providers[1].internal_id().clone();
+        assert_eq!(first_provider, Id::new(&[0; 10]));
+        assert_eq!(second_provider, Id::new(&[1; 10]));
+
+        // test second page
+        let page2 = providers.get_all_providers_paginated(1, page_size);
+        assert_eq!(page2.providers.len(), 2, "Second page should have 2 providers");
+        assert_eq!(page2.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page2.total_provider_count, 5, "Should have 5 providers total");
+
+        // verify second page providers
+        let third_provider = page2.providers[0].internal_id().clone();
+        let fourth_provider = page2.providers[1].internal_id().clone();
+        assert_eq!(third_provider, Id::new(&[2; 10]));
+        assert_eq!(fourth_provider, Id::new(&[3; 10]));
+
+        // test last page
+        let page3 = providers.get_all_providers_paginated(2, page_size);
+        assert_eq!(page3.providers.len(), 1, "Last page should have 1 provider");
+        assert_eq!(page3.total_pages, 3, "Should have 3 pages total");
+        assert_eq!(page3.total_provider_count, 5, "Should have 5 providers total");
+
+        // verify last page provider
+        let fifth_provider = page3.providers[0].internal_id().clone();
+        assert_eq!(fifth_provider, Id::new(&[4; 10]));
     }
 }
 
@@ -1031,13 +1120,17 @@ pub mod provider {
         updated_at: Timestamp,
         // TODO : discuss this as to what data is gonna be collected
         // provider_details:
+
+        // return principal id of the provider as well: requested by Rama
+        provider_principal: ProviderPrincipal,
     }
 
     impl V1 {
         pub fn new(
             display_name: AsciiRecordsKey<64>,
             address: AsciiRecordsKey<64>,
-            internal_id: InternalProviderId
+            internal_id: InternalProviderId,
+            provider_principal: ProviderPrincipal,
         ) -> Self {
             Self {
                 activation_status: Status::Active,
@@ -1047,6 +1140,7 @@ pub mod provider {
                 session: Session::default(),
                 registered_at: Timestamp::new(),
                 updated_at: Timestamp::new(),
+                provider_principal,
             }
         }
 
@@ -1071,10 +1165,12 @@ pub mod provider {
             use candid::{ Encode, Decode };
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
+            let provider_principal = ProviderPrincipal::from_text("aaaaa-aa").unwrap();
             let s = V1::new(
                 name.clone(),
                 name,
-                id!("12a1bd26-4954-4cf4-87ac-57b4f9585987")
+                id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"),
+                provider_principal
             ).to_provider();
             let encoded = Encode!(&s).unwrap();
 
@@ -1090,7 +1186,7 @@ pub mod provider {
     // all provider should make a test like [self::v1_test::test_len_encoded] to make sure the encoded size is within the limit.
     // IMPORTANT : all new version of provider should measure the encoding size when it's been turned into the Provider enum, not the inner struct only.
     // this is because testing only the size of the inner struct wouldn't include measuring enum serialization overhead.
-    impl_max_size!(for V1: 270);
+    impl_max_size!(for V1: 272);
     impl_mem_bound!(for Provider: bounded; fixed_size: false);
 
     impl Billable for V1 {
@@ -1149,3 +1245,7 @@ pub mod provider {
         }
     }
 }
+
+
+
+
