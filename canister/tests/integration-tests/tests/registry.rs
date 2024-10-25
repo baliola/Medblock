@@ -621,6 +621,7 @@ mod test {
         assert_eq!(all_provider_principals, expected_principals, "Provider principals should match");
     }
 
+    #[test]
     fn test_update_kyc_status() {
         let (registries, patient, admin_principal) = common::Scenario::one_admin_one_patient();
 
