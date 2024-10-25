@@ -302,3 +302,8 @@ from!(UpdateKycStatusResponse: Patient as value {
     patient: value
 });
 
+#[derive(CandidType, Deserialize)]
+pub struct BindAdminRequest {
+    pub principal: Principal,
+    pub nik: H256,
+}

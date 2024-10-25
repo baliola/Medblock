@@ -7,6 +7,11 @@ pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }
 #[derive(CandidType, Deserialize)]
+pub struct BindAdminRequest {
+    pub nik: String,
+    pub principal: Principal,
+}
+#[derive(CandidType, Deserialize)]
 pub struct ClaimConsentRequest {
     pub code: String,
 }
@@ -337,7 +342,7 @@ pub struct UpdateInitialPatientInfoRequest {
 }
 #[derive(CandidType, Deserialize)]
 pub struct UpdateKycStatusRequest {
-    pub principal: Principal,
+    pub nik: String,
     pub kyc_status: KycStatus,
 }
 #[derive(CandidType, Deserialize)]
@@ -351,6 +356,9 @@ impl PatientRegistry {
         arg0: AuthorizedCallerRequest,
     ) -> Result<()> {
         ic_cdk::call(self.0, "add_authorized_metrics_collector", (arg0,)).await
+    }
+    pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<()> {
+        ic_cdk::call(self.0, "bind_admin", (arg0,)).await
     }
     pub async fn claim_consent(
         &self,
@@ -540,6 +548,20 @@ pub mod pocket_ic_bindings {
                 "add_authorized_metrics_collector",
                 payload,
             )
+        }
+        pub fn bind_admin(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: BindAdminRequest,
+        ) -> std::result::Result<(), pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "bind_admin", payload)
         }
         pub fn claim_consent(
             &self,

@@ -392,4 +392,78 @@ impl Scenario {
             emr_header: response.emr_header,
         })
     }
+
+    pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
+        let registries = prepare();
+
+        // Create patient
+        let nik = canister_common::common::H256
+            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
+            .unwrap();
+
+        let patient = Patient { 
+            principal: random_identity(), 
+            nik: nik.clone() 
+        };
+
+        // Register patient
+        let display = String::from("pasien").to_ascii_lowercase();
+        let address = String::from("jl.rumah").to_ascii_lowercase();
+
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries.patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg
+            )
+            .unwrap();
+
+        // Set initial patient info
+        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+            info: patient_registry::V1 {
+                name: display.clone(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address,
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries.patient
+            .update_initial_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg
+            )
+            .unwrap();
+
+        // Create and bind admin
+        let admin_principal = random_identity();
+        let admin_nik = canister_common::common::H256::from([1u8; 32]);
+
+        let bind_admin_arg = patient_registry::BindAdminRequest {
+            principal: admin_principal.clone(),
+            nik: admin_nik.to_string(),
+        };
+
+        registries.patient
+            .bind_admin(
+                &registries.ic,
+                registries.controller.clone(),
+                PatientCall::Update,
+                bind_admin_arg
+            )
+            .unwrap();
+
+        (registries, patient, admin_principal)
+    }
 }

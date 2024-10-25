@@ -232,6 +232,16 @@ impl OwnerMap {
         self.0.get(owner).ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
+    
+    /// gets the principal associated with a NIK by iterating through the map
+    pub fn get_principal(&self, nik: &NIK) -> PatientBindingMapResult<Owner> {
+        self.0
+            .iter()
+            .find(|(_, stored_nik)| stored_nik.as_ref() == nik)
+            .map(|(principal, _)| principal.clone())
+            .ok_or(PatientRegistryError::UserDoesNotExist)
+    }
+
     pub fn init(memory_manager: &MemoryManager) -> Self {
         Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
