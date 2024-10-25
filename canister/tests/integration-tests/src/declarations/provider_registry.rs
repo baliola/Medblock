@@ -167,6 +167,7 @@ pub enum Status {
 #[derive(CandidType, Deserialize)]
 pub struct V1 {
     pub updated_at: u64,
+    pub provider_principal: Principal,
     pub internal_id: String,
     pub display_name: String,
     pub session: u64,
@@ -188,6 +189,17 @@ pub struct ProviderInfoRequest {
 }
 #[derive(CandidType, Deserialize)]
 pub struct ProviderInfoResponse {
+    pub providers: Vec<Provider>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderListRequest {
+    pub page: u64,
+    pub limit: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub struct GetProviderListResponse {
+    pub total_pages: u64,
+    pub total_provider_count: u64,
     pub providers: Vec<Provider>,
 }
 #[derive(CandidType, Deserialize)]
@@ -285,8 +297,11 @@ impl ProviderRegistry {
     ) -> Result<(ProviderInfoResponse,)> {
         ic_cdk::call(self.0, "get_provider_info_with_principal", (arg0,)).await
     }
-    pub async fn get_provider_list(&self) -> Result<(ProviderInfoResponse,)> {
-        ic_cdk::call(self.0, "get_provider_list", ()).await
+    pub async fn get_provider_list(
+        &self,
+        arg0: GetProviderListRequest,
+    ) -> Result<(GetProviderListResponse,)> {
+        ic_cdk::call(self.0, "get_provider_list", (arg0,)).await
     }
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
@@ -485,12 +500,13 @@ pub mod pocket_ic_bindings {
             server: &pocket_ic::PocketIc,
             sender: ic_principal::Principal,
             call_type: Call,
-        ) -> std::result::Result<ProviderInfoResponse, pocket_ic::UserError> {
+            arg0: GetProviderListRequest,
+        ) -> std::result::Result<GetProviderListResponse, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,
             };
-            let payload = ();
+            let payload = (arg0);
             call_pocket_ic(
                 server,
                 f,

@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, GetProviderListResponse, IssueEmrResponse, PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest, RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest, UpdatePatientRegistryRequest
+    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, GetProviderListRequest, GetProviderListResponse, IssueEmrResponse, PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest, RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest, UpdatePatientRegistryRequest
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -387,7 +387,12 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
     with_state_mut(|s| {
         s.providers
-            .register_new_provider(req.provider_principal, req.display_name, req.address, id)
+            .register_new_provider(
+                req.provider_principal,
+                req.display_name,
+                req.address,
+                id
+            )
     })
     .unwrap();
 
@@ -469,10 +474,9 @@ fn get_provider_batch(req: GetProviderBatchRequest) -> GetProviderBatchResponse 
         .into()
 }
 
-// #[ic_cdk::query(guard = "only_canister_owner")]
-#[ic_cdk::query]
-fn get_provider_list() -> GetProviderListResponse {
-    let providers = with_state(|s| s.providers.get_all_providers().unwrap());
+#[ic_cdk::query(guard = "only_canister_owner")]
+fn get_provider_list(req: GetProviderListRequest) -> GetProviderListResponse {
+    let providers = with_state(|s| s.providers.get_all_providers(req.page, req.limit).unwrap());
     GetProviderListResponse::from(providers)
 }
 
