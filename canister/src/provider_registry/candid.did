@@ -78,6 +78,12 @@ type GetMetricsParameters = record {
 };
 type GetProviderBatchRequest = record { ids : vec text };
 type GetProviderBatchResponse = record { providers : vec Provider };
+type GetProviderListRequest = record { page : nat64; limit : nat64 };
+type GetProviderListResponse = record {
+  total_pages : nat64;
+  total_provider_count : nat64;
+  providers : vec Provider;
+};
 type Header = record {
   provider_id : text;
   user_id : text;
@@ -134,6 +140,7 @@ type UpdateInformationRequest = record {
 };
 type V1 = record {
   updated_at : nat64;
+  provider_principal : principal;
   internal_id : text;
   display_name : text;
   session : nat64;
@@ -155,7 +162,9 @@ service : () -> {
   get_provider_info_with_principal : (ProviderInfoRequest) -> (
       ProviderInfoResponse,
     ) query;
-  get_provider_list : () -> (ProviderInfoResponse) query;
+  get_provider_list : (GetProviderListRequest) -> (
+      GetProviderListResponse,
+    ) query;
   get_trusted_origins : () -> (vec text);
   issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
   metrics : () -> (text) query;
