@@ -10,7 +10,7 @@ use crate::{
     consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
     log::Activity,
-    registry::{ HeaderStatus, KycStatus, Patient, NIK, V1 },
+    registry::{ Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1 },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -307,3 +307,38 @@ pub struct BindAdminRequest {
     pub principal: Principal,
     pub nik: H256,
 }
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupRequest {
+    pub name: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupResponse {
+    pub group_id: GroupId,
+}
+
+from!(CreateGroupResponse: GroupId as value {
+    group_id: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct AddGroupMemberRequest {
+    pub group_id: GroupId,
+    pub consent_code: String,
+    pub relation: Relation,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct LeaveGroupRequest {
+    pub group_id: GroupId,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetUserGroupsResponse {
+    pub groups: Vec<Group>,
+}
+
+from!(GetUserGroupsResponse: Vec<Group> as value {
+    groups: value
+});

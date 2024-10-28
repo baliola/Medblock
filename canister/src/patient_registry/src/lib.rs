@@ -1,11 +1,11 @@
 use std::{borrow::BorrowMut, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetPatientInfoBySessionRequest, GetPatientInfoResponse, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LogResponse, PatientListResponse, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RevokeConsentRequest, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListResponse, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RevokeConsentRequest, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest
 };
 use candid::{Decode, Encode};
 use canister_common::{
-    common::{guard::verified_caller, ProviderId},
+    common::{guard::verified_caller, AsciiRecordsKey, ProviderId},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -16,12 +16,13 @@ use canister_common::{
     statistics::{self, traits::OpaqueMetrics},
 };
 use config::CanisterConfig;
+use consent::ConsentCode;
 use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest};
 
 use ic_stable_structures::Cell;
 use log::PatientLog;
 use memory::UpgradeMemory;
-use registry::PatientRegistry;
+use registry::{Group, GroupId, PatientRegistry};
 
 use crate::consent::ConsentsApi;
 
@@ -813,6 +814,49 @@ fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
 #[ic_cdk::update(guard = "only_canister_owner")]
 fn bind_admin(req: BindAdminRequest) {
     with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik)).unwrap();
+}
+
+#[ic_cdk::update(guard = "only_patient")]
+fn create_group(req: CreateGroupRequest) -> Result<CreateGroupResponse, String> {
+    let caller = verified_caller().unwrap();
+    let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    let name = AsciiRecordsKey::<64>::new(req.name)
+        .map_err(|e| format!("Invalid group name: {}", e))?;
+    
+    Ok(with_state_mut(|s| s.registry.group_map.create_group(name, nik)).into())
+}
+
+#[ic_cdk::update(guard = "only_patient")]
+fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
+    let caller = verified_caller().unwrap();
+    let leader_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    let code = ConsentCode::from_text(&req.consent_code)
+        .map_err(|e| format!("Invalid consent code: {}", e))?;
+        
+    let consent = ConsentsApi::consent(&code)
+        .ok_or("Consent not found")?;
+        
+    with_state_mut(|s| {
+        s.registry.group_map.add_member(req.group_id, &leader_nik, consent.nik)
+    }).map_err(|e| format!("Failed to add member: {:?}", e))
+}
+
+#[ic_cdk::update(guard = "only_patient")]
+fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
+    let caller = verified_caller().unwrap();
+    let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    with_state_mut(|s| s.registry.group_map.remove_member(req.group_id, &nik)).map_err(|e| format!("Failed to leave group: {:?}", e))
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+fn get_user_groups() -> GetUserGroupsResponse {
+    let caller = verified_caller().unwrap();
+    let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    with_state(|s| s.registry.group_map.get_user_groups(&nik)).into()
 }
 
 ic_cdk::export_candid!();
