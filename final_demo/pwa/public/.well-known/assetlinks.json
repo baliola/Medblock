@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "id.medblock.bwvkymxvy2stchdh.twa",
+      "sha256_cert_fingerprints": [
+        "84:18:8F:2B:43:DC:B8:C9:B8:EE:2D:29:8B:36:AC:78:5C:27:C2:8B:F1:88:8F:37:DB:F0:FC:87:6D:E4:F1:E7"
+      ]
+    }
+  }
+]

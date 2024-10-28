@@ -1,0 +1,16 @@
+version: '3'
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.pwa
+    container_name: medblock-pwa
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - medblock-network
+
+networks:
+  medblock-network:
+    driver: bridge
