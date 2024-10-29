@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.EC2_KEY }}
+
+    - name: Run deployment commands on EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          # Navigate to the directory where your Docker Compose file is located
+          cd /home/ubuntu/MedBlock-WebApp
+
+          # Pull latest changes
+          git pull 
+
+          # (Optional) Stop current containers
+          docker compose down
+
+          docker image prune -f
+
+          # Build and start the new containers
+          docker compose up -d
+        EOF
+
