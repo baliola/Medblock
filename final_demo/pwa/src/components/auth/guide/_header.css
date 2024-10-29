@@ -1,0 +1,26 @@
+.custom-swiper{
+  width: 100%;
+  height : 100%;
+}
+
+.custom-pagination{
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.custom-pagination .custom-bullet {
+  width: 12px;
+  height: 12px;
+  background-color: #e0e0e0; 
+  opacity: 1; 
+  border-radius: 50%; 
+  margin: 0 4px; 
+  transition: background-color 0.3s, width 0.3s, height 0.3s; 
+}
+
+.custom-pagination .custom-bullet-active {
+  width: 28px; 
+  height: 12px; 
+  background-color: #c5c9fc; 
+  border-radius: 24px; 
+}
