@@ -1,0 +1,16 @@
+version: '3'
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.webapp
+    container_name: medblock-webapp
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    networks:
+      - medblock-network
+
+networks:
+  medblock-network:
+    driver: bridge
