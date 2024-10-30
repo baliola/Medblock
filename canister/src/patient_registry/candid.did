@@ -5,6 +5,11 @@ type Activity = record {
   timestamp : nat64;
 };
 type ActivityType = variant { Updated; Accessed; Revoked };
+type AddGroupMemberRequest = record {
+  relation : Relation;
+  consent_code : text;
+  group_id : nat64;
+};
 type AuthorizedCallerRequest = record { caller : principal };
 type BindAdminRequest = record { nik : text; "principal" : principal };
 type CanisterLogFeature = variant {
@@ -46,6 +51,8 @@ type Consent = record {
   session_user : opt text;
 };
 type ConsentListResponse = record { consents : vec Consent };
+type CreateGroupRequest = record { name : text };
+type CreateGroupResponse = record { group_id : nat64 };
 type DailyMetricsData = record {
   updateCalls : nat64;
   canisterHeapMemorySize : NumericEntity;
@@ -111,6 +118,13 @@ type GetMetricsParameters = record {
   dateFromMillis : nat;
 };
 type GetPatientInfoResponse = record { nik : text; patient : Patient };
+type GetUserGroupsResponse = record { groups : vec Group };
+type Group = record {
+  id : nat64;
+  members : vec text;
+  name : text;
+  leader : text;
+};
 type HeaderStatus = record { updated_at : nat64; created_at : nat64 };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
@@ -122,6 +136,7 @@ type HourlyMetricsData = record {
 type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
 type IssueRequest = record { header : EmrHeader };
 type KycStatus = variant { Approved; Denied; Pending };
+type LeaveGroupRequest = record { group_id : nat64 };
 type LogMessageData = record { timeNanos : nat64; message : text };
 type LogResponse = record { logs : vec Activity };
 type MetricsGranularity = variant { hourly; daily };
@@ -153,6 +168,9 @@ type ReadEmrSessionRequest = record {
   args : ReadEmrByIdRequest;
 };
 type RegisterPatientRequest = record { nik : text };
+type Relation = variant { Parent; Sibling; Other; Child; Spouse };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : CreateGroupResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type SearchPatientRequest = record { nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
@@ -185,10 +203,12 @@ type V1 = record {
 };
 service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
+  add_group_member : (AddGroupMemberRequest) -> (Result);
   bind_admin : (BindAdminRequest) -> ();
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
   consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
+  create_group : (CreateGroupRequest) -> (Result_1);
   emr_list_patient : (EmrListPatientRequest) -> (
       EmrListPatientResponse,
     ) composite_query;
@@ -205,9 +225,11 @@ service : () -> {
       GetPatientInfoResponse,
     ) composite_query;
   get_trusted_origins : () -> (vec text);
+  get_user_groups : () -> (GetUserGroupsResponse) query;
   is_consent_claimed : (ClaimConsentRequest) -> (
       IsConsentClaimedResponse,
     ) query;
+  leave_group : (LeaveGroupRequest) -> (Result);
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
   notify_updated : (IssueRequest) -> ();
