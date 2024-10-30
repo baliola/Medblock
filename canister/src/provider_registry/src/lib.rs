@@ -87,6 +87,7 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("https://bwvkymxvy2std2vi.medblock.id"),
         String::from("https://web-app.medblock.id"),
         String::from("https://app.medblock.id"),
+        String::from("https://webadmin.medblock.id/"),
     ]
 }
 
