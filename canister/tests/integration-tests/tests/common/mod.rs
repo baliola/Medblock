@@ -1,29 +1,25 @@
-use std::{ path::Path, process::Command, str::FromStr, time::Duration };
+use std::{path::Path, process::Command, str::FromStr, time::Duration};
 
-use candid::{ CandidType, Encode };
+use candid::{CandidType, Encode};
 use canister_common::common::H256;
 use ic_agent::Identity;
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
 use integration_tests::declarations::{
-    self,
-    patient_registry,
-    provider_registry::{ ProviderInfoRequest, RegisternewProviderRequest },
+    self, patient_registry,
+    provider_registry::{ProviderInfoRequest, RegisternewProviderRequest},
 };
 use pocket_ic::UserError;
 
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
-const PROVIDER_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm"
-);
-const PATIENT_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/patient_registry.wasm"
-);
-const EMR_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/emr_registry.wasm"
-);
+const PROVIDER_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm");
+const PATIENT_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/patient_registry.wasm");
+const EMR_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/emr_registry.wasm");
 
 const POCKET_IC_PATH: Option<&'static str> = std::option_env!("POCKET_IC_BIN");
 
@@ -34,7 +30,7 @@ fn create_canister(
     server: &pocket_ic::PocketIc,
     bytes: &'static [u8],
     arg: Vec<u8>,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = server.create_canister_with_settings(
         Some(controller.clone()),
@@ -43,7 +39,7 @@ fn create_canister(
             compute_allocation: None,
             memory_allocation: None,
             freezing_threshold: None,
-        })
+        }),
     );
 
     server.add_cycles(id.clone(), CYCLE);
@@ -54,7 +50,7 @@ fn create_canister(
 
 fn setup_emr_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, EMR_REGISTRY_WASM, Vec::new(), controller);
     id
@@ -65,7 +61,7 @@ fn bind_emr_registry(
     id: Principal,
     controller: Principal,
     provider: Principal,
-    patient: Principal
+    patient: Principal,
 ) {
     let args = declarations::emr_registry::AuthorizedCallerRequest {
         caller: patient.clone(),
@@ -75,7 +71,7 @@ fn bind_emr_registry(
         id.clone(),
         controller.clone(),
         "add_authorized_caller",
-        Encode!(&args).unwrap()
+        Encode!(&args).unwrap(),
     );
 
     let args = declarations::emr_registry::AuthorizedCallerRequest {
@@ -86,13 +82,13 @@ fn bind_emr_registry(
         id.clone(),
         controller.clone(),
         "add_authorized_caller",
-        Encode!(&args).unwrap()
+        Encode!(&args).unwrap(),
     );
 }
 
 fn setup_provider_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, PROVIDER_REGISTRY_WASM, Vec::new(), controller);
     id
@@ -103,14 +99,14 @@ fn bind_provider_registry(
     id: Principal,
     controller: Principal,
     emr: Principal,
-    patient: Principal
+    patient: Principal,
 ) {
     let args = declarations::provider_registry::AuthorizedCallerRequest {
         caller: emr.clone(),
     };
     let registry =
         integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
-            id.clone()
+            id.clone(),
         );
 
     registry.update_emr_registry_principal(
@@ -119,7 +115,7 @@ fn bind_provider_registry(
         ProviderCall::Update,
         declarations::provider_registry::SuspendRequest {
             principal: emr.clone(),
-        }
+        },
     );
 
     registry.update_patient_registry_principal(
@@ -128,13 +124,13 @@ fn bind_provider_registry(
         ProviderCall::Update,
         declarations::provider_registry::SuspendRequest {
             principal: patient.clone(),
-        }
+        },
     );
 }
 
 fn setup_patient_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, PATIENT_REGISTRY_WASM, Vec::new(), controller);
 
@@ -146,14 +142,14 @@ fn bind_patient_registry(
     id: Principal,
     controller: Principal,
     emr: Principal,
-    provider: Principal
+    provider: Principal,
 ) {
     let args = declarations::patient_registry::AuthorizedCallerRequest {
         caller: emr.clone(),
     };
     let registry =
         integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
-            id.clone()
+            id.clone(),
         );
 
     registry.update_emr_registry_principal(
@@ -162,7 +158,7 @@ fn bind_patient_registry(
         PatientCall::Update,
         declarations::patient_registry::UpdateEmrRegistryRequest {
             principal: emr.clone(),
-        }
+        },
     );
 
     // bind the patient registry to the provider registry
@@ -176,7 +172,7 @@ fn bind_patient_registry(
         PatientCall::Update,
         declarations::patient_registry::UpdateEmrRegistryRequest {
             principal: provider.clone(),
-        }
+        },
     );
 }
 
@@ -186,7 +182,8 @@ fn resolve_pocket_ic_path() {
         let path = Command::new("which")
             .arg("pocket-ic")
             .output()
-            .expect("pocket-ic not found").stdout;
+            .expect("pocket-ic not found")
+            .stdout;
 
         let path = std::str::from_utf8(&path).unwrap().trim();
         let path = Path::new(path);
@@ -201,37 +198,47 @@ fn bind_canisters(
     provider: Principal,
     patient: Principal,
     emr: Principal,
-    controller: Principal
+    controller: Principal,
 ) {
-    bind_emr_registry(server, emr.clone(), controller.clone(), provider.clone(), patient.clone());
+    bind_emr_registry(
+        server,
+        emr.clone(),
+        controller.clone(),
+        provider.clone(),
+        patient.clone(),
+    );
     bind_patient_registry(
         server,
         patient.clone(),
         controller.clone(),
         emr.clone(),
-        provider.clone()
+        provider.clone(),
     );
     bind_provider_registry(
         server,
         provider.clone(),
         controller.clone(),
         emr.clone(),
-        patient.clone()
+        patient.clone(),
     );
 }
 
 pub struct Registries {
     pub ic: pocket_ic::PocketIc,
     pub emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry,
-    pub patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry,
-    pub provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry,
+    pub patient:
+        integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry,
+    pub provider:
+        integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry,
     pub controller: Principal,
 }
 
 pub fn prepare() -> Registries {
     resolve_pocket_ic_path();
 
-    let server = pocket_ic::PocketIcBuilder::new().with_application_subnet().build();
+    let server = pocket_ic::PocketIcBuilder::new()
+        .with_application_subnet()
+        .build();
     let controller = Principal::from_text("rrkah-fqaaa-aaaaa-aaaaq-cai").unwrap();
 
     let id = Principal::anonymous();
@@ -240,7 +247,13 @@ pub fn prepare() -> Registries {
     let patient = setup_patient_registry(&server, controller.clone());
     let emr = setup_emr_registry(&server, controller.clone());
 
-    bind_canisters(&server, provider.clone(), patient.clone(), emr.clone(), controller.clone());
+    bind_canisters(
+        &server,
+        provider.clone(),
+        patient.clone(),
+        emr.clone(),
+        controller.clone(),
+    );
 
     // to fully initialize the canisters
     server.advance_time(Duration::from_secs(1000));
@@ -251,12 +264,14 @@ pub fn prepare() -> Registries {
     Registries {
         ic: server,
         emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry(emr),
-        patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
-            patient
-        ),
-        provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
-            provider
-        ),
+        patient:
+            integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
+                patient,
+            ),
+        provider:
+            integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
+                provider,
+            ),
         controller,
     }
 }
@@ -291,7 +306,12 @@ pub mod ext {
 
 impl<Ext> ScenarioResult<Ext> {
     pub fn new(registries: Registries, provider: Provider, patient: Patient, ext: Ext) -> Self {
-        Self { registries, provider, patient, ext }
+        Self {
+            registries,
+            provider,
+            patient,
+            ext,
+        }
     }
 }
 
@@ -306,11 +326,15 @@ impl Scenario {
         let registries = prepare();
 
         let provider = Provider(random_identity());
-        let nik = canister_common::common::H256
-            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
-            .unwrap();
+        let nik = canister_common::common::H256::from_str(
+            "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
+        )
+        .unwrap();
 
-        let patient = Patient { principal: random_identity(), nik: nik.clone() };
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
 
         // prepare provider
         let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
@@ -322,12 +346,13 @@ impl Scenario {
             address: address.clone(),
         };
 
-        registries.provider
+        registries
+            .provider
             .register_new_provider(
                 &registries.ic,
                 registries.controller.clone(),
                 ProviderCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -344,8 +369,14 @@ impl Scenario {
             nik: nik.to_string(),
         };
 
-        registries.patient
-            .register_patient(&registries.ic, patient.principal.clone(), PatientCall::Update, arg)
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
             .unwrap();
 
         let arg = patient_registry::UpdateInitialPatientInfoRequest {
@@ -361,12 +392,13 @@ impl Scenario {
             },
         };
 
-        registries.patient
+        registries
+            .patient
             .update_initial_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -384,26 +416,33 @@ impl Scenario {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry.provider
+        let response = registry
+            .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
 
-        ScenarioResult::new(registry, provider, patient, EmrExt {
-            emr_header: response.emr_header,
-        })
+        ScenarioResult::new(
+            registry,
+            provider,
+            patient,
+            EmrExt {
+                emr_header: response.emr_header,
+            },
+        )
     }
 
     pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
         let registries = prepare();
 
         // Create patient
-        let nik = canister_common::common::H256
-            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
-            .unwrap();
+        let nik = canister_common::common::H256::from_str(
+            "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
+        )
+        .unwrap();
 
-        let patient = Patient { 
-            principal: random_identity(), 
-            nik: nik.clone() 
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
         };
 
         // Register patient
@@ -414,12 +453,13 @@ impl Scenario {
             nik: nik.to_string(),
         };
 
-        registries.patient
+        registries
+            .patient
             .register_patient(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -437,12 +477,13 @@ impl Scenario {
             },
         };
 
-        registries.patient
+        registries
+            .patient
             .update_initial_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -455,15 +496,74 @@ impl Scenario {
             nik: admin_nik.to_string(),
         };
 
-        registries.patient
+        registries
+            .patient
             .bind_admin(
                 &registries.ic,
                 registries.controller.clone(),
                 PatientCall::Update,
-                bind_admin_arg
+                bind_admin_arg,
             )
             .unwrap();
 
         (registries, patient, admin_principal)
+    }
+
+    pub fn create_patient(registries: &Registries) -> Patient {
+        // generate a random NIK using timestamp to ensure uniqueness
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        let mut nik_bytes = [0u8; 32];
+        nik_bytes[..16].copy_from_slice(&timestamp.to_be_bytes());
+        let nik = canister_common::common::H256::from(nik_bytes);
+
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
+
+        // register patient
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // set initial patient info
+        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_initial_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        patient
     }
 }

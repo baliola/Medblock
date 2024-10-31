@@ -7,6 +7,25 @@ pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }
 #[derive(CandidType, Deserialize)]
+pub enum Relation {
+    Parent,
+    Sibling,
+    Other,
+    Child,
+    Spouse,
+}
+#[derive(CandidType, Deserialize)]
+pub struct AddGroupMemberRequest {
+    pub relation: Relation,
+    pub consent_code: String,
+    pub group_id: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Result_ {
+    Ok,
+    Err(String),
+}
+#[derive(CandidType, Deserialize)]
 pub struct BindAdminRequest {
     pub nik: String,
     pub principal: Principal,
@@ -31,6 +50,19 @@ pub struct Consent {
 #[derive(CandidType, Deserialize)]
 pub struct ConsentListResponse {
     pub consents: Vec<Consent>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupRequest {
+    pub name: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupResponse {
+    pub group_id: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Result1 {
+    Ok(CreateGroupResponse),
+    Err(String),
 }
 #[derive(CandidType, Deserialize)]
 pub struct EmrListPatientRequest {
@@ -258,9 +290,24 @@ pub struct GetPatientInfoResponse {
     pub patient: Patient,
 }
 #[derive(CandidType, Deserialize)]
+pub struct Group {
+    pub id: u64,
+    pub members: Vec<String>,
+    pub name: String,
+    pub leader: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct GetUserGroupsResponse {
+    pub groups: Vec<Group>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct IsConsentClaimedResponse {
     pub info: Option<Consent>,
     pub claimed: bool,
+}
+#[derive(CandidType, Deserialize)]
+pub struct LeaveGroupRequest {
+    pub group_id: u64,
 }
 #[derive(CandidType, Deserialize)]
 pub struct IssueRequest {
@@ -357,6 +404,9 @@ impl PatientRegistry {
     ) -> Result<()> {
         ic_cdk::call(self.0, "add_authorized_metrics_collector", (arg0,)).await
     }
+    pub async fn add_group_member(&self, arg0: AddGroupMemberRequest) -> Result<(Result_,)> {
+        ic_cdk::call(self.0, "add_group_member", (arg0,)).await
+    }
     pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<()> {
         ic_cdk::call(self.0, "bind_admin", (arg0,)).await
     }
@@ -371,6 +421,9 @@ impl PatientRegistry {
     }
     pub async fn create_consent(&self) -> Result<(ClaimConsentRequest,)> {
         ic_cdk::call(self.0, "create_consent", ()).await
+    }
+    pub async fn create_group(&self, arg0: CreateGroupRequest) -> Result<(Result1,)> {
+        ic_cdk::call(self.0, "create_group", (arg0,)).await
     }
     pub async fn emr_list_patient(
         &self,
@@ -408,11 +461,17 @@ impl PatientRegistry {
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
     }
+    pub async fn get_user_groups(&self) -> Result<(GetUserGroupsResponse,)> {
+        ic_cdk::call(self.0, "get_user_groups", ()).await
+    }
     pub async fn is_consent_claimed(
         &self,
         arg0: ClaimConsentRequest,
     ) -> Result<(IsConsentClaimedResponse,)> {
         ic_cdk::call(self.0, "is_consent_claimed", (arg0,)).await
+    }
+    pub async fn leave_group(&self, arg0: LeaveGroupRequest) -> Result<(Result_,)> {
+        ic_cdk::call(self.0, "leave_group", (arg0,)).await
     }
     pub async fn metrics(&self) -> Result<(String,)> {
         ic_cdk::call(self.0, "metrics", ()).await
@@ -549,6 +608,27 @@ pub mod pocket_ic_bindings {
                 payload,
             )
         }
+        pub fn add_group_member(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: AddGroupMemberRequest,
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "add_group_member",
+                payload,
+            )
+        }
         pub fn bind_admin(
             &self,
             server: &pocket_ic::PocketIc,
@@ -602,6 +682,20 @@ pub mod pocket_ic_bindings {
             };
             let payload = ();
             call_pocket_ic(server, f, self.0.clone(), sender, "create_consent", payload)
+        }
+        pub fn create_group(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: CreateGroupRequest,
+        ) -> std::result::Result<Result1, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "create_group", payload)
         }
         pub fn emr_list_patient(
             &self,
@@ -754,6 +848,26 @@ pub mod pocket_ic_bindings {
                 payload,
             )
         }
+        pub fn get_user_groups(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+        ) -> std::result::Result<GetUserGroupsResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = ();
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_user_groups",
+                payload,
+            )
+        }
         pub fn is_consent_claimed(
             &self,
             server: &pocket_ic::PocketIc,
@@ -774,6 +888,20 @@ pub mod pocket_ic_bindings {
                 "is_consent_claimed",
                 payload,
             )
+        }
+        pub fn leave_group(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: LeaveGroupRequest,
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "leave_group", payload)
         }
         pub fn metrics(
             &self,
