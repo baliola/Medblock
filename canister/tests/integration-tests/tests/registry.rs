@@ -883,4 +883,68 @@ mod test {
 
         assert_eq!(groups_after.groups.len(), 0);
     }
+
+    #[test]
+    #[should_panic(expected = "Error: \"provider is suspended\"")]
+    fn test_suspended_provider_operations() {
+        let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
+        println!("DEBUG: Test setup complete with provider: {}", provider.0);
+
+        // suspend the provider
+        let suspend_arg = declarations::provider_registry::SuspendRequest {
+            principal: provider.0.clone(),
+        };
+
+        println!("DEBUG: Attempting to suspend provider");
+        registry
+            .provider
+            .suspend_provider(
+                &registry.ic,
+                registry.controller.clone(),
+                ProviderCall::Update,
+                suspend_arg,
+            )
+            .unwrap();
+        println!("DEBUG: Suspend provider completed");
+
+        // verify provider status immediately after suspension
+        let initial_status = registry.provider.get_provider_info_with_principal(
+            &registry.ic,
+            registry.controller.clone(),
+            ProviderCall::Query,
+            ProviderInfoRequest {
+                provider: vec![provider.0.clone()],
+            },
+        );
+
+        // check initial status without trying to print the whole response
+        if let Ok(status) = initial_status {
+            if let Some(declarations::provider_registry::Provider::V1(provider)) =
+                status.providers.first()
+            {
+                let status_str = match provider.activation_status {
+                    declarations::provider_registry::Status::Active => "Active",
+                    declarations::provider_registry::Status::Suspended => "Suspended",
+                };
+                println!("DEBUG: Provider status: {}", status_str);
+            }
+        }
+
+        // attempt to issue EMR with suspended provider - this should panic
+        let arg = IssueEmrRequest {
+            emr: vec![EmrFragment {
+                key: "key".to_string(),
+                value: "value".to_string(),
+            }],
+            user_id: patient.nik.clone().to_string(),
+        };
+
+        println!("DEBUG: Attempting to issue EMR with suspended provider");
+
+        // this call should panic with "provider is suspended"
+        registry
+            .provider
+            .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
+            .unwrap();
+    }
 }
