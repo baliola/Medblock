@@ -1,7 +1,10 @@
+"use client"
+
 import EMRHeader from "@/components/dashboard/emr/header";
 import EMRUpdateForm from "@/components/dashboard/emr/update";
 import { emrHeader } from "@/constants/contents/dashboard/emr/header";
-import { redirect } from "next/navigation";
+import { useHospitalStatusStore } from "@/store/hospital-status";
+import { useRouter } from "next/navigation";
 
 interface PageProps {
   params: {
@@ -18,8 +21,20 @@ const paramFullfilled = (params: PageProps['params']) => {
 }
 
 export default function EMRUpdatePage({ params }: PageProps) {
+  const router = useRouter();
+  const hospitalStatus = useHospitalStatusStore(state => state.status);
+
   if (!paramFullfilled(params)) {
-    redirect('/dashboard/patients');
+    router.push('/dashboard/patients');
+    return;
+  }
+
+  if (
+    hospitalStatus !== 'idle' &&
+    hospitalStatus === 'suspended'
+  ) {
+    router.push(`/dashboard/emr/${params.id}`);
+    return;
   }
 
   return (
