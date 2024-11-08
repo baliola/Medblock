@@ -33,5 +33,5 @@ jobs:
           docker image prune -f
 
           # Build and start the new containers
-          docker compose up -d
+          docker compose up -d --build
         EOF
