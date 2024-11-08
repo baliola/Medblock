@@ -11,6 +11,9 @@ envList.NEXT_PUBLIC_VERSION = version
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production"
+  },
   env: envList,
   redirects: async () => {
     return [
@@ -26,9 +29,6 @@ const nextConfig = {
       }
     ]
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? true : false
-  }
 };
 
 module.exports = nextConfig;

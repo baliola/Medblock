@@ -10,6 +10,7 @@ import { usePatientQuery } from "@/services/patients";
 import { FinishSessionRequest, GetPatientInfoResponse } from "@/declarations/patient_registry/patient_registry.did";
 import VerticalProfile from "@/components/profile/vertical";
 import { Fragment, useEffect } from "react";
+import { useHospitalStatusStore } from "@/store/hospital-status";
 
 const tabMenus = [
   { label: "Overview" },
@@ -46,36 +47,44 @@ const PatientInfo = ({ id, patient }: { id: string; patient: GetPatientInfoRespo
   const provider = params.get("provider") || null;
   const registry = params.get("registry") || null;
 
+  const hospitalStatus = useHospitalStatusStore(state => state.status);
+
   const onUpdate = () => router.push(`/dashboard/emr/${id}/update/${record}?provider=${provider}&registry=${registry}`);
   const onCreate = () => router.push(`/dashboard/emr/${id}/create`);
 
   return (
     <Flex direction="column" gap={4} pos={"sticky"} top={0} w={{ base: 'full', lg: "18vw" }}>
       <VerticalProfile profile={patient} />
-      <CustomButton
-        leftIcon={
-          <Icon as={IoAddCircle} boxSize={4} />
-        }
-        onClick={onCreate}
-      >
-        Create EMR
-      </CustomButton>
-      {record && (
-        <Fragment>
-          <CustomButton
-            leftIcon={
-              <Icon as={IoMdDocument} boxSize={4} />
-            }
-            onClick={onUpdate}
-            variant={'outline'}
-            bg="none"
-            _hover={{ bg: 'primary.600', color: 'white' }}
-          >
-            Update EMR
-          </CustomButton>
+      {(hospitalStatus !== 'idle' &&
+        hospitalStatus === "active"
+      ) && (
+          <Fragment>
+            <CustomButton
+              leftIcon={
+                <Icon as={IoAddCircle} boxSize={4} />
+              }
+              onClick={onCreate}
+            >
+              Create EMR
+            </CustomButton>
+            {record && (
+              <Fragment>
+                <CustomButton
+                  leftIcon={
+                    <Icon as={IoMdDocument} boxSize={4} />
+                  }
+                  onClick={onUpdate}
+                  variant={'outline'}
+                  bg="none"
+                  _hover={{ bg: 'primary.600', color: 'white' }}
+                >
+                  Update EMR
+                </CustomButton>
 
-        </Fragment>
-      )}
+              </Fragment>
+            )}
+          </Fragment>
+        )}
 
       {record && (
         <TabList mt={4}>
