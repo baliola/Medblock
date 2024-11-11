@@ -42,5 +42,5 @@ jobs:
         run: |
           cd /home/ubuntu/Medblock/final_demo/pwa
           docker compose down
-          docker compose pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker compose pull webapp
           docker compose up -d
