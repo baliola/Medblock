@@ -1,0 +1,50 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - final_demo/web/**
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  IMAGE_NAME: ${{ secrets.WEB_IMAGE_NAME }}
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted 
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+   
+      - name: Log in to Amazon ECR
+        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Change to the directory containing the Dockerfile
+        run: cd /home/ubuntu/Medblock/final_demo/web
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $IMAGE_NAME .
+          docker tag $IMAGE_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+
+      - name: Push Docker Image to ECR
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+
+  deploy:
+    runs-on: self-hosted
+    needs: build-and-push
+
+    steps:
+      - name: Deploy to Server
+        run: |
+          cd /home/ubuntu/Medblock/final_demo/web
+          docker-compose down
+          docker-compose pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker-compose up -d
