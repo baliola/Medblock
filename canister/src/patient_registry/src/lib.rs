@@ -26,7 +26,6 @@ use canister_common::{
     statistics::{self, traits::OpaqueMetrics},
 };
 use config::CanisterConfig;
-use consent::ConsentCode;
 use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest};
 
 use ic_stable_structures::Cell;
@@ -152,12 +151,20 @@ fn only_controller() -> Result<(), String> {
     }
 }
 
-// guard function combination of only_patient and only_controller and only_admin
-fn only_patient_or_controller_or_admin() -> Result<(), String> {
-    only_patient()?;
-    only_controller()?;
-    only_admin()?;
-    Ok(())
+// guard function combination of only_admin and only_controller
+fn only_admin_or_controller_or_patient() -> Result<(), String> {
+    let caller = verified_caller()?;
+    
+    // Check if caller is either admin or controller
+    let is_admin = with_state(|s| s.registry.admin_map.is_valid_admin(&caller));
+    let is_controller = ic_cdk::api::is_controller(&caller);
+    let is_patient = with_state(|s| s.registry.owner_map.is_valid_owner(&caller));
+
+    if is_admin || is_controller || is_patient {
+        Ok(())
+    } else {
+        Err("only admin or controller or patient can call this method".to_string())
+    }
 }
 
 fn init_state() -> State {
@@ -728,7 +735,7 @@ async fn get_patient_info_with_consent(
     GetPatientInfoResponse::new(patient, consent.nik)
 }
 
-#[ic_cdk::query(guard = "only_patient_or_controller_or_admin")]
+#[ic_cdk::query(guard = "only_admin_or_controller_or_patient")]
 fn get_patient_info() -> GetPatientInfoResponse {
     let caller = verified_caller().unwrap();
     let (patient, nik) =

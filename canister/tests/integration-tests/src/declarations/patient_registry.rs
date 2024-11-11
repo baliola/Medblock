@@ -301,6 +301,11 @@ pub struct GetUserGroupsResponse {
     pub groups: Vec<Group>,
 }
 #[derive(CandidType, Deserialize)]
+pub struct GrantGroupAccessRequest {
+    pub group_id: u64,
+    pub grantee_nik: String,
+}
+#[derive(CandidType, Deserialize)]
 pub struct IsConsentClaimedResponse {
     pub info: Option<Consent>,
     pub claimed: bool,
@@ -359,6 +364,10 @@ pub struct RegisterPatientRequest {
 #[derive(CandidType, Deserialize)]
 pub struct RevokeConsentRequest {
     pub codes: Vec<String>,
+}
+#[derive(CandidType, Deserialize)]
+pub struct RevokeGroupAccessRequest {
+    pub grantee_nik: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {
@@ -464,6 +473,9 @@ impl PatientRegistry {
     pub async fn get_user_groups(&self) -> Result<(GetUserGroupsResponse,)> {
         ic_cdk::call(self.0, "get_user_groups", ()).await
     }
+    pub async fn grant_group_access(&self, arg0: GrantGroupAccessRequest) -> Result<(Result_,)> {
+        ic_cdk::call(self.0, "grant_group_access", (arg0,)).await
+    }
     pub async fn is_consent_claimed(
         &self,
         arg0: ClaimConsentRequest,
@@ -508,6 +520,9 @@ impl PatientRegistry {
     }
     pub async fn revoke_consent(&self, arg0: RevokeConsentRequest) -> Result<()> {
         ic_cdk::call(self.0, "revoke_consent", (arg0,)).await
+    }
+    pub async fn revoke_group_access(&self, arg0: RevokeGroupAccessRequest) -> Result<(Result_,)> {
+        ic_cdk::call(self.0, "revoke_group_access", (arg0,)).await
     }
     pub async fn search_patient(
         &self,
@@ -868,6 +883,27 @@ pub mod pocket_ic_bindings {
                 payload,
             )
         }
+        pub fn grant_group_access(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: GrantGroupAccessRequest,
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "grant_group_access",
+                payload,
+            )
+        }
         pub fn is_consent_claimed(
             &self,
             server: &pocket_ic::PocketIc,
@@ -1060,6 +1096,27 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "revoke_consent", payload)
+        }
+        pub fn revoke_group_access(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: RevokeGroupAccessRequest,
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "revoke_group_access",
+                payload,
+            )
         }
         pub fn search_patient(
             &self,
