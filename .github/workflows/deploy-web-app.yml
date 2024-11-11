@@ -30,6 +30,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
+          pwd
           docker build -t $IMAGE_NAME .
           docker tag $IMAGE_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
 
