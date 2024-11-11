@@ -342,3 +342,14 @@ pub struct GetUserGroupsResponse {
 from!(GetUserGroupsResponse: Vec<Group> as value {
     groups: value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct GrantGroupAccessRequest {
+    pub group_id: GroupId,
+    pub grantee_nik: NIK,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RevokeGroupAccessRequest {
+    pub grantee_nik: NIK,
+}

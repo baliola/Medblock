@@ -119,6 +119,7 @@ type GetMetricsParameters = record {
 };
 type GetPatientInfoResponse = record { nik : text; patient : Patient };
 type GetUserGroupsResponse = record { groups : vec Group };
+type GrantGroupAccessRequest = record { group_id : nat64; grantee_nik : text };
 type Group = record {
   id : nat64;
   members : vec text;
@@ -172,6 +173,7 @@ type Relation = variant { Parent; Sibling; Other; Child; Spouse };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : CreateGroupResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
+type RevokeGroupAccessRequest = record { grantee_nik : text };
 type SearchPatientRequest = record { nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
 type StatusRequest = record {
@@ -226,6 +228,7 @@ service : () -> {
     ) composite_query;
   get_trusted_origins : () -> (vec text);
   get_user_groups : () -> (GetUserGroupsResponse) query;
+  grant_group_access : (GrantGroupAccessRequest) -> (Result);
   is_consent_claimed : (ClaimConsentRequest) -> (
       IsConsentClaimedResponse,
     ) query;
@@ -244,6 +247,7 @@ service : () -> {
   register_patient : (RegisterPatientRequest) -> ();
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   revoke_consent : (RevokeConsentRequest) -> ();
+  revoke_group_access : (RevokeGroupAccessRequest) -> (Result);
   search_patient : (SearchPatientRequest) -> (
       SearchPatientResponse,
     ) composite_query;
