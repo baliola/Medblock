@@ -1,9 +1,6 @@
-version: '3'
 services:
   webapp:
-    build:
-      context: .
-      dockerfile: Dockerfile.webapp
+    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-webapp:latest
     container_name: medblock-webapp
     ports:
       - "3001:3001"
