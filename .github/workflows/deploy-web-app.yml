@@ -39,6 +39,6 @@ jobs:
       - name: Deploy to Server
         run: |
           cd /home/ubuntu/Medblock/final_demo/web
-          docker-compose down
-          docker-compose pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
-          docker-compose up -d
+          docker compose down
+          docker compose pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker compose up -d
