@@ -1,38 +1,48 @@
-name: Deploy to EC2
+name: Deploy to Production
 
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
-  deploy:
-    runs-on: self-hosted
+  build-and-push:
+    runs-on: self-hosted 
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v3
 
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.EC2_KEY }}
+      - name: Log in to Amazon ECR
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          IMAGE_NAME: ${{ secrets.WEB_IMAGE_NAME }}
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+	
+      - name: Change to the directory containing the Dockerfile
+        run: cd /home/ubuntu/Medblock/final_demo/web
 
-    - name: Run deployment commands on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # Navigate to the directory where your Docker Compose file is located
-          cd /home/ubuntu/MedBlock-WebApp
+      - name: Build Docker Image
+        run: |
+          docker build -t $IMAGE_NAME .
+          docker tag $IMAGE_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
 
-          # Pull latest changes
-          git pull 
+      - name: Push Docker Image to ECR
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
 
-          # (Optional) Stop current containers
-          docker compose down
+  deploy:
+    runs-on: self-hosted
+    needs: build-and-push
 
-          docker image prune -f
-
-          # Build and start the new containers
-          docker compose up -d --build
-        EOF
-
+    steps:
+      - name: Deploy to Server
+        run: |
+          cd /home/ubuntu/Medblock/final_demo/web
+          docker-compose down
+          docker-compose pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker-compose up -d
