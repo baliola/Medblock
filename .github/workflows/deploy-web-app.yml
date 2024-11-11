@@ -25,7 +25,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/final_demo/web
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/final_demo/web/Dockerfile.webapp .
 
       - name: Push Docker Image to ECR
         run: |
