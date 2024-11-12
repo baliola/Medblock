@@ -221,7 +221,7 @@ type GroupAccessKey = (Stable<NIK>, Stable<NIK>);
 
 impl Get<MemoryId> for GroupAccessMap {
     fn get() -> MemoryId {
-        MemoryId::new(20) // Use a unique memory ID
+        MemoryId::new(20)
     }
 }
 
@@ -250,6 +250,7 @@ impl GroupAccessMap {
         Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
+    /// grants EMR access from granter to grantee within a specific group context
     pub fn grant_access(
         &mut self,
         granter: NIK,
@@ -261,15 +262,23 @@ impl GroupAccessMap {
         Ok(())
     }
 
+    /// revokes EMR access that was previously granted from granter to grantee
     pub fn revoke_access(&mut self, granter: NIK, grantee: NIK) -> PatientBindingMapResult {
         let key = (granter.to_stable(), grantee.to_stable());
         self.0.remove(&key);
         Ok(())
     }
 
+    /// checks if grantee has EMR access granted by granter
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
         let key = (granter.clone().to_stable(), grantee.clone().to_stable());
         self.0.contains_key(&key)
+    }
+
+    /// gets the group ID in which the EMR access was granted
+    pub fn get_access_group(&self, granter: &NIK, grantee: &NIK) -> Option<GroupId> {
+        let key = (granter.clone().to_stable(), grantee.clone().to_stable());
+        self.0.get(&key).map(|group_id| group_id.into_inner())
     }
 }
 
@@ -287,17 +296,19 @@ mod test_group_access_map {
         let grantee = NIK::from([1u8; 32]);
         let group_id = 1;
 
-        // Test granting access
+        // test granting access
         assert!(access_map
             .grant_access(granter.clone(), grantee.clone(), group_id)
             .is_ok());
         assert!(access_map.has_access(&granter, &grantee));
+        assert_eq!(access_map.get_access_group(&granter, &grantee), Some(group_id));
 
-        // Test revoking access
+        // test revoking access
         assert!(access_map
             .revoke_access(granter.clone(), grantee.clone())
             .is_ok());
         assert!(!access_map.has_access(&granter, &grantee));
+        assert_eq!(access_map.get_access_group(&granter, &grantee), None);
     }
 
     #[test]
@@ -310,18 +321,24 @@ mod test_group_access_map {
         let other_user = NIK::from([2u8; 32]);
         let group_id = 1;
 
-        // Grant access
+        // test granting access
         access_map
             .grant_access(granter.clone(), grantee.clone(), group_id)
             .unwrap();
 
-        // Verify correct access
+        // verify correct access
         assert!(access_map.has_access(&granter, &grantee));
+        assert_eq!(access_map.get_access_group(&granter, &grantee), Some(group_id));
 
-        // Verify no access for other combinations
-        assert!(!access_map.has_access(&grantee, &granter)); // Access is one-way
+        // verify no access for other combinations
+        assert!(!access_map.has_access(&grantee, &granter)); // access is one-way
         assert!(!access_map.has_access(&granter, &other_user));
         assert!(!access_map.has_access(&other_user, &grantee));
+
+        // verify no group access for unauthorized combinations
+        assert_eq!(access_map.get_access_group(&grantee, &granter), None);
+        assert_eq!(access_map.get_access_group(&granter, &other_user), None);
+        assert_eq!(access_map.get_access_group(&other_user, &grantee), None);
     }
 }
 

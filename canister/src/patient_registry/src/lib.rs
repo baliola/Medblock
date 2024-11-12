@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, cell::RefCell, time::Duration};
+use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
     AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest,
@@ -26,12 +26,13 @@ use canister_common::{
     statistics::{self, traits::OpaqueMetrics},
 };
 use config::CanisterConfig;
+use consent::ConsentCode;
 use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest};
 
 use ic_stable_structures::Cell;
 use log::PatientLog;
 use memory::UpgradeMemory;
-use registry::{Group, GroupId, PatientRegistry};
+use registry::{Group, GroupId, PatientRegistry, NIK};
 
 use crate::consent::ConsentsApi;
 
@@ -154,7 +155,7 @@ fn only_controller() -> Result<(), String> {
 // guard function combination of only_admin and only_controller
 fn only_admin_or_controller_or_patient() -> Result<(), String> {
     let caller = verified_caller()?;
-    
+
     // Check if caller is either admin or controller
     let is_admin = with_state(|s| s.registry.admin_map.is_valid_admin(&caller));
     let is_controller = ic_cdk::api::is_controller(&caller);
@@ -460,6 +461,12 @@ async fn patient_list() -> PatientListResponse {
         })
         .collect::<Vec<_>>()
         .into()
+}
+
+// a patient list function for admins only
+#[ic_cdk::query(guard = "only_admin")]
+async fn get_patient_list_admin() -> PatientListResponse {
+    todo!()
 }
 
 #[ic_cdk::query(composite = true)]
@@ -908,21 +915,44 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
+    log!("DEBUG granter_nik: {:?}", granter_nik);
+
+    // Parse grantee NIK from string
+    let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
+        .map_err(|_| "Invalid grantee NIK format".to_string())?;
+
+    log!("DEBUG grantee_nik: {:?}", grantee_nik);
+    log!("DEBUG group_id: {:?}", req.group_id);
+
     // Verify both users are in the same group
     let group =
         with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
 
-    if !group.members.contains(&granter_nik) || !group.members.contains(&req.grantee_nik) {
-        return Err("Both users must be members of the group".to_string());
+    log!("DEBUG group members: {:?}", group.members);
+    log!(
+        "DEBUG granter in group: {:?}",
+        group.members.contains(&granter_nik)
+    );
+    log!(
+        "DEBUG grantee in group: {:?}",
+        group.members.contains(&grantee_nik)
+    );
+
+    // Check both users are in the group
+    if !group.members.contains(&granter_nik) {
+        return Err("Granter is not a member of the group".to_string());
+    }
+    if !group.members.contains(&grantee_nik) {
+        return Err("Grantee is not a member of the group".to_string());
     }
 
-    // Grant access
+    // Grant EMR access to grantee
     with_state_mut(|s| {
         s.registry
             .group_access_map
-            .grant_access(granter_nik, req.grantee_nik, req.group_id)
+            .grant_access(granter_nik, grantee_nik, req.group_id)
     })
-    .map_err(|e| format!("Failed to grant access: {:?}", e))
+    .map_err(|e| format!("Failed to grant EMR access: {:?}", e))
 }
 
 #[ic_cdk::update(guard = "only_patient")]
@@ -930,12 +960,17 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
+    // parse grantee NIK from string
+    let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
+        .map_err(|_| "Invalid grantee NIK format".to_string())?;
+
+    // revoke EMR access from grantee
     with_state_mut(|s| {
         s.registry
             .group_access_map
-            .revoke_access(granter_nik, req.grantee_nik)
+            .revoke_access(granter_nik, grantee_nik)
     })
-    .map_err(|e| format!("Failed to revoke access: {:?}", e))
+    .map_err(|e| format!("Failed to revoke EMR access: {:?}", e))
 }
 
 ic_cdk::export_candid!();

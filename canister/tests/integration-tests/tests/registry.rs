@@ -13,6 +13,7 @@ use integration_tests::declarations::patient_registry::KycStatus;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
 mod common;
+mod registry_tests;
 
 mod test {
     use integration_tests::declarations::{
@@ -24,111 +25,6 @@ mod test {
     };
 
     use super::*;
-    #[test]
-    fn register_provider() {
-        let registries = common::prepare();
-        let display = String::from("Dr. John Doe").to_ascii_lowercase();
-        let address = String::from("1234 Elm St").to_ascii_lowercase();
-
-        let arg = RegisternewProviderRequest {
-            provider_principal: Principal::anonymous(),
-            display_name: display.clone(),
-            address: address.clone(),
-        };
-
-        registries
-            .provider
-            .register_new_provider(
-                &registries.ic,
-                registries.controller.clone(),
-                Call::Update,
-                arg,
-            )
-            .unwrap();
-
-        let arg = ProviderInfoRequest {
-            provider: vec![Principal::anonymous()],
-        };
-
-        let result = registries
-            .provider
-            .get_provider_info_with_principal(
-                &registries.ic,
-                registries.controller.clone(),
-                Call::Query,
-                arg,
-            )
-            .unwrap();
-
-        match result.providers.first().unwrap() {
-            integration_tests::declarations::provider_registry::Provider::V1(provider) => {
-                assert_eq!(provider.display_name, display);
-                assert_eq!(provider.address, address);
-            }
-        }
-    }
-
-    #[test]
-    fn register_patient() {
-        let registries = common::prepare();
-        let display = String::from("John Doe").to_ascii_lowercase();
-        let address = String::from("1234 Elm St").to_ascii_lowercase();
-
-        let nik = canister_common::common::H256::from_str(
-            "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
-        )
-        .unwrap();
-
-        let arg = patient_registry::RegisterPatientRequest {
-            nik: nik.to_string(),
-        };
-
-        let patient_principal = common::random_identity();
-
-        registries
-            .patient
-            .register_patient(
-                &registries.ic,
-                patient_principal.clone(),
-                patient_registry::pocket_ic_bindings::Call::Update,
-                arg,
-            )
-            .unwrap();
-
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
-            info: patient_registry::V1 {
-                name: display.clone(),
-                martial_status: "married".to_string(),
-                place_of_birth: "Jakarta".to_ascii_lowercase(),
-                address,
-                gender: "men".to_ascii_lowercase(),
-                date_of_birth: "1990-01-01".to_string(),
-                kyc_status: KycStatus::Pending,
-                kyc_date: "2024-01-01".to_string(),
-            },
-        };
-
-        registries
-            .patient
-            .update_initial_patient_info(
-                &registries.ic,
-                patient_principal.clone(),
-                patient_registry::pocket_ic_bindings::Call::Update,
-                arg,
-            )
-            .unwrap();
-
-        let result = registries
-            .patient
-            .get_patient_info(
-                &registries.ic,
-                patient_principal.clone(),
-                patient_registry::pocket_ic_bindings::Call::Query,
-            )
-            .unwrap();
-
-        assert_eq!(result.nik, nik.to_string());
-    }
 
     #[test]
     pub fn test_issued_update() {
@@ -789,99 +685,6 @@ mod test {
                 _ => panic!("Expected KYC status to be Denied"),
             }
         }
-    }
-
-    #[test]
-    fn test_group_operations() {
-        let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
-
-        // create another patient for group member
-        let patient2 = common::Scenario::create_patient(&registries);
-
-        // test group creation
-        let create_group_req = patient_registry::CreateGroupRequest {
-            name: "test family".to_string(),
-        };
-
-        let group_response = registries
-            .patient
-            .create_group(
-                &registries.ic,
-                patient1.principal.clone(),
-                PatientCall::Update,
-                create_group_req,
-            )
-            .unwrap();
-
-        // generate consent code for patient2
-        let consent_code = registries
-            .patient
-            .create_consent(
-                &registries.ic,
-                patient2.principal.clone(),
-                PatientCall::Update,
-            )
-            .unwrap();
-
-        let group_id = match group_response {
-            patient_registry::Result1::Ok(response) => response.group_id,
-            patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
-        };
-
-        // update the add_member_req
-        let add_member_req = patient_registry::AddGroupMemberRequest {
-            group_id,
-            consent_code: consent_code.code,
-            relation: patient_registry::Relation::Spouse,
-        };
-
-        registries
-            .patient
-            .add_group_member(
-                &registries.ic,
-                patient1.principal.clone(),
-                PatientCall::Update,
-                add_member_req,
-            )
-            .unwrap();
-
-        // verify group membership
-        let groups = registries
-            .patient
-            .get_user_groups(
-                &registries.ic,
-                patient2.principal.clone(),
-                PatientCall::Query,
-            )
-            .unwrap();
-
-        assert_eq!(groups.groups.len(), 1);
-        assert_eq!(groups.groups[0].id, group_id);
-
-        // test leaving group
-        let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
-
-        registries
-            .patient
-            .leave_group(
-                &registries.ic,
-                patient2.principal.clone(),
-                PatientCall::Update,
-                leave_group_req,
-            )
-            .unwrap();
-
-        // verify group membership after leaving
-        let groups_after = registries
-            .patient
-            .get_user_groups(
-                &registries.ic,
-                patient2.principal.clone(),
-                PatientCall::Query,
-            )
-            .unwrap();
-
-        assert_eq!(groups_after.groups.len(), 0);
     }
 
     #[test]
