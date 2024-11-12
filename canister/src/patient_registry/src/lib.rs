@@ -7,11 +7,11 @@ use api::{
     EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
     GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse,
     GrantGroupAccessRequest, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest,
-    LeaveGroupRequest, LogResponse, PatientListResponse, PatientWithNikAndSession, PingResult,
-    ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RevokeConsentRequest,
-    RevokeGroupAccessRequest, SearchPatientRequest, SearchPatientResponse,
-    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest,
-    UpdateKycStatusResponse, UpdateRequest,
+    LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
+    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
+    RegisterPatientRequest, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientRequest,
+    SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
+    UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -465,8 +465,26 @@ async fn patient_list() -> PatientListResponse {
 
 // a patient list function for admins only
 #[ic_cdk::query(guard = "only_admin")]
-async fn get_patient_list_admin() -> PatientListResponse {
-    todo!()
+async fn get_patient_list_admin() -> PatientListAdminResponse {
+    // get all NIKs from the owner map
+    let patients = with_state(|s| {
+        s.registry
+            .owner_map
+            .get_all_nik()
+            .iter()
+            .map(|nik| {
+                let nik = nik.clone().into_inner();
+                let patient = s
+                    .registry
+                    .get_patient_info(nik.clone())
+                    .expect("patient not found");
+
+                PatientWithNik::new(patient, nik)
+            })
+            .collect::<Vec<_>>()
+    });
+
+    PatientListAdminResponse::from(patients)
 }
 
 #[ic_cdk::query(composite = true)]

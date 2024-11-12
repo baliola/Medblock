@@ -151,7 +151,9 @@ type NumericEntity = record {
   last : nat64;
 };
 type Patient = variant { V1 : V1 };
+type PatientListAdminResponse = record { patients : vec PatientWithNik };
 type PatientListResponse = record { patients : vec PatientWithNikAndSession };
+type PatientWithNik = record { nik : text; info : Patient };
 type PatientWithNikAndSession = record {
   nik : text;
   session_id : text;
@@ -226,6 +228,7 @@ service : () -> {
   get_patient_info_with_consent : (FinishSessionRequest) -> (
       GetPatientInfoResponse,
     ) composite_query;
+  get_patient_list_admin : () -> (PatientListAdminResponse) query;
   get_trusted_origins : () -> (vec text);
   get_user_groups : () -> (GetUserGroupsResponse) query;
   grant_group_access : (GrantGroupAccessRequest) -> (Result);

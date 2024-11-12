@@ -1,16 +1,16 @@
-use candid::{ CandidType, Principal };
+use candid::{CandidType, Principal};
 use canister_common::{
-    common::{ AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256 },
+    common::{AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256},
     from,
-    stable::{ EncodingMarker, Stable },
+    stable::{EncodingMarker, Stable},
 };
 use serde::Deserialize;
 
 use crate::{
-    consent::{ Consent, ConsentCode, SessionId },
-    encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
+    consent::{Consent, ConsentCode, SessionId},
+    encryption::vetkd::{HexEncodedPublicKey, HexEncodedSecretKey},
     log::Activity,
-    registry::{ Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1 },
+    registry::{Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1},
 };
 
 #[derive(CandidType, Deserialize)]
@@ -55,9 +55,13 @@ impl EmrHeaderWithStatus {
     pub fn new<E1: EncodingMarker, E2: EncodingMarker>(
         header: Stable<EmrHeader, E1>,
         status: Stable<HeaderStatus, E2>,
-        hospital_name: AsciiRecordsKey<64>
+        hospital_name: AsciiRecordsKey<64>,
     ) -> Self {
-        Self { header: header.into_inner(), status: status.into_inner(), hospital_name }
+        Self {
+            header: header.into_inner(),
+            status: status.into_inner(),
+            hospital_name,
+        }
     }
 }
 
@@ -215,6 +219,18 @@ from!(PatientListResponse: Vec<PatientWithNikAndSession> as value {
     patients: value
 });
 
+/// Response type for admin-only patient list requests.
+/// Contains a list of all patients with their basic information and NIK.
+/// This is specifically for backoffice UI administrative purposes.
+#[derive(CandidType, Deserialize)]
+pub struct PatientListAdminResponse {
+    pub patients: Vec<PatientWithNik>,
+}
+
+from!(PatientListAdminResponse: Vec<PatientWithNik> as value {
+    patients: value
+});
+
 #[derive(CandidType, Deserialize)]
 pub struct PatientWithNikAndSession {
     pub info: Patient,
@@ -222,9 +238,27 @@ pub struct PatientWithNikAndSession {
     pub session_id: SessionId,
 }
 
+/// Represents a patient record with their information and NIK.
+/// Used for basic patient identification without session context.
+#[derive(CandidType, Deserialize)]
+pub struct PatientWithNik {
+    pub info: Patient,
+    pub nik: NIK,
+}
+
+impl PatientWithNik {
+    pub fn new(patient: Patient, nik: NIK) -> Self {
+        Self { info: patient, nik }
+    }
+}
+
 impl PatientWithNikAndSession {
     pub fn new(patient: Patient, nik: NIK, session_id: SessionId) -> Self {
-        Self { info: patient, nik, session_id }
+        Self {
+            info: patient,
+            nik,
+            session_id,
+        }
     }
 }
 

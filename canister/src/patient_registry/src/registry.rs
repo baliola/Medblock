@@ -301,7 +301,10 @@ mod test_group_access_map {
             .grant_access(granter.clone(), grantee.clone(), group_id)
             .is_ok());
         assert!(access_map.has_access(&granter, &grantee));
-        assert_eq!(access_map.get_access_group(&granter, &grantee), Some(group_id));
+        assert_eq!(
+            access_map.get_access_group(&granter, &grantee),
+            Some(group_id)
+        );
 
         // test revoking access
         assert!(access_map
@@ -328,7 +331,10 @@ mod test_group_access_map {
 
         // verify correct access
         assert!(access_map.has_access(&granter, &grantee));
-        assert_eq!(access_map.get_access_group(&granter, &grantee), Some(group_id));
+        assert_eq!(
+            access_map.get_access_group(&granter, &grantee),
+            Some(group_id)
+        );
 
         // verify no access for other combinations
         assert!(!access_map.has_access(&grantee, &granter)); // access is one-way
@@ -375,6 +381,11 @@ impl OwnerMap {
         self.0
             .get(owner)
             .ok_or(PatientRegistryError::UserDoesNotExist)
+    }
+
+    /// returns a list of all NIKs in the owner map
+    pub fn get_all_nik(&self) -> Vec<Stable<NIK>> {
+        self.0.iter().map(|(_, nik)| nik.clone()).collect()
     }
 
     /// gets the principal associated with a NIK by iterating through the map
@@ -463,6 +474,40 @@ mod test_owner_map {
         assert!(!owner_map.is_valid_owner(&owner));
         assert_eq!(owner_map.bind(owner, nik.clone()).unwrap(), ());
         assert!(owner_map.is_valid_owner(&owner));
+    }
+
+    #[test]
+    fn test_get_all_nik() {
+        let mut owner_map = OwnerMap::init(&MemoryManager::init());
+
+        // create test data
+        let owner1 = ic_principal::Principal::from_text("2vxsx-fae").unwrap();
+        let owner2 = ic_principal::Principal::from_text("rrkah-fqaaa-aaaaa-aaaaq-cai").unwrap();
+        let nik1 = NIK::from([1u8; 32]);
+        let nik2 = NIK::from([2u8; 32]);
+
+        // initially should be empty
+        assert!(owner_map.get_all_nik().is_empty());
+
+        // add two owners with different NIKs
+        owner_map.bind(owner1, nik1.clone()).unwrap();
+        owner_map.bind(owner2, nik2.clone()).unwrap();
+
+        // get all NIKs
+        let all_niks = owner_map.get_all_nik();
+
+        // should have exactly 2 NIKs
+        assert_eq!(all_niks.len(), 2);
+
+        // should contain both NIKs
+        assert!(all_niks.iter().any(|n| n.as_ref() == &nik1));
+        assert!(all_niks.iter().any(|n| n.as_ref() == &nik2));
+
+        // test after removing an owner
+        owner_map.revoke(&owner1).unwrap();
+        let remaining_niks = owner_map.get_all_nik();
+        assert_eq!(remaining_niks.len(), 1);
+        assert_eq!(remaining_niks[0].as_ref(), &nik2);
     }
 }
 

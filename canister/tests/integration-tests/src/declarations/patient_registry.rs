@@ -290,6 +290,15 @@ pub struct GetPatientInfoResponse {
     pub patient: Patient,
 }
 #[derive(CandidType, Deserialize)]
+pub struct PatientWithNik {
+    pub nik: String,
+    pub info: Patient,
+}
+#[derive(CandidType, Deserialize)]
+pub struct PatientListAdminResponse {
+    pub patients: Vec<PatientWithNik>,
+}
+#[derive(CandidType, Deserialize)]
 pub struct Group {
     pub id: u64,
     pub members: Vec<String>,
@@ -466,6 +475,9 @@ impl PatientRegistry {
         arg0: FinishSessionRequest,
     ) -> Result<(GetPatientInfoResponse,)> {
         ic_cdk::call(self.0, "get_patient_info_with_consent", (arg0,)).await
+    }
+    pub async fn get_patient_list_admin(&self) -> Result<(PatientListAdminResponse,)> {
+        ic_cdk::call(self.0, "get_patient_list_admin", ()).await
     }
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
@@ -840,6 +852,26 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_patient_info_with_consent",
+                payload,
+            )
+        }
+        pub fn get_patient_list_admin(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+        ) -> std::result::Result<PatientListAdminResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = ();
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_patient_list_admin",
                 payload,
             )
         }
