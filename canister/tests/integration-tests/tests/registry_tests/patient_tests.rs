@@ -8,59 +8,75 @@ use std::str::FromStr;
 use crate::common;
 
 // === Patient Registry Tests ===
-#[test]
-fn test_patient_registration() {
-    let registries = common::prepare();
-    let display = String::from("John Doe").to_ascii_lowercase();
-    let address = String::from("1234 Elm St").to_ascii_lowercase();
 
-    let nik = canister_common::common::H256::from([1u8; 32]);
-
-    let arg = patient_registry::RegisterPatientRequest {
+// modified helper function to handle pocket_ic::UserError
+fn register_test_patient(
+    registries: &common::Registries,
+    patient_principal: Principal,
+    nik: canister_common::common::H256,
+    patient_info: Option<patient_registry::V1>,
+) -> Result<(), String> {
+    let reg_arg = patient_registry::RegisterPatientRequest {
         nik: nik.to_string(),
     };
-
-    let patient_principal = common::random_identity();
 
     registries
         .patient
         .register_patient(
             &registries.ic,
             patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
+            PatientCall::Update,
+            reg_arg,
         )
-        .unwrap();
+        .map_err(|e| e.to_string())?;
 
-    let arg = patient_registry::UpdateInitialPatientInfoRequest {
-        info: patient_registry::V1 {
-            name: display.clone(),
-            martial_status: "married".to_string(),
-            place_of_birth: "Jakarta".to_ascii_lowercase(),
-            address,
-            gender: "men".to_ascii_lowercase(),
-            date_of_birth: "1990-01-01".to_string(),
-            kyc_status: KycStatus::Pending,
-            kyc_date: "2024-01-01".to_string(),
-        },
+    if let Some(info) = patient_info {
+        let update_arg = patient_registry::UpdateInitialPatientInfoRequest { info };
+        registries
+            .patient
+            .update_initial_patient_info(
+                &registries.ic,
+                patient_principal.clone(),
+                PatientCall::Update,
+                update_arg,
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_patient_registration() {
+    let registries = common::prepare();
+    let patient_principal = common::random_identity();
+    let nik = canister_common::common::H256::from([1u8; 32]);
+
+    let patient_info = patient_registry::V1 {
+        name: "john doe".to_string(),
+        martial_status: "married".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "1234 elm st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
     };
 
-    registries
-        .patient
-        .update_initial_patient_info(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
-        )
-        .unwrap();
+    register_test_patient(
+        &registries,
+        patient_principal.clone(),
+        nik.clone(),
+        Some(patient_info),
+    )
+    .expect("Failed to register patient");
 
     let result = registries
         .patient
         .get_patient_info(
             &registries.ic,
             patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Query,
+            PatientCall::Query,
         )
         .unwrap();
 
@@ -70,56 +86,34 @@ fn test_patient_registration() {
 #[test]
 fn test_patient_retrieval() {
     let registries = common::prepare();
-    let display = String::from("John Doe").to_ascii_lowercase();
-    let address = String::from("1234 Elm St").to_ascii_lowercase();
-
+    let patient_principal = common::random_identity();
     let nik = canister_common::common::H256::from([1u8; 32]);
 
-    let arg = patient_registry::RegisterPatientRequest {
-        nik: nik.to_string(),
+    let patient_info = patient_registry::V1 {
+        name: "john doe".to_string(),
+        martial_status: "married".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "1234 elm st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
     };
 
-    let patient_principal = common::random_identity();
-
-    registries
-        .patient
-        .register_patient(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
-        )
-        .unwrap();
-
-    let arg = patient_registry::UpdateInitialPatientInfoRequest {
-        info: patient_registry::V1 {
-            name: display.clone(),
-            martial_status: "married".to_string(),
-            place_of_birth: "Jakarta".to_ascii_lowercase(),
-            address,
-            gender: "men".to_ascii_lowercase(),
-            date_of_birth: "1990-01-01".to_string(),
-            kyc_status: KycStatus::Pending,
-            kyc_date: "2024-01-01".to_string(),
-        },
-    };
-
-    registries
-        .patient
-        .update_initial_patient_info(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
-        )
-        .unwrap();
+    register_test_patient(
+        &registries,
+        patient_principal.clone(),
+        nik.clone(),
+        Some(patient_info),
+    )
+    .expect("Failed to register patient");
 
     let result = registries
         .patient
         .get_patient_info(
             &registries.ic,
             patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Query,
+            PatientCall::Query,
         )
         .unwrap();
 
@@ -127,153 +121,45 @@ fn test_patient_retrieval() {
 }
 
 #[test]
-fn test_invalid_patient_registration() {
-    let registries = common::prepare();
-    let display = String::from("John Doe").to_ascii_lowercase();
-    let address = String::from("1234 Elm St").to_ascii_lowercase();
-
-    let nik = canister_common::common::H256::from([1u8; 32]);
-
-    let arg = patient_registry::RegisterPatientRequest {
-        nik: nik.to_string(),
-    };
-
-    let patient_principal = common::random_identity();
-
-    registries
-        .patient
-        .register_patient(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
-        )
-        .unwrap();
-
-    let arg = patient_registry::UpdateInitialPatientInfoRequest {
-        info: patient_registry::V1 {
-            name: display.clone(),
-            martial_status: "married".to_string(),
-            place_of_birth: "Jakarta".to_ascii_lowercase(),
-            address,
-            gender: "men".to_ascii_lowercase(),
-            date_of_birth: "1990-01-01".to_string(),
-            kyc_status: KycStatus::Pending,
-            kyc_date: "2024-01-01".to_string(),
-        },
-    };
-
-    registries
-        .patient
-        .update_initial_patient_info(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Update,
-            arg,
-        )
-        .unwrap();
-
-    let result = registries
-        .patient
-        .get_patient_info(
-            &registries.ic,
-            patient_principal.clone(),
-            patient_registry::pocket_ic_bindings::Call::Query,
-        )
-        .unwrap();
-
-    assert_eq!(result.nik, nik.to_string());
-}
-
-#[test]
-#[should_panic(expected = "Error: \"only admin can call this method\"")]
+#[should_panic(expected = "Error: \"only admin or controller can call this method\"")]
 fn test_admin_patient_list() {
     let registries = common::prepare();
-
-    // create an admin but DON'T bind them - this will cause the admin check to fail
     let admin_principal = common::random_identity();
 
-    // register two test patients
+    // register multiple test patients
     let patient1_principal = common::random_identity();
     let patient2_principal = common::random_identity();
-
     let nik1 = canister_common::common::H256::from([1u8; 32]);
     let nik2 = canister_common::common::H256::from([2u8; 32]);
 
-    // register first patient
-    let reg_arg1 = patient_registry::RegisterPatientRequest {
-        nik: nik1.to_string(),
+    let patient1_info = patient_registry::V1 {
+        name: "patient one".to_string(),
+        martial_status: "single".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "address 1".to_string(),
+        gender: "f".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
     };
-    registries
-        .patient
-        .register_patient(
-            &registries.ic,
-            patient1_principal.clone(),
-            PatientCall::Update,
-            reg_arg1,
-        )
-        .unwrap();
 
-    // register second patient
-    let reg_arg2 = patient_registry::RegisterPatientRequest {
-        nik: nik2.to_string(),
+    let patient2_info = patient_registry::V1 {
+        name: "patient two".to_string(),
+        martial_status: "married".to_string(),
+        place_of_birth: "surabaya".to_string(),
+        address: "address 2".to_string(),
+        gender: "m".to_string(),
+        date_of_birth: "1995-01-01".to_string(),
+        kyc_status: KycStatus::Approved,
+        kyc_date: "2024-01-02".to_string(),
     };
-    registries
-        .patient
-        .register_patient(
-            &registries.ic,
-            patient2_principal.clone(),
-            PatientCall::Update,
-            reg_arg2,
-        )
-        .unwrap();
 
-    // update patient info for both patients
-    let update_info1 = patient_registry::UpdateInitialPatientInfoRequest {
-        info: patient_registry::V1 {
-            name: "Patient One".to_string().to_ascii_lowercase(),
-            martial_status: "single".to_string(),
-            place_of_birth: "Jakarta".to_ascii_lowercase(),
-            address: "Address 1".to_string().to_ascii_lowercase(),
-            gender: "F".to_ascii_lowercase(),
-            date_of_birth: "1990-01-01".to_string(),
-            kyc_status: KycStatus::Pending,
-            kyc_date: "2024-01-01".to_string(),
-        },
-    };
-    registries
-        .patient
-        .update_initial_patient_info(
-            &registries.ic,
-            patient1_principal.clone(),
-            PatientCall::Update,
-            update_info1,
-        )
-        .unwrap();
+    register_test_patient(&registries, patient1_principal, nik1, Some(patient1_info))
+        .expect("Failed to register patient 1");
+    register_test_patient(&registries, patient2_principal, nik2, Some(patient2_info))
+        .expect("Failed to register patient 2");
 
-    let update_info2 = patient_registry::UpdateInitialPatientInfoRequest {
-        info: patient_registry::V1 {
-            name: "Patient Two".to_string().to_ascii_lowercase(),
-            martial_status: "married".to_string(),
-            place_of_birth: "Surabaya".to_ascii_lowercase(),
-            address: "Address 2".to_string().to_ascii_lowercase(),
-            gender: "M".to_ascii_lowercase(),
-            date_of_birth: "1995-01-01".to_string(),
-            kyc_status: KycStatus::Approved,
-            kyc_date: "2024-01-02".to_string(),
-        },
-    };
-    registries
-        .patient
-        .update_initial_patient_info(
-            &registries.ic,
-            patient2_principal.clone(),
-            PatientCall::Update,
-            update_info2,
-        )
-        .unwrap();
-
-    // try to call get_patient_list_admin with an unbound admin - this should trigger the admin check failure
+    // this should panic due to unauthorized admin
     registries
         .patient
         .get_patient_list_admin(&registries.ic, admin_principal, PatientCall::Query)

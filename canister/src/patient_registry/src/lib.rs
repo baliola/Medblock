@@ -152,6 +152,20 @@ fn only_controller() -> Result<(), String> {
     }
 }
 
+// guard function for only admin_or_controller
+fn only_admin_or_controller() -> Result<(), String> {
+    let caller = verified_caller()?;
+
+    let is_admin = with_state(|s| s.registry.admin_map.is_valid_admin(&caller));
+    let is_controller = ic_cdk::api::is_controller(&caller);
+
+    if is_admin || is_controller {
+        Ok(())
+    } else {
+        Err("only admin or controller can call this method".to_string())
+    }
+}
+
 // guard function combination of only_admin and only_controller
 fn only_admin_or_controller_or_patient() -> Result<(), String> {
     let caller = verified_caller()?;
@@ -464,7 +478,7 @@ async fn patient_list() -> PatientListResponse {
 }
 
 // a patient list function for admins only
-#[ic_cdk::query(guard = "only_admin")]
+#[ic_cdk::query(guard = "only_admin_or_controller")]
 async fn get_patient_list_admin() -> PatientListAdminResponse {
     // get all NIKs from the owner map
     let patients = with_state(|s| {
