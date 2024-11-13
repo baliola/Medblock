@@ -414,6 +414,18 @@ pub struct UpdateKycStatusRequest {
 pub struct UpdateKycStatusResponse {
     pub patient: Patient,
 }
+#[derive(CandidType, Deserialize)]
+pub struct ViewGroupMemberEmrInformationRequest {
+    pub page: u64,
+    pub limit: u64,
+    pub group_id: u64,
+    pub member_nik: String,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Result2 {
+    Ok(EmrListPatientResponse),
+    Err(String),
+}
 pub struct PatientRegistry(pub Principal);
 impl PatientRegistry {
     pub async fn add_authorized_metrics_collector(
@@ -571,6 +583,12 @@ impl PatientRegistry {
         arg0: UpdateEmrRegistryRequest,
     ) -> Result<()> {
         ic_cdk::call(self.0, "update_provider_registry_principal", (arg0,)).await
+    }
+    pub async fn view_group_member_emr_information(
+        &self,
+        arg0: ViewGroupMemberEmrInformationRequest,
+    ) -> Result<(Result2,)> {
+        ic_cdk::call(self.0, "view_group_member_emr_information", (arg0,)).await
     }
 }
 pub const CANISTER_ID: Principal = Principal::from_slice(&[128, 0, 0, 0, 0, 16, 0, 3, 1, 1]);
@@ -1266,6 +1284,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "update_provider_registry_principal",
+                payload,
+            )
+        }
+        pub fn view_group_member_emr_information(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: ViewGroupMemberEmrInformationRequest,
+        ) -> std::result::Result<Result2, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "view_group_member_emr_information",
                 payload,
             )
         }

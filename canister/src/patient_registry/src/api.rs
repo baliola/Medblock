@@ -36,7 +36,7 @@ pub struct EmrListPatientRequest {
     pub page: u8,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct EmrListPatientResponse {
     emrs: Vec<EmrHeaderWithStatus>,
 }
@@ -44,7 +44,7 @@ from!(EmrListPatientResponse: Vec<EmrHeaderWithStatus> as value {
     emrs: value
 });
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct EmrHeaderWithStatus {
     header: EmrHeader,
     status: HeaderStatus,
@@ -386,4 +386,12 @@ pub struct GrantGroupAccessRequest {
 #[derive(CandidType, Deserialize)]
 pub struct RevokeGroupAccessRequest {
     pub grantee_nik: NIK,
+}
+
+#[derive(CandidType, Deserialize, Clone)]
+pub struct ViewGroupMemberEmrInformationRequest {
+    pub member_nik: String,
+    pub group_id: GroupId,
+    pub page: usize,
+    pub limit: usize,
 }

@@ -12,6 +12,7 @@ use api::{
     RegisterPatientRequest, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientRequest,
     SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
     UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest,
+    ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -1003,6 +1004,85 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
             .revoke_access(granter_nik, grantee_nik)
     })
     .map_err(|e| format!("Failed to revoke EMR access: {:?}", e))
+}
+
+#[ic_cdk::query(guard = "only_patient")]
+async fn view_group_member_emr_information(
+    req: ViewGroupMemberEmrInformationRequest,
+) -> Result<EmrListPatientResponse, String> {
+    // get caller's NIK
+    let caller = verified_caller().unwrap();
+    let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+
+    // parse target member's NIK from string
+    let member_nik =
+        NIK::from_str(&req.member_nik).map_err(|_| "Invalid member NIK format".to_string())?;
+
+    // verify both users are in the same group
+    let group =
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+
+    if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
+        return Err("Both users must be members of the group".to_string());
+    }
+
+    // verify access has been granted
+    let has_access = with_state(|s| {
+        s.registry
+            .group_access_map
+            .has_access(&member_nik, &viewer_nik)
+    });
+
+    if !has_access {
+        return Err("No access granted to view this member's EMR information".to_string());
+    }
+
+    // get member's EMRs with pagination
+    let emrs = with_state(|s| {
+        s.registry
+            .emr_binding_map
+            .emr_list(&member_nik, req.page as u8, req.limit as u8)
+    })
+    .map_err(|e| format!("Failed to get EMR list: {:?}", e))?;
+
+    // get provider information for each EMR
+    let provider_registry = with_state(|s| s.config.get().provider_registry());
+
+    let providers = emrs
+        .iter()
+        .map(|header| header.provider_id.to_string())
+        .collect::<Vec<_>>();
+
+    let providers = provider_registry
+        .get_provider_batch(GetProviderBatchRequest { ids: providers })
+        .await
+        .expect("failed to get providers info")
+        .0
+        .providers
+        .into_iter()
+        .map(|provider| match provider {
+            declarations::provider_registry::Provider::V1(provider) => {
+                provider.display_name.try_into().unwrap()
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // combine EMR headers with provider information
+    let emrs = emrs
+        .into_iter()
+        .zip(providers.into_iter())
+        .map(|(header, provider)| {
+            let status = with_state(|s| {
+                s.registry
+                    .header_status_map
+                    .get(&header)
+                    .expect("issued emr must have valid status")
+            });
+            EmrHeaderWithStatus::new(header, status, provider)
+        })
+        .collect::<Vec<_>>();
+
+    Ok(EmrListPatientResponse::from(emrs))
 }
 
 ic_cdk::export_candid!();
