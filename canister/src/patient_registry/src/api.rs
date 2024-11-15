@@ -301,6 +301,21 @@ from!(SearchPatientResponse: PatientWithNikAndSession as value {
 });
 
 #[derive(CandidType, Deserialize)]
+pub struct SearchPatientAdminResponse {
+    pub patient_info: PatientWithNik,
+}
+
+impl SearchPatientAdminResponse {
+    pub fn new(patient_info: PatientWithNik) -> Self {
+        Self { patient_info }
+    }
+}
+
+from!(SearchPatientAdminResponse: PatientWithNik as value {
+    patient_info: value
+});
+
+#[derive(CandidType, Deserialize)]
 pub struct LogResponse {
     logs: Vec<Activity>,
 }

@@ -177,6 +177,7 @@ type Result_1 = variant { Ok : CreateGroupResponse; Err : text };
 type Result_2 = variant { Ok : EmrListPatientResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type RevokeGroupAccessRequest = record { grantee_nik : text };
+type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
 type SearchPatientRequest = record { nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
 type StatusRequest = record {
@@ -261,6 +262,9 @@ service : () -> {
   search_patient : (SearchPatientRequest) -> (
       SearchPatientResponse,
     ) composite_query;
+  search_patient_admin : (SearchPatientRequest) -> (
+      SearchPatientAdminResponse,
+    ) query;
   updateCanistergeekInformation : (UpdateInformationRequest) -> ();
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
   update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();

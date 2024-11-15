@@ -165,3 +165,80 @@ fn test_admin_patient_list() {
         .get_patient_list_admin(&registries.ic, admin_principal, PatientCall::Query)
         .unwrap();
 }
+
+#[test]
+fn test_search_patient_admin() {
+    let registries = common::prepare();
+    let admin_principal = registries.controller;
+    let patient_principal = common::random_identity();
+    let nik = canister_common::common::H256::from([1u8; 32]);
+
+    let patient_info = patient_registry::V1 {
+        name: "john doe".to_string(),
+        martial_status: "married".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "1234 elm st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
+    };
+
+    // register a test patient first
+    register_test_patient(
+        &registries,
+        patient_principal.clone(),
+        nik.clone(),
+        Some(patient_info),
+    )
+    .expect("Failed to register patient");
+
+    // search for the patient using admin privileges
+    let search_req = patient_registry::SearchPatientRequest {
+        nik: nik.to_string(),
+    };
+
+    let result = registries
+        .patient
+        .search_patient_admin(
+            &registries.ic,
+            admin_principal,
+            PatientCall::Query,
+            search_req,
+        )
+        .unwrap();
+
+    // verify the search results
+    assert_eq!(result.patient_info.nik, nik.to_string());
+
+    // match on the Patient enum to access V1 fields
+    match result.patient_info.info {
+        patient_registry::Patient::V1(v1) => {
+            assert_eq!(v1.name, "john doe");
+            assert!(matches!(v1.kyc_status, KycStatus::Pending));
+        }
+    }
+}
+
+#[test]
+#[should_panic(expected = "Error: \"only admin or controller can call this method\"")]
+fn test_search_patient_admin_unauthorized() {
+    let registries = common::prepare();
+    let unauthorized_principal = common::random_identity();
+    let nik = canister_common::common::H256::from([1u8; 32]);
+
+    let search_req = patient_registry::SearchPatientRequest {
+        nik: nik.to_string(),
+    };
+
+    // this should panic due to unauthorized access
+    registries
+        .patient
+        .search_patient_admin(
+            &registries.ic,
+            unauthorized_principal,
+            PatientCall::Query,
+            search_req,
+        )
+        .unwrap();
+}

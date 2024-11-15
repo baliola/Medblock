@@ -9,10 +9,10 @@ use api::{
     GrantGroupAccessRequest, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest,
     LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
     PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
-    RegisterPatientRequest, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientRequest,
-    SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
-    UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest,
-    ViewGroupMemberEmrInformationRequest,
+    RegisterPatientRequest, RevokeConsentRequest, RevokeGroupAccessRequest,
+    SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse,
+    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest,
+    UpdateKycStatusResponse, UpdateRequest, ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -535,6 +535,24 @@ async fn search_patient(req: SearchPatientRequest) -> SearchPatientResponse {
         })
         .expect("patient not found")
         .into()
+}
+
+/// Search Patient for Admin UI
+///
+/// Description: This function is used to search for a patient by their NIK.
+///
+/// Parameters:
+/// - req: SearchPatientRequest
+///
+/// Returns:
+/// - SearchPatientAdminResponse
+#[ic_cdk::query(guard = "only_admin_or_controller")]
+fn search_patient_admin(req: SearchPatientRequest) -> SearchPatientAdminResponse {
+    let patient = with_state(|s| s.registry.get_patient_info(req.nik.clone())).unwrap();
+
+    let patient = PatientWithNik::new(patient, req.nik);
+
+    SearchPatientAdminResponse::new(patient)
 }
 
 #[ic_cdk::query(guard = "only_patient")]

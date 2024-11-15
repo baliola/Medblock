@@ -387,6 +387,10 @@ pub struct SearchPatientResponse {
     pub patient_info: PatientWithNikAndSession,
 }
 #[derive(CandidType, Deserialize)]
+pub struct SearchPatientAdminResponse {
+    pub patient_info: PatientWithNik,
+}
+#[derive(CandidType, Deserialize)]
 pub enum CollectMetricsRequestType {
     #[serde(rename = "force")]
     Force,
@@ -553,6 +557,12 @@ impl PatientRegistry {
         arg0: SearchPatientRequest,
     ) -> Result<(SearchPatientResponse,)> {
         ic_cdk::call(self.0, "search_patient", (arg0,)).await
+    }
+    pub async fn search_patient_admin(
+        &self,
+        arg0: SearchPatientRequest,
+    ) -> Result<(SearchPatientAdminResponse,)> {
+        ic_cdk::call(self.0, "search_patient_admin", (arg0,)).await
     }
     pub async fn update_canistergeek_information(
         &self,
@@ -1181,6 +1191,27 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "search_patient", payload)
+        }
+        pub fn search_patient_admin(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: SearchPatientRequest,
+        ) -> std::result::Result<SearchPatientAdminResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "search_patient_admin",
+                payload,
+            )
         }
         pub fn update_canistergeek_information(
             &self,
