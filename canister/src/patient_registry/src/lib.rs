@@ -1199,4 +1199,33 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     ))
 }
 
+/// Claim Consent for Group Membership
+///
+/// Description: This function allows a patient to claim a consent code specifically for joining a group.
+/// Unlike the regular claim_consent, this doesn't create a session - it just verifies the consent
+/// and returns the NIK of the consenting patient.
+///
+/// Parameters:
+/// - code: The consent code to claim
+///
+/// Returns:
+/// - NIK of the consenting patient if successful
+/// - Error if consent is invalid or already claimed
+#[ic_cdk::update(guard = "only_patient")]
+fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
+    let consent = ConsentsApi::consent(&req.code).ok_or("Consent not found")?;
+    
+    if consent.claimed {
+        return Err("Consent already claimed".to_string());
+    }
+
+    let caller = verified_caller().unwrap();
+    
+    // Mark the consent as claimed using the caller's principal
+    ConsentsApi::claim_consent_for_group(&req.code, &caller);
+
+    // Return the NIK of the consenting patient
+    Ok(consent.nik.to_string())
+}
+
 ic_cdk::export_candid!();

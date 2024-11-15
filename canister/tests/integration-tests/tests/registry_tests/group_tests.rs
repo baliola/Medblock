@@ -42,8 +42,8 @@ fn test_group_creation_and_emr_access() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add member to group
@@ -134,8 +134,8 @@ fn test_emr_access_permissions() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     println!("DEBUG created group_id: {}", group_id);
@@ -286,8 +286,8 @@ fn test_group_retrieval() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // update the add_member_req
@@ -442,8 +442,8 @@ fn test_view_group_member_emr_information() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add patient2 to group
@@ -525,10 +525,10 @@ fn test_view_group_member_emr_information() {
 
     // Verify EMRs are returned
     match view_result {
-        patient_registry::Result3::Ok(response) => {
+        patient_registry::Result4::Ok(response) => {
             assert!(!response.emrs.is_empty(), "Should have returned EMRs");
         }
-        patient_registry::Result3::Err(e) => panic!("Failed to view EMRs: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to view EMRs: {}", e),
     }
 
     // revoke access
@@ -563,10 +563,10 @@ fn test_view_group_member_emr_information() {
         .unwrap();
 
     match view_result_after_revoke {
-        patient_registry::Result3::Ok(_) => {
+        patient_registry::Result4::Ok(_) => {
             panic!("Should not be able to view EMRs after access revocation")
         }
-        patient_registry::Result3::Err(e) => {
+        patient_registry::Result4::Err(e) => {
             assert!(e.contains("No access granted"), "Unexpected error message");
         }
     }
@@ -595,8 +595,8 @@ fn test_get_group_details() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // generate consent code for patient2
@@ -644,7 +644,7 @@ fn test_get_group_details() {
         .unwrap();
 
     match details_response {
-        patient_registry::Result2::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             // verify response
             assert_eq!(response.member_count, 2);
             assert_eq!(response.total_pages, 1);
@@ -685,7 +685,7 @@ fn test_get_group_details() {
 
             // verify member can see the same details
             match member_details_response {
-                patient_registry::Result2::Ok(member_response) => {
+                patient_registry::Result3::Ok(member_response) => {
                     assert_eq!(member_response.member_count, response.member_count);
                     assert_eq!(member_response.total_pages, response.total_pages);
                     assert_eq!(
@@ -693,10 +693,10 @@ fn test_get_group_details() {
                         response.group_details.len()
                     );
                 }
-                patient_registry::Result2::Err(e) => panic!("Member failed to get details: {}", e),
+                patient_registry::Result3::Err(e) => panic!("Member failed to get details: {}", e),
             }
         }
-        patient_registry::Result2::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
     }
 }
 
@@ -740,8 +740,8 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result1::Ok(response) => response.group_id,
-        patient_registry::Result1::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add all patients to group
@@ -790,7 +790,7 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     match first_page {
-        patient_registry::Result2::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             assert_eq!(response.group_details.len(), 2);
             assert_eq!(response.member_count, 6); // 5 members + 1 leader
             assert_eq!(response.total_pages, 3);
@@ -813,7 +813,7 @@ fn test_get_group_details_pagination() {
                 .unwrap();
 
             match second_page {
-                patient_registry::Result2::Ok(second_response) => {
+                patient_registry::Result3::Ok(second_response) => {
                     assert_eq!(second_response.group_details.len(), 2);
                     assert_eq!(second_response.member_count, 6);
                     assert_eq!(second_response.total_pages, 3);
@@ -834,9 +834,112 @@ fn test_get_group_details_pagination() {
                         .iter()
                         .all(|nik| !second_page_niks.contains(nik)));
                 }
-                patient_registry::Result2::Err(e) => panic!("Failed to get second page: {}", e),
+                patient_registry::Result3::Err(e) => panic!("Failed to get second page: {}", e),
             }
         }
-        patient_registry::Result2::Err(e) => panic!("Failed to get first page: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get first page: {}", e),
     }
+}
+
+#[test]
+fn test_claim_consent_for_group() {
+    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
+    let patient2 = common::Scenario::create_patient(&registries);
+
+    // generate consent code for patient2
+    let consent_code = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    // patient1 claims patient2's consent
+    let claim_result = registries
+        .patient
+        .claim_consent_for_group(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Update,
+            patient_registry::ClaimConsentRequest {
+                code: consent_code.code.clone(),
+            },
+        )
+        .unwrap();
+
+    // verify the returned NIK matches patient2's NIK
+    match claim_result {
+        patient_registry::Result1::Ok(nik) => {
+            assert_eq!(nik, patient2.nik.to_string());
+        }
+        patient_registry::Result1::Err(e) => panic!("Failed to claim consent: {}", e),
+    }
+
+    // attempt to claim the same consent again (should fail)
+    let second_claim = registries.patient.claim_consent_for_group(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Update,
+        patient_registry::ClaimConsentRequest {
+            code: consent_code.code,
+        },
+    );
+
+    match second_claim.unwrap() {
+        patient_registry::Result1::Ok(_) => panic!("Should not succeed"),
+        patient_registry::Result1::Err(e) => assert!(e.contains("Consent already claimed")),
+    }
+}
+
+#[test]
+fn test_claim_nonexistent_consent_for_group() {
+    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
+
+    // attempt to claim a non-existent consent code
+    let result = registries.patient.claim_consent_for_group(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Update,
+        patient_registry::ClaimConsentRequest {
+            code: "123456".to_string(),
+        },
+    );
+
+    match result.unwrap() {
+        patient_registry::Result1::Ok(_) => panic!("Should not succeed"),
+        patient_registry::Result1::Err(e) => assert!(e.contains("Consent not found")),
+    }
+}
+
+#[test]
+#[should_panic(expected = "only patient can call this method")]
+fn test_claim_consent_for_group_unauthorized() {
+    let (registries, _, _) = common::Scenario::one_admin_one_patient();
+    let patient2 = common::Scenario::create_patient(&registries);
+    let unauthorized = common::random_identity();
+
+    // generate consent code for patient2
+    let consent_code = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    // attempt to claim consent with unauthorized principal (should panic)
+    registries
+        .patient
+        .claim_consent_for_group(
+            &registries.ic,
+            unauthorized,
+            PatientCall::Update,
+            patient_registry::ClaimConsentRequest {
+                code: consent_code.code,
+            },
+        )
+        .unwrap();
 }

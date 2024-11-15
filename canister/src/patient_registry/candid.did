@@ -45,6 +45,7 @@ type ClaimConsentResponse = record { session_id : text; name : text };
 type CollectMetricsRequestType = variant { force; normal };
 type Consent = record {
   nik : text;
+  group_claimer : opt principal;
   session_id : opt text;
   code : text;
   claimed : bool;
@@ -191,9 +192,10 @@ type ReadEmrSessionRequest = record {
 type RegisterPatientRequest = record { nik : text };
 type Relation = variant { Parent; Sibling; Other; Child; Spouse };
 type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok : CreateGroupResponse; Err : text };
-type Result_2 = variant { Ok : GetGroupDetailsResponse; Err : text };
-type Result_3 = variant { Ok : EmrListPatientResponse; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
+type Result_2 = variant { Ok : CreateGroupResponse; Err : text };
+type Result_3 = variant { Ok : GetGroupDetailsResponse; Err : text };
+type Result_4 = variant { Ok : EmrListPatientResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type RevokeGroupAccessRequest = record { grantee_nik : text };
 type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
@@ -237,9 +239,10 @@ service : () -> {
   add_group_member : (AddGroupMemberRequest) -> (Result);
   bind_admin : (BindAdminRequest) -> ();
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
+  claim_consent_for_group : (ClaimConsentRequest) -> (Result_1);
   consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
-  create_group : (CreateGroupRequest) -> (Result_1);
+  create_group : (CreateGroupRequest) -> (Result_2);
   emr_list_patient : (EmrListPatientRequest) -> (
       EmrListPatientResponse,
     ) composite_query;
@@ -250,7 +253,7 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
-  get_group_details : (GetGroupDetailsRequest) -> (Result_2) query;
+  get_group_details : (GetGroupDetailsRequest) -> (Result_3) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
   get_patient_info_with_consent : (FinishSessionRequest) -> (
@@ -292,5 +295,5 @@ service : () -> {
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,
-    ) -> (Result_3) query;
+    ) -> (Result_4) query;
 }
