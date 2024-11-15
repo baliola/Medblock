@@ -1221,10 +1221,10 @@ fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
 
     let caller = verified_caller().unwrap();
     
-    // Mark the consent as claimed using the caller's principal
+    // mark the consent as claimed using the caller's principal
     ConsentsApi::claim_consent_for_group(&req.code, &caller);
 
-    // Return the NIK of the consenting patient
+    // return the NIK of the consenting patient
     Ok(consent.nik.to_string())
 }
 
