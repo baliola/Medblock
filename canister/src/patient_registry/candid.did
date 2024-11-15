@@ -85,6 +85,17 @@ type EmrListConsentResponse = record {
 type EmrListPatientRequest = record { page : nat8; limit : nat8 };
 type EmrListPatientResponse = record { emrs : vec EmrHeaderWithStatus };
 type FinishSessionRequest = record { session_id : text };
+type GetGroupDetailsRequest = record {
+  page : nat64;
+  limit : nat64;
+  group_id : nat64;
+};
+type GetGroupDetailsResponse = record {
+  group_details : vec GroupDetail;
+  total_pages : nat64;
+  leader_name : text;
+  member_count : nat64;
+};
 type GetInformationRequest = record {
   status : opt StatusRequest;
   metrics : opt MetricsRequest;
@@ -125,6 +136,13 @@ type Group = record {
   members : vec text;
   name : text;
   leader : text;
+};
+type GroupDetail = record {
+  age : nat8;
+  nik : text;
+  name : text;
+  role : Relation;
+  gender : text;
 };
 type HeaderStatus = record { updated_at : nat64; created_at : nat64 };
 type HourlyMetricsData = record {
@@ -174,7 +192,8 @@ type RegisterPatientRequest = record { nik : text };
 type Relation = variant { Parent; Sibling; Other; Child; Spouse };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : CreateGroupResponse; Err : text };
-type Result_2 = variant { Ok : EmrListPatientResponse; Err : text };
+type Result_2 = variant { Ok : GetGroupDetailsResponse; Err : text };
+type Result_3 = variant { Ok : EmrListPatientResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type RevokeGroupAccessRequest = record { grantee_nik : text };
 type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
@@ -231,6 +250,7 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
+  get_group_details : (GetGroupDetailsRequest) -> (Result_2) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
   get_patient_info_with_consent : (FinishSessionRequest) -> (
@@ -272,5 +292,5 @@ service : () -> {
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,
-    ) -> (Result_2) query;
+    ) -> (Result_3) query;
 }

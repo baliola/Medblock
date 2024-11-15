@@ -14,6 +14,9 @@ use serde::Deserialize;
 
 use crate::{api::ReadEmrByIdRequest, declarations};
 
+/// Limit the number of members in a group to 16 to prevent memory overflow, realistically no group should have more than 16 members but we might need to increase this in the future depending on the use case.
+pub const MAX_GROUP_MEMBERS: usize = 16;
+
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub admin_map: AdminMap,
@@ -213,6 +216,8 @@ pub enum PatientRegistryError {
     UserDoesNotExist,
     #[error("emr exists")]
     EmrExists,
+    #[error("group has reached maximum member limit of {0}")]
+    GroupFull(usize),
 }
 
 pub struct GroupAccessMap(ic_stable_structures::BTreeMap<GroupAccessKey, Stable<GroupId>, Memory>);
@@ -824,7 +829,7 @@ pub struct V1 {
 
 // 270 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
 // benchmarked by tsting the encoded size of a struct with max size fields.
-impl_max_size!(for V1: 270);
+impl_max_size!(for V1: 512);
 impl_mem_bound!(for V1: bounded; fixed_size: false);
 impl_range_bound!(V1);
 
@@ -1086,7 +1091,7 @@ pub struct Group {
 
 impl_mem_bound!(for Group: bounded; fixed_size: false);
 impl_range_bound!(Group);
-impl_max_size!(for Group: 270);
+impl_max_size!(for Group: 512);
 pub struct GroupMap(ic_stable_structures::BTreeMap<Stable<GroupId>, Stable<Group, Candid>, Memory>);
 metrics!(GroupMap: Groups);
 impl GroupMap {
@@ -1122,6 +1127,10 @@ impl GroupMap {
 
         if group.leader != *leader {
             return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
+        if group.members.len() >= MAX_GROUP_MEMBERS {
+            return Err(PatientRegistryError::GroupFull(MAX_GROUP_MEMBERS));
         }
 
         if !group.members.contains(&member) {

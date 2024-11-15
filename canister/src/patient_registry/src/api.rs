@@ -410,3 +410,57 @@ pub struct ViewGroupMemberEmrInformationRequest {
     pub page: usize,
     pub limit: usize,
 }
+
+/// API response and request structs for group details functionality.
+/// Returns the below information about the group:
+/// - Group member count
+/// - Group leader name
+/// - Total pages for pagination
+///
+/// Returns the below information for each group member:
+/// - NIK
+/// - Name
+/// - Gender
+/// - Age
+/// - Role
+#[derive(CandidType, Deserialize)]
+pub struct GroupDetail {
+    pub nik: NIK,
+    pub name: AsciiRecordsKey<64>,
+    pub gender: AsciiRecordsKey<64>,
+    pub age: u8,
+    pub role: Relation,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsRequest {
+    pub group_id: GroupId,
+    pub page: u64,
+    pub limit: u64,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsResponse {
+    pub group_details: Vec<GroupDetail>,
+    pub member_count: u64,
+    pub leader_name: AsciiRecordsKey<64>,
+    pub total_pages: u64,
+}
+
+impl GetGroupDetailsResponse {
+    pub fn new(
+        group_details: Vec<GroupDetail>,
+        member_count: u64,
+        leader_name: AsciiRecordsKey<64>,
+        total_pages: u64,
+    ) -> Self {
+        Self {
+            group_details,
+            member_count,
+            leader_name,
+            total_pages,
+        }
+    }
+}
+
+// End of API response and request structs for group details functionality.

@@ -4,15 +4,16 @@ use api::{
     AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest,
     ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, CreateGroupRequest,
     CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse,
-    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
-    GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse,
-    GrantGroupAccessRequest, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest,
-    LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
-    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
-    RegisterPatientRequest, RevokeConsentRequest, RevokeGroupAccessRequest,
-    SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse,
-    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest,
-    UpdateKycStatusResponse, UpdateRequest, ViewGroupMemberEmrInformationRequest,
+    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsRequest,
+    GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse,
+    GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest,
+    IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse,
+    PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession,
+    PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest,
+    RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse,
+    SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest,
+    UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse,
+    UpdateRequest, ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -33,7 +34,7 @@ use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProv
 use ic_stable_structures::Cell;
 use log::PatientLog;
 use memory::UpgradeMemory;
-use registry::{Group, GroupId, PatientRegistry, NIK};
+use registry::{Group, GroupId, Patient, PatientRegistry, Relation, NIK};
 
 use crate::consent::ConsentsApi;
 
@@ -1101,6 +1102,101 @@ async fn view_group_member_emr_information(
         .collect::<Vec<_>>();
 
     Ok(EmrListPatientResponse::from(emrs))
+}
+
+/// Get Group Details
+///
+/// Description:
+/// - Get the details of a group, such as
+/// - Group member count, member names, leader name, member genders, member role in group and member age.
+/// - Only accessible by the group members.
+///
+/// Parameters:
+/// - group_id: The ID of the group to get details for.
+/// - page: The page number to get details for.
+/// - limit: The number of members to get details for.
+///
+/// Returns:
+/// - GetGroupDetailsResponse: A struct containing the details of the group.
+#[ic_cdk::query(guard = "only_patient")]
+fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsResponse, String> {
+    let caller = verified_caller().unwrap();
+    let caller_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+
+    // get group and verify caller is a member
+    let group =
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+
+    if !group.members.contains(&caller_nik) {
+        return Err("Only group members can view group details".to_string());
+    }
+
+    // calculate total pages
+    let total_members = group.members.len() as u64;
+    let total_pages = (total_members + req.limit - 1) / req.limit;
+
+    // get paginated member details
+    let start = (req.page * req.limit) as usize;
+    let end = ((req.page + 1) * req.limit) as usize;
+
+    let paginated_members = group.members.iter().skip(start).take(end - start);
+
+    // get leader name
+    let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
+        .map_err(|e| format!("Failed to get leader info: {:?}", e))?
+        .name()
+        .clone();
+
+    // build group details for each member
+    let mut group_details = Vec::new();
+    for member_nik in paginated_members {
+        let member = with_state(|s| s.registry.get_patient_info(member_nik.clone()))
+            .map_err(|_| format!("Failed to get member info for NIK: {}", member_nik))?;
+
+        // calculate member's role
+        let role = if *member_nik == group.leader {
+            Relation::Parent // leader is considered the parent
+        } else {
+            Relation::Other // other members are considered others by default
+        };
+
+        // calculate age from date_of_birth
+        let age = match member {
+            Patient::V1(ref v1) => {
+                // parse date of birth string (assuming format YYYY-MM-DD)
+                let dob = v1.date_of_birth.to_string();
+                let year = dob
+                    .get(0..4)
+                    .and_then(|y| y.parse::<u16>().ok())
+                    .unwrap_or(0);
+                let current_year = 2024; // todo: might want to get this dynamically
+                (current_year - year) as u8
+            }
+        };
+
+        // create a new AsciiRecordsKey<64> for gender
+        let gender = match member {
+            Patient::V1(ref v1) => AsciiRecordsKey::<64>::new(v1.gender.to_string())
+                .map_err(|_| "Failed to convert gender to AsciiRecordsKey<64>".to_string())?,
+        };
+
+        let detail = GroupDetail {
+            nik: member_nik.clone(),
+            name: member.name().clone(),
+            gender,
+            age,
+            role,
+        };
+
+        group_details.push(detail);
+    }
+
+    Ok(GetGroupDetailsResponse::new(
+        group_details,
+        total_members,
+        leader_name,
+        total_pages,
+    ))
 }
 
 ic_cdk::export_candid!();

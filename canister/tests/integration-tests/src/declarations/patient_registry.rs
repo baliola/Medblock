@@ -247,6 +247,32 @@ pub struct GetInformationResponse {
     pub version: Option<candid::Nat>,
 }
 #[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsRequest {
+    pub page: u64,
+    pub limit: u64,
+    pub group_id: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub struct GroupDetail {
+    pub age: u8,
+    pub nik: String,
+    pub name: String,
+    pub role: Relation,
+    pub gender: String,
+}
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsResponse {
+    pub group_details: Vec<GroupDetail>,
+    pub total_pages: u64,
+    pub leader_name: String,
+    pub member_count: u64,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Result2 {
+    Ok(GetGroupDetailsResponse),
+    Err(String),
+}
+#[derive(CandidType, Deserialize)]
 pub enum ActivityType {
     Updated,
     Accessed,
@@ -426,7 +452,7 @@ pub struct ViewGroupMemberEmrInformationRequest {
     pub member_nik: String,
 }
 #[derive(CandidType, Deserialize)]
-pub enum Result2 {
+pub enum Result3 {
     Ok(EmrListPatientResponse),
     Err(String),
 }
@@ -479,6 +505,9 @@ impl PatientRegistry {
         arg0: GetInformationRequest,
     ) -> Result<(GetInformationResponse,)> {
         ic_cdk::call(self.0, "getCanistergeekInformation", (arg0,)).await
+    }
+    pub async fn get_group_details(&self, arg0: GetGroupDetailsRequest) -> Result<(Result2,)> {
+        ic_cdk::call(self.0, "get_group_details", (arg0,)).await
     }
     pub async fn get_logs(&self) -> Result<(LogResponse,)> {
         ic_cdk::call(self.0, "get_logs", ()).await
@@ -597,7 +626,7 @@ impl PatientRegistry {
     pub async fn view_group_member_emr_information(
         &self,
         arg0: ViewGroupMemberEmrInformationRequest,
-    ) -> Result<(Result2,)> {
+    ) -> Result<(Result3,)> {
         ic_cdk::call(self.0, "view_group_member_emr_information", (arg0,)).await
     }
 }
@@ -826,6 +855,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_canistergeek_information",
+                payload,
+            )
+        }
+        pub fn get_group_details(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: GetGroupDetailsRequest,
+        ) -> std::result::Result<Result2, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_group_details",
                 payload,
             )
         }
@@ -1324,7 +1374,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: ViewGroupMemberEmrInformationRequest,
-        ) -> std::result::Result<Result2, pocket_ic::UserError> {
+        ) -> std::result::Result<Result3, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,

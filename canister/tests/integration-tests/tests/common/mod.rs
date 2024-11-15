@@ -566,4 +566,54 @@ impl Scenario {
 
         patient
     }
+
+    pub fn create_patient_with_info(
+        registries: &Registries,
+        info: patient_registry::V1,
+    ) -> Patient {
+        // generate a random NIK using timestamp to ensure uniqueness
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        let mut nik_bytes = [0u8; 32];
+        nik_bytes[..16].copy_from_slice(&timestamp.to_be_bytes());
+        let nik = canister_common::common::H256::from(nik_bytes);
+
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
+
+        // register patient
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // set initial patient info with provided V1 struct
+        let arg = patient_registry::UpdateInitialPatientInfoRequest { info };
+
+        registries
+            .patient
+            .update_initial_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        patient
+    }
 }
