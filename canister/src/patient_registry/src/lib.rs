@@ -1,14 +1,7 @@
 use std::{borrow::BorrowMut, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse,
-    CreateConsentResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse,
-    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
-    GetPatientInfoBySessionRequest, GetPatientInfoResponse, IsConsentClaimedRequest,
-    IsConsentClaimedResponse, IssueRequest, LogResponse, PatientListResponse,
-    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
-    RegisterPatientRequest, RevokeConsentRequest, SearchPatientRequest, SearchPatientResponse,
-    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateRequest,
+    AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetPatientInfoBySessionRequest, GetPatientInfoResponse, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LogResponse, PatientListResponse, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RevokeConsentRequest, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdateRequest
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -126,6 +119,16 @@ fn only_authorized_metrics_collector() -> Result<(), String> {
 
         Ok(())
     })
+}
+
+// guard function
+fn only_admin() -> Result<(), String> {
+    let caller = verified_caller()?;
+
+    match with_state(|s| s.registry.admin_map.is_valid_admin(&caller)) {
+        true => Ok(()),
+        false => Err("only admin can call this method".to_string()),
+    }
 }
 
 fn init_state() -> State {
@@ -676,7 +679,7 @@ fn update_provider_registry_principal(req: UpdateEmrRegistryRequest) {
 fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
     let caller = verified_caller().unwrap();
 
-    with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
+    with_state_mut(|s| s.registry.initial_patient_info(caller, req.info.into())).unwrap()
 }
 
 #[ic_cdk::query(composite = true)]
@@ -790,6 +793,29 @@ fn consent_list() -> ConsentListResponse {
     let consents = ConsentsApi::list_consent_with_patient(&patient);
 
     consents.into()
+}
+
+#[ic_cdk::update(guard = "only_admin")]
+fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
+    // get existing patient info
+    let patient = with_state(|s| s.registry.get_patient_info(req.nik.clone())).unwrap();
+    
+    // create updated patient with new kyc status
+    let mut updated_patient = patient.clone();
+    updated_patient.update_kyc_status(req.kyc_status);
+
+    // get the patient's principal to update their info
+    let patient_principal = with_state(|s| s.registry.owner_map.get_principal(&req.nik)).unwrap();
+    
+    // update the patient info using their principal
+    with_state_mut(|s| s.registry.update_patient_info(patient_principal, updated_patient.clone())).unwrap();
+    
+    UpdateKycStatusResponse::new(updated_patient)
+}
+
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn bind_admin(req: BindAdminRequest) {
+    with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik)).unwrap();
 }
 
 ic_cdk::export_candid!();

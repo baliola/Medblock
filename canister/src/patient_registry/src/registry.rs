@@ -18,6 +18,7 @@ use crate::{ api::ReadEmrByIdRequest, declarations };
 
 pub struct PatientRegistry {
     pub owner_map: OwnerMap,
+    pub admin_map: AdminMap,
     pub emr_binding_map: EmrBindingMap,
     pub info_map: InfoMap,
     pub header_status_map: HeaderStatusMap,
@@ -46,13 +47,26 @@ impl PatientRegistry {
 }
 
 impl PatientRegistry {
-    pub fn update_patient_info(
+    // sets the initial patient info for an existing nik 
+    // prerequisite: nik must be bound to an owner first
+    pub fn initial_patient_info( 
         &mut self,
         patient_principal: Principal,
         patient: Patient
     ) -> PatientBindingMapResult {
         let nik = self.owner_map.get_nik(&patient_principal)?;
         self.info_map.set(nik.into_inner(), patient)
+    }
+
+    // actual update, nik must be bound to an owner first
+    // and patient info must already be set
+    pub fn update_patient_info(
+        &mut self,
+        patient_principal: Principal,
+        patient: Patient
+    ) -> PatientBindingMapResult {
+        let nik = self.owner_map.get_nik(&patient_principal)?;
+        self.info_map.update(nik.into_inner(), patient)
     }
 
     pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult {
@@ -117,6 +131,7 @@ impl PatientRegistry {
     pub fn init(memory_manager: &MemoryManager) -> Self {
         Self {
             owner_map: OwnerMap::init(memory_manager),
+            admin_map: AdminMap::init(memory_manager),
             emr_binding_map: EmrBindingMap::init(memory_manager),
             info_map: InfoMap::init(memory_manager),
             header_status_map: HeaderStatusMap::init(memory_manager),
@@ -215,6 +230,16 @@ impl OwnerMap {
     /// will return an error if owner does not exists
     pub fn get_nik(&self, owner: &Owner) -> PatientBindingMapResult<Stable<UserId>> {
         self.0.get(owner).ok_or(PatientRegistryError::UserDoesNotExist)
+    }
+
+    
+    /// gets the principal associated with a NIK by iterating through the map
+    pub fn get_principal(&self, nik: &NIK) -> PatientBindingMapResult<Owner> {
+        self.0
+            .iter()
+            .find(|(_, stored_nik)| stored_nik.as_ref() == nik)
+            .map(|(principal, _)| principal.clone())
+            .ok_or(PatientRegistryError::UserDoesNotExist)
     }
 
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -491,6 +516,18 @@ impl InfoMap {
 
         Ok(())
     }
+
+    pub fn update(&mut self, nik: NIK, patient: Patient) -> PatientBindingMapResult {
+        let key = nik.to_stable();
+        if !self.0.contains_key(&key) {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
+        let result = self.0.insert(key, patient.to_stable());
+        assert!(result.is_some(), "info should exist");
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -525,6 +562,18 @@ impl Patient {
             Self::V1(v1) => &v1.name,
         }
     }
+
+    pub fn kyc_status(&self) -> &KycStatus {
+        match self {
+            Self::V1(v1) => &v1.kyc_status,
+        }
+    }
+
+    pub fn update_kyc_status(&mut self, kyc_status: KycStatus) {
+        match self {
+            Self::V1(v1) => v1.kyc_status = kyc_status,
+        }
+    }
 }
 
 impl From<V1> for Patient {
@@ -547,6 +596,19 @@ impl Patient {
     }
 }
 
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum KycStatus {
+    Denied,
+    Pending,
+    Approved,
+}
+
+impl Default for KycStatus {
+    fn default() -> Self {
+        Self::Pending
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Default, PartialOrd, Ord)]
 pub struct V1 {
     pub name: AsciiRecordsKey<64>,
@@ -555,6 +617,8 @@ pub struct V1 {
     pub address: AsciiRecordsKey<64>,
     pub martial_status: AsciiRecordsKey<10>,
     pub gender: AsciiRecordsKey<10>,
+    pub kyc_status: KycStatus,
+    pub kyc_date: AsciiRecordsKey<32>,
 }
 
 // 270 to account for serialization overhead for using candid. max size is roughly ~190 bytes.
@@ -580,6 +644,8 @@ mod v1_test {
             address: AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap(),
             martial_status: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
             gender: AsciiRecordsKey::<10>::new("a".repeat(10)).unwrap(),
+            kyc_status: KycStatus::Pending,
+            kyc_date: AsciiRecordsKey::<32>::new("a".repeat(32)).unwrap(),
         };
 
         let encoded = Encode!(&patient).unwrap();
@@ -587,5 +653,190 @@ mod v1_test {
         let decoded = Decode!(&encoded, V1).unwrap();
 
         assert_eq!(patient, decoded);
+    }
+}
+
+pub type Admin = ic_principal::Principal;
+pub struct AdminMap(ic_stable_structures::BTreeMap<Admin, Stable<NIK>, Memory>);
+metrics!(AdminMap: Admins);
+
+impl Metrics<Admins> for AdminMap {
+    fn metrics_name() -> &'static str {
+        "admins"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.0.len().to_string()
+    }
+}
+
+impl AdminMap {
+    pub fn revoke(&mut self, admin: &Admin) -> PatientBindingMapResult {
+        self.0
+            .remove(admin)
+            .map(|_| ())
+            .ok_or(PatientRegistryError::UserDoesNotExist)
+    }
+
+    pub fn bind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+        if self.get_nik(&admin).is_ok() {
+            return Err(PatientRegistryError::UserExist);
+        }
+
+        let _ = self.0.insert(admin, nik.to_stable());
+        Ok(())
+    }
+
+    pub fn rebind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+        if self.get_nik(&admin).is_err() {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
+        let _ = self.0.insert(admin, nik.to_stable());
+        Ok(())
+    }
+
+    /// will return an error if owner does not exists
+    pub fn get_nik(&self, admin: &Admin) -> PatientBindingMapResult<Stable<NIK>> {
+        self.0.get(admin).ok_or(PatientRegistryError::UserDoesNotExist)
+    }
+
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
+    }
+
+    pub fn is_valid_admin(&self, admin: &Admin) -> bool {
+        self.0.contains_key(admin)
+    }
+}
+
+#[cfg(test)]
+mod test_admin_map {
+    use super::*;
+
+    #[test]
+    fn test_bind() {
+        let mut admin_map = AdminMap::init(&MemoryManager::init());
+        let admin = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
+
+        assert_eq!(admin_map.bind(admin, nik).unwrap_err(), PatientRegistryError::UserExist);
+    }
+
+    #[test]
+    fn test_rebind() {
+        let mut admin_map = AdminMap::init(&MemoryManager::init());
+        let admin = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(
+            admin_map.rebind(admin, nik.clone()).unwrap_err(),
+            PatientRegistryError::UserDoesNotExist
+        );
+        assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
+        assert_eq!(admin_map.rebind(admin, nik.clone()).unwrap(), ());
+    }
+
+
+    #[test]
+    fn test_revoke() {
+        let mut admin_map = AdminMap::init(&MemoryManager::init());
+        let admin = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(admin_map.revoke(&admin).unwrap_err(), PatientRegistryError::UserDoesNotExist);
+        assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
+        assert_eq!(admin_map.revoke(&admin).unwrap(), ());
+    }
+
+    #[test]
+    fn test_get_nik() {
+        let mut admin_map = AdminMap::init(&MemoryManager::init());
+        let admin = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert_eq!(admin_map.get_nik(&admin).unwrap_err(), PatientRegistryError::UserDoesNotExist);
+        assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
+        assert_eq!(admin_map.get_nik(&admin).unwrap(), nik.to_stable());
+    }
+
+    #[test]
+    fn test_is_valid_owner() {
+        let mut admin_map = AdminMap::init(&MemoryManager::init());
+        let admin = ic_principal::Principal::anonymous();
+        let nik = NIK::from([0u8; 32]);
+
+        assert!(!admin_map.is_valid_admin(&admin));
+        assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
+        assert!(admin_map.is_valid_admin(&admin));
+    }
+}
+#[cfg(test)]
+mod test_kyc {
+    use super::*;
+    use canister_common::{id, memory_manager};
+    use ic_principal::Principal;
+
+    #[test]
+    fn test_admin_role() {
+        let memory_manager = memory_manager!();
+        let mut registry = PatientRegistry::init(&memory_manager);
+
+        let admin = Principal::from_text("rrkah-fqaaa-aaaaa-aaaaq-cai").unwrap();
+        let non_admin = Principal::from_text("aaaaa-aa").unwrap();
+        let nik = NIK::from([0u8; 32]);
+
+        // Test adding an admin
+        assert_eq!(registry.admin_map.bind(admin, nik.clone()).unwrap(), ());
+        assert!(registry.admin_map.is_valid_admin(&admin));
+        assert!(!registry.admin_map.is_valid_admin(&non_admin));
+
+        // Test removing an admin
+        assert_eq!(registry.admin_map.revoke(&admin).unwrap(), ());
+        assert!(!registry.admin_map.is_valid_admin(&admin));
+    }
+
+    #[test]
+    fn test_kyc_status() {
+        let memory_manager = memory_manager!();
+        let mut registry = PatientRegistry::init(&memory_manager);
+
+        let nik = NIK::from([0u8; 32]);
+        let mut patient = Patient::V1(V1::default());
+        let non_anonymous_principal = Principal::from_text("2vxsx-fae").unwrap();
+
+        // need to bind nik to owner first before we can register patient
+        registry.owner_map.bind(non_anonymous_principal, nik.clone()).unwrap();
+        assert_eq!(registry.owner_map.get_nik(&non_anonymous_principal).unwrap(), nik.clone().to_stable());
+
+        // register patient info
+        registry.initial_patient_info(non_anonymous_principal, patient.clone()).unwrap();
+        assert!(registry.info_map.get(nik.clone()).is_ok());
+
+        // Check initial KYC status
+        let initial_patient = registry.get_patient_info(nik.clone()).unwrap();
+        assert_eq!(initial_patient.kyc_status(), &KycStatus::Pending);
+
+        // Update KYC status
+        patient.update_kyc_status(KycStatus::Approved);
+        registry.update_patient_info(non_anonymous_principal, patient.clone()).unwrap();
+
+        // Verify updated KYC status
+        let verified_patient = registry.get_patient_info(nik.clone()).unwrap();
+        assert_eq!(verified_patient.kyc_status(), &KycStatus::Approved);
+
+        // Attempt to update with anonymous principal (should fail)
+        let result = registry.initial_patient_info(Principal::anonymous(), patient.clone());
+        assert!(result.is_err());
     }
 }

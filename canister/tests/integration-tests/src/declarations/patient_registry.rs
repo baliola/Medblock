@@ -7,6 +7,11 @@ pub struct AuthorizedCallerRequest {
     pub caller: Principal,
 }
 #[derive(CandidType, Deserialize)]
+pub struct BindAdminRequest {
+    pub nik: String,
+    pub principal: Principal,
+}
+#[derive(CandidType, Deserialize)]
 pub struct ClaimConsentRequest {
     pub code: String,
 }
@@ -227,12 +232,20 @@ pub struct LogResponse {
     pub logs: Vec<Activity>,
 }
 #[derive(CandidType, Deserialize)]
+pub enum KycStatus {
+    Approved,
+    Denied,
+    Pending,
+}
+#[derive(CandidType, Deserialize)]
 pub struct V1 {
+    pub kyc_date: String,
     pub name: String,
     pub martial_status: String,
     pub place_of_birth: String,
     pub address: String,
     pub gender: String,
+    pub kyc_status: KycStatus,
     pub date_of_birth: String,
 }
 #[derive(CandidType, Deserialize)]
@@ -327,6 +340,15 @@ pub struct UpdateEmrRegistryRequest {
 pub struct UpdateInitialPatientInfoRequest {
     pub info: V1,
 }
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusRequest {
+    pub nik: String,
+    pub kyc_status: KycStatus,
+}
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusResponse {
+    pub patient: Patient,
+}
 pub struct PatientRegistry(pub Principal);
 impl PatientRegistry {
     pub async fn add_authorized_metrics_collector(
@@ -334,6 +356,9 @@ impl PatientRegistry {
         arg0: AuthorizedCallerRequest,
     ) -> Result<()> {
         ic_cdk::call(self.0, "add_authorized_metrics_collector", (arg0,)).await
+    }
+    pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<()> {
+        ic_cdk::call(self.0, "bind_admin", (arg0,)).await
     }
     pub async fn claim_consent(
         &self,
@@ -449,6 +474,12 @@ impl PatientRegistry {
     ) -> Result<()> {
         ic_cdk::call(self.0, "update_initial_patient_info", (arg0,)).await
     }
+    pub async fn update_kyc_status(
+        &self,
+        arg0: UpdateKycStatusRequest,
+    ) -> Result<(UpdateKycStatusResponse,)> {
+        ic_cdk::call(self.0, "update_kyc_status", (arg0,)).await
+    }
     pub async fn update_provider_registry_principal(
         &self,
         arg0: UpdateEmrRegistryRequest,
@@ -517,6 +548,20 @@ pub mod pocket_ic_bindings {
                 "add_authorized_metrics_collector",
                 payload,
             )
+        }
+        pub fn bind_admin(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: BindAdminRequest,
+        ) -> std::result::Result<(), pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(server, f, self.0.clone(), sender, "bind_admin", payload)
         }
         pub fn claim_consent(
             &self,
@@ -962,6 +1007,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "update_initial_patient_info",
+                payload,
+            )
+        }
+        pub fn update_kyc_status(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: UpdateKycStatusRequest,
+        ) -> std::result::Result<UpdateKycStatusResponse, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "update_kyc_status",
                 payload,
             )
         }
