@@ -887,8 +887,6 @@ fn consent_list() -> ConsentListResponse {
     consents.into()
 }
 
-// get patie \nt list only admin and comtrollret context
-
 #[ic_cdk::update(guard = "only_admin")]
 fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
     // get existing patient info
@@ -940,7 +938,7 @@ fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
     with_state_mut(|s| {
         s.registry
             .group_map
-            .add_member(req.group_id, &leader_nik, consent.nik)
+            .add_member(req.group_id, &leader_nik, consent.nik, req.relation)
     })
     .map_err(|e| format!("Failed to add member: {:?}", e))
 }
@@ -1147,6 +1145,9 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         .name()
         .clone();
 
+    // get group name
+    let group_name = group.name.clone();
+
     // build group details for each member
     let mut group_details = Vec::new();
     for member_nik in paginated_members {
@@ -1154,11 +1155,12 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
             .map_err(|_| format!("Failed to get member info for NIK: {}", member_nik))?;
 
         // calculate member's role
-        let role = if *member_nik == group.leader {
-            Relation::Parent // leader is considered the parent
-        } else {
-            Relation::Other // other members are considered others by default
-        };
+        let role = group
+            .member_relations
+            .iter()
+            .find(|(nik, _)| nik == member_nik)
+            .map(|(_, relation)| relation.clone())
+            .unwrap_or(Relation::Other);
 
         // calculate age from date_of_birth
         let age = match member {
@@ -1194,6 +1196,7 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     Ok(GetGroupDetailsResponse::new(
         group_details,
         total_members,
+        group_name,
         leader_name,
         total_pages,
     ))
@@ -1214,13 +1217,13 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
 #[ic_cdk::update(guard = "only_patient")]
 fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
     let consent = ConsentsApi::consent(&req.code).ok_or("Consent not found")?;
-    
+
     if consent.claimed {
         return Err("Consent already claimed".to_string());
     }
 
     let caller = verified_caller().unwrap();
-    
+
     // mark the consent as claimed using the caller's principal
     ConsentsApi::claim_consent_for_group(&req.code, &caller);
 

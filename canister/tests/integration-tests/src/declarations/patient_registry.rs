@@ -272,6 +272,7 @@ pub struct GetGroupDetailsResponse {
     pub total_pages: u64,
     pub leader_name: String,
     pub member_count: u64,
+    pub group_name: String,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Result3 {
@@ -336,6 +337,7 @@ pub struct Group {
     pub members: Vec<String>,
     pub name: String,
     pub leader: String,
+    pub member_relations: Vec<(String, Relation)>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct GetUserGroupsResponse {

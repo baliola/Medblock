@@ -574,12 +574,48 @@ fn test_view_group_member_emr_information() {
 
 #[test]
 fn test_get_group_details() {
-    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
+    // Create patient1 with specific gender info
+    let (registries, _, _) = common::Scenario::one_admin_one_patient();
+    let patient1 = common::Scenario::create_patient_with_info(
+        &registries,
+        patient_registry::V1 {
+            name: "leader".to_string(),
+            martial_status: "single".to_string(),
+            place_of_birth: "jakarta".to_string(),
+            address: "leader_address".to_string(),
+            gender: "m".to_string(), // Explicitly set gender
+            date_of_birth: "1990-01-01".to_string(),
+            kyc_status: KycStatus::Pending,
+            kyc_date: "2024-01-01".to_string(),
+        },
+    );
 
-    // create another patient for group member
-    let patient2 = common::Scenario::create_patient(&registries);
+    // Rest of test patients with specific details for validation
+    let test_patients = vec![
+        ("test1", "m", "1990-01-01", Relation::Sibling),
+        ("test2", "f", "2000-01-01", Relation::Child),
+        ("test3", "m", "1995-01-01", Relation::Spouse),
+    ];
 
-    // test group creation
+    let mut patients = Vec::new();
+    for (name, gender, dob, relation) in test_patients {
+        let patient = common::Scenario::create_patient_with_info(
+            &registries,
+            patient_registry::V1 {
+                name: name.to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "jakarta".to_string(),
+                address: format!("addr_{}", name),
+                gender: gender.to_string(),
+                date_of_birth: dob.to_string(),
+                kyc_status: KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        );
+        patients.push((patient, relation));
+    }
+
+    // create group
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "test family".to_string(),
     };
@@ -599,34 +635,41 @@ fn test_get_group_details() {
         patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // generate consent code for patient2
-    let consent_code = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient2.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
+    // add all patients to group with their specific relations
+    for (patient, relation) in &patients {
+        let consent_code = registries
+            .patient
+            .create_consent(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+            )
+            .unwrap();
 
-    // add patient2 to group
-    let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
-        consent_code: consent_code.code,
-        relation: Relation::Spouse,
-    };
+        let add_member_req = patient_registry::AddGroupMemberRequest {
+            group_id,
+            consent_code: consent_code.code,
+            relation: match relation {
+                Relation::Spouse => Relation::Spouse,
+                Relation::Child => Relation::Child,
+                Relation::Sibling => Relation::Sibling,
+                Relation::Other => Relation::Other,
+                Relation::Parent => Relation::Parent,
+            },
+        };
 
-    registries
-        .patient
-        .add_group_member(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Update,
-            add_member_req,
-        )
-        .unwrap();
+        registries
+            .patient
+            .add_group_member(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                add_member_req,
+            )
+            .unwrap();
+    }
 
-    // test getting group details as group leader (patient1)
+    // test getting group details
     let details_req = patient_registry::GetGroupDetailsRequest {
         group_id,
         page: 0,
@@ -645,58 +688,129 @@ fn test_get_group_details() {
 
     match details_response {
         patient_registry::Result3::Ok(response) => {
-            // verify response
-            assert_eq!(response.member_count, 2);
+            // verify basic group details
+            assert_eq!(response.member_count, 4); // 3 members + 1 leader
             assert_eq!(response.total_pages, 1);
-            assert_eq!(response.group_details.len(), 2);
+            assert_eq!(response.group_details.len(), 4);
+            assert_eq!(response.group_name, "test family");
 
             // verify leader details
             let leader = response
                 .group_details
                 .iter()
-                .find(|m| matches!(m.role, Relation::Parent))
+                .find(|m| m.nik.to_string() == patient1.nik.to_string())
                 .expect("Leader should be present");
-            assert_eq!(leader.nik, patient1.nik.to_string());
 
-            // verify member details
-            let member = response
-                .group_details
-                .iter()
-                .find(|m| matches!(m.role, Relation::Other))
-                .expect("Member should be present");
-            assert_eq!(member.nik, patient2.nik.to_string());
+            // Since we can't use assert_eq! for Relation, check role manually
+            match leader.role {
+                Relation::Parent => (), // this is what we expect
+                _ => panic!("Leader should have Parent relation"),
+            }
 
-            // test getting group details as group member (patient2)
-            let member_details_req = patient_registry::GetGroupDetailsRequest {
+            assert!(leader.age > 0 && leader.age < 150, "Invalid age for leader");
+            assert!(!leader.name.is_empty(), "Leader name should not be empty");
+            assert!(
+                leader.gender == "m" || leader.gender == "f",
+                "Invalid gender for leader"
+            );
+
+            // verify each member's details
+            for (patient, expected_relation) in &patients {
+                let member = response
+                    .group_details
+                    .iter()
+                    .find(|m| m.nik.to_string() == patient.nik.to_string())
+                    .unwrap_or_else(|| panic!("Member {} not found in group", patient.nik));
+
+                // verify all required fields
+                assert!(!member.name.is_empty(), "Member name should not be empty");
+                assert!(
+                    member.gender == "m" || member.gender == "f",
+                    "Invalid gender for member"
+                );
+                assert!(
+                    member.age > 0 && member.age < 150,
+                    "Invalid age for member: {}",
+                    member.age
+                );
+
+                // Check relation manually with better error context
+                let matches = match (&member.role, expected_relation) {
+                    (Relation::Parent, Relation::Parent)
+                    | (Relation::Spouse, Relation::Spouse)
+                    | (Relation::Child, Relation::Child)
+                    | (Relation::Sibling, Relation::Sibling)
+                    | (Relation::Other, Relation::Other) => true,
+                    _ => false,
+                };
+
+                if !matches {
+                    panic!(
+                        "Incorrect relation for member with NIK: {} (name: {})",
+                        member.nik.to_string(),
+                        member.name.to_string()
+                    );
+                }
+            }
+
+            // test pagination with smaller limit
+            let paginated_req = patient_registry::GetGroupDetailsRequest {
                 group_id,
                 page: 0,
-                limit: 10,
+                limit: 2,
             };
 
-            let member_details_response = registries
+            let paginated_response = registries
                 .patient
                 .get_group_details(
                     &registries.ic,
-                    patient2.principal.clone(),
+                    patient1.principal.clone(),
                     PatientCall::Query,
-                    member_details_req,
+                    paginated_req,
                 )
                 .unwrap();
 
-            // verify member can see the same details
-            match member_details_response {
-                patient_registry::Result3::Ok(member_response) => {
-                    assert_eq!(member_response.member_count, response.member_count);
-                    assert_eq!(member_response.total_pages, response.total_pages);
-                    assert_eq!(
-                        member_response.group_details.len(),
-                        response.group_details.len()
-                    );
+            match paginated_response {
+                patient_registry::Result3::Ok(paginated) => {
+                    assert_eq!(paginated.group_details.len(), 2);
+                    assert_eq!(paginated.member_count, 4);
+                    assert_eq!(paginated.total_pages, 2);
                 }
-                patient_registry::Result3::Err(e) => panic!("Member failed to get details: {}", e),
+                patient_registry::Result3::Err(e) => {
+                    panic!("Failed to get paginated details: {}", e)
+                }
             }
         }
         patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
+    }
+
+    // test unauthorized access
+    let unauthorized_patient = common::Scenario::create_patient(&registries);
+    let unauthorized_req = patient_registry::GetGroupDetailsRequest {
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let unauthorized_response = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            unauthorized_patient.principal.clone(),
+            PatientCall::Query,
+            unauthorized_req,
+        )
+        .unwrap();
+
+    match unauthorized_response {
+        patient_registry::Result3::Ok(_) => panic!("Unauthorized access should fail"),
+        patient_registry::Result3::Err(e) => {
+            assert!(
+                e.contains("Only group members can view group details"),
+                "Unexpected error message: {}",
+                e
+            )
+        }
     }
 }
 

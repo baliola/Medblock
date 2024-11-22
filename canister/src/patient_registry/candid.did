@@ -96,6 +96,7 @@ type GetGroupDetailsResponse = record {
   total_pages : nat64;
   leader_name : text;
   member_count : nat64;
+  group_name : text;
 };
 type GetInformationRequest = record {
   status : opt StatusRequest;
@@ -137,6 +138,7 @@ type Group = record {
   members : vec text;
   name : text;
   leader : text;
+  member_relations : vec record { text; Relation };
 };
 type GroupDetail = record {
   age : nat8;

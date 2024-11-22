@@ -443,6 +443,7 @@ pub struct GetGroupDetailsRequest {
 pub struct GetGroupDetailsResponse {
     pub group_details: Vec<GroupDetail>,
     pub member_count: u64,
+    pub group_name: AsciiRecordsKey<64>,
     pub leader_name: AsciiRecordsKey<64>,
     pub total_pages: u64,
 }
@@ -451,12 +452,14 @@ impl GetGroupDetailsResponse {
     pub fn new(
         group_details: Vec<GroupDetail>,
         member_count: u64,
+        group_name: AsciiRecordsKey<64>,
         leader_name: AsciiRecordsKey<64>,
         total_pages: u64,
     ) -> Self {
         Self {
             group_details,
             member_count,
+            group_name,
             leader_name,
             total_pages,
         }

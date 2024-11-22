@@ -1087,11 +1087,12 @@ pub struct Group {
     pub name: AsciiRecordsKey<64>,
     pub leader: NIK,
     pub members: Vec<NIK>,
+    pub member_relations: Vec<(NIK, Relation)>,
 }
 
 impl_mem_bound!(for Group: bounded; fixed_size: false);
 impl_range_bound!(Group);
-impl_max_size!(for Group: 512);
+impl_max_size!(for Group: 1024); // this is pretty expensive. might be worth looking into a more efficient way to store this. - milo
 pub struct GroupMap(ic_stable_structures::BTreeMap<Stable<GroupId>, Stable<Group, Candid>, Memory>);
 metrics!(GroupMap: Groups);
 impl GroupMap {
@@ -1105,7 +1106,8 @@ impl GroupMap {
             id,
             name,
             leader: leader.clone(),
-            members: vec![leader],
+            members: vec![leader.clone()],
+            member_relations: vec![(leader, Relation::Parent)],
         };
 
         self.0.insert(id.to_stable(), group.to_stable());
@@ -1117,6 +1119,7 @@ impl GroupMap {
         group_id: GroupId,
         leader: &NIK,
         member: NIK,
+        relation: Relation,
     ) -> PatientBindingMapResult {
         let key = group_id.to_stable();
         let mut group = self
@@ -1134,7 +1137,8 @@ impl GroupMap {
         }
 
         if !group.members.contains(&member) {
-            group.members.push(member);
+            group.members.push(member.clone());
+            group.member_relations.push((member, relation));
             self.0.insert(key, group.to_stable());
         }
 
@@ -1150,6 +1154,7 @@ impl GroupMap {
             .into_inner();
 
         group.members.retain(|nik| nik != member);
+        group.member_relations.retain(|(nik, _)| nik != member);
         self.0.insert(key, group.to_stable());
 
         Ok(())
@@ -1171,6 +1176,16 @@ impl GroupMap {
         self.get_group(group_id)
             .map(|group| group.leader == *nik)
             .unwrap_or(false)
+    }
+
+    pub fn get_member_relation(&self, group_id: GroupId, member: &NIK) -> Option<Relation> {
+        self.get_group(group_id).and_then(|group| {
+            group
+                .member_relations
+                .iter()
+                .find(|(nik, _)| nik == member)
+                .map(|(_, relation)| relation.clone())
+        })
     }
 }
 
@@ -1227,7 +1242,7 @@ mod test_group_map {
 
         // test adding member as leader
         assert!(group_map
-            .add_member(group_id, &leader, member.clone())
+            .add_member(group_id, &leader, member.clone(), Relation::Parent)
             .is_ok());
 
         let group = group_map.get_group(group_id).unwrap();
@@ -1235,13 +1250,15 @@ mod test_group_map {
 
         // test adding same member again (should be idempotent)
         assert!(group_map
-            .add_member(group_id, &leader, member.clone())
+            .add_member(group_id, &leader, member.clone(), Relation::Parent)
             .is_ok());
         assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 2);
 
         // test adding member as non-leader
         let non_leader = NIK::from([2u8; 32]);
-        assert!(group_map.add_member(group_id, &non_leader, member).is_err());
+        assert!(group_map
+            .add_member(group_id, &non_leader, member, Relation::Sibling)
+            .is_err());
     }
 
     #[test]
@@ -1265,7 +1282,7 @@ mod test_group_map {
 
         // add member to first group only
         group_map
-            .add_member(group1_id, &leader, member.clone())
+            .add_member(group1_id, &leader, member.clone(), Relation::Parent)
             .unwrap();
 
         // test group retrieval
@@ -1316,7 +1333,7 @@ mod test_group_map {
 
         // add member to group
         assert!(group_map
-            .add_member(group_id, &leader, member.clone())
+            .add_member(group_id, &leader, member.clone(), Relation::Parent)
             .is_ok());
         assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 2);
 
