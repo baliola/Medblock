@@ -1,0 +1,191 @@
+type AuthorizedCallerRequest = record { caller : principal };
+type CanisterLogFeature = variant {
+  filterMessageByContains;
+  filterMessageByRegex;
+};
+type CanisterLogMessages = record {
+  data : vec LogMessageData;
+  lastAnalyzedMessageTimeNanos : opt nat64;
+};
+type CanisterLogMessagesInfo = record {
+  features : vec opt CanisterLogFeature;
+  lastTimeNanos : opt nat64;
+  count : nat32;
+  firstTimeNanos : opt nat64;
+};
+type CanisterLogRequest = variant {
+  getMessagesInfo;
+  getMessages : GetLogMessagesParameters;
+  getLatestMessages : GetLatestLogMessagesParameters;
+};
+type CanisterLogResponse = variant {
+  messagesInfo : CanisterLogMessagesInfo;
+  messages : CanisterLogMessages;
+};
+type CanisterMetrics = record { data : CanisterMetricsData };
+type CanisterMetricsData = variant {
+  hourly : vec HourlyMetricsData;
+  daily : vec DailyMetricsData;
+};
+type ClaimConsentRequest = record { code : text };
+type ClaimConsentResponse = record { session_id : text };
+type CollectMetricsRequestType = variant { force; normal };
+type Consent = record {
+  nik : text;
+  session_id : opt text;
+  code : text;
+  claimed : bool;
+  session_user : opt principal;
+};
+type ConsentListResponse = record { consents : vec Consent };
+type DailyMetricsData = record {
+  updateCalls : nat64;
+  canisterHeapMemorySize : NumericEntity;
+  canisterCycles : NumericEntity;
+  canisterMemorySize : NumericEntity;
+  timeMillis : int;
+};
+type EmrFragment = record { key : text; value : text };
+type EmrHeader = record {
+  provider_id : text;
+  user_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type EmrListConsentRequest = record {
+  session_id : text;
+  page : nat8;
+  limit : nat8;
+};
+type EmrListPatientRequest = record { page : nat8; limit : nat8 };
+type EmrListPatientResponse = record { emrs : vec EmrHeader };
+type GetInformationRequest = record {
+  status : opt StatusRequest;
+  metrics : opt MetricsRequest;
+  logs : opt CanisterLogRequest;
+  version : bool;
+};
+type GetInformationResponse = record {
+  status : opt StatusResponse;
+  metrics : opt MetricsResponse;
+  logs : opt CanisterLogResponse;
+  version : opt nat;
+};
+type GetLatestLogMessagesParameters = record {
+  upToTimeNanos : opt nat64;
+  count : nat32;
+  filter : opt GetLogMessagesFilter;
+};
+type GetLogMessagesFilter = record {
+  analyzeCount : nat32;
+  messageRegex : opt text;
+  messageContains : opt text;
+};
+type GetLogMessagesParameters = record {
+  count : nat32;
+  filter : opt GetLogMessagesFilter;
+  fromTimeNanos : opt nat64;
+};
+type GetMetricsParameters = record {
+  dateToMillis : nat;
+  granularity : MetricsGranularity;
+  dateFromMillis : nat;
+};
+type GetPatientInfoResponse = record { nik : text; patient : Patient };
+type HourlyMetricsData = record {
+  updateCalls : vec nat64;
+  canisterHeapMemorySize : vec nat64;
+  canisterCycles : vec nat64;
+  canisterMemorySize : vec nat64;
+  timeMillis : int;
+};
+type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
+type IssueRequest = record { header : EmrHeader };
+type LogMessageData = record { timeNanos : nat64; message : text };
+type MetricsGranularity = variant { hourly; daily };
+type MetricsRequest = record { parameters : GetMetricsParameters };
+type MetricsResponse = record { metrics : opt CanisterMetrics };
+type NumericEntity = record {
+  avg : nat64;
+  max : nat64;
+  min : nat64;
+  first : nat64;
+  last : nat64;
+};
+type Patient = variant { V1 : V1 };
+type PatientListResponse = record { patients : vec Patient };
+type PingResult = record { emr_registry_status : bool };
+type ReadEmrByIdRequest = record {
+  provider_id : text;
+  emr_id : text;
+  registry_id : principal;
+};
+type ReadEmrByIdResponse = record { emr : EmrHeaderWithBody };
+type ReadEmrSessionRequest = record {
+  session_id : text;
+  args : ReadEmrByIdRequest;
+};
+type RegisterPatientRequest = record { nik : text };
+type StatusRequest = record {
+  memory_size : bool;
+  cycles : bool;
+  heap_memory_size : bool;
+};
+type StatusResponse = record {
+  memory_size : opt nat64;
+  cycles : opt nat64;
+  heap_memory_size : opt nat64;
+};
+type UpdateEmrRegistryRequest = record { "principal" : principal };
+type UpdateInformationRequest = record {
+  metrics : opt CollectMetricsRequestType;
+};
+type UpdateInitialPatientInfoRequest = record { info : V1 };
+type V1 = record {
+  name : text;
+  martial_status : text;
+  place_of_birth : text;
+  address : text;
+  gender : text;
+  date_of_birth : text;
+};
+service : () -> {
+  add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
+  claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
+  consent_list : () -> (ConsentListResponse) query;
+  create_consent : () -> (ClaimConsentRequest);
+  emr_list_patient : (EmrListPatientRequest) -> (EmrListPatientResponse) query;
+  emr_list_with_session : (EmrListConsentRequest) -> (
+      EmrListPatientResponse,
+    ) query;
+  finish_session : (ClaimConsentResponse) -> ();
+  getCanistergeekInformation : (GetInformationRequest) -> (
+      GetInformationResponse,
+    ) query;
+  get_patient_info : () -> (GetPatientInfoResponse) query;
+  get_patient_info_with_consent : (ClaimConsentResponse) -> (
+      GetPatientInfoResponse,
+    ) query;
+  get_trusted_origins : () -> (vec text);
+  is_consent_claimed : (ClaimConsentRequest) -> (
+      IsConsentClaimedResponse,
+    ) query;
+  metrics : () -> (text) query;
+  notify_issued : (IssueRequest) -> ();
+  patient_list : () -> (PatientListResponse) query;
+  ping : () -> (PingResult) composite_query;
+  read_emr_by_id : (ReadEmrByIdRequest) -> (
+      ReadEmrByIdResponse,
+    ) composite_query;
+  read_emr_with_session : (ReadEmrSessionRequest) -> (
+      ReadEmrByIdResponse,
+    ) composite_query;
+  register_patient : (RegisterPatientRequest) -> ();
+  remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
+  revoke_consent : (ClaimConsentRequest) -> ();
+  updateCanistergeekInformation : (UpdateInformationRequest) -> ();
+  update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
+  update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
+  update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
+}

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { AuthHeader } from "@/components/auth/header";
 import FormHospitalRegistration from "@/components/auth/hospital-registration/form";
@@ -18,12 +18,9 @@ export default function HospitalRegistrationPage() {
 
   const { success, error } = hospitalRegistration;
 
-  const {
-    loading: hospitalLoading,
-    call: getProviderInfo
-  } = useProviderQuery({
+  const { loading: hospitalLoading, call: getProviderInfo } = useProviderQuery({
     functionName: "get_provider_info_with_principal",
-    refetchOnMount: false
+    refetchOnMount: false,
   });
 
   const checkUserRegistration = async () => {
@@ -63,6 +60,8 @@ export default function HospitalRegistrationPage() {
     }
   };
 
+  console.log("principa", principal?.toText());
+
   useEffect(() => {
     if (principal) {
       checkUserRegistration();
@@ -76,21 +75,15 @@ export default function HospitalRegistrationPage() {
       <Flex align="center" justify="center" h="100dvh">
         <Spinner size="xl" />
       </Flex>
-    )
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      align="center"
-      w="full"
-      p={8}
-      gap={5}
-    >
+    <Flex direction="column" align="center" w="full" p={8} gap={5}>
       <AuthHeader />
       <Flex w="full" pt={5}>
         <FormHospitalRegistration />
       </Flex>
     </Flex>
-  )
+  );
 }
