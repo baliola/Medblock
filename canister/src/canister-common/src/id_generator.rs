@@ -1,5 +1,5 @@
-use crate::random::{ CallError, RandomSource };
 use crate::common::UUID_MAX_SOURCE_LEN;
+use crate::random::{CallError, RandomSource};
 pub struct IdGenerator<Source: RandomSource>(Source);
 
 impl<Source: RandomSource> IdGenerator<Source> {
@@ -22,7 +22,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
     }
 
     pub fn generate_id_with_different_source<NewSource: RandomSource>(
-        source: &mut NewSource
+        source: &mut NewSource,
     ) -> crate::common::Id {
         let random_bytes = source.get_random_bytes();
 
@@ -35,7 +35,7 @@ impl<Source: RandomSource> IdGenerator<Source> {
 
 #[cfg(test)]
 mod test {
-    use std::{ collections::{ HashSet } };
+    use std::collections::HashSet;
 
     use crate::random::CanisterRandomSource;
 
@@ -45,8 +45,7 @@ mod test {
     fn test_generate_id() {
         let mut map = HashSet::new();
 
-        /// 10 million iterations, should be enough to test the randomness of the id generator
-
+        // 10 million iterations, should be enough to test the randomness of the id generator
         let source = CanisterRandomSource::new_with_seed(10000);
         let mut generator = IdGenerator::new(source);
 
