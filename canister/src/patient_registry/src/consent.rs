@@ -1,25 +1,24 @@
 use core::str;
-use std::{ str::FromStr, time::Duration };
+use std::{str::FromStr, time::Duration};
 
-use candid::{ CandidType };
+use candid::{CandidType, Principal};
 use canister_common::{
-    common::{ Id, ProviderId },
+    common::{Id, ProviderId},
     deref,
     id_generator::IdGenerator,
-    impl_max_size,
-    impl_mem_bound,
-    impl_range_bound,
-    log,
-    metrics,
+    impl_max_size, impl_mem_bound, impl_range_bound, log, metrics,
     mmgr::MemoryManager,
     opaque_metrics,
-    random::{ CanisterRandomSource, RandomSource },
-    stable::{ Candid, Memory, Stable, StableSet, ToStable },
+    random::{CanisterRandomSource, RandomSource},
+    stable::{Candid, Memory, Stable, StableSet, ToStable},
     statistics::traits::Metrics,
 };
 use serde::Deserialize;
 
-use crate::{ registry::{ PatientRegistry, NIK }, with_state };
+use crate::{
+    registry::{PatientRegistry, NIK},
+    with_state,
+};
 
 thread_local! {
     pub static CONSENTS: std::cell::RefCell<Option<ConsentMap>> = const {
@@ -29,7 +28,12 @@ thread_local! {
 }
 
 pub fn with_consent_mut<R>(f: impl FnOnce(&mut ConsentMap) -> R) -> R {
-    CONSENTS.with(|cell| f(cell.borrow_mut().as_mut().expect("consents not initialized")))
+    CONSENTS.with(|cell| {
+        f(cell
+            .borrow_mut()
+            .as_mut()
+            .expect("consents not initialized"))
+    })
 }
 
 pub fn ensure_initialized() {
@@ -65,7 +69,7 @@ mod encode_test_consent_code {
 
     #[test]
     fn test_len_encoded() {
-        use candid::{ Encode, Decode };
+        use candid::{Decode, Encode};
         let code = ConsentCode([b'1', b'2', b'3', b'4', b'5', b'6']);
         let encoded = Encode!(&code).unwrap();
         println!("encoded: {:?}", encoded.len());
@@ -124,7 +128,10 @@ impl ConsentCode {
 }
 
 impl<'de> Deserialize<'de> for ConsentCode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
         let s = String::deserialize(deserializer)?;
         ConsentCode::from_str(&s).map_err(serde::de::Error::custom)
     }
@@ -136,7 +143,8 @@ impl CandidType for ConsentCode {
     }
 
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
-        where S: candid::types::Serializer
+    where
+        S: candid::types::Serializer,
     {
         self.as_str().idl_serialize(serializer)
     }
@@ -248,7 +256,7 @@ impl ConsentsApi {
 
         // we dont have expiry for now
         // Self::remove_consent_after_expiry(code);
-        with_consent_mut(|consents| { consents.add_consent(partial) })
+        with_consent_mut(|consents| consents.add_consent(partial))
     }
 
     pub fn revoke_consent(code: &ConsentCode) {
@@ -274,7 +282,7 @@ impl ConsentsApi {
 
     pub fn claim_consent(
         code: &ConsentCode,
-        session_user: ProviderId
+        session_user: ProviderId,
     ) -> Option<(Id, canister_common::common::H256)> {
         ensure_initialized();
 
@@ -290,23 +298,40 @@ impl ConsentsApi {
         session_id: &SessionId,
         req: crate::api::ReadEmrByIdRequest,
         registry: crate::declarations::emr_registry::EmrRegistry,
-        session_user: &ProviderId
+        session_user: &ProviderId,
     ) -> Result<crate::declarations::emr_registry::ReadEmrByIdResponse, String> {
         ensure_initialized();
-        let consent = with_consent_mut(|consents| {
-            consents.resolve_session(session_id, session_user)
-        });
+        let consent =
+            with_consent_mut(|consents| consents.resolve_session(session_id, session_user));
 
         match consent {
-            Some(consent) =>
-                Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await),
-            None => { Err("invalid session".to_string()) }
+            Some(consent) => {
+                Ok(PatientRegistry::do_call_read_emr(req.to_args(consent.nik), registry).await)
+            }
+            None => Err("invalid session".to_string()),
         }
     }
 
     /// call this function in the init method of the canister
     pub fn init() {
         ConsentMap::init();
+    }
+
+    /// claims a consent code specifically for group membership
+    /// this is different from regular claim_consent as it doesn't create a session
+    pub fn claim_consent_for_group(code: &ConsentCode, claimer: &Principal) {
+        ensure_initialized();
+
+        with_consent_mut(|consents| {
+            if let Some(consent) = consents.inner.get(code.to_stable_ref()) {
+                let mut consent_inner = consent.into_inner();
+                consent_inner.claimed = true;
+                consent_inner.group_claimer = Some(claimer.clone());
+                consents
+                    .inner
+                    .insert(code.to_stable(), consent_inner.to_stable());
+            }
+        });
     }
 }
 
@@ -319,6 +344,7 @@ pub struct Consent {
     pub claimed: bool,
     pub session_id: Option<SessionId>,
     pub session_user: Option<ProviderId>,
+    pub group_claimer: Option<Principal>,
 }
 #[cfg(test)]
 mod encode_test_consent {
@@ -328,15 +354,15 @@ mod encode_test_consent {
 
     #[test]
     fn test_len_encoded() {
-        use candid::{ Encode, Decode };
+        use candid::{Decode, Encode};
         let code = Consent {
             code: ConsentCode([b'1', b'2', b'3', b'4', b'5', b'6']),
-            nik: NIK::from_str(
-                "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709"
-            ).unwrap(),
+            nik: NIK::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
+                .unwrap(),
             claimed: false,
             session_id: Some(id!("e74de94d-56ba-422a-aeb7-a0adb88e7ef3")),
             session_user: Some(id!("60673662-792a-4e50-b7aa-eccf7e4146a3")),
+            group_claimer: None,
         };
         let encoded = Encode!(&code).unwrap();
         println!("encoded: {:?}", encoded.len());
@@ -346,8 +372,9 @@ mod encode_test_consent {
     }
 }
 
-// ~189 bytes benchmarked for candid encoding
-impl_max_size!(for Consent: 192);
+// ~189 bytes benchmarked for candid encoding - @zian
+// increased to 256 bytes to accommodate new field "group_claimer" - @mylo
+impl_max_size!(for Consent: 256);
 impl_mem_bound!(for Consent: bounded; fixed_size:false);
 impl_range_bound!(Consent);
 
@@ -359,6 +386,7 @@ impl Consent {
             code,
             nik: partial.nik,
             session_user: None,
+            group_claimer: None,
         }
     }
 }
@@ -522,7 +550,10 @@ impl ConsentMap {
         let code = ConsentCode::from_u64(random);
         let consent = Consent::from_partial(partial, code);
 
-        assert!(self.inner.insert(code.to_stable(), consent.to_stable()).is_none());
+        assert!(self
+            .inner
+            .insert(code.to_stable(), consent.to_stable())
+            .is_none());
 
         code
     }
@@ -541,7 +572,7 @@ impl ConsentMap {
     pub fn safe_get_consent_for(
         &self,
         code: &ConsentCode,
-        session_user: &ProviderId
+        session_user: &ProviderId,
     ) -> Option<Consent> {
         let consent = self.get_consent_uncheked(code);
 
@@ -558,17 +589,17 @@ impl ConsentMap {
     }
 
     pub fn remove_consent(&mut self, code: &ConsentCode) -> Option<Consent> {
-        self.inner.remove(code.to_stable_ref()).map(|c| c.into_inner())
+        self.inner
+            .remove(code.to_stable_ref())
+            .map(|c| c.into_inner())
     }
 
     pub fn ensure_correct_session_owner(&self, session_id: &Id, session_user: &ProviderId) -> bool {
         match self.sessions.get(session_id.to_stable_ref()) {
-            Some(consent) => {
-                match self.inner.get(consent.to_stable_ref::<Candid>()) {
-                    Some(consent) => consent.session_user.as_ref().eq(&Some(session_user)),
-                    None => false,
-                }
-            }
+            Some(consent) => match self.inner.get(consent.to_stable_ref::<Candid>()) {
+                Some(consent) => consent.session_user.as_ref().eq(&Some(session_user)),
+                None => false,
+            },
             None => false,
         }
     }
@@ -603,7 +634,7 @@ impl ConsentMap {
     pub fn claim_consent(
         &mut self,
         code: &ConsentCode,
-        session_user: ProviderId
+        session_user: ProviderId,
     ) -> Option<(SessionId, NIK)> {
         let Some(mut consent) = self.inner.get(code.to_stable_ref()) else {
             return None;
@@ -614,9 +645,8 @@ impl ConsentMap {
         }
 
         let rng = &mut self.rng;
-        let session_id = IdGenerator::<CanisterRandomSource>::generate_id_with_different_source(
-            rng
-        );
+        let session_id =
+            IdGenerator::<CanisterRandomSource>::generate_id_with_different_source(rng);
 
         consent.claimed = true;
         consent.session_id = Some(session_id.clone());
@@ -628,11 +658,15 @@ impl ConsentMap {
             self.sessions.get(session_id.to_stable_ref()).is_none(),
             "session id already exists"
         );
-        assert!(self.sessions.insert(session_id.clone().to_stable(), code.to_owned().to_stable()).is_none());
+        assert!(self
+            .sessions
+            .insert(session_id.clone().to_stable(), code.to_owned().to_stable())
+            .is_none());
 
         self.inner.insert(code.to_stable(), consent);
 
-        self.provider_set.insert(session_user.to_stable(), session_id.clone().into());
+        self.provider_set
+            .insert(session_user.to_stable(), session_id.clone().into());
 
         Some((session_id, nik))
     }
@@ -642,7 +676,7 @@ impl ConsentMap {
     pub fn resolve_session(
         &mut self,
         session_id: &SessionId,
-        session_user: &ProviderId
+        session_user: &ProviderId,
     ) -> Option<Consent> {
         let code = self.sessions.get(session_id.to_stable_ref());
 
@@ -659,7 +693,11 @@ impl ConsentMap {
 
         match consent {
             Some(consent) => {
-                if consent.nik.eq(patient) { Some(consent.as_inner().clone()) } else { None }
+                if consent.nik.eq(patient) {
+                    Some(consent.as_inner().clone())
+                } else {
+                    None
+                }
             }
             None => None,
         }
@@ -669,7 +707,7 @@ impl ConsentMap {
 #[cfg(test)]
 mod tests {
     use candid::Principal;
-    use canister_common::{ id, memory_manager, stable::Scale };
+    use canister_common::{id, memory_manager, stable::Scale};
 
     use super::*;
 
@@ -678,9 +716,8 @@ mod tests {
         let memory_manager = memory_manager!();
         let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
+        let nik = NIK::from_str("9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c")
+            .unwrap();
 
         let partial = PartialConsent::new(nik.clone());
 
@@ -698,9 +735,8 @@ mod tests {
         let memory_manager = memory_manager!();
         let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
+        let nik = NIK::from_str("9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c")
+            .unwrap();
 
         let partial = PartialConsent::new(nik.clone());
 
@@ -710,7 +746,12 @@ mod tests {
         let (session_id, _) = consents.claim_consent(&code, provider_id.clone()).unwrap();
 
         assert_eq!(
-            consents.get_consent_uncheked(&code).unwrap().session_id.as_ref().unwrap(),
+            consents
+                .get_consent_uncheked(&code)
+                .unwrap()
+                .session_id
+                .as_ref()
+                .unwrap(),
             &session_id
         );
 
@@ -722,9 +763,8 @@ mod tests {
         let memory_manager = memory_manager!();
         let mut consents = ConsentMap::new_with_seed(0, &memory_manager);
 
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
+        let nik = NIK::from_str("9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c")
+            .unwrap();
 
         let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
 
@@ -738,14 +778,13 @@ mod tests {
         consents.finish_session_unchecked(&session_id);
 
         assert!(!consents.ensure_session_allowed(&code, &session_id));
-        assert!(consents.resolve_session(&session_id, &provider_id).is_none());
+        assert!(consents
+            .resolve_session(&session_id, &provider_id)
+            .is_none());
         assert!(consents.get_consent_uncheked(&code).is_none());
-        assert!(
-            consents.provider_set.contains_key(
-                provider_id.to_stable(),
-                session_id.to_stable::<Scale>()
-            )
-        )
+        assert!(consents
+            .provider_set
+            .contains_key(provider_id.to_stable(), session_id.to_stable::<Scale>()))
     }
 
     #[test]
@@ -756,9 +795,8 @@ mod tests {
 
         let provider_id = id!("60673662-792a-4e50-b7aa-eccf7e4146a3");
 
-        let nik = NIK::from_str(
-            "9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c"
-        ).unwrap();
+        let nik = NIK::from_str("9b11530da02ee90864b5d8ef14c95782e9c75548e4877e9396394ab33e7c9e9c")
+            .unwrap();
 
         let partial = PartialConsent::new(nik.clone());
         let code = consents.add_consent(partial.clone());
