@@ -10,6 +10,7 @@ use integration_tests::declarations::{
     },
 };
 
+use integration_tests::declarations::patient_registry::KycStatus;
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
@@ -98,6 +99,8 @@ mod test {
                 address,
                 gender: "men".to_ascii_lowercase(),
                 date_of_birth: "1990-01-01".to_string(),
+                kyc_status: KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
             },
         };
 
@@ -617,5 +620,87 @@ mod test {
 
         assert_eq!(all_provider_principals, expected_principals, "Provider principals should match");
     }
-}
 
+    #[test]
+    fn test_update_kyc_status() {
+        let (registries, patient, admin_principal) = common::Scenario::one_admin_one_patient();
+
+        // test authorized access - should succeed
+        let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
+            nik: patient.nik.to_string(),
+            kyc_status: patient_registry::KycStatus::Approved,
+        };
+
+        let response = registries.patient
+            .update_kyc_status(
+                &registries.ic,
+                admin_principal.clone(), 
+                patient_registry::pocket_ic_bindings::Call::Update,
+                update_kyc_arg
+            )
+            .unwrap();
+
+        // verify response
+        if let patient_registry::Patient::V1(v1) = response.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Approved => {},
+                _ => panic!("Expected KYC status to be Approved"),
+            }
+        }
+
+        // verify updated status through get_patient_info
+        let patient_info = registries.patient
+            .get_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Query
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = patient_info.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Approved => {},
+                _ => panic!("Expected KYC status to be Approved"),
+            }
+        }
+
+        // test updating to Denied status
+        let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
+            nik: patient.nik.to_string(),
+            kyc_status: patient_registry::KycStatus::Denied,
+        };
+
+        let response = registries.patient
+            .update_kyc_status(
+                &registries.ic,
+                admin_principal.clone(), // Using admin principal
+                patient_registry::pocket_ic_bindings::Call::Update,
+                update_kyc_arg
+            )
+            .unwrap();
+
+        // verify final response
+        if let patient_registry::Patient::V1(v1) = response.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Denied => {},
+                _ => panic!("Expected KYC status to be Denied"),
+            }
+        }
+
+        // verify final status through get_patient_info
+        let patient_info = registries.patient
+            .get_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                patient_registry::pocket_ic_bindings::Call::Query
+            )
+            .unwrap();
+
+        if let patient_registry::Patient::V1(v1) = patient_info.patient {
+            match v1.kyc_status {
+                patient_registry::KycStatus::Denied => {},
+                _ => panic!("Expected KYC status to be Denied"),
+            }
+        }
+    }
+}

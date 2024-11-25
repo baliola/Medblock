@@ -10,7 +10,7 @@ use crate::{
     consent::{ Consent, ConsentCode, SessionId },
     encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
     log::Activity,
-    registry::{ HeaderStatus, Patient, NIK, V1 },
+    registry::{ HeaderStatus, KycStatus, Patient, NIK, V1 },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -280,3 +280,30 @@ impl LogResponse {
 from!(LogResponse: Vec<Activity> as value {
     logs: value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusRequest {
+    pub nik: H256,
+    pub kyc_status: KycStatus,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusResponse {
+    pub patient: Patient,
+}
+
+impl UpdateKycStatusResponse {
+    pub fn new(patient: Patient) -> Self {
+        Self { patient }
+    }
+}
+
+from!(UpdateKycStatusResponse: Patient as value {
+    patient: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct BindAdminRequest {
+    pub principal: Principal,
+    pub nik: H256,
+}
