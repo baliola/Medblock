@@ -218,6 +218,8 @@ pub enum PatientRegistryError {
     EmrExists,
     #[error("group has reached maximum member limit of {0}")]
     GroupFull(usize),
+    #[error("NIK is already registered")]
+    DuplicateNIK,
 }
 
 pub struct GroupAccessMap(ic_stable_structures::BTreeMap<GroupAccessKey, Stable<GroupId>, Memory>);
@@ -368,6 +370,10 @@ impl OwnerMap {
             return Err(PatientRegistryError::UserExist);
         }
 
+        if self.is_nik_in_use(&nik) {
+            return Err(PatientRegistryError::DuplicateNIK);
+        }
+
         let _ = self.0.insert(owner, nik.to_stable());
         Ok(())
     }
@@ -408,6 +414,10 @@ impl OwnerMap {
 
     pub fn is_valid_owner(&self, owner: &Owner) -> bool {
         self.0.contains_key(owner)
+    }
+
+    pub fn is_nik_in_use(&self, nik: &NIK) -> bool {
+        self.0.iter().any(|(_, stored_nik)| stored_nik.as_ref() == nik)
     }
 }
 

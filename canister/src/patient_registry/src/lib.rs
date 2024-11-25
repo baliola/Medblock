@@ -440,6 +440,13 @@ fn notify_updated(req: UpdateRequest) {
 #[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) {
     let owner = verified_caller().unwrap();
+    
+    // Check if NIK is already in use before binding
+    let nik_in_use = with_state(|s| s.registry.owner_map.is_nik_in_use(&req.nik));
+    if nik_in_use {
+        ic_cdk::trap("NIK is already registered");
+    }
+    
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 

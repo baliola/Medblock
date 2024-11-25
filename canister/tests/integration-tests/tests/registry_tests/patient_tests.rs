@@ -242,3 +242,38 @@ fn test_search_patient_admin_unauthorized() {
         )
         .unwrap();
 }
+
+#[test]
+#[should_panic(expected = "trapped explicitly: NIK is already registered")]
+fn test_nik_duplication() {
+    let registries = common::prepare();
+    let patient1_principal = common::random_identity();
+    let patient2_principal = common::random_identity();
+    let nik = canister_common::common::H256::from([1u8; 32]);
+
+    // register first patient
+    registries
+        .patient
+        .register_patient(
+            &registries.ic,
+            patient1_principal.clone(),
+            PatientCall::Update,
+            patient_registry::RegisterPatientRequest {
+                nik: nik.to_string(),
+            },
+        )
+        .unwrap();
+
+    // try to register second patient with same NIK - this should panic
+    registries
+        .patient
+        .register_patient(
+            &registries.ic,
+            patient2_principal.clone(),
+            PatientCall::Update,
+            patient_registry::RegisterPatientRequest {
+                nik: nik.to_string(),
+            },
+        )
+        .unwrap();
+}

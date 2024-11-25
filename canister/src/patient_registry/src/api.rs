@@ -36,7 +36,7 @@ pub struct EmrListPatientRequest {
     pub page: u8,
 }
 
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize)]
 pub struct EmrListPatientResponse {
     emrs: Vec<EmrHeaderWithStatus>,
 }
@@ -44,7 +44,7 @@ from!(EmrListPatientResponse: Vec<EmrHeaderWithStatus> as value {
     emrs: value
 });
 
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize)]
 pub struct EmrHeaderWithStatus {
     header: EmrHeader,
     status: HeaderStatus,
