@@ -41,7 +41,7 @@ type CanisterMetricsData = variant {
   daily : vec DailyMetricsData;
 };
 type ClaimConsentRequest = record { code : text };
-type ClaimConsentResponse = record { session_id : text };
+type ClaimConsentResponse = record { session_id : text; name : text };
 type CollectMetricsRequestType = variant { force; normal };
 type Consent = record {
   nik : text;
@@ -49,7 +49,7 @@ type Consent = record {
   session_id : opt text;
   code : text;
   claimed : bool;
-  session_user : opt principal;
+  session_user : opt text;
 };
 type ConsentListResponse = record { consents : vec Consent };
 type CreateGroupRequest = record { name : text };
@@ -69,10 +69,19 @@ type EmrHeader = record {
   registry_id : principal;
 };
 type EmrHeaderWithBody = record { body : vec EmrFragment; header : EmrHeader };
+type EmrHeaderWithStatus = record {
+  status : HeaderStatus;
+  hospital_name : text;
+  header : EmrHeader;
+};
 type EmrListConsentRequest = record {
   session_id : text;
   page : nat8;
   limit : nat8;
+};
+type EmrListConsentResponse = record {
+  emr : vec EmrHeaderWithStatus;
+  username : text;
 };
 type EmrListPatientRequest = record { page : nat8; limit : nat8 };
 type EmrListPatientResponse = record { emrs : vec EmrHeaderWithStatus };
@@ -151,6 +160,7 @@ type IssueRequest = record { header : EmrHeader };
 type KycStatus = variant { Approved; Denied; Pending };
 type LeaveGroupRequest = record { group_id : nat64 };
 type LogMessageData = record { timeNanos : nat64; message : text };
+type LogResponse = record { logs : vec Activity };
 type MetricsGranularity = variant { hourly; daily };
 type MetricsRequest = record { parameters : GetMetricsParameters };
 type MetricsResponse = record { metrics : opt CanisterMetrics };
@@ -239,16 +249,16 @@ service : () -> {
       EmrListPatientResponse,
     ) composite_query;
   emr_list_with_session : (EmrListConsentRequest) -> (
-      EmrListPatientResponse,
-    ) query;
-  finish_session : (ClaimConsentResponse) -> ();
+      EmrListConsentResponse,
+    ) composite_query;
+  finish_session : (FinishSessionRequest) -> ();
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
   get_group_details : (GetGroupDetailsRequest) -> (Result_3) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
-  get_patient_info_with_consent : (ClaimConsentResponse) -> (
+  get_patient_info_with_consent : (FinishSessionRequest) -> (
       GetPatientInfoResponse,
     ) composite_query;
   get_patient_list_admin : () -> (PatientListAdminResponse) query;
@@ -261,7 +271,8 @@ service : () -> {
   leave_group : (LeaveGroupRequest) -> (Result);
   metrics : () -> (text) query;
   notify_issued : (IssueRequest) -> ();
-  patient_list : () -> (PatientListResponse) query;
+  notify_updated : (IssueRequest) -> ();
+  patient_list : () -> (PatientListResponse) composite_query;
   ping : () -> (PingResult) composite_query;
   read_emr_by_id : (ReadEmrByIdRequest) -> (
       ReadEmrByIdResponse,
