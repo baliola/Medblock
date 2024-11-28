@@ -420,7 +420,7 @@ async fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse 
 
 #[ic_cdk::update(guard = "only_provider_registry")]
 fn notify_issued(req: IssueRequest) {
-    with_state_mut(|s| s.registry.issue_for(req.header.user_id.clone(), req.header)).unwrap();
+    with_state_mut(|s| s.registry.issue_for(req.header.clone().user_id, req.header)).unwrap();
 }
 
 #[ic_cdk::update(guard = "only_provider_registry")]
