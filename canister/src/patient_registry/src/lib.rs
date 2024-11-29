@@ -440,13 +440,13 @@ fn notify_updated(req: UpdateRequest) {
 #[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) {
     let owner = verified_caller().unwrap();
-    
+
     // Check if NIK is already in use before binding
     let nik_in_use = with_state(|s| s.registry.owner_map.is_nik_in_use(&req.nik));
     if nik_in_use {
         ic_cdk::trap("NIK is already registered");
     }
-    
+
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 
@@ -955,8 +955,45 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    with_state_mut(|s| s.registry.group_map.remove_member(req.group_id, &nik))
-        .map_err(|e| format!("Failed to leave group: {:?}", e))
+    with_state_mut(|s| {
+        // Get the group first
+        let group = s
+            .registry
+            .group_map
+            .get_group(req.group_id)
+            .ok_or("Group not found")?;
+
+        // Check if this is the last member or if it's the leader and there's only one other member
+        let should_dissolve = group.members.len() <= 1 || (group.leader == nik && group.members.len() <= 2);
+
+        if should_dissolve {
+            // If dissolving, cleanup all group access first
+            s.registry
+                .group_access_map
+                .cleanup_group_access(req.group_id)
+                .map_err(|e| format!("Failed to cleanup group access: {}", e))?;
+
+            // Then dissolve the group
+            s.registry
+                .group_map
+                .dissolve_group(req.group_id)
+                .map_err(|e| format!("Failed to dissolve group: {}", e))?;
+        } else {
+            // First cleanup this member's access grants
+            s.registry
+                .group_access_map
+                .cleanup_member_access(req.group_id, &nik)
+                .map_err(|e| format!("Failed to cleanup member access: {}", e))?;
+
+            // Then remove the member from the group
+            s.registry
+                .group_map
+                .remove_member(req.group_id, &nik)
+                .map_err(|e| format!("Failed to remove member: {:?}", e))?;
+        }
+
+        Ok(())
+    })
 }
 
 #[ic_cdk::query(guard = "only_patient")]
@@ -1055,6 +1092,9 @@ async fn view_group_member_emr_information(
         s.registry
             .group_access_map
             .has_access(&member_nik, &viewer_nik)
+            || s.registry
+                .group_access_map
+                .has_access(&viewer_nik, &member_nik)
     });
 
     if !has_access {
