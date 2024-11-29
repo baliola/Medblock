@@ -963,15 +963,33 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             .get_group(req.group_id)
             .ok_or("Group not found")?;
 
+        // Get all access pairs for this group
+        let access_pairs = s.registry.group_access_map.get_group_access_pairs(req.group_id);
+
+        // Revoke all access pairs involving the leaving member
+        for (granter, grantee) in access_pairs {
+            if granter == nik || grantee == nik {
+                s.registry
+                    .group_access_map
+                    .revoke_access(granter, grantee)
+                    .map_err(|e| format!("Failed to revoke access: {}", e))?;
+            }
+        }
+
         // Check if this is the last member or if it's the leader and there's only one other member
         let should_dissolve = group.members.len() <= 1 || (group.leader == nik && group.members.len() <= 2);
 
         if should_dissolve {
-            // If dissolving, cleanup all group access first
-            s.registry
-                .group_access_map
-                .cleanup_group_access(req.group_id)
-                .map_err(|e| format!("Failed to cleanup group access: {}", e))?;
+            // If dissolving, get all access pairs again (in case they changed)
+            let access_pairs = s.registry.group_access_map.get_group_access_pairs(req.group_id);
+            
+            // Revoke all remaining access pairs for this group
+            for (granter, grantee) in access_pairs {
+                s.registry
+                    .group_access_map
+                    .revoke_access(granter, grantee)
+                    .map_err(|e| format!("Failed to revoke access: {}", e))?;
+            }
 
             // Then dissolve the group
             s.registry
@@ -979,13 +997,7 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
                 .dissolve_group(req.group_id)
                 .map_err(|e| format!("Failed to dissolve group: {}", e))?;
         } else {
-            // First cleanup this member's access grants
-            s.registry
-                .group_access_map
-                .cleanup_member_access(req.group_id, &nik)
-                .map_err(|e| format!("Failed to cleanup member access: {}", e))?;
-
-            // Then remove the member from the group
+            // Just remove the member from the group
             s.registry
                 .group_map
                 .remove_member(req.group_id, &nik)
@@ -1009,28 +1021,13 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    log!("DEBUG granter_nik: {:?}", granter_nik);
-
     // Parse grantee NIK from string
     let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
         .map_err(|_| "Invalid grantee NIK format".to_string())?;
 
-    log!("DEBUG grantee_nik: {:?}", grantee_nik);
-    log!("DEBUG group_id: {:?}", req.group_id);
-
     // Verify both users are in the same group
     let group =
         with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
-
-    log!("DEBUG group members: {:?}", group.members);
-    log!(
-        "DEBUG granter in group: {:?}",
-        group.members.contains(&granter_nik)
-    );
-    log!(
-        "DEBUG grantee in group: {:?}",
-        group.members.contains(&grantee_nik)
-    );
 
     // Check both users are in the group
     if !group.members.contains(&granter_nik) {
@@ -1071,11 +1068,11 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
 async fn view_group_member_emr_information(
     req: ViewGroupMemberEmrInformationRequest,
 ) -> Result<EmrListPatientResponse, String> {
-    // get caller's NIK
+    // get caller's NIK (viewer/grantee)
     let caller = verified_caller().unwrap();
     let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    // parse target member's NIK from string
+    // parse target member's NIK (member/granter) from string
     let member_nik =
         NIK::from_str(&req.member_nik).map_err(|_| "Invalid member NIK format".to_string())?;
 
@@ -1087,14 +1084,11 @@ async fn view_group_member_emr_information(
         return Err("Both users must be members of the group".to_string());
     }
 
-    // verify access has been granted
+    // verify access has been granted by the member to the viewer
     let has_access = with_state(|s| {
         s.registry
             .group_access_map
-            .has_access(&member_nik, &viewer_nik)
-            || s.registry
-                .group_access_map
-                .has_access(&viewer_nik, &member_nik)
+            .has_access(&member_nik, &viewer_nik) // member (granter) -> viewer (grantee)
     });
 
     if !has_access {

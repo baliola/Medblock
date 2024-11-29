@@ -286,38 +286,13 @@ impl GroupAccessMap {
         self.0.get(&key).map(|group_id| group_id.into_inner())
     }
 
-    pub fn cleanup_member_access(&mut self, group_id: GroupId, member: &NIK) -> Result<(), String> {
-        // Remove all access grants where member is either granter or grantee
-        let keys_to_remove: Vec<_> = self
-            .0
+    /// gets all access pairs for a specific group
+    pub fn get_group_access_pairs(&self, group_id: GroupId) -> Vec<(NIK, NIK)> {
+        self.0
             .iter()
-            .filter(|(key, group_id_stable)| {
-                let (granter, grantee) = key;
-                (granter.as_ref() == member || grantee.as_ref() == member)
-                    && group_id_stable.as_ref() == &group_id
-            })
-            .map(|(key, _)| key.clone())
-            .collect();
-
-        for key in keys_to_remove {
-            self.0.remove(&key);
-        }
-        Ok(())
-    }
-
-    pub fn cleanup_group_access(&mut self, group_id: GroupId) -> Result<(), String> {
-        // Remove all access grants for the group
-        let keys_to_remove: Vec<_> = self
-            .0
-            .iter()
-            .filter(|(_, group_id_stable)| group_id_stable.as_ref() == &group_id)
-            .map(|(key, _)| key.clone())
-            .collect();
-
-        for key in keys_to_remove {
-            self.0.remove(&key);
-        }
-        Ok(())
+            .filter(|(_, gid)| gid.as_ref() == &group_id)
+            .map(|(key, _)| (key.0.into_inner(), key.1.into_inner()))
+            .collect()
     }
 }
 
@@ -1263,11 +1238,11 @@ impl GroupMap {
 
     pub fn dissolve_group(&mut self, group_id: u64) -> Result<(), String> {
         let key = group_id.to_stable();
-        // First verify the group exists
+        // first verify the group exists
         if !self.0.contains_key(&key) {
             return Err("Group not found".to_string());
         }
-        // Remove the group entirely
+        // remove the group entirely
         self.0.remove(&key);
         Ok(())
     }

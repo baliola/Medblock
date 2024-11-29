@@ -1219,8 +1219,45 @@ fn test_emr_access_after_grant() {
 
 #[test]
 fn test_group_access_cleanup() {
-    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
+    let (registries, provider, patient1) = common::Scenario::one_provider_one_patient();
     let patient2 = common::Scenario::create_patient(&registries);
+
+    // issue EMRs for both patients
+    let emr_req = provider_registry::IssueEmrRequest {
+        emr: vec![provider_registry::EmrFragment {
+            key: "test_key".to_string(),
+            value: "test_value".to_string(),
+        }],
+        user_id: patient1.nik.clone().to_string(),
+    };
+
+    registries
+        .provider
+        .issue_emr(
+            &registries.ic,
+            provider.0.clone(),
+            ProviderCall::Update,
+            emr_req,
+        )
+        .unwrap();
+
+    let emr_req = provider_registry::IssueEmrRequest {
+        emr: vec![provider_registry::EmrFragment {
+            key: "test_key2".to_string(),
+            value: "test_value2".to_string(),
+        }],
+        user_id: patient2.nik.clone().to_string(),
+    };
+
+    registries
+        .provider
+        .issue_emr(
+            &registries.ic,
+            provider.0.clone(),
+            ProviderCall::Update,
+            emr_req,
+        )
+        .unwrap();
 
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "test_group".to_string(),
@@ -1265,7 +1302,7 @@ fn test_group_access_cleanup() {
         )
         .unwrap();
 
-    // grant access from patient1 to patient2
+    // patient1 grants access to patient2 (patient2 can view patient1's EMR)
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
         group_id,
         grantee_nik: patient2.nik.to_string(),
@@ -1281,28 +1318,58 @@ fn test_group_access_cleanup() {
         )
         .unwrap();
 
-    // verify access is granted
-    let view_request1 = patient_registry::ViewGroupMemberEmrInformationRequest {
+    // verify patient2 can view patient1's EMR (granted access)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         group_id,
         member_nik: patient1.nik.to_string(),
         page: 0,
         limit: 10,
     };
 
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
     assert!(
-        registries
-            .patient
-            .view_group_member_emr_information(
-                &registries.ic,
-                patient2.principal.clone(),
-                PatientCall::Query,
-                view_request1,
-            )
-            .is_ok(),
-        "access should be granted initially"
+        matches!(result, patient_registry::Result4::Ok(_)),
+        "Patient2 should be able to view Patient1's EMR initially. Got error: {:?}",
+        if let patient_registry::Result4::Err(e) = result {
+            e
+        } else {
+            "Unexpected result type".to_string()
+        }
     );
 
-    // Member leaves group
+    // verify patient1 cannot view patient2's EMR (no access granted)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        group_id,
+        member_nik: patient2.nik.to_string(),
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    assert!(
+        matches!(result, patient_registry::Result4::Err(_)),
+        "Patient1 should not be able to view Patient2's EMR (no access granted)"
+    );
+
+    // patient2 leaves group
     let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
 
     registries
@@ -1315,42 +1382,27 @@ fn test_group_access_cleanup() {
         )
         .unwrap();
 
-    // verify access is granted
-    let view_request2 = patient_registry::ViewGroupMemberEmrInformationRequest {
+    // verify Patient2 can no longer view Patient1's EMR
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         group_id,
         member_nik: patient1.nik.to_string(),
         page: 0,
         limit: 10,
     };
 
-    // verify access is revoked
-    let result = registries.patient.view_group_member_emr_information(
-        &registries.ic,
-        patient2.principal.clone(),
-        PatientCall::Query,
-        view_request2,
-    );
-
-    assert!(result.is_err(), "access should be revoked after leaving");
-
-    // also verify the reverse direction
-    let view_request3 = patient_registry::ViewGroupMemberEmrInformationRequest {
-        group_id,
-        member_nik: patient2.nik.to_string(),
-        page: 0,
-        limit: 10,
-    };
-
-    let result2 = registries.patient.view_group_member_emr_information(
-        &registries.ic,
-        patient1.principal.clone(),
-        PatientCall::Query,
-        view_request3,
-    );
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
 
     assert!(
-        result2.is_err(),
-        "access should be revoked in both directions"
+        matches!(result, patient_registry::Result4::Err(_)),
+        "Patient2 should not be able to view Patient1's EMR after leaving"
     );
 }
 
