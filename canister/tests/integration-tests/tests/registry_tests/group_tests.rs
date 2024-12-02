@@ -112,12 +112,51 @@ fn test_emr_access_permissions() {
     let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
     let patient2 = common::Scenario::create_patient(&registries);
     let patient3 = common::Scenario::create_patient(&registries);
+    let provider = common::Provider(common::random_identity());
 
     println!("DEBUG patient1 NIK: {}", patient1.nik);
     println!("DEBUG patient2 NIK: {}", patient2.nik);
     println!("DEBUG patient3 NIK: {}", patient3.nik);
 
-    // create group
+    // Register the provider first
+    let provider_reg_req = provider_registry::RegisternewProviderRequest {
+        provider_principal: provider.0.clone(),
+        display_name: "TEST HOSPITAL".to_ascii_lowercase(),
+        address: "TEST ADDRESS".to_ascii_lowercase(),
+    };
+
+    registries
+        .provider
+        .register_new_provider(
+            &registries.ic,
+            registries.controller.clone(),
+            ProviderCall::Update,
+            provider_reg_req,
+        )
+        .unwrap();
+
+    // Issue some EMRs for Patient2
+    let emr_req = provider_registry::IssueEmrRequest {
+        emr: vec![provider_registry::EmrFragment {
+            key: "test_key".to_string(),
+            value: "test_value".to_string(),
+        }],
+        user_id: patient2.nik.clone().to_string(),
+    };
+
+    registries
+        .provider
+        .issue_emr(
+            &registries.ic,
+            provider.0.clone(),
+            ProviderCall::Update,
+            emr_req,
+        )
+        .unwrap();
+
+    println!("DEBUG issued EMR for Patient2");
+
+    // create group with patient1 as leader
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "test family".to_string(),
     };
@@ -177,6 +216,7 @@ fn test_emr_access_permissions() {
         )
         .unwrap();
     println!("DEBUG patient2's groups: {}", groups.groups.len());
+    assert_eq!(groups.groups.len(), 1, "Patient2 should be in one group");
 
     // verify patient3 is not in any groups
     let groups = registries
@@ -188,68 +228,152 @@ fn test_emr_access_permissions() {
         )
         .unwrap();
     println!("DEBUG patient3's groups: {}", groups.groups.len());
+    assert_eq!(
+        groups.groups.len(),
+        0,
+        "Patient3 should not be in any groups"
+    );
 
-    // test granting EMR access to group member
+    // Test 1: Patient1 tries to view Patient2's EMR without permission (should fail)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        );
+
+    // Should fail with access not granted error
+    match view_result {
+        Ok(patient_registry::Result4::Err(error)) => {
+            assert!(
+                error.contains("Access not granted"),
+                "Expected access not granted error, got: {}",
+                error
+            );
+            assert!(
+                error.contains(&patient2.nik.to_string()),
+                "Error should mention member's NIK"
+            );
+            assert!(
+                error.contains(&patient1.nik.to_string()),
+                "Error should mention viewer's NIK"
+            );
+        }
+        _ => panic!("Expected error for unauthorized EMR access"),
+    }
+
+    // Test 2: Patient1 grants access to Patient2's EMR (should succeed)
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
         group_id,
-        grantee_nik: patient2.nik.to_string(),
+        grantee_nik: patient1.nik.to_string(),
     };
 
-    let grant_result = registries.patient.grant_group_access(
-        &registries.ic,
-        patient1.principal.clone(),
-        PatientCall::Update,
-        grant_access_req,
-    );
-    println!("DEBUG grant_result to patient2: {}", grant_result.is_ok());
-    assert!(grant_result.is_ok());
-
-    // test granting EMR access to non-group member (should fail)
-    let invalid_grant_req = patient_registry::GrantGroupAccessRequest {
-        group_id,
-        grantee_nik: patient3.nik.to_string(),
-    };
-
-    let invalid_grant_result = registries
+    let grant_result = registries
         .patient
         .grant_group_access(
             &registries.ic,
-            patient1.principal.clone(),
+            patient2.principal.clone(),
             PatientCall::Update,
-            invalid_grant_req,
-        )
-        .unwrap();
+            grant_access_req,
+        );
 
-    // Now check the inner Result_
-    assert!(matches!(
-        invalid_grant_result,
-        patient_registry::Result_::Err(_)
-    ));
+    assert!(grant_result.is_ok(), "Failed to grant access");
 
-    // verify that patient3 is not in the group
-    let groups = registries
+    // Test 3: Patient1 tries to view Patient2's EMR with permission (should succeed)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries
         .patient
-        .get_user_groups(
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        );
+
+    match view_result {
+        Ok(patient_registry::Result4::Ok(_)) => (),
+        Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
+        Err(_) => panic!("Expected success but got pocket_ic error"),
+    }
+
+    // Test 4: Patient3 (not in group) tries to view Patient2's EMR (should fail)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries
+        .patient
+        .view_group_member_emr_information(
             &registries.ic,
             patient3.principal.clone(),
             PatientCall::Query,
-        )
-        .unwrap();
-    assert_eq!(groups.groups.len(), 0);
+            view_request,
+        );
 
-    // test revoking EMR access
-    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
-        grantee_nik: patient2.nik.to_string(),
+    match view_result {
+        Ok(patient_registry::Result4::Err(error)) => {
+            assert!(
+                error.contains("not a member of group"),
+                "Expected not in group error, got: {}",
+                error
+            );
+            assert!(
+                error.contains(&patient3.nik.to_string()),
+                "Error should mention viewer's NIK"
+            );
+        }
+        _ => panic!("Expected error for non-group member access attempt"),
+    }
+
+    // Test 5: Patient1 tries to view Patient3's EMR (should fail - not in group)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient3.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
     };
 
-    let revoke_result = registries.patient.revoke_group_access(
-        &registries.ic,
-        patient1.principal.clone(),
-        PatientCall::Update,
-        revoke_access_req,
-    );
-    println!("DEBUG revoke_result: {}", revoke_result.is_ok());
-    assert!(revoke_result.is_ok());
+    let view_result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        );
+
+    match view_result {
+        Ok(patient_registry::Result4::Err(error)) => {
+            assert!(
+                error.contains("not in group"),
+                "Expected not in group error, got: {}",
+                error
+            );
+            assert!(
+                error.contains(&patient3.nik.to_string()),
+                "Error should mention member's NIK"
+            );
+        }
+        _ => panic!("Expected error for viewing non-group member EMR"),
+    }
 }
 
 #[test]
@@ -566,7 +690,11 @@ fn test_view_group_member_emr_information() {
             panic!("Should not be able to view EMRs after access revocation")
         }
         patient_registry::Result4::Err(e) => {
-            assert!(e.contains("No access granted"), "Unexpected error message");
+            let expected_error = format!(
+                "Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
+                patient2.nik, patient1.nik
+            );
+            assert_eq!(e, expected_error, "Unexpected error message");
         }
     }
 }
@@ -1487,5 +1615,354 @@ fn test_dissolve_group() {
     assert!(
         matches!(result, patient_registry::Result3::Err(_)),
         "group should no longer exist"
+    );
+}
+
+#[test]
+fn test_emr_access_error_messages() {
+    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
+    let patient2 = common::Scenario::create_patient(&registries);
+    let patient3 = common::Scenario::create_patient(&registries);
+    let provider = common::Provider(common::random_identity());
+
+    println!("DEBUG patient1 NIK: {}", patient1.nik);
+    println!("DEBUG patient2 NIK: {}", patient2.nik);
+    println!("DEBUG patient3 NIK: {}", patient3.nik);
+
+    // Register provider first
+    let provider_reg_req = provider_registry::RegisternewProviderRequest {
+        provider_principal: provider.0.clone(),
+        display_name: "TEST HOSPITAL".to_ascii_lowercase(),
+        address: "TEST ADDRESS".to_ascii_lowercase(),
+    };
+
+    registries
+        .provider
+        .register_new_provider(
+            &registries.ic,
+            registries.controller.clone(),
+            ProviderCall::Update,
+            provider_reg_req,
+        )
+        .unwrap();
+
+    // Register patient2 in the EMR system by issuing a dummy EMR
+    // This ensures the user exists in the EMR system
+    let dummy_emr_req = provider_registry::IssueEmrRequest {
+        emr: vec![provider_registry::EmrFragment {
+            key: "init".to_string(),
+            value: "init".to_string(),
+        }],
+        user_id: patient2.nik.clone().to_string(),
+    };
+
+    registries
+        .provider
+        .issue_emr(
+            &registries.ic,
+            provider.0.clone(),
+            ProviderCall::Update,
+            dummy_emr_req,
+        )
+        .unwrap();
+
+    println!("DEBUG registered patient2 in EMR system");
+
+    // Create group with patient1 as leader
+    let create_group_req = patient_registry::CreateGroupRequest {
+        name: "test family".to_string(),
+    };
+
+    let group_response = registries
+        .patient
+        .create_group(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Update,
+            create_group_req,
+        )
+        .unwrap();
+
+    let group_id = match group_response {
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+    };
+
+    // Test 1: Invalid NIK format
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: "invalid_nik".to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Err(error) => {
+            assert!(
+                error.contains("Invalid member NIK format"),
+                "Expected invalid NIK error message, got: {}",
+                error
+            );
+        }
+        _ => panic!("Expected error for invalid NIK format"),
+    }
+
+    // Test 2: Invalid group ID
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id: 999, // Non-existent group ID
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Err(error) => {
+            let expected_error = format!(
+                "Group with ID {} does not exist in the system. Please verify the group ID.",
+                999
+            );
+            assert_eq!(error, expected_error, "Got unexpected error message");
+        }
+        _ => panic!("Expected error for invalid group ID"),
+    }
+
+    // Test 3: Users not in group
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Err(error) => {
+            let expected_error = format!(
+                "Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Both users must join the group first.",
+                patient2.nik, patient2.nik, group_id
+            );
+            assert_eq!(error, expected_error, "Got unexpected error message");
+        }
+        _ => panic!("Expected error for users not in group"),
+    }
+
+    // Add patient1 to group
+    let consent_code = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    let add_member_req = patient_registry::AddGroupMemberRequest {
+        group_id,
+        consent_code: consent_code.code,
+        relation: Relation::Spouse,
+    };
+
+    registries
+        .patient
+        .add_group_member(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Update,
+            add_member_req,
+        )
+        .unwrap();
+
+    // Test 4: Access not granted
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Err(error) => {
+            let expected_error = format!(
+                "Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
+                patient2.nik, patient1.nik
+            );
+            assert_eq!(error, expected_error, "Got unexpected error message");
+        }
+        _ => panic!("Expected error for access not granted"),
+    }
+
+    // Test 5: No EMRs found
+    // First add patient3 to group
+    let consent_code = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            patient3.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    let add_member_req = patient_registry::AddGroupMemberRequest {
+        group_id,
+        consent_code: consent_code.code,
+        relation: Relation::Spouse,
+    };
+
+    registries
+        .patient
+        .add_group_member(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Update,
+            add_member_req,
+        )
+        .unwrap();
+
+    // Grant access to patient3's EMR
+    let grant_access_req = patient_registry::GrantGroupAccessRequest {
+        group_id,
+        grantee_nik: patient1.nik.to_string(),
+    };
+
+    registries
+        .patient
+        .grant_group_access(
+            &registries.ic,
+            patient3.principal.clone(),
+            PatientCall::Update,
+            grant_access_req,
+        )
+        .unwrap();
+
+    // Try to view patient3's non-existent EMRs
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient3.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Err(error) => {
+            println!("DEBUG actual error message: {}", error);
+            let expected_error = format!(
+                "The member (NIK: {}) has not been registered in the EMR system yet. They need to have at least one EMR record created by a healthcare provider.",
+                patient3.nik
+            );
+            assert_eq!(error, expected_error, "Got unexpected error message");
+        }
+        patient_registry::Result4::Ok(_) => {
+            println!("DEBUG got unexpected success when expecting no EMRs error");
+            panic!("Expected error for no EMRs found");
+        }
+        _ => panic!("Expected error for no EMRs found"),
+    }
+
+    // Test 6: Successful case after adding EMRs
+    // Add EMR for patient2 (using the already registered provider)
+    let emr_req = provider_registry::IssueEmrRequest {
+        emr: vec![provider_registry::EmrFragment {
+            key: "test_key".to_string(),
+            value: "test_value".to_string(),
+        }],
+        user_id: patient2.nik.clone().to_string(),
+    };
+
+    registries
+        .provider
+        .issue_emr(
+            &registries.ic,
+            provider.0.clone(),
+            ProviderCall::Update,
+            emr_req,
+        )
+        .unwrap();
+
+    // Grant access to patient2's EMR
+    let grant_access_req = patient_registry::GrantGroupAccessRequest {
+        group_id,
+        grantee_nik: patient1.nik.to_string(),
+    };
+
+    registries
+        .patient
+        .grant_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            grant_access_req,
+        )
+        .unwrap();
+
+    // Now viewing should succeed
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let result = registries
+        .patient
+        .view_group_member_emr_information(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+            view_request,
+        )
+        .unwrap();
+
+    assert!(
+        matches!(result, patient_registry::Result4::Ok(_)),
+        "Expected successful EMR view after all conditions are met"
     );
 }

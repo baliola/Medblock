@@ -1171,14 +1171,21 @@ impl GroupMap {
             .ok_or(PatientRegistryError::UserDoesNotExist)?
             .into_inner();
 
-        // If this is the last member or if it's the leader and there's only one other member,
-        // the group should be dissolved by the caller
-        if group.members.len() <= 1 || (group.leader == *member && group.members.len() <= 2) {
+        // Check if member exists in group
+        if !group.members.contains(member) {
             return Err(PatientRegistryError::UserDoesNotExist);
         }
 
-        // If the leaving member is the leader, transfer leadership to another member
-        if group.leader == *member {
+        // If the member is the leader and the only member, dissolve the group
+        if group.leader == *member && group.members.len() == 1 {
+            self.0.remove(&key);
+            return Ok(());
+        }
+
+        // If the leaving member is the leader and there are other members,
+        // transfer leadership to another random member
+        if group.leader == *member && group.members.len() > 1 {
+            // Get a random member that isn't the leader
             let new_leader = group
                 .members
                 .iter()
@@ -1190,6 +1197,8 @@ impl GroupMap {
 
         group.members.retain(|nik| nik != member);
         group.member_relations.retain(|(nik, _)| nik != member);
+
+        // Update the group
         self.0.insert(key, group.to_stable());
 
         Ok(())
@@ -1408,8 +1417,8 @@ mod test_group_map {
         // test leaving non-existent group
         assert!(group_map.remove_member(999, &member).is_err());
 
-        // test leader leaving group
+        // test leader leaving group (should dissolve the group)
         assert!(group_map.remove_member(group_id, &leader).is_ok());
-        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 0);
+        assert!(group_map.get_group(group_id).is_none()); // group should be dissolved
     }
 }
