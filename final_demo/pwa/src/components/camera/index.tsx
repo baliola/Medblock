@@ -2,7 +2,6 @@
 
 import { fileChecker, imageTypes } from "@/utils/file-checker";
 import { Button, Drawer, DrawerBody, DrawerContent, DrawerOverlay, Flex, useToast } from "@chakra-ui/react";
-import { useFormikContext } from "formik";
 import { useCallback, useRef } from "react";
 import Webcam from "react-webcam";
 
@@ -15,8 +14,6 @@ interface CameraInputProps {
 export default function CameraInput({ setFile, isOpen, onClose }: CameraInputProps) {
   const toast = useToast();
   const webcamRef = useRef<Webcam>(null);
-  const { setFieldValue } = useFormikContext();
-
 
   const videoConstraints = {
     width: 1280,
@@ -56,7 +53,6 @@ export default function CameraInput({ setFile, isOpen, onClose }: CameraInputPro
 
               if (checker) {
                 setFile(file);
-                setFieldValue("idcard_upload", true);
                 onClose();
               }
             } catch (error) {
