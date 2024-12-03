@@ -3,16 +3,6 @@ import { FaCalendarAlt, FaHome } from "react-icons/fa";
 import { IoDocumentAttachSharp } from "react-icons/io5";
 import { MdOutlineLocationCity } from "react-icons/md";
 
-export interface Profile {
-  fullName: string;
-  dateBirth: string;
-  placeBirth: string;
-  address: string;
-  marital: string;
-  nik: string;
-  gender: string;
-}
-
 export const uamDeniedModal = {
   title: "Reason for Denied",
   reasons: [

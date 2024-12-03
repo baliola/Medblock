@@ -6,9 +6,16 @@ import { RegistrationHeader } from "@/constants/contents/auth/registration/heade
 
 import { AuthHeader } from "@/components/auth/header";
 import UserRegistration from "@/components/auth/registration";
+import { useUserPrincipal } from "@ic-reactor/react";
+import { useEffect } from "react";
 
 export default function AuthRegistrationPage() {
   const patientData = useProfileStore((state) => state.profile);
+  const principal = useUserPrincipal()
+
+  useEffect(() => {
+    console.log("PRINCIPAL Text", principal?.toText());
+  }, [principal]);
 
   return (
     <Flex

@@ -78,6 +78,14 @@ export default function UserRegistration({
       nik: encodeHashNIK(variables.nik)
     };
 
+    const kycDate = () => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      let mm = now.getMonth() + 1;
+      let dd = now.getDate();
+      return `${dd < 10 ? `0${dd}` : dd }` + '/' + `${mm < 10 ? `0${mm}` : mm }` + '/' + yyyy;
+    }
+
     const initialPatientData: UpdateInitialPatientInfoRequest = {
       info: {
         address: variables.address,
@@ -85,7 +93,9 @@ export default function UserRegistration({
         gender: variables.gender,
         martial_status: variables.martial_status,
         name: variables.name,
-        place_of_birth: variables.place_of_birth
+        place_of_birth: variables.place_of_birth,
+        kyc_date: kycDate(),
+        kyc_status: {Pending: null} ,
       }
     };
 
