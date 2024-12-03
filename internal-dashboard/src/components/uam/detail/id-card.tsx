@@ -16,7 +16,7 @@ export default function IDCardView({
         <ModalHeader>ID Card</ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={5}>
-          <Image src={data} alt="id card" />
+          <Image src={data} alt={data} />
         </ModalBody>
       </ModalContent>
     </Modal>

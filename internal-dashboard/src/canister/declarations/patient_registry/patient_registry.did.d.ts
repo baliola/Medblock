@@ -11,7 +11,13 @@ export interface Activity {
 export type ActivityType = { 'Updated' : null } |
   { 'Accessed' : null } |
   { 'Revoked' : null };
+export interface AddGroupMemberRequest {
+  'relation' : Relation,
+  'consent_code' : string,
+  'group_id' : bigint,
+}
 export interface AuthorizedCallerRequest { 'caller' : Principal }
+export interface BindAdminRequest { 'nik' : string, 'principal' : Principal }
 export type CanisterLogFeature = { 'filterMessageByContains' : null } |
   { 'filterMessageByRegex' : null };
 export interface CanisterLogMessages {
@@ -38,12 +44,15 @@ export type CollectMetricsRequestType = { 'force' : null } |
   { 'normal' : null };
 export interface Consent {
   'nik' : string,
+  'group_claimer' : [] | [Principal],
   'session_id' : [] | [string],
   'code' : string,
   'claimed' : boolean,
   'session_user' : [] | [string],
 }
 export interface ConsentListResponse { 'consents' : Array<Consent> }
+export interface CreateGroupRequest { 'name' : string }
+export interface CreateGroupResponse { 'group_id' : bigint }
 export interface DailyMetricsData {
   'updateCalls' : bigint,
   'canisterHeapMemorySize' : NumericEntity,
@@ -79,6 +88,18 @@ export interface EmrListConsentResponse {
 export interface EmrListPatientRequest { 'page' : number, 'limit' : number }
 export interface EmrListPatientResponse { 'emrs' : Array<EmrHeaderWithStatus> }
 export interface FinishSessionRequest { 'session_id' : string }
+export interface GetGroupDetailsRequest {
+  'page' : bigint,
+  'limit' : bigint,
+  'group_id' : bigint,
+}
+export interface GetGroupDetailsResponse {
+  'group_details' : Array<GroupDetail>,
+  'total_pages' : bigint,
+  'leader_name' : string,
+  'member_count' : bigint,
+  'group_name' : string,
+}
 export interface GetInformationRequest {
   'status' : [] | [StatusRequest],
   'metrics' : [] | [MetricsRequest],
@@ -112,6 +133,25 @@ export interface GetMetricsParameters {
   'dateFromMillis' : bigint,
 }
 export interface GetPatientInfoResponse { 'nik' : string, 'patient' : Patient }
+export interface GetUserGroupsResponse { 'groups' : Array<Group> }
+export interface GrantGroupAccessRequest {
+  'group_id' : bigint,
+  'grantee_nik' : string,
+}
+export interface Group {
+  'id' : bigint,
+  'members' : Array<string>,
+  'name' : string,
+  'leader' : string,
+  'member_relations' : Array<[string, Relation]>,
+}
+export interface GroupDetail {
+  'age' : number,
+  'nik' : string,
+  'name' : string,
+  'role' : Relation,
+  'gender' : string,
+}
 export interface HeaderStatus { 'updated_at' : bigint, 'created_at' : bigint }
 export interface HourlyMetricsData {
   'updateCalls' : BigUint64Array | bigint[],
@@ -125,6 +165,10 @@ export interface IsConsentClaimedResponse {
   'claimed' : boolean,
 }
 export interface IssueRequest { 'header' : EmrHeader }
+export type KycStatus = { 'Approved' : null } |
+  { 'Denied' : null } |
+  { 'Pending' : null };
+export interface LeaveGroupRequest { 'group_id' : bigint }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
 export interface LogResponse { 'logs' : Array<Activity> }
 export type MetricsGranularity = { 'hourly' : null } |
@@ -139,9 +183,11 @@ export interface NumericEntity {
   'last' : bigint,
 }
 export type Patient = { 'V1' : V1 };
+export interface PatientListAdminResponse { 'patients' : Array<PatientWithNik> }
 export interface PatientListResponse {
   'patients' : Array<PatientWithNikAndSession>,
 }
+export interface PatientWithNik { 'nik' : string, 'info' : Patient }
 export interface PatientWithNikAndSession {
   'nik' : string,
   'session_id' : string,
@@ -159,7 +205,24 @@ export interface ReadEmrSessionRequest {
   'args' : ReadEmrByIdRequest,
 }
 export interface RegisterPatientRequest { 'nik' : string }
+export type Relation = { 'Parent' : null } |
+  { 'Sibling' : null } |
+  { 'Other' : null } |
+  { 'Child' : null } |
+  { 'Spouse' : null };
+export type Result = { 'Ok' : null } |
+  { 'Err' : string };
+export type Result_1 = { 'Ok' : string } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : CreateGroupResponse } |
+  { 'Err' : string };
+export type Result_3 = { 'Ok' : GetGroupDetailsResponse } |
+  { 'Err' : string };
+export type Result_4 = { 'Ok' : EmrListPatientResponse } |
+  { 'Err' : string };
 export interface RevokeConsentRequest { 'codes' : Array<string> }
+export interface RevokeGroupAccessRequest { 'grantee_nik' : string }
+export interface SearchPatientAdminResponse { 'patient_info' : PatientWithNik }
 export interface SearchPatientRequest { 'nik' : string }
 export interface SearchPatientResponse {
   'patient_info' : PatientWithNikAndSession,
@@ -179,22 +242,39 @@ export interface UpdateInformationRequest {
   'metrics' : [] | [CollectMetricsRequestType],
 }
 export interface UpdateInitialPatientInfoRequest { 'info' : V1 }
+export interface UpdateKycStatusRequest {
+  'nik' : string,
+  'kyc_status' : KycStatus,
+}
+export interface UpdateKycStatusResponse { 'patient' : Patient }
 export interface V1 {
+  'kyc_date' : string,
   'name' : string,
   'martial_status' : string,
   'place_of_birth' : string,
   'address' : string,
   'gender' : string,
+  'kyc_status' : KycStatus,
   'date_of_birth' : string,
+}
+export interface ViewGroupMemberEmrInformationRequest {
+  'page' : bigint,
+  'limit' : bigint,
+  'group_id' : bigint,
+  'member_nik' : string,
 }
 export interface _SERVICE {
   'add_authorized_metrics_collector' : ActorMethod<
     [AuthorizedCallerRequest],
     undefined
   >,
+  'add_group_member' : ActorMethod<[AddGroupMemberRequest], Result>,
+  'bind_admin' : ActorMethod<[BindAdminRequest], undefined>,
   'claim_consent' : ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>,
+  'claim_consent_for_group' : ActorMethod<[ClaimConsentRequest], Result_1>,
   'consent_list' : ActorMethod<[], ConsentListResponse>,
   'create_consent' : ActorMethod<[], ClaimConsentRequest>,
+  'create_group' : ActorMethod<[CreateGroupRequest], Result_2>,
   'emr_list_patient' : ActorMethod<
     [EmrListPatientRequest],
     EmrListPatientResponse
@@ -208,17 +288,22 @@ export interface _SERVICE {
     [GetInformationRequest],
     GetInformationResponse
   >,
+  'get_group_details' : ActorMethod<[GetGroupDetailsRequest], Result_3>,
   'get_logs' : ActorMethod<[], LogResponse>,
   'get_patient_info' : ActorMethod<[], GetPatientInfoResponse>,
   'get_patient_info_with_consent' : ActorMethod<
     [FinishSessionRequest],
     GetPatientInfoResponse
   >,
+  'get_patient_list_admin' : ActorMethod<[], PatientListAdminResponse>,
   'get_trusted_origins' : ActorMethod<[], Array<string>>,
+  'get_user_groups' : ActorMethod<[], GetUserGroupsResponse>,
+  'grant_group_access' : ActorMethod<[GrantGroupAccessRequest], Result>,
   'is_consent_claimed' : ActorMethod<
     [ClaimConsentRequest],
     IsConsentClaimedResponse
   >,
+  'leave_group' : ActorMethod<[LeaveGroupRequest], Result>,
   'metrics' : ActorMethod<[], string>,
   'notify_issued' : ActorMethod<[IssueRequest], undefined>,
   'notify_updated' : ActorMethod<[IssueRequest], undefined>,
@@ -235,7 +320,12 @@ export interface _SERVICE {
     undefined
   >,
   'revoke_consent' : ActorMethod<[RevokeConsentRequest], undefined>,
+  'revoke_group_access' : ActorMethod<[RevokeGroupAccessRequest], Result>,
   'search_patient' : ActorMethod<[SearchPatientRequest], SearchPatientResponse>,
+  'search_patient_admin' : ActorMethod<
+    [SearchPatientRequest],
+    SearchPatientAdminResponse
+  >,
   'updateCanistergeekInformation' : ActorMethod<
     [UpdateInformationRequest],
     undefined
@@ -248,9 +338,17 @@ export interface _SERVICE {
     [UpdateInitialPatientInfoRequest],
     undefined
   >,
+  'update_kyc_status' : ActorMethod<
+    [UpdateKycStatusRequest],
+    UpdateKycStatusResponse
+  >,
   'update_provider_registry_principal' : ActorMethod<
     [UpdateEmrRegistryRequest],
     undefined
+  >,
+  'view_group_member_emr_information' : ActorMethod<
+    [ViewGroupMemberEmrInformationRequest],
+    Result_4
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

@@ -62,7 +62,6 @@ const useProvider = () => {
     address: string;
     principal: string;
   }, onClose: () => void) => {
-    console.log(values)
     try {
       const principal = Principal.fromText(values.principal);
 

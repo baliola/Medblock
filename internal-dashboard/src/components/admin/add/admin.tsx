@@ -1,11 +1,11 @@
 "use client";
 
 import { TextInput } from "@/components/input/text";
-import { providerCanisterId } from "@/config/canisters/providers.canister";
-import { uamAddHospitaldModal } from "@/constants/contents/uam/add";
-import useProvider from "@/hooks/useProvider";
-import { addHospitalSchema } from "@/libs/yup/ham";
-import { ProviderActor } from "@/services/providers";
+import { patientCanisterId } from "@/config/canisters/patient.canister";
+import { uamAddAdmindModal } from "@/constants/contents/admin/add";
+import useAdmin from "@/hooks/useAdmin";
+import { addAdminSchema } from "@/libs/yup/admin";
+import { PatientActor } from "@/services/patients";
 import {
   Button,
   FormControl,
@@ -21,17 +21,17 @@ import {
   useDisclosure,
   Text,
   Icon,
-  Box
+  Box,
 } from "@chakra-ui/react";
 import { Formik, Form, Field } from "formik";
 import { ReactElement } from "react";
 import { FaPlus } from "react-icons/fa";
 
-const AddHospitalModal = (): ReactElement => {
+const AddAdminModalForm = (): ReactElement => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { registerHospitalLoading, handleRegisterHospital } = useProvider()
+  const { bindAdminLoading, handleBindAdmin } = useAdmin()
 
-  const { title } = uamAddHospitaldModal;
+  const { title } = uamAddAdmindModal;
 
   return (
     <>
@@ -60,7 +60,7 @@ const AddHospitalModal = (): ReactElement => {
             h={2}
           />
         </Box>
-        <Text>Add Hospital</Text>
+        <Text>Add Admin</Text>
       </Button>
       <Modal isOpen={isOpen} onClose={onClose} closeOnOverlayClick={true}>
         <ModalOverlay />
@@ -68,43 +68,30 @@ const AddHospitalModal = (): ReactElement => {
           <ModalHeader>{title}</ModalHeader>
           <ModalBody>
             <Formik
-              initialValues={{ name: "", address: "", principal: "" }}
-              validationSchema={addHospitalSchema}
+              initialValues={{ nik: "", principal: "" }}
+              validationSchema={addAdminSchema}
               onSubmit={() => {}}
             >
               {({ errors, touched, isSubmitting, values }) => (
                 <Form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    handleRegisterHospital(values, onClose);
+                    handleBindAdmin(values, onClose);
                   }}
                 >
                   <Stack w={"full"} spacing={5}>
                     <FormControl
                       isRequired
-                      isInvalid={!!errors.name && touched.name}
+                      isInvalid={!!errors.nik && touched.nik}
                     >
-                      <FormLabel htmlFor="name">Name</FormLabel>
+                      <FormLabel htmlFor="nik">NIK</FormLabel>
                       <Field
                         as={TextInput}
                         type="text"
-                        name="name"
+                        name="nik"
                         placeholder=""
                       />
-                      <FormErrorMessage>{errors.name}</FormErrorMessage>
-                    </FormControl>
-                    <FormControl
-                      isRequired
-                      isInvalid={!!errors.address && touched.address}
-                    >
-                      <FormLabel htmlFor="address">Address</FormLabel>
-                      <Field
-                        as={TextInput}
-                        type="text"
-                        name="address"
-                        placeholder=""
-                      />
-                      <FormErrorMessage>{errors.address}</FormErrorMessage>
+                      <FormErrorMessage>{errors.nik}</FormErrorMessage>
                     </FormControl>
                     <FormControl
                       isRequired
@@ -135,8 +122,8 @@ const AddHospitalModal = (): ReactElement => {
                         colorScheme="primary"
                         bg={"primary.700"}
                         w={"full"}
-                        isLoading={isSubmitting || registerHospitalLoading}
-                        isDisabled={!values.name || !values.address || !values.principal}
+                        isLoading={isSubmitting || bindAdminLoading}
+                        isDisabled={!values.nik || !values.principal}
                       >
                         Submit
                       </Button>
@@ -152,10 +139,10 @@ const AddHospitalModal = (): ReactElement => {
   );
 };
 
-export default function HAMAddHospitalModal() {
+export default function AddAdminModal() {
   return (
-    <ProviderActor canisterId={providerCanisterId}>
-      <AddHospitalModal />
-    </ProviderActor>
+    <PatientActor canisterId={patientCanisterId}>
+      <AddAdminModalForm />
+    </PatientActor>
   );
 }
