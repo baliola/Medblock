@@ -1,17 +1,18 @@
 "use client"
 
 import { GrantGroupAccessRequest } from "@/declarations/patient_registry/patient_registry.did";
-import { grantGroupAccessSchema } from "@/libs/yup/grant-group-access";
 import { encodeHashNIK, usePatientMethod } from "@/services/patients";
-import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text, Input } from "@chakra-ui/react";
-import { Form, Formik } from "formik";
+import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text } from "@chakra-ui/react";
 import { useParams } from "next/navigation";
-import { HiLockOpen } from "react-icons/hi2";
+import { FaExclamationTriangle } from "react-icons/fa";
+import { HiOutlineLockOpen } from "react-icons/hi2";
 
 interface IGrantAccessGroupModal {
+  nik: string
 }
 
 export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGroupModal }) {
+  const { nik } = props
   const toast = useToast();
   const { group_id } = useParams();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -54,11 +55,11 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
     },
   });
 
-  const handleGrantGroupAccess = async (grantee_nik: string) => {
+  const handleGrantGroupAccess = async () => {
     try {
       const data: GrantGroupAccessRequest[] | any = [{
         group_id: BigInt(Number(group_id)),
-        grantee_nik: encodeHashNIK(grantee_nik)
+        grantee_nik: encodeHashNIK(nik)
       }];
 
       await grantGroupAccess(data);
@@ -75,19 +76,21 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
   return (
     <>
       <Button
-        colorScheme="primary"
-        w={"full"}
-        rounded={"2xl"}
-        fontSize={'sm'}
-        py={6}
-        gap={2}
-        mt={4}
+        type="button"
+        bg={"transparent"}
+        display={"flex"}
+        justifyContent={"items-start"}
+        columnGap={3}
+        fontWeight={400}
+        color={"primary.700"}
         leftIcon={
-          <Icon as={HiLockOpen} boxSize={5} />
+          <Icon as={HiOutlineLockOpen} boxSize={6} />
         }
         onClick={onOpen}
       >
-        Grant EMR Access
+        <Text>
+          Grant EMR Access
+        </Text>
       </Button>
       <Modal
         isOpen={isOpen}
@@ -123,64 +126,7 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
               py={6}
               rounded={"lg"}
             >
-              <Formik
-                initialValues={{ grantee_nik: "" }}
-                validationSchema={grantGroupAccessSchema}
-                onSubmit={() => {}}
-              >
-                {({ errors, touched, isSubmitting, values, setFieldValue }) => (
-                  <Form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleGrantGroupAccess(values.grantee_nik);
-                    }}
-                  >
-                    <Flex 
-                      margin={"auto"}
-                      flexDirection={"column"}
-                      rowGap={6}
-                      width={"full"}
-                      px={8}
-                    >
-                      <Text
-                        fontSize={'xl'}
-                        fontWeight={'bold'}
-                        textAlign={"center"}
-                      >
-                        NIK
-                      </Text>
-                      <Input
-                        value={values.grantee_nik}
-                        onChange={(e) => { setFieldValue('grantee_nik', e.target.value) }}
-                        fontSize={'lg'}
-                        fontWeight={'bold'}
-                        textAlign={"center"}
-                        borderColor={'#A1A2A6'}
-                        background={"#DBDDF7"}
-                        rounded={'xl'}
-                        py={6}
-                        focusBorderColor="transparent"
-                        _placeholder={{ color: "rgba(93, 93, 93, 1)" }}
-                      />
-                      <Button
-                        colorScheme="primary"
-                        w={"full"}
-                        bg={"primary.700"}
-                        rounded={"2xl"}
-                        fontSize={'lg'}
-                        py={6}
-                        gap={2}
-                        type="submit"
-                        isLoading={grantGroupAccessLoading}
-                        isDisabled={!values.grantee_nik}
-                      >
-                        Submit
-                      </Button>
-                    </Flex>
-                  </Form>
-                )}
-              </Formik>
-              {/* <Icon 
+              <Icon 
                 as={FaExclamationTriangle} 
                 color={"red.500"} 
                 boxSize={16} 
@@ -191,7 +137,8 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
                 textAlign={"center"}
                 px={4}
               >
-                Continue to grant EMR access to this group?
+                Once you give access to this account, it will be allowed to access your EMR&apos;s<br></br>
+                Are you sure?
               </Text>
               <Flex
                 mt={3}
@@ -214,7 +161,7 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
                 >
                   Grant
                 </Button>
-              </Flex> */}
+              </Flex>
             </Flex>
           </ModalBody>
         </ModalContent>

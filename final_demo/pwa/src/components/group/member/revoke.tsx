@@ -1,19 +1,18 @@
 "use client"
 
 import { RevokeGroupAccessRequest } from "@/declarations/patient_registry/patient_registry.did";
-import { grantGroupAccessSchema } from "@/libs/yup/grant-group-access";
 import { encodeHashNIK, usePatientMethod } from "@/services/patients";
-import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text, Input } from "@chakra-ui/react";
-import { Formik, Form } from "formik";
-import { useParams } from "next/navigation";
-import { HiLockClosed } from "react-icons/hi2";
+import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text } from "@chakra-ui/react";
+import { FaExclamationTriangle } from "react-icons/fa";
+import { HiOutlineLockClosed } from "react-icons/hi2";
 
 interface IRevokeAccessGroupModal {
+  nik: string
 }
 
 export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccessGroupModal }) {
   const toast = useToast();
-  const { group_id } = useParams();
+  const { nik } = props
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { call: revokeGroupAccess, loading: revokeGroupAccessLoading } = usePatientMethod({
@@ -54,7 +53,7 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
     },
   });
 
-  const handleRevokeGroupAccess = async (nik: string) => {
+  const handleRevokeGroupAccess = async () => {
     try {
       const data: RevokeGroupAccessRequest[] | any = [{
         grantee_nik: encodeHashNIK(nik)
@@ -74,19 +73,21 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
   return (
     <>
       <Button
-        colorScheme="danger"
-        w={"full"}
-        rounded={"2xl"}
-        fontSize={'sm'}
-        py={6}
-        gap={2}
-        mt={4}
+        type="button"
+        bg={"transparent"}
+        display={"flex"}
+        justifyContent={"items-start"}
+        columnGap={3}
+        fontWeight={400}
+        color={"danger.700"}
         leftIcon={
-          <Icon as={HiLockClosed} boxSize={5} />
+          <Icon as={HiOutlineLockClosed} boxSize={6} />
         }
         onClick={onOpen}
       >
-        Revoke EMR Access
+        <Text>
+          Revoke EMR Access
+        </Text>
       </Button>
       <Modal
         isOpen={isOpen}
@@ -122,63 +123,42 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
               py={6}
               rounded={"lg"}
             >
-              <Formik
-                initialValues={{ grantee_nik: "" }}
-                validationSchema={grantGroupAccessSchema}
-                onSubmit={() => {}}
+              <Icon 
+                as={FaExclamationTriangle} 
+                color={"red.500"} 
+                boxSize={16} 
+                mx={"auto"}
+              />
+              <Text
+                fontSize={'lg'}
+                textAlign={"center"}
+                px={4}
               >
-                {({ errors, touched, isSubmitting, values, setFieldValue }) => (
-                  <Form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleRevokeGroupAccess(values.grantee_nik);
-                    }}
-                  >
-                    <Flex 
-                      margin={"auto"}
-                      flexDirection={"column"}
-                      rowGap={6}
-                      width={"full"}
-                      px={8}
-                    >
-                      <Text
-                        fontSize={'xl'}
-                        fontWeight={'bold'}
-                        textAlign={"center"}
-                      >
-                        NIK
-                      </Text>
-                      <Input
-                        value={values.grantee_nik}
-                        onChange={(e) => { setFieldValue('grantee_nik', e.target.value) }}
-                        fontSize={'lg'}
-                        fontWeight={'bold'}
-                        textAlign={"center"}
-                        borderColor={'#A1A2A6'}
-                        background={"#DBDDF7"}
-                        rounded={'xl'}
-                        py={6}
-                        focusBorderColor="transparent"
-                        _placeholder={{ color: "rgba(93, 93, 93, 1)" }}
-                      />
-                      <Button
-                        colorScheme="primary"
-                        w={"full"}
-                        bg={"primary.700"}
-                        rounded={"2xl"}
-                        fontSize={'lg'}
-                        py={6}
-                        gap={2}
-                        type="submit"
-                        isLoading={revokeGroupAccessLoading}
-                        isDisabled={!values.grantee_nik}
-                      >
-                        Submit
-                      </Button>
-                    </Flex>
-                  </Form>
-                )}
-              </Formik>
+                After revoke, this account would not be allowed to access your EMR&apos;s<br></br>
+                Are you sure?
+              </Text>
+              <Flex
+                mt={3}
+                columnGap={3}
+              >
+                <Button 
+                  variant={'outline'} 
+                  w={'full'} 
+                  bg={"white"}
+                  onClick={onClose} 
+                  disabled={revokeGroupAccessLoading}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  colorScheme="red" 
+                  w={'full'} 
+                  onClick={handleRevokeGroupAccess} 
+                  isLoading={revokeGroupAccessLoading}
+                >
+                  Grant
+                </Button>
+              </Flex>
             </Flex>
           </ModalBody>
         </ModalContent>

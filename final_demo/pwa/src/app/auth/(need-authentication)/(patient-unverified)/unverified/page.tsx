@@ -102,7 +102,7 @@ export default function UnverifiedPage() {
           rounded={"2xl"}
           fontSize={'sm'}
           py={6}
-          mt={2}
+          mt={3}
           onClick={onLogout}
         >
           {signOut.label}
