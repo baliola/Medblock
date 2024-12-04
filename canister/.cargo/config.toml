@@ -1,0 +1,4 @@
+[alias]
+all-tests = "unit-test integration-test"
+integration-test = "test --release --manifest-path tests/integration-tests/Cargo.toml"
+unit-test = "test --release --manifest-path Cargo.toml"
