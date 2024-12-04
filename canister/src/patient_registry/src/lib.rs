@@ -1223,7 +1223,25 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     let start = (req.page * req.limit) as usize;
     let end = ((req.page + 1) * req.limit) as usize;
 
-    let paginated_members = group.members.iter().skip(start).take(end - start);
+    // ensure leader is always included in the first page
+    let mut paginated_members: Vec<NIK> = if req.page == 0 {
+        // if this is the first page, ensure leader is first in the list
+        let mut members = vec![group.leader.clone()];
+        members.extend(group.members.iter()
+            .filter(|&m| m != &group.leader)
+            .skip(start)
+            .take(end - start - 1)
+            .cloned());
+        members
+    } else {
+        // for other pages, just skip the leader if they would have been in page 0
+        group.members.iter()
+            .filter(|&m| m != &group.leader)
+            .skip(start)
+            .take(end - start)
+            .cloned()
+            .collect()
+    };
 
     // get leader name
     let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
@@ -1244,7 +1262,7 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         let role = group
             .member_relations
             .iter()
-            .find(|(nik, _)| nik == member_nik)
+            .find(|(nik, _)| *nik == member_nik)
             .map(|(_, relation)| relation.clone())
             .unwrap_or(Relation::Other);
 
