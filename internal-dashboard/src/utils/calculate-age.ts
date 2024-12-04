@@ -15,8 +15,7 @@ export const calculateAge = (birthDate: string): string => {
   }
 
   if (ageInYears < 1) {
-    let months = today.getMonth() - birth.getMonth() + 
-                 (12 * (today.getFullYear() - birth.getFullYear()));
+    let months = today.getMonth() - birth.getMonth() + (12 * (today.getFullYear() - birth.getFullYear()));
 
     if (months < 0) {
       months = 0;

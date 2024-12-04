@@ -35,12 +35,8 @@ const HospitalList = () => {
   }, []);
 
   useEffect(() => {
-    console.log(providers)
-  }, [providers])
-
-  // useEffect(() => {
     console.log("PRINCIPAL Text", principal?.toText(), "authtenticated :", authenticated);
-  // }, [principal]);
+  }, [principal]);
 
   if (loadingProviderList || providers === undefined) {
     return <HAMLoading />

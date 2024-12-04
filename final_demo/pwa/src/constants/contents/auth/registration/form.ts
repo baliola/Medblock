@@ -21,7 +21,7 @@ export const registrationFormButton = {
 export const registrationForm = {
   nik: {
     label: "Valid Identity Number (NIK)",
-    placeholder: "Enter your Valid identity number"
+    placeholder: "Enter your valid identity number"
   },
   address: {
     label: "Address",
@@ -33,7 +33,7 @@ export const registrationForm = {
   },
   gender: {
     label: "Gender",
-    placeholder: "Select Gender",
+    placeholder: "Select gender",
     options: [
       { value: "male", label: "Male" },
       { value: "female", label: "Female" }
@@ -49,7 +49,7 @@ export const registrationForm = {
   },
   martial_status: {
     label: "Marital Status",
-    placeholder: "Select marital Status",
+    placeholder: "Select marital status",
     options: [
       { value: "single", label: "Single" },
       { value: "married", label: "Married" }

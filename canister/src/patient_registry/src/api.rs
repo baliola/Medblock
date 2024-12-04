@@ -1,16 +1,16 @@
-use candid::{ CandidType, Principal };
+use candid::{CandidType, Principal};
 use canister_common::{
-    common::{ AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256 },
+    common::{AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256},
     from,
-    stable::{ EncodingMarker, Stable },
+    stable::{EncodingMarker, Stable},
 };
 use serde::Deserialize;
 
 use crate::{
-    consent::{ Consent, ConsentCode, SessionId },
-    encryption::vetkd::{ HexEncodedPublicKey, HexEncodedSecretKey },
+    consent::{Consent, ConsentCode, SessionId},
+    encryption::vetkd::{HexEncodedPublicKey, HexEncodedSecretKey},
     log::Activity,
-    registry::{ HeaderStatus, Patient, NIK, V1 },
+    registry::{Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1},
 };
 
 #[derive(CandidType, Deserialize)]
@@ -55,9 +55,13 @@ impl EmrHeaderWithStatus {
     pub fn new<E1: EncodingMarker, E2: EncodingMarker>(
         header: Stable<EmrHeader, E1>,
         status: Stable<HeaderStatus, E2>,
-        hospital_name: AsciiRecordsKey<64>
+        hospital_name: AsciiRecordsKey<64>,
     ) -> Self {
-        Self { header: header.into_inner(), status: status.into_inner(), hospital_name }
+        Self {
+            header: header.into_inner(),
+            status: status.into_inner(),
+            hospital_name,
+        }
     }
 }
 
@@ -215,6 +219,18 @@ from!(PatientListResponse: Vec<PatientWithNikAndSession> as value {
     patients: value
 });
 
+/// Response type for admin-only patient list requests.
+/// Contains a list of all patients with their basic information and NIK.
+/// This is specifically for backoffice UI administrative purposes.
+#[derive(CandidType, Deserialize)]
+pub struct PatientListAdminResponse {
+    pub patients: Vec<PatientWithNik>,
+}
+
+from!(PatientListAdminResponse: Vec<PatientWithNik> as value {
+    patients: value
+});
+
 #[derive(CandidType, Deserialize)]
 pub struct PatientWithNikAndSession {
     pub info: Patient,
@@ -222,9 +238,27 @@ pub struct PatientWithNikAndSession {
     pub session_id: SessionId,
 }
 
+/// Represents a patient record with their information and NIK.
+/// Used for basic patient identification without session context.
+#[derive(CandidType, Deserialize)]
+pub struct PatientWithNik {
+    pub info: Patient,
+    pub nik: NIK,
+}
+
+impl PatientWithNik {
+    pub fn new(patient: Patient, nik: NIK) -> Self {
+        Self { info: patient, nik }
+    }
+}
+
 impl PatientWithNikAndSession {
     pub fn new(patient: Patient, nik: NIK, session_id: SessionId) -> Self {
-        Self { info: patient, nik, session_id }
+        Self {
+            info: patient,
+            nik,
+            session_id,
+        }
     }
 }
 
@@ -267,6 +301,21 @@ from!(SearchPatientResponse: PatientWithNikAndSession as value {
 });
 
 #[derive(CandidType, Deserialize)]
+pub struct SearchPatientAdminResponse {
+    pub patient_info: PatientWithNik,
+}
+
+impl SearchPatientAdminResponse {
+    pub fn new(patient_info: PatientWithNik) -> Self {
+        Self { patient_info }
+    }
+}
+
+from!(SearchPatientAdminResponse: PatientWithNik as value {
+    patient_info: value
+});
+
+#[derive(CandidType, Deserialize)]
 pub struct LogResponse {
     logs: Vec<Activity>,
 }
@@ -280,3 +329,141 @@ impl LogResponse {
 from!(LogResponse: Vec<Activity> as value {
     logs: value
 });
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusRequest {
+    pub nik: H256,
+    pub kyc_status: KycStatus,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UpdateKycStatusResponse {
+    pub patient: Patient,
+}
+
+impl UpdateKycStatusResponse {
+    pub fn new(patient: Patient) -> Self {
+        Self { patient }
+    }
+}
+
+from!(UpdateKycStatusResponse: Patient as value {
+    patient: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct BindAdminRequest {
+    pub principal: Principal,
+    pub nik: H256,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupRequest {
+    pub name: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateGroupResponse {
+    pub group_id: GroupId,
+}
+
+from!(CreateGroupResponse: GroupId as value {
+    group_id: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct AddGroupMemberRequest {
+    pub group_id: GroupId,
+    pub consent_code: String,
+    pub relation: Relation,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct LeaveGroupRequest {
+    pub group_id: GroupId,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetUserGroupsResponse {
+    pub groups: Vec<Group>,
+}
+
+from!(GetUserGroupsResponse: Vec<Group> as value {
+    groups: value
+});
+
+#[derive(CandidType, Deserialize)]
+pub struct GrantGroupAccessRequest {
+    pub group_id: GroupId,
+    pub grantee_nik: NIK,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct RevokeGroupAccessRequest {
+    pub grantee_nik: NIK,
+}
+
+#[derive(CandidType, Deserialize, Clone)]
+pub struct ViewGroupMemberEmrInformationRequest {
+    pub member_nik: String,
+    pub group_id: GroupId,
+    pub page: usize,
+    pub limit: usize,
+}
+
+/// API response and request structs for group details functionality.
+/// Returns the below information about the group:
+/// - Group member count
+/// - Group leader name
+/// - Total pages for pagination
+///
+/// Returns the below information for each group member:
+/// - NIK
+/// - Name
+/// - Gender
+/// - Age
+/// - Role
+#[derive(CandidType, Deserialize)]
+pub struct GroupDetail {
+    pub nik: NIK,
+    pub name: AsciiRecordsKey<64>,
+    pub gender: AsciiRecordsKey<64>,
+    pub age: u8,
+    pub role: Relation,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsRequest {
+    pub group_id: GroupId,
+    pub page: u64,
+    pub limit: u64,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsResponse {
+    pub group_details: Vec<GroupDetail>,
+    pub member_count: u64,
+    pub group_name: AsciiRecordsKey<64>,
+    pub leader_name: AsciiRecordsKey<64>,
+    pub total_pages: u64,
+}
+
+impl GetGroupDetailsResponse {
+    pub fn new(
+        group_details: Vec<GroupDetail>,
+        member_count: u64,
+        group_name: AsciiRecordsKey<64>,
+        leader_name: AsciiRecordsKey<64>,
+        total_pages: u64,
+    ) -> Self {
+        Self {
+            group_details,
+            member_count,
+            group_name,
+            leader_name,
+            total_pages,
+        }
+    }
+}
+
+// End of API response and request structs for group details functionality.

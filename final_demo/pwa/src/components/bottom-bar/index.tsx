@@ -4,7 +4,7 @@ import { bottomBarLinks } from "@/constants/contents/bottom-bar";
 import { Flex, Icon, Text } from "@chakra-ui/react"
 import { useRouter } from "next/navigation";
 
-export type Active = "home" | "emr" | "family" | "setting" | "insurance";
+export type Active = "home" | "emr" | "group" | "setting" | "insurance";
 
 export default function BottomBar({
   active

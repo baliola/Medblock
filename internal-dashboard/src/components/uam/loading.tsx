@@ -27,7 +27,7 @@ export const UAMLoading = () => {
 export const UAMDetailLoading = () => {
   return (
     <Flex
-      w={'xl'}
+      w={'24rem'}
       bg={'primary.100'}
       transition={'all 0.3s'}
       direction={'column'}
@@ -35,6 +35,11 @@ export const UAMDetailLoading = () => {
       gap={8}
       maxH={'100dvh'}
       overflowY={'auto'}
+      css={{
+        "&::-webkit-scrollbar": { display: "none" }, // Chrome, Safari
+        "-msOverflowStyle": "none", // IE and Edge
+        "scrollbarWidth": "none", // Firefox
+      }}
     >
       <Flex direction={'column'} gap={8} flex={1}>
         <Skeleton height={28} width="full" rounded={"xl"} />

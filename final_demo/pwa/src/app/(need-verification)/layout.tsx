@@ -4,18 +4,23 @@ import { patientCanisterId } from "@/config/canisters/patient.canister";
 import LoadingScreen from "@/layouts/loading";
 import { getKYCStatus } from "@/libs/api/kyc";
 import { PatientActor, usePatientQuery } from "@/services/patients";
+import { useProfileStore } from "@/store/profile-store";
 import { useAuthState } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 const RegistrationStatus = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
+  const { setProfile } = useProfileStore()
 
   const { data: patientData, loading } = usePatientQuery({
     functionName: "get_patient_info",
     refetchOnMount: true,
+    onSuccess(data) {
+      if (data) setProfile(data)
+    },
     onError(error) {
-      router.replace("/auth/unverified")
+      // router.replace("/auth/unverified")
     }
   });
 

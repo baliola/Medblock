@@ -76,6 +76,7 @@ export default function MainLayout({
           bg="#F5F5F5"
           roundedTop={"2xl"}
           w={"full"}
+          h={20}
           py={4}
           position={"sticky"}
           bottom={0}

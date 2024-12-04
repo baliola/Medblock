@@ -10,7 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <Flex bg={'neutral.50'} w={'full'} minH={'100dvh'}>
+    <Flex bg={'neutral.50'} height={'100vh'} width={"100vw"} overflowX={"hidden"}>
       <Sidebar activeLink={activeLink} />
       <Flex
         flex={1}

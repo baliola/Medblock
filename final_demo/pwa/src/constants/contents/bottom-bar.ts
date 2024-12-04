@@ -18,12 +18,12 @@ export const bottomBarLinks: Link[] = [
     href: "/emr",
     active: "emr" 
   },
-  // { 
-  //   name: "My Family", 
-  //   icon: FaPeopleGroup,
-  //   href: "/family",
-  //   active: "family" 
-  // },
+  { 
+    name: "My Group", 
+    icon: FaPeopleGroup,
+    href: "/group",
+    active: "group" 
+  },
   { 
     name: "Home", 
     icon: FaHouse,
