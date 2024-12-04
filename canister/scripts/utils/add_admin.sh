@@ -30,6 +30,12 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# check if openssl is installed
+if ! command -v openssl &> /dev/null; then
+    log_error "openssl is required but not installed"
+    exit 1
+fi
+
 # check if all required arguments are provided
 if [ "$#" -ne 3 ]; then
     log_error "Invalid number of arguments"
@@ -48,16 +54,20 @@ if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ]; then
     exit 1
 fi
 
+# hash the NIK using SHA-256 and format it as a hex string
+HASHED_NIK=$(echo -n "$NIK" | openssl dgst -sha256 -hex | cut -d ' ' -f 2)
+
 # set the canister name based on your project
 CANISTER_NAME="patient_registry"
 
 log_process "Adding admin with the following details:"
 echo -e "NIK: ${MAGENTA}$NIK${NC}"
+echo -e "Hashed NIK: ${MAGENTA}$HASHED_NIK${NC}"
 echo -e "Principal: ${MAGENTA}$PRINCIPAL${NC}"
 echo -e "Network: ${MAGENTA}$NETWORK${NC}"
 echo # empty line for better readability
 
 log_info "Executing canister call..."
-dfx canister --network "$NETWORK" call "$CANISTER_NAME" bind_admin "(record { nik=\"$NIK\"; principal=$PRINCIPAL })"
+dfx canister --network "$NETWORK" call "$CANISTER_NAME" bind_admin "(record {\"nik\" = \"$HASHED_NIK\"; \"principal\" = principal \"$PRINCIPAL\"})"
 
 log_success "Admin addition completed successfully ✨" 

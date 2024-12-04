@@ -28,7 +28,6 @@ use canister_common::{
     statistics::{self, traits::OpaqueMetrics},
 };
 use config::CanisterConfig;
-use consent::ConsentCode;
 use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProviderBatchRequest};
 
 use ic_stable_structures::Cell;
@@ -37,6 +36,8 @@ use memory::UpgradeMemory;
 use registry::{Group, GroupId, Patient, PatientRegistry, Relation, NIK};
 
 use crate::consent::ConsentsApi;
+use crate::consent::ConsentCode;
+use crate::registry::PatientRegistryError;
 
 mod api;
 mod config;
@@ -423,7 +424,7 @@ async fn emr_list_patient(req: EmrListPatientRequest) -> EmrListPatientResponse 
 
 #[ic_cdk::update(guard = "only_provider_registry")]
 fn notify_issued(req: IssueRequest) {
-    with_state_mut(|s| s.registry.issue_for(req.header.user_id.clone(), req.header)).unwrap();
+    with_state_mut(|s| s.registry.issue_for(req.header.clone().user_id, req.header)).unwrap();
 }
 
 #[ic_cdk::update(guard = "only_provider_registry")]
@@ -443,13 +444,13 @@ fn notify_updated(req: UpdateRequest) {
 #[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) {
     let owner = verified_caller().unwrap();
-    
+
     // Check if NIK is already in use before binding
     let nik_in_use = with_state(|s| s.registry.owner_map.is_nik_in_use(&req.nik));
     if nik_in_use {
         ic_cdk::trap("NIK is already registered");
     }
-    
+
     with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
 }
 
@@ -958,8 +959,64 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    with_state_mut(|s| s.registry.group_map.remove_member(req.group_id, &nik))
-        .map_err(|e| format!("Failed to leave group: {:?}", e))
+    with_state_mut(|s| {
+        // Get the group first
+        let group = s
+            .registry
+            .group_map
+            .get_group(req.group_id)
+            .ok_or("Group not found")?;
+
+        // Get all access pairs for this group
+        let access_pairs = s
+            .registry
+            .group_access_map
+            .get_group_access_pairs(req.group_id);
+
+        // Revoke all access pairs involving the leaving member
+        for (granter, grantee) in access_pairs {
+            if granter == nik || grantee == nik {
+                s.registry
+                    .group_access_map
+                    .revoke_access(granter, grantee)
+                    .map_err(|e| format!("Failed to revoke access: {}", e))?;
+            }
+        }
+
+        // Check if this is the last member or if it's the leader and there's only one other member
+        let should_dissolve =
+            group.members.len() <= 1 || (group.leader == nik && group.members.len() <= 2);
+
+        if should_dissolve {
+            // If dissolving, get all access pairs again (in case they changed)
+            let access_pairs = s
+                .registry
+                .group_access_map
+                .get_group_access_pairs(req.group_id);
+
+            // Revoke all remaining access pairs for this group
+            for (granter, grantee) in access_pairs {
+                s.registry
+                    .group_access_map
+                    .revoke_access(granter, grantee)
+                    .map_err(|e| format!("Failed to revoke access: {}", e))?;
+            }
+
+            // Then dissolve the group
+            s.registry
+                .group_map
+                .dissolve_group(req.group_id)
+                .map_err(|e| format!("Failed to dissolve group: {}", e))?;
+        } else {
+            // Just remove the member from the group
+            s.registry
+                .group_map
+                .remove_member(req.group_id, &nik)
+                .map_err(|e| format!("Failed to remove member: {:?}", e))?;
+        }
+
+        Ok(())
+    })
 }
 
 #[ic_cdk::query(guard = "only_patient")]
@@ -975,28 +1032,13 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
     let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    log!("DEBUG granter_nik: {:?}", granter_nik);
-
     // Parse grantee NIK from string
     let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
         .map_err(|_| "Invalid grantee NIK format".to_string())?;
 
-    log!("DEBUG grantee_nik: {:?}", grantee_nik);
-    log!("DEBUG group_id: {:?}", req.group_id);
-
     // Verify both users are in the same group
     let group =
         with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
-
-    log!("DEBUG group members: {:?}", group.members);
-    log!(
-        "DEBUG granter in group: {:?}",
-        group.members.contains(&granter_nik)
-    );
-    log!(
-        "DEBUG grantee in group: {:?}",
-        group.members.contains(&grantee_nik)
-    );
 
     // Check both users are in the group
     if !group.members.contains(&granter_nik) {
@@ -1037,31 +1079,52 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
 async fn view_group_member_emr_information(
     req: ViewGroupMemberEmrInformationRequest,
 ) -> Result<EmrListPatientResponse, String> {
-    // get caller's NIK
+    // get caller's NIK (viewer/grantee)
     let caller = verified_caller().unwrap();
     let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    // parse target member's NIK from string
+    // parse target member's NIK (member/granter) from string
     let member_nik =
-        NIK::from_str(&req.member_nik).map_err(|_| "Invalid member NIK format".to_string())?;
+        NIK::from_str(&req.member_nik).map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string. Please ensure you are using the correct NIK format.", req.member_nik))?;
 
     // verify both users are in the same group
     let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!("[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.", req.group_id))?;
 
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
-        return Err("Both users must be members of the group".to_string());
+        let viewer_in_group = group.members.contains(&viewer_nik);
+        let member_in_group = group.members.contains(&member_nik);
+        
+        if !viewer_in_group && !member_in_group {
+            return Err(format!(
+                "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
+                viewer_nik, member_nik, req.group_id
+            ));
+        } else if !viewer_in_group {
+            return Err(format!(
+                "[ERR_VIEWER_NOT_IN_GROUP] You (NIK: {}) are not a member of group {}. Action required: Please ask the group leader to add you using the add_group_member function.",
+                viewer_nik, req.group_id
+            ));
+        } else {
+            return Err(format!(
+                "[ERR_MEMBER_NOT_IN_GROUP] The member (NIK: {}) is not in group {}. Action required: The group leader needs to add them using the add_group_member function before you can view their EMR.",
+                member_nik, req.group_id
+            ));
+        }
     }
 
-    // verify access has been granted
+    // verify access has been granted by the member to the viewer
     let has_access = with_state(|s| {
         s.registry
             .group_access_map
-            .has_access(&member_nik, &viewer_nik)
+            .has_access(&member_nik, &viewer_nik) // member (granter) -> viewer (grantee)
     });
 
     if !has_access {
-        return Err("No access granted to view this member's EMR information".to_string());
+        return Err(format!(
+            "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. Action required: The EMR owner must use the grant_group_access function to give you permission.",
+            member_nik, viewer_nik
+        ));
     }
 
     // get member's EMRs with pagination
@@ -1070,7 +1133,20 @@ async fn view_group_member_emr_information(
             .emr_binding_map
             .emr_list(&member_nik, req.page as u8, req.limit as u8)
     })
-    .map_err(|e| format!("Failed to get EMR list: {:?}", e))?;
+    .map_err(|e| match e {
+        PatientRegistryError::UserDoesNotExist => format!(
+            "[ERR_NO_EMR_RECORDS] The member (NIK: {}) has not been registered in the EMR system yet. Action required: They need to visit a healthcare provider who will create their first EMR record.",
+            member_nik
+        ),
+        _ => format!("[ERR_EMR_LIST_FAILED] Failed to get EMR list for member (NIK: {}). Error details: {:?}", member_nik, e)
+    })?;
+
+    if emrs.is_empty() {
+        return Err(format!(
+            "[ERR_EMPTY_EMR_LIST] No EMRs found for member (NIK: {}). They are registered in the system but have no EMR records yet. Action required: The member needs to visit a healthcare provider to create EMR records.",
+            member_nik
+        ));
+    }
 
     // get provider information for each EMR
     let provider_registry = with_state(|s| s.config.get().provider_registry());

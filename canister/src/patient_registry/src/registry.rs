@@ -263,22 +263,20 @@ impl GroupAccessMap {
         granter: NIK,
         grantee: NIK,
         group_id: GroupId,
-    ) -> PatientBindingMapResult {
-        let key = (granter.to_stable(), grantee.to_stable());
-        self.0.insert(key, group_id.to_stable());
+    ) -> Result<(), String> {
+        let key = (Stable::from(granter), Stable::from(grantee));
+        self.0.insert(key, Stable::from(group_id));
         Ok(())
     }
 
-    /// revokes EMR access that was previously granted from granter to grantee
-    pub fn revoke_access(&mut self, granter: NIK, grantee: NIK) -> PatientBindingMapResult {
-        let key = (granter.to_stable(), grantee.to_stable());
+    pub fn revoke_access(&mut self, granter: NIK, grantee: NIK) -> Result<(), String> {
+        let key = (Stable::from(granter), Stable::from(grantee));
         self.0.remove(&key);
         Ok(())
     }
 
-    /// checks if grantee has EMR access granted by granter
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
-        let key = (granter.clone().to_stable(), grantee.clone().to_stable());
+        let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
         self.0.contains_key(&key)
     }
 
@@ -286,6 +284,15 @@ impl GroupAccessMap {
     pub fn get_access_group(&self, granter: &NIK, grantee: &NIK) -> Option<GroupId> {
         let key = (granter.clone().to_stable(), grantee.clone().to_stable());
         self.0.get(&key).map(|group_id| group_id.into_inner())
+    }
+
+    /// gets all access pairs for a specific group
+    pub fn get_group_access_pairs(&self, group_id: GroupId) -> Vec<(NIK, NIK)> {
+        self.0
+            .iter()
+            .filter(|(_, gid)| gid.as_ref() == &group_id)
+            .map(|(key, _)| (key.0.into_inner(), key.1.into_inner()))
+            .collect()
     }
 }
 
@@ -417,7 +424,9 @@ impl OwnerMap {
     }
 
     pub fn is_nik_in_use(&self, nik: &NIK) -> bool {
-        self.0.iter().any(|(_, stored_nik)| stored_nik.as_ref() == nik)
+        self.0
+            .iter()
+            .any(|(_, stored_nik)| stored_nik.as_ref() == nik)
     }
 }
 
@@ -1111,17 +1120,16 @@ impl GroupMap {
     }
 
     pub fn create_group(&mut self, name: AsciiRecordsKey<64>, leader: NIK) -> GroupId {
-        let id = self.0.len() as GroupId + 1;
+        let group_id = self.0.len() as GroupId;
         let group = Group {
-            id,
+            id: group_id.clone(),
             name,
             leader: leader.clone(),
             members: vec![leader.clone()],
             member_relations: vec![(leader, Relation::Parent)],
         };
-
-        self.0.insert(id.to_stable(), group.to_stable());
-        id
+        self.0.insert(Stable::from(group_id), Stable::from(group));
+        group_id
     }
 
     pub fn add_member(
@@ -1163,8 +1171,34 @@ impl GroupMap {
             .ok_or(PatientRegistryError::UserDoesNotExist)?
             .into_inner();
 
+        // Check if member exists in group
+        if !group.members.contains(member) {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
+        // If the member is the leader and the only member, dissolve the group
+        if group.leader == *member && group.members.len() == 1 {
+            self.0.remove(&key);
+            return Ok(());
+        }
+
+        // If the leaving member is the leader and there are other members,
+        // transfer leadership to another random member
+        if group.leader == *member && group.members.len() > 1 {
+            // Get a random member that isn't the leader
+            let new_leader = group
+                .members
+                .iter()
+                .find(|&m| m != member)
+                .cloned()
+                .expect("There should be at least one other member");
+            group.leader = new_leader;
+        }
+
         group.members.retain(|nik| nik != member);
         group.member_relations.retain(|(nik, _)| nik != member);
+
+        // Update the group
         self.0.insert(key, group.to_stable());
 
         Ok(())
@@ -1196,6 +1230,30 @@ impl GroupMap {
                 .find(|(nik, _)| nik == member)
                 .map(|(_, relation)| relation.clone())
         })
+    }
+
+    pub fn transfer_leadership(&mut self, group_id: u64, new_leader: &NIK) -> Result<(), String> {
+        let key = group_id.to_stable();
+        let mut group = self.0.get(&key).ok_or("Group not found")?.into_inner();
+
+        if !group.members.contains(new_leader) {
+            return Err("New leader must be a group member".to_string());
+        }
+
+        group.leader = new_leader.clone();
+        self.0.insert(key, group.to_stable());
+        Ok(())
+    }
+
+    pub fn dissolve_group(&mut self, group_id: u64) -> Result<(), String> {
+        let key = group_id.to_stable();
+        // first verify the group exists
+        if !self.0.contains_key(&key) {
+            return Err("Group not found".to_string());
+        }
+        // remove the group entirely
+        self.0.remove(&key);
+        Ok(())
     }
 }
 
@@ -1359,8 +1417,8 @@ mod test_group_map {
         // test leaving non-existent group
         assert!(group_map.remove_member(999, &member).is_err());
 
-        // test leader leaving group
+        // test leader leaving group (should dissolve the group)
         assert!(group_map.remove_member(group_id, &leader).is_ok());
-        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 0);
+        assert!(group_map.get_group(group_id).is_none()); // group should be dissolved
     }
 }
