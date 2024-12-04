@@ -2,11 +2,10 @@
 
 import { GrantGroupAccessRequest } from "@/declarations/patient_registry/patient_registry.did";
 import { grantGroupAccessSchema } from "@/libs/yup/grant-group-access";
-import { usePatientMethod } from "@/services/patients";
+import { encodeHashNIK, usePatientMethod } from "@/services/patients";
 import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text, Input } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import { useParams } from "next/navigation";
-import { FaExclamationTriangle } from "react-icons/fa";
 import { HiLockOpen } from "react-icons/hi2";
 
 interface IGrantAccessGroupModal {
@@ -59,7 +58,7 @@ export default function GrantAccessGroupModal({ props }: { props: IGrantAccessGr
     try {
       const data: GrantGroupAccessRequest[] | any = [{
         group_id: BigInt(Number(group_id)),
-        grantee_nik
+        grantee_nik: encodeHashNIK(grantee_nik)
       }];
 
       await grantGroupAccess(data);

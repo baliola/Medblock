@@ -231,12 +231,8 @@ const MemberGroupList = (): ReactElement => {
                   : <LeaveGroupModal props={{}}/>
               }
               {/* <LeaveGroupModal props={{}}/> */}
-              <GrantAccessGroupModal props={{
-                nik: profile.nik
-              }} />
-              <RevokeAccessGroupModal props={{
-                nik: profile.nik
-              }} />
+              <GrantAccessGroupModal props={{}} />
+              <RevokeAccessGroupModal props={{}} />
             </Flex>
           </>
           : groupDetails === null
