@@ -11,7 +11,7 @@ use crate::common;
 fn test_emr_access_error_messages() {
     let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
     let patient2 = common::Scenario::create_patient(&registries);
-    let patient3 = common::Scenario::create_patient(&registries);
+    let _ = common::Scenario::create_patient(&registries);
     let provider = common::Provider(common::random_identity());
 
     // Register provider first
