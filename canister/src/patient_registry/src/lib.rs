@@ -1082,11 +1082,11 @@ async fn view_group_member_emr_information(
 
     // parse target member's NIK (member/granter) from string
     let member_nik =
-        NIK::from_str(&req.member_nik).map_err(|_| format!("Invalid member NIK format: {}. The NIK should be a valid hex string.", req.member_nik))?;
+        NIK::from_str(&req.member_nik).map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string. Please ensure you are using the correct NIK format.", req.member_nik))?;
 
     // verify both users are in the same group
     let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!("Group with ID {} does not exist in the system. Please verify the group ID.", req.group_id))?;
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!("[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.", req.group_id))?;
 
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
         let viewer_in_group = group.members.contains(&viewer_nik);
@@ -1094,17 +1094,17 @@ async fn view_group_member_emr_information(
         
         if !viewer_in_group && !member_in_group {
             return Err(format!(
-                "Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Both users must join the group first.",
+                "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
                 viewer_nik, member_nik, req.group_id
             ));
         } else if !viewer_in_group {
             return Err(format!(
-                "You (NIK: {}) are not a member of group {}. Please join the group first.",
+                "[ERR_VIEWER_NOT_IN_GROUP] You (NIK: {}) are not a member of group {}. Action required: Please ask the group leader to add you using the add_group_member function.",
                 viewer_nik, req.group_id
             ));
         } else {
             return Err(format!(
-                "The member (NIK: {}) is not in group {}. They must join the group before you can view their EMR.",
+                "[ERR_MEMBER_NOT_IN_GROUP] The member (NIK: {}) is not in group {}. Action required: The group leader needs to add them using the add_group_member function before you can view their EMR.",
                 member_nik, req.group_id
             ));
         }
@@ -1119,7 +1119,7 @@ async fn view_group_member_emr_information(
 
     if !has_access {
         return Err(format!(
-            "Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
+            "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. Action required: The EMR owner must use the grant_group_access function to give you permission.",
             member_nik, viewer_nik
         ));
     }
@@ -1132,15 +1132,15 @@ async fn view_group_member_emr_information(
     })
     .map_err(|e| match e {
         PatientRegistryError::UserDoesNotExist => format!(
-            "The member (NIK: {}) has not been registered in the EMR system yet. They need to have at least one EMR record created by a healthcare provider.",
+            "[ERR_NO_EMR_RECORDS] The member (NIK: {}) has not been registered in the EMR system yet. Action required: They need to visit a healthcare provider who will create their first EMR record.",
             member_nik
         ),
-        _ => format!("Failed to get EMR list for member (NIK: {}): {:?}", member_nik, e)
+        _ => format!("[ERR_EMR_LIST_FAILED] Failed to get EMR list for member (NIK: {}). Error details: {:?}", member_nik, e)
     })?;
 
     if emrs.is_empty() {
         return Err(format!(
-            "No EMRs found for member (NIK: {}). They are registered in the system but have no EMR records yet.",
+            "[ERR_EMPTY_EMR_LIST] No EMRs found for member (NIK: {}). They are registered in the system but have no EMR records yet. Action required: The member needs to visit a healthcare provider to create EMR records.",
             member_nik
         ));
     }

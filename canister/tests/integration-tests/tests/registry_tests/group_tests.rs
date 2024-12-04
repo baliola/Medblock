@@ -255,7 +255,7 @@ fn test_emr_access_permissions() {
     match view_result {
         Ok(patient_registry::Result4::Err(error)) => {
             assert!(
-                error.contains("Access not granted"),
+                error.contains("[ERR_ACCESS_NOT_GRANTED]"),
                 "Expected access not granted error, got: {}",
                 error
             );
@@ -331,7 +331,7 @@ fn test_emr_access_permissions() {
     match view_result {
         Ok(patient_registry::Result4::Err(error)) => {
             assert!(
-                error.contains("not a member of group"),
+                error.contains("[ERR_NOT_GROUP_MEMBERS]"),
                 "Expected not in group error, got: {}",
                 error
             );
@@ -363,7 +363,7 @@ fn test_emr_access_permissions() {
     match view_result {
         Ok(patient_registry::Result4::Err(error)) => {
             assert!(
-                error.contains("not in group"),
+                error.contains("[ERR_NOT_GROUP_MEMBERS]"),
                 "Expected not in group error, got: {}",
                 error
             );
@@ -691,7 +691,7 @@ fn test_view_group_member_emr_information() {
         }
         patient_registry::Result4::Err(e) => {
             let expected_error = format!(
-                "Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
+                "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
                 patient2.nik, patient1.nik
             );
             assert_eq!(e, expected_error, "Unexpected error message");
@@ -1709,7 +1709,7 @@ fn test_emr_access_error_messages() {
     match result {
         patient_registry::Result4::Err(error) => {
             assert!(
-                error.contains("Invalid member NIK format"),
+                error.contains("[ERR_INVALID_NIK]"),
                 "Expected invalid NIK error message, got: {}",
                 error
             );
@@ -1738,7 +1738,7 @@ fn test_emr_access_error_messages() {
     match result {
         patient_registry::Result4::Err(error) => {
             let expected_error = format!(
-                "Group with ID {} does not exist in the system. Please verify the group ID.",
+                "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.",
                 999
             );
             assert_eq!(error, expected_error, "Got unexpected error message");
@@ -1767,7 +1767,7 @@ fn test_emr_access_error_messages() {
     match result {
         patient_registry::Result4::Err(error) => {
             let expected_error = format!(
-                "Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Both users must join the group first.",
+                "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
                 patient2.nik, patient2.nik, group_id
             );
             assert_eq!(error, expected_error, "Got unexpected error message");
@@ -1822,7 +1822,7 @@ fn test_emr_access_error_messages() {
     match result {
         patient_registry::Result4::Err(error) => {
             let expected_error = format!(
-                "Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. They must use the grant_group_access function to give you permission.",
+                "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. Action required: The EMR owner must use the grant_group_access function to give you permission.",
                 patient2.nik, patient1.nik
             );
             assert_eq!(error, expected_error, "Got unexpected error message");
@@ -1895,7 +1895,7 @@ fn test_emr_access_error_messages() {
         patient_registry::Result4::Err(error) => {
             println!("DEBUG actual error message: {}", error);
             let expected_error = format!(
-                "The member (NIK: {}) has not been registered in the EMR system yet. They need to have at least one EMR record created by a healthcare provider.",
+                "[ERR_NO_EMR_RECORDS] The member (NIK: {}) has not been registered in the EMR system yet. Action required: They need to visit a healthcare provider who will create their first EMR record.",
                 patient3.nik
             );
             assert_eq!(error, expected_error, "Got unexpected error message");
