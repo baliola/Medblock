@@ -32,7 +32,6 @@ type CreateEmrRequest = record {
   emr : vec EmrFragment;
   provider_id : text;
   user_id : text;
-  emr_id : text;
 };
 type CreateEmrResponse = record { header : Header };
 type DailyMetricsData = record {

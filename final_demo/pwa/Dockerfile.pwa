@@ -1,0 +1,24 @@
+# Gunakan node 18 sebagai base image
+FROM node:18-alpine
+
+# Set working directory untuk aplikasi
+WORKDIR /app
+
+# Salin package.json dan yarn.lock untuk instalasi dependensi
+COPY ./package*.json ./yarn.lock ./
+
+# Instal dependensi
+RUN yarn install
+
+# Salin seluruh kode aplikasi ke dalam container
+COPY . .
+
+# Build aplikasi untuk production
+RUN yarn build
+
+# Expose port 3000 untuk PWA
+EXPOSE 3000
+
+# Jalankan aplikasi
+CMD ["yarn", "start"]
+
