@@ -453,6 +453,10 @@ pub struct UpdateKycStatusResponse {
     pub patient: Patient,
 }
 #[derive(CandidType, Deserialize)]
+pub struct UpdatePatientInfoRequest {
+    pub info: V1,
+}
+#[derive(CandidType, Deserialize)]
 pub struct ViewGroupMemberEmrInformationRequest {
     pub page: u64,
     pub limit: u64,
@@ -627,6 +631,9 @@ impl PatientRegistry {
         arg0: UpdateKycStatusRequest,
     ) -> Result<(UpdateKycStatusResponse,)> {
         ic_cdk::call(self.0, "update_kyc_status", (arg0,)).await
+    }
+    pub async fn update_patient_info(&self, arg0: UpdatePatientInfoRequest) -> Result<()> {
+        ic_cdk::call(self.0, "update_patient_info", (arg0,)).await
     }
     pub async fn update_provider_registry_principal(
         &self,
@@ -1376,6 +1383,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "update_kyc_status",
+                payload,
+            )
+        }
+        pub fn update_patient_info(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: UpdatePatientInfoRequest,
+        ) -> std::result::Result<(), pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "update_patient_info",
                 payload,
             )
         }

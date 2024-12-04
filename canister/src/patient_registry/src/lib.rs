@@ -13,7 +13,7 @@ use api::{
     RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse,
     SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest,
     UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse,
-    UpdateRequest, ViewGroupMemberEmrInformationRequest,
+    UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -35,8 +35,8 @@ use log::PatientLog;
 use memory::UpgradeMemory;
 use registry::{Group, GroupId, Patient, PatientRegistry, Relation, NIK};
 
-use crate::consent::ConsentsApi;
 use crate::consent::ConsentCode;
+use crate::consent::ConsentsApi;
 use crate::registry::PatientRegistryError;
 
 mod api;
@@ -443,15 +443,10 @@ fn notify_updated(req: UpdateRequest) {
 // probably best to only allow this be called from the frontend canister(todo)
 #[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) {
-    let owner = verified_caller().unwrap();
+    let caller = verified_caller().unwrap();
+    let nik = NIK::from_str(&req.nik.to_string()).unwrap();
 
-    // Check if NIK is already in use before binding
-    let nik_in_use = with_state(|s| s.registry.owner_map.is_nik_in_use(&req.nik));
-    if nik_in_use {
-        ic_cdk::trap("NIK is already registered");
-    }
-
-    with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
+    with_state_mut(|s| s.registry.register_patient(caller, nik)).unwrap()
 }
 
 // TODO : optimize this, this is a very expensive operation
@@ -785,6 +780,13 @@ fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
     with_state_mut(|s| s.registry.initial_patient_info(caller, req.info.into())).unwrap()
 }
 
+#[ic_cdk::update(guard = "only_patient")]
+fn update_patient_info(req: UpdatePatientInfoRequest) {
+    let caller = verified_caller().unwrap();
+
+    with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
+}
+
 #[ic_cdk::query(composite = true)]
 async fn get_patient_info_with_consent(
     req: GetPatientInfoBySessionRequest,
@@ -1094,7 +1096,7 @@ async fn view_group_member_emr_information(
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
         let viewer_in_group = group.members.contains(&viewer_nik);
         let member_in_group = group.members.contains(&member_nik);
-        
+
         if !viewer_in_group && !member_in_group {
             return Err(format!(
                 "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
@@ -1224,18 +1226,24 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     let end = ((req.page + 1) * req.limit) as usize;
 
     // ensure leader is always included in the first page
-    let mut paginated_members: Vec<NIK> = if req.page == 0 {
+    let paginated_members: Vec<NIK> = if req.page == 0 {
         // if this is the first page, ensure leader is first in the list
         let mut members = vec![group.leader.clone()];
-        members.extend(group.members.iter()
-            .filter(|&m| m != &group.leader)
-            .skip(start)
-            .take(end - start - 1)
-            .cloned());
+        members.extend(
+            group
+                .members
+                .iter()
+                .filter(|&m| m != &group.leader)
+                .skip(start)
+                .take(end - start - 1)
+                .cloned(),
+        );
         members
     } else {
         // for other pages, just skip the leader if they would have been in page 0
-        group.members.iter()
+        group
+            .members
+            .iter()
             .filter(|&m| m != &group.leader)
             .skip(start)
             .take(end - start)

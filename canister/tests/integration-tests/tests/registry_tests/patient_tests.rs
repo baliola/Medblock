@@ -244,7 +244,7 @@ fn test_search_patient_admin_unauthorized() {
 }
 
 #[test]
-#[should_panic(expected = "trapped explicitly: NIK is already registered")]
+#[should_panic(expected = "DuplicateNIK")]
 fn test_nik_duplication() {
     let registries = common::prepare();
     let patient1_principal = common::random_identity();
@@ -276,4 +276,127 @@ fn test_nik_duplication() {
             },
         )
         .unwrap();
+}
+
+#[test]
+fn test_kyc_resubmission() {
+    let registries = common::prepare();
+    let admin_principal = registries.controller;
+    let patient_principal = common::random_identity();
+    let admin_nik = canister_common::common::H256::from([2u8; 32]);
+    let patient_nik = canister_common::common::H256::from([1u8; 32]);
+
+    let initial_patient_info = patient_registry::V1 {
+        name: "john doe".to_string(),
+        martial_status: "married".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "1234 elm st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
+    };
+
+    // register patient initially
+    register_test_patient(
+        &registries,
+        patient_principal.clone(),
+        patient_nik.clone(),
+        Some(initial_patient_info),
+    )
+    .expect("Failed to register patient");
+
+    // bind admin
+    let bind_admin_req = patient_registry::BindAdminRequest {
+        nik: admin_nik.to_string(),
+        principal: admin_principal,
+    };
+
+    registries
+        .patient
+        .bind_admin(
+            &registries.ic,
+            admin_principal,
+            PatientCall::Update,
+            bind_admin_req,
+        )
+        .expect("Failed to bind admin");
+
+    // admin denies KYC
+    let deny_kyc_req = patient_registry::UpdateKycStatusRequest {
+        nik: patient_nik.to_string(),
+        kyc_status: KycStatus::Denied,
+    };
+
+    registries
+        .patient
+        .update_kyc_status(
+            &registries.ic,
+            admin_principal,
+            PatientCall::Update,
+            deny_kyc_req,
+        )
+        .expect("Failed to deny KYC");
+
+    // patient attempts to reregister - this should work since KYC was denied
+    let resubmit_reg = patient_registry::RegisterPatientRequest {
+        nik: patient_nik.to_string(),
+    };
+
+    registries
+        .patient
+        .register_patient(
+            &registries.ic,
+            patient_principal.clone(),
+            PatientCall::Update,
+            resubmit_reg,
+        )
+        .expect("Failed to reregister patient");
+
+    // update patient info after reregistration
+    let updated_patient_info = patient_registry::V1 {
+        name: "john doe updated".to_string(),
+        martial_status: "single".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "5678 oak st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-02".to_string(),
+    };
+
+    let update_info_req = patient_registry::UpdatePatientInfoRequest {
+        info: updated_patient_info,
+    };
+
+    registries
+        .patient
+        .update_patient_info(
+            &registries.ic,
+            patient_principal.clone(),
+            PatientCall::Update,
+            update_info_req,
+        )
+        .expect("Failed to update patient info");
+
+    // verify updated info
+    let result = registries
+        .patient
+        .get_patient_info(
+            &registries.ic,
+            patient_principal.clone(),
+            PatientCall::Query,
+        )
+        .unwrap();
+
+    match result.patient {
+        patient_registry::Patient::V1(v1) => {
+            assert_eq!(v1.name, "john doe updated");
+            assert_eq!(v1.martial_status, "single");
+            match v1.kyc_status {
+                KycStatus::Pending => (),
+                _ => panic!("KYC status is not pending"),
+            }
+        }
+    }
 }

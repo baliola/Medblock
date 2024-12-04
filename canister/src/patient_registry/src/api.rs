@@ -194,6 +194,11 @@ pub struct UpdateInitialPatientInfoRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct UpdatePatientInfoRequest {
+    pub info: V1,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub patient: Patient,
     pub nik: NIK,
