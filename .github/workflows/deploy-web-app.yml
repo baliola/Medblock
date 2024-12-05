@@ -1,4 +1,4 @@
-name: Deploy to Staging
+name: Deploy Webapp to Staging
 
 on:
   push:
