@@ -21,7 +21,7 @@ import UserRegistrationSubmit from "./button";
 
 export default function UserRegistration({
   initialData
-}: { initialData: GetPatientInfoResponse | null }) {
+}: { initialData: GetPatientInfoResponse | null | undefined }) {
   const toast = useToast();
   const router = useRouter();
 
