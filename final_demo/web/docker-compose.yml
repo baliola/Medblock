@@ -11,4 +11,3 @@ services:
 networks:
   medblock-staging-network:
     driver: bridge
-
