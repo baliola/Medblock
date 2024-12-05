@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock-staging/final_demo/web/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock-Staging/final_demo/web/
 
       - name: Push Docker Image to ECR
         run: |
@@ -42,7 +42,7 @@ jobs:
         run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - name: Deploy to Server
         run: |
-          cd /home/ubuntu/Medblock/final_demo/web
+          cd /home/ubuntu/Medblock-Staging/final_demo/web
           docker compose down
           docker compose pull webapp
           docker compose up -d
