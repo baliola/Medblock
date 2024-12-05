@@ -1,15 +1,15 @@
 services:
   webapp:
-    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-pwa:latest
+    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-pwa:staging-latest
     container_name: medblock-pwa
     env_file:
       - .env
     ports:
-      - "3000:3000"
+      - "4000:3000"
     restart: unless-stopped
     networks:
-      - medblock-network
+      - medblock-staging-network
 
 networks:
-  medblock-network:
+  medblock-staging-network:
     driver: bridge
