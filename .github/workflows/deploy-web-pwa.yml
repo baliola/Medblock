@@ -16,8 +16,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted
-    labels: staging
+    runs-on: [self-hosted, staging]
 
     steps:
       - name: Check out code
@@ -35,8 +34,7 @@ jobs:
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest
 
   deploy:
-    runs-on: self-hosted
-    labels: staging
+    runs-on: [self-hosted, staging]
     needs: build-and-push
 
     steps:
