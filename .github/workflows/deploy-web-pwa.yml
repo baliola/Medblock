@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy to Staging
 
 on:
   push:
@@ -27,11 +27,11 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/final_demo/pwa/Dockerfile.pwa /home/ubuntu/Medblock/final_demo/pwa/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/final_demo/pwa/Dockerfile.pwa /home/ubuntu/Medblock-Staging/final_demo/pwa/
 
       - name: Push Docker Image to ECR
         run: |
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest
 
   deploy:
     runs-on: self-hosted
@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Deploy to Server
         run: |
-          cd /home/ubuntu/Medblock/final_demo/pwa
+          cd /home/ubuntu/Medblock-Staging/final_demo/pwa
           docker compose down
           docker compose pull webapp
           docker compose up -d
