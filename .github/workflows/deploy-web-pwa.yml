@@ -16,7 +16,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted 
+    runs-on: self-hosted
+    labels: staging
 
     steps:
       - name: Check out code
@@ -35,6 +36,7 @@ jobs:
 
   deploy:
     runs-on: self-hosted
+    labels: staging
     needs: build-and-push
 
     steps:
