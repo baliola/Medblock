@@ -1422,35 +1422,3 @@ mod test_group_map {
         assert!(group_map.get_group(group_id).is_none()); // group should be dissolved
     }
 }
-
-impl PatientRegistry {
-    pub fn register_patient(&mut self, owner: Owner, nik: NIK) -> PatientBindingMapResult {
-        // check if the NIK exists
-        if let Ok(existing_owner) = self.owner_map.get_principal(&nik) {
-            // if the NIK exists but belongs to a different owner, return error
-            if existing_owner != owner {
-                return Err(PatientRegistryError::DuplicateNIK);
-            }
-
-            // if the NIK belongs to the same owner, check KYC status
-            if let Ok(patient) = self.info_map.get(nik.clone()) {
-                match patient {
-                    Patient::V1(v1) => {
-                        // allow re-registration only if KYC status is denied
-                        if matches!(v1.kyc_status, KycStatus::Denied) {
-                            return self.owner_map.rebind(owner, nik);
-                        }
-                    }
-                }
-            }
-            return Err(PatientRegistryError::UserExist);
-        }
-
-        // if the owner already has a different NIK, return error
-        if self.owner_map.get_nik(&owner).is_ok() {
-            return Err(PatientRegistryError::UserExist);
-        }
-
-        self.owner_map.bind(owner, nik)
-    }
-}

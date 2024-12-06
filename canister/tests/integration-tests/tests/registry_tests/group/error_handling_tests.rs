@@ -66,8 +66,8 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // Test 1: Invalid NIK format
@@ -89,7 +89,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result4::Err(error) => {
+        patient_registry::Result5::Err(error) => {
             assert!(
                 error.contains("[ERR_INVALID_NIK]"),
                 "Expected invalid NIK error message, got: {}",
@@ -118,9 +118,9 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result4::Err(error) => {
+        patient_registry::Result5::Err(error) => {
             let expected_error = format!(
-                "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.",
+                "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist.",
                 999
             );
             assert_eq!(error, expected_error, "Got unexpected error message");
@@ -147,7 +147,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result4::Err(error) => {
+        patient_registry::Result5::Err(error) => {
             let expected_error = format!(
                 "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
                 patient2.nik, patient2.nik, group_id
@@ -173,8 +173,8 @@ fn test_claim_nonexistent_consent_for_group() {
     );
 
     match result.unwrap() {
-        patient_registry::Result1::Ok(_) => panic!("Should not succeed"),
-        patient_registry::Result1::Err(e) => assert!(e.contains("Consent not found")),
+        patient_registry::Result2::Ok(_) => panic!("Should not succeed"),
+        patient_registry::Result2::Err(e) => assert!(e.contains("Consent not found")),
     }
 }
 

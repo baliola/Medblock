@@ -1,19 +1,20 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest,
-    ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, CreateGroupRequest,
-    CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse,
-    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsRequest,
-    GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse,
-    GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest,
-    IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse,
-    PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession,
-    PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest,
-    RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse,
-    SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest,
-    UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse,
-    UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest,
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest,
+    ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse,
+    CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest,
+    EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
+    GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest,
+    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail,
+    IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest,
+    LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
+    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
+    RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest,
+    RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest,
+    SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
+    UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest,
+    ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -37,7 +38,7 @@ use registry::{Group, GroupId, Patient, PatientRegistry, Relation, NIK};
 
 use crate::consent::ConsentCode;
 use crate::consent::ConsentsApi;
-use crate::registry::PatientRegistryError;
+use crate::registry::{KycStatus, PatientRegistryError, V1};
 
 mod api;
 mod config;
@@ -442,11 +443,65 @@ fn notify_updated(req: UpdateRequest) {
 // TODO : unsafe, anybody can register as a patient and bind to any NIK, should discuss how do we gate this properly.
 // probably best to only allow this be called from the frontend canister(todo)
 #[ic_cdk::update]
-fn register_patient(req: RegisterPatientRequest) {
+fn register_patient(req: RegisterPatientRequest) -> RegisterPatientResponse {
     let caller = verified_caller().unwrap();
     let nik = NIK::from_str(&req.nik.to_string()).unwrap();
 
-    with_state_mut(|s| s.registry.register_patient(caller, nik)).unwrap()
+    // check if the NIK exists
+    with_state_mut(|s| {
+        if let Ok(existing_owner) = s.registry.owner_map.get_principal(&nik) {
+            // if the NIK exists but belongs to a different owner, return error
+            if existing_owner != caller {
+                return RegisterPatientResponse {
+                    result: RegisterPatientStatus::Error(
+                        "[REGISTER_PATIENT] This NIK is already registered to another user. Each NIK can only be registered to one user account. If you believe this is an error, please contact support.".to_string(),
+                    ),
+                    nik: nik.clone(),
+                };
+            }
+
+            // if the NIK belongs to the same owner, check KYC status
+            // this is the case when the user wants to resubmit their form for kyc
+            if let Ok(patient) = s.registry.info_map.get(nik.clone()) {
+                match patient.clone() {
+                    Patient::V1(v1) => {
+                        // allow re-registration only if KYC status is denied
+                        if matches!(v1.kyc_status, KycStatus::Denied) {
+                            s.registry.owner_map.rebind(caller, nik.clone()).unwrap();
+                            return RegisterPatientResponse {
+                                result: RegisterPatientStatus::Success,
+                                nik: nik.clone(),
+                            };
+                        }
+                    }
+                }
+            }
+            return RegisterPatientResponse {
+                result: RegisterPatientStatus::Error(
+                    "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance.".to_string(),
+                ),
+                nik: nik.clone(),
+            };
+        }
+
+        // if the owner already has a different NIK, return error
+        if s.registry.owner_map.get_nik(&caller).is_ok() {
+            return RegisterPatientResponse {
+                result: RegisterPatientStatus::Error(
+                    "[REGISTER_PATIENT] You already have a registered NIK associated with your account. Each user can only register one NIK. Please contact support if you need to change your registered NIK.".to_string(),
+                ),
+                nik: nik.clone(),
+            };
+        }
+
+        // reaching this part its safe to register the NIK as a new user
+        s.registry.owner_map.bind(caller, nik.clone()).unwrap();
+
+        RegisterPatientResponse {
+            result: RegisterPatientStatus::Success,
+            nik,
+        }
+    })
 }
 
 // TODO : optimize this, this is a very expensive operation
@@ -1081,18 +1136,19 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
 async fn view_group_member_emr_information(
     req: ViewGroupMemberEmrInformationRequest,
 ) -> Result<EmrListPatientResponse, String> {
-    // get caller's NIK (viewer/grantee)
     let caller = verified_caller().unwrap();
     let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    // parse target member's NIK (member/granter) from string
-    let member_nik =
-        NIK::from_str(&req.member_nik).map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string. Please ensure you are using the correct NIK format.", req.member_nik))?;
+    let member_nik = NIK::from_str(&req.member_nik)
+        .map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string.", req.member_nik))?;
 
     // verify both users are in the same group
-    let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!("[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.", req.group_id))?;
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!(
+        "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist.",
+        req.group_id
+    ))?;
 
+    // verify group membership
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
         let viewer_in_group = group.members.contains(&viewer_nik);
         let member_in_group = group.members.contains(&member_nik);
@@ -1115,17 +1171,21 @@ async fn view_group_member_emr_information(
         }
     }
 
-    // verify access has been granted by the member to the viewer
+    // verify access has been granted for this specific group
     let has_access = with_state(|s| {
         s.registry
             .group_access_map
-            .has_access(&member_nik, &viewer_nik) // member (granter) -> viewer (grantee)
+            .has_access(&member_nik, &viewer_nik)
+            && s.registry
+                .group_access_map
+                .get_access_group(&member_nik, &viewer_nik)
+                == Some(req.group_id)
     });
 
     if !has_access {
         return Err(format!(
-            "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. Action required: The EMR owner must use the grant_group_access function to give you permission.",
-            member_nik, viewer_nik
+            "[ERR_ACCESS_NOT_GRANTED] Access not granted for group {}. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information in this group.",
+            req.group_id, member_nik, viewer_nik
         ));
     }
 
@@ -1341,6 +1401,18 @@ fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
 
     // return the NIK of the consenting patient
     Ok(consent.nik.to_string())
+}
+
+#[ic_cdk::query]
+fn check_nik(req: CheckNikRequest) -> Result<bool, String> {
+    with_state(|s| {
+        // check if NIK exists in owner_map
+        if s.registry.owner_map.is_nik_in_use(&req.nik) {
+            return Err("NIK already registered".to_string());
+        }
+
+        Ok(true)
+    })
 }
 
 ic_cdk::export_candid!();

@@ -11,33 +11,58 @@ NC='\033[0m' # no color
 ROOT_DIR=$(pwd)
 SCRIPTS_DIR="${ROOT_DIR}/canister/scripts"
 
+# handle command line arguments first
+if [ "$1" = "--generate-declarations" ]; then
+    if [ "$2" = "--all" ]; then
+        # execute the script for all paths
+        if [ -f "${SCRIPTS_DIR}/declaration/generate_declaration.sh" ]; then
+            bash "${SCRIPTS_DIR}/declaration/generate_declaration.sh"
+            exit 0
+        else
+            echo -e "${RED}Error: declaration/generate_declaration.sh script not found${NC}"
+            exit 1
+        fi
+    fi
+    generate_declarations
+    exit 0
+fi
+
 # utility functions
 generate_declarations() {
     echo -e "${BLUE}Generating declarations...${NC}"
 
-    # ask for environment
-    echo -e "${YELLOW}Select environment:${NC}"
-    echo -e "1) Development"
-    echo -e "2) Staging"
-    echo -e "3) Production"
-    read -r env_choice
-
-    case $env_choice in
-    1) env="dev" ;;
-    2) env="staging" ;;
-    3) env="prod" ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        return 1
-        ;;
-    esac
-
-    # execute the script
-    if [ -f "${SCRIPTS_DIR}/declaration/generate.sh" ]; then
-        bash "${SCRIPTS_DIR}/declaration/generate.sh" "$env"
+    if [ "$1" = "--all" ]; then
+        # execute the script for all paths
+        if [ -f "${SCRIPTS_DIR}/declaration/generate_declaration.sh" ]; then
+            bash "${SCRIPTS_DIR}/declaration/generate_declaration.sh"
+        else
+            echo -e "${RED}Error: declaration/generate_declaration.sh script not found${NC}"
+            return 1
+        fi
     else
-        echo -e "${RED}Error: declaration/generate.sh script not found${NC}"
-        return 1
+        # ask for environment as before
+        echo -e "${YELLOW}Select environment:${NC}"
+        echo -e "1) Development"
+        echo -e "2) Staging"
+        echo -e "3) Production"
+        read -r env_choice
+
+        case $env_choice in
+        1) env="dev" ;;
+        2) env="staging" ;;
+        3) env="prod" ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            return 1
+            ;;
+        esac
+
+        if [ -f "${SCRIPTS_DIR}/declaration/generate.sh" ]; then
+            bash "${SCRIPTS_DIR}/declaration/generate.sh" "$env"
+        else
+            echo -e "${RED}Error: declaration/generate.sh script not found${NC}"
+            return 1
+        fi
     fi
 }
 

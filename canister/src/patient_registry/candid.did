@@ -40,6 +40,7 @@ type CanisterMetricsData = variant {
   hourly : vec HourlyMetricsData;
   daily : vec DailyMetricsData;
 };
+type CheckNikRequest = record { _type : opt bool; nik : text };
 type ClaimConsentRequest = record { code : text };
 type ClaimConsentResponse = record { session_id : text; name : text };
 type CollectMetricsRequestType = variant { force; normal };
@@ -192,16 +193,22 @@ type ReadEmrSessionRequest = record {
   args : ReadEmrByIdRequest;
 };
 type RegisterPatientRequest = record { nik : text };
+type RegisterPatientResponse = record {
+  nik : text;
+  result : RegisterPatientStatus;
+};
+type RegisterPatientStatus = variant { Error : text; Success };
 type Relation = variant { Parent; Sibling; Other; Child; Spouse };
 type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok : text; Err : text };
-type Result_2 = variant { Ok : CreateGroupResponse; Err : text };
-type Result_3 = variant { Ok : GetGroupDetailsResponse; Err : text };
-type Result_4 = variant { Ok : EmrListPatientResponse; Err : text };
+type Result_1 = variant { Ok : bool; Err : text };
+type Result_2 = variant { Ok : text; Err : text };
+type Result_3 = variant { Ok : CreateGroupResponse; Err : text };
+type Result_4 = variant { Ok : GetGroupDetailsResponse; Err : text };
+type Result_5 = variant { Ok : EmrListPatientResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type RevokeGroupAccessRequest = record { grantee_nik : text };
 type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
-type SearchPatientRequest = record { nik : text };
+type SearchPatientRequest = record { _type : opt text; nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
 type StatusRequest = record {
   memory_size : bool;
@@ -241,11 +248,12 @@ service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   add_group_member : (AddGroupMemberRequest) -> (Result);
   bind_admin : (BindAdminRequest) -> ();
+  check_nik : (CheckNikRequest) -> (Result_1) query;
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
-  claim_consent_for_group : (ClaimConsentRequest) -> (Result_1);
+  claim_consent_for_group : (ClaimConsentRequest) -> (Result_2);
   consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
-  create_group : (CreateGroupRequest) -> (Result_2);
+  create_group : (CreateGroupRequest) -> (Result_3);
   emr_list_patient : (EmrListPatientRequest) -> (
       EmrListPatientResponse,
     ) composite_query;
@@ -256,7 +264,7 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
-  get_group_details : (GetGroupDetailsRequest) -> (Result_3) query;
+  get_group_details : (GetGroupDetailsRequest) -> (Result_4) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
   get_patient_info_with_consent : (FinishSessionRequest) -> (
@@ -281,7 +289,7 @@ service : () -> {
   read_emr_with_session : (ReadEmrSessionRequest) -> (
       ReadEmrByIdResponse,
     ) composite_query;
-  register_patient : (RegisterPatientRequest) -> ();
+  register_patient : (RegisterPatientRequest) -> (RegisterPatientResponse);
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   revoke_consent : (RevokeConsentRequest) -> ();
   revoke_group_access : (RevokeGroupAccessRequest) -> (Result);
@@ -299,5 +307,5 @@ service : () -> {
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,
-    ) -> (Result_4) query;
+    ) -> (Result_5) query;
 }

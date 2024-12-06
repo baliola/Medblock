@@ -15,7 +15,7 @@ canister=$1
 
 # canister names
 emr_canister="emr_registry"
-provider_canister="provider_registry" 
+provider_canister="provider_registry"
 patient_canister="patient_registry"
 
 # file paths
@@ -49,26 +49,26 @@ build_canister() {
     local canister_name=$1
     local wasm_path=$wasm_dir/$canister_name.wasm
     local did_path=$root/src/$canister_name/candid.did
-    
+
     log_process "Building ${MAGENTA}$canister_name${NC} canister..."
     dfx build $canister_name >/dev/null 2>&1
-    
+
     log_info "Inserting placeholder candid..."
-    echo "$dummy_did" > $did_path
-    
+    echo "$dummy_did" >$did_path
+
     log_process "Extracting candid from wasm..."
-    candid-extractor $wasm_path > $did_path
-    
+    candid-extractor $wasm_path >$did_path
+
     # add candid metadata and shrink wasm
     log_process "Processing WASM file..."
     ic-wasm "$wasm_path" \
         -o "$wasm_path" \
         metadata candid:service -v public -f $did_path
-        
+
     ic-wasm "$wasm_path" \
         -o "$wasm_path" \
         shrink
-        
+
     log_success "Successfully processed ${MAGENTA}$canister_name${NC}"
     echo # empty line for better readability
 }

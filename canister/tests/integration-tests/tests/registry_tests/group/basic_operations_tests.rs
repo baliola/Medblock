@@ -36,8 +36,8 @@ fn test_group_creation_and_emr_access() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add member to group
@@ -101,10 +101,10 @@ fn test_claim_consent_for_group() {
 
     // verify the returned NIK matches patient2's NIK
     match claim_result {
-        patient_registry::Result1::Ok(nik) => {
+        patient_registry::Result2::Ok(nik) => {
             assert_eq!(nik, patient2.nik.to_string());
         }
-        patient_registry::Result1::Err(e) => panic!("Failed to claim consent: {}", e),
+        patient_registry::Result2::Err(e) => panic!("Failed to claim consent: {}", e),
     }
 
     // attempt to claim the same consent again (should fail)
@@ -118,8 +118,8 @@ fn test_claim_consent_for_group() {
     );
 
     match second_claim.unwrap() {
-        patient_registry::Result1::Ok(_) => panic!("Should not succeed"),
-        patient_registry::Result1::Err(e) => assert!(e.contains("Consent already claimed")),
+        patient_registry::Result2::Ok(_) => panic!("Should not succeed"),
+        patient_registry::Result2::Err(e) => assert!(e.contains("Consent already claimed")),
     }
 }
 
@@ -172,6 +172,7 @@ fn test_patient_group_assignment() {
             PatientCall::Query,
             integration_tests::declarations::patient_registry::SearchPatientRequest {
                 nik: patient.nik.clone().to_string(),
+                _type: None,
             },
         )
         .unwrap();
@@ -215,8 +216,8 @@ fn test_group_retrieval() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // update the add_member_req
@@ -295,8 +296,8 @@ fn test_dissolve_group() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
@@ -354,7 +355,7 @@ fn test_dissolve_group() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result3::Err(_)),
+        matches!(result, patient_registry::Result4::Err(_)),
         "group should no longer exist"
     );
 }
@@ -420,8 +421,8 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
@@ -483,9 +484,9 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Ok(_)),
+        matches!(result, patient_registry::Result5::Ok(_)),
         "Patient2 should be able to view Patient1's EMR initially. Got error: {:?}",
-        if let patient_registry::Result4::Err(e) = result {
+        if let patient_registry::Result5::Err(e) = result {
             e
         } else {
             "Unexpected result type".to_string()
@@ -511,7 +512,7 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Err(_)),
+        matches!(result, patient_registry::Result5::Err(_)),
         "Patient1 should not be able to view Patient2's EMR (no access granted)"
     );
 
@@ -547,7 +548,7 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Err(_)),
+        matches!(result, patient_registry::Result5::Err(_)),
         "Patient2 should not be able to view Patient1's EMR after leaving"
     );
 }

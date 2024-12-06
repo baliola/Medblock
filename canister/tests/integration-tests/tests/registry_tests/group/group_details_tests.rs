@@ -27,8 +27,8 @@ fn test_group_details_includes_leader() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add members to group
@@ -94,7 +94,7 @@ fn test_group_details_includes_leader() {
         .unwrap();
 
     match details {
-        patient_registry::Result3::Ok(details) => {
+        patient_registry::Result4::Ok(details) => {
             // verify leader is included in the first page
             let leader_detail = details
                 .group_details
@@ -129,14 +129,14 @@ fn test_group_details_includes_leader() {
                 .unwrap();
 
             match page_2 {
-                patient_registry::Result3::Ok(page_2) => {
+                patient_registry::Result4::Ok(page_2) => {
                     assert_eq!(page_2.group_details.len(), 1);
                     assert_ne!(page_2.group_details[0].nik, leader.nik.to_string());
                 }
-                patient_registry::Result3::Err(e) => panic!("Failed to get second page: {}", e),
+                patient_registry::Result4::Err(e) => panic!("Failed to get second page: {}", e),
             }
         }
-        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
     }
 }
 
@@ -161,8 +161,8 @@ fn test_group_details_member_roles() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add members with different roles
@@ -213,7 +213,7 @@ fn test_group_details_member_roles() {
         .unwrap();
 
     match details {
-        patient_registry::Result3::Ok(details) => {
+        patient_registry::Result4::Ok(details) => {
             // verify all roles are correct
             assert_eq!(details.group_details.len(), 4); // leader + 3 members
 
@@ -248,6 +248,6 @@ fn test_group_details_member_roles() {
                 }
             }
         }
-        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
     }
 }

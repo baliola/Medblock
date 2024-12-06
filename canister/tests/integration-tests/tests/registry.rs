@@ -179,6 +179,7 @@ mod test {
                 PatientCall::Query,
                 SearchPatientRequest {
                     nik: patient.nik.clone().to_string(),
+                    _type: None,
                 },
             )
             .unwrap();

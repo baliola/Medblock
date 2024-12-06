@@ -64,8 +64,8 @@ fn test_get_group_details() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add all patients to group with their specific relations
@@ -120,7 +120,7 @@ fn test_get_group_details() {
         .unwrap();
 
     match details_response {
-        patient_registry::Result3::Ok(response) => {
+        patient_registry::Result4::Ok(response) => {
             // verify basic group details
             assert_eq!(response.member_count, 4); // 3 members + 1 leader
             assert_eq!(response.total_pages, 1);
@@ -204,17 +204,17 @@ fn test_get_group_details() {
                 .unwrap();
 
             match paginated_response {
-                patient_registry::Result3::Ok(paginated) => {
+                patient_registry::Result4::Ok(paginated) => {
                     assert_eq!(paginated.group_details.len(), 2);
                     assert_eq!(paginated.member_count, 4);
                     assert_eq!(paginated.total_pages, 2);
                 }
-                patient_registry::Result3::Err(e) => {
+                patient_registry::Result4::Err(e) => {
                     panic!("Failed to get paginated details: {}", e)
                 }
             }
         }
-        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
     }
 
     // test unauthorized access
@@ -236,8 +236,8 @@ fn test_get_group_details() {
         .unwrap();
 
     match unauthorized_response {
-        patient_registry::Result3::Ok(_) => panic!("Unauthorized access should fail"),
-        patient_registry::Result3::Err(e) => {
+        patient_registry::Result4::Ok(_) => panic!("Unauthorized access should fail"),
+        patient_registry::Result4::Err(e) => {
             assert!(
                 e.contains("Only group members can view group details"),
                 "Unexpected error message: {}",
@@ -287,8 +287,8 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result2::Ok(response) => response.group_id,
-        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add all patients to group
@@ -337,7 +337,7 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     match first_page {
-        patient_registry::Result3::Ok(response) => {
+        patient_registry::Result4::Ok(response) => {
             assert_eq!(response.group_details.len(), 2);
             assert_eq!(response.member_count, 6); // 5 members + 1 leader
             assert_eq!(response.total_pages, 3);
@@ -360,7 +360,7 @@ fn test_get_group_details_pagination() {
                 .unwrap();
 
             match second_page {
-                patient_registry::Result3::Ok(second_response) => {
+                patient_registry::Result4::Ok(second_response) => {
                     assert_eq!(second_response.group_details.len(), 2);
                     assert_eq!(second_response.member_count, 6);
                     assert_eq!(second_response.total_pages, 3);
@@ -381,9 +381,9 @@ fn test_get_group_details_pagination() {
                         .iter()
                         .all(|nik| !second_page_niks.contains(nik)));
                 }
-                patient_registry::Result3::Err(e) => panic!("Failed to get second page: {}", e),
+                patient_registry::Result4::Err(e) => panic!("Failed to get second page: {}", e),
             }
         }
-        patient_registry::Result3::Err(e) => panic!("Failed to get first page: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to get first page: {}", e),
     }
 }
