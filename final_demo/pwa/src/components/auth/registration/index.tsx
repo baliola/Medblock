@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Checkbox, FormControl, Stack, Text, useToast } from "@chakra-ui/react"
-import { Field, Form, Formik } from "formik"
-import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@chakra-ui/react"
+import { Form, Formik } from "formik"
 
 import { encodeHashNIK, usePatientMethod, usePatientUpdate } from "@/services/patients";
 import { GetPatientInfoResponse, RegisterPatientRequest, UpdateInitialPatientInfoRequest } from "@/declarations/patient_registry/patient_registry.did";
@@ -16,7 +15,6 @@ import {
   registrationInitialValues
 } from "@/constants/contents/auth/registration/form";
 
-import { createKYC, KYC } from "@/libs/api/kyc";
 import UserRegistrationSubmit from "./button";
 
 export default function UserRegistration({
@@ -26,12 +24,50 @@ export default function UserRegistration({
   const router = useRouter();
 
   const [file, setFile] = useState<File | null>(null);
-
+  console.log(initialData)
   const {
     call: updateInitialData,
     loading: loadingUpdateInitialData
   } = usePatientUpdate({
     functionName: "update_initial_patient_info",
+    onSuccess() {
+      router.replace("/auth/unverified/waiting");
+      return;
+    },
+    onError(error) {
+      if (
+        error?.message &&
+        error.message.toLowerCase().includes("userexist")
+      ) {
+        console.log("User already exist, updating initial data");
+        return toast({
+          title: "User Already Exist",
+          description: "User already exist, please check your NIK and try again.",
+          isClosable: true,
+          duration: 5000,
+          position: "top-right",
+          status: "error"
+        })
+      } else {
+        console.log("Error while registering patient", error);
+        toast({
+          title: registrationFormAction.onError.title,
+          description: registrationFormAction.onError.description,
+          isClosable: true,
+          duration: 5000,
+          position: "top-right",
+          status: "error"
+        });
+        return;
+      }
+    },
+  })
+
+  const {
+    call: updateExistingInitialData,
+    loading: loadingUpdateExistingInitialData
+  } = usePatientUpdate({
+    functionName: "update_patient_info",
     onSuccess() {
       router.replace("/auth/unverified/waiting");
       return;
@@ -102,9 +138,17 @@ export default function UserRegistration({
     // @ts-ignore
     await registerPatientNIK([patientNIK])
       .then(async (data) => {
-        console.log(data)
-        // @ts-ignore
-        await updateInitialData([initialPatientData]);
+        console.log('hmm', data, initialData)
+        if (initialData !== undefined && initialData !== null) {
+          console.log('update')
+          // @ts-ignore
+          await updateExistingInitialData([initialPatientData]);
+        } else {
+          console.log('initial')
+          // @ts-ignore
+          await updateInitialData([initialPatientData]);
+        }
+
         return;
       })
       .catch((error) => {
@@ -208,7 +252,8 @@ export default function UserRegistration({
           <UserRegistrationSubmit
             loading={
               loadingRegisterPatientNIK ||
-              loadingUpdateInitialData
+              loadingUpdateInitialData || 
+              loadingUpdateExistingInitialData
             }
             disabled={
               !isValid ||
