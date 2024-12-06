@@ -461,10 +461,6 @@ pub struct UpdateEmrRegistryRequest {
     pub principal: Principal,
 }
 #[derive(CandidType, Deserialize)]
-pub struct UpdateInitialPatientInfoRequest {
-    pub info: V1,
-}
-#[derive(CandidType, Deserialize)]
 pub struct UpdateKycStatusRequest {
     pub nik: String,
     pub kyc_status: KycStatus,
@@ -646,12 +642,6 @@ impl PatientRegistry {
         arg0: UpdateEmrRegistryRequest,
     ) -> Result<()> {
         ic_cdk::call(self.0, "update_emr_registry_principal", (arg0,)).await
-    }
-    pub async fn update_initial_patient_info(
-        &self,
-        arg0: UpdateInitialPatientInfoRequest,
-    ) -> Result<()> {
-        ic_cdk::call(self.0, "update_initial_patient_info", (arg0,)).await
     }
     pub async fn update_kyc_status(
         &self,
@@ -1382,27 +1372,6 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "update_emr_registry_principal",
-                payload,
-            )
-        }
-        pub fn update_initial_patient_info(
-            &self,
-            server: &pocket_ic::PocketIc,
-            sender: ic_principal::Principal,
-            call_type: Call,
-            arg0: UpdateInitialPatientInfoRequest,
-        ) -> std::result::Result<(), pocket_ic::UserError> {
-            let f = match call_type {
-                Call::Query => pocket_ic::PocketIc::query_call,
-                Call::Update => pocket_ic::PocketIc::update_call,
-            };
-            let payload = (arg0);
-            call_pocket_ic(
-                server,
-                f,
-                self.0.clone(),
-                sender,
-                "update_initial_patient_info",
                 payload,
             )
         }

@@ -54,26 +54,28 @@ impl PatientRegistry {
 }
 
 impl PatientRegistry {
-    // sets the initial patient info for an existing nik
+    // modified update_patient_info to handle both initial and subsequent updates
     // prerequisite: nik must be bound to an owner first
-    pub fn initial_patient_info(
-        &mut self,
-        patient_principal: Principal,
-        patient: Patient,
-    ) -> PatientBindingMapResult {
-        let nik = self.owner_map.get_nik(&patient_principal)?;
-        self.info_map.set(nik.into_inner(), patient)
-    }
-
-    // actual update, nik must be bound to an owner first
-    // and patient info must already be set
     pub fn update_patient_info(
         &mut self,
         patient_principal: Principal,
         patient: Patient,
     ) -> PatientBindingMapResult {
+        // Prevent anonymous principals from updating patient info
+        if patient_principal == Principal::anonymous() {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
         let nik = self.owner_map.get_nik(&patient_principal)?;
-        self.info_map.update(nik.into_inner(), patient)
+        let nik = nik.into_inner();
+
+        // If entry doesn't exist, create it. If it exists, update it.
+        // This handles both first-time registration and updates
+        if self.info_map.0.contains_key(&nik.clone().to_stable()) {
+            self.info_map.update(nik.clone(), patient)
+        } else {
+            self.info_map.set(nik, patient)
+        }
     }
 
     pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult {
@@ -1042,6 +1044,7 @@ mod test_kyc {
     }
 
     #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: UserDoesNotExist")]
     fn test_kyc_status() {
         let memory_manager = memory_manager!();
         let mut registry = PatientRegistry::init(&memory_manager);
@@ -1049,6 +1052,7 @@ mod test_kyc {
         let nik = NIK::from([0u8; 32]);
         let mut patient = Patient::V1(V1::default());
         let non_anonymous_principal = Principal::from_text("2vxsx-fae").unwrap();
+        let anonymous_principal = Principal::anonymous();
 
         // need to bind nik to owner first before we can register patient
         registry
@@ -1065,7 +1069,7 @@ mod test_kyc {
 
         // register patient info
         registry
-            .initial_patient_info(non_anonymous_principal, patient.clone())
+            .update_patient_info(non_anonymous_principal, patient.clone())
             .unwrap();
         assert!(registry.info_map.get(nik.clone()).is_ok());
 
@@ -1083,9 +1087,10 @@ mod test_kyc {
         let verified_patient = registry.get_patient_info(nik.clone()).unwrap();
         assert_eq!(verified_patient.kyc_status(), &KycStatus::Approved);
 
-        // Attempt to update with anonymous principal (should fail)
-        let result = registry.initial_patient_info(Principal::anonymous(), patient.clone());
-        assert!(result.is_err());
+        // This should panic with UserDoesNotExist
+        registry
+            .update_patient_info(anonymous_principal, patient.clone())
+            .unwrap(); // This line will panic
     }
 }
 

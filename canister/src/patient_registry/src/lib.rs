@@ -829,16 +829,8 @@ fn update_provider_registry_principal(req: UpdateEmrRegistryRequest) {
 }
 
 #[ic_cdk::update(guard = "only_patient")]
-fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
-    let caller = verified_caller().unwrap();
-
-    with_state_mut(|s| s.registry.initial_patient_info(caller, req.info.into())).unwrap()
-}
-
-#[ic_cdk::update(guard = "only_patient")]
 fn update_patient_info(req: UpdatePatientInfoRequest) {
     let caller = verified_caller().unwrap();
-
     with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
 }
 

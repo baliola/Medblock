@@ -379,7 +379,7 @@ impl Scenario {
             )
             .unwrap();
 
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
                 martial_status: "married".to_string(),
@@ -394,7 +394,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -464,7 +464,7 @@ impl Scenario {
             .unwrap();
 
         // Set initial patient info
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
                 martial_status: "single".to_string(),
@@ -479,7 +479,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -541,7 +541,7 @@ impl Scenario {
             .unwrap();
 
         // set initial patient info
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: "test patient".to_string(),
                 martial_status: "single".to_string(),
@@ -556,7 +556,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -602,11 +602,11 @@ impl Scenario {
             .unwrap();
 
         // set initial patient info with provided V1 struct
-        let arg = patient_registry::UpdateInitialPatientInfoRequest { info };
+        let arg = patient_registry::UpdatePatientInfoRequest { info };
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
