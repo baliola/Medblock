@@ -97,13 +97,55 @@ deploy_local() {
     cd "$ROOT_DIR"
 }
 
+# function to select package manager
+select_package_manager() {
+    printf "${BLUE}[INFO]${NC} Select your preferred package manager:\n"
+    select pm in "bun" "npm" "yarn" "pnpm"; do
+        if [ "$pm" = "bun" ] || [ "$pm" = "npm" ] || [ "$pm" = "yarn" ] || [ "$pm" = "pnpm" ]; then
+            echo "$pm"
+            return
+        else
+            warning "Invalid selection. Please choose a number from 1-4."
+        fi
+    done
+}
+
+# function to install dependencies with selected package manager
+install_deps() {
+    local pm=$1
+    if [ "$pm" = "bun" ]; then
+        bun install
+    elif [ "$pm" = "npm" ]; then
+        npm install
+    elif [ "$pm" = "yarn" ]; then
+        yarn install
+    elif [ "$pm" = "pnpm" ]; then
+        pnpm install
+    fi
+}
+
+# function to start dev server with selected package manager
+start_dev() {
+    local pm=$1
+    local port=$2
+    local prefix=$3
+    if [ "$pm" = "bun" ]; then
+        PORT=$port bun dev 2>&1 | sed "s/^/[$prefix] /" &
+    elif [ "$pm" = "npm" ]; then
+        PORT=$port npm run dev 2>&1 | sed "s/^/[$prefix] /" &
+    elif [ "$pm" = "yarn" ]; then
+        PORT=$port yarn dev 2>&1 | sed "s/^/[$prefix] /" &
+    elif [ "$pm" = "pnpm" ]; then
+        PORT=$port pnpm dev 2>&1 | sed "s/^/[$prefix] /" &
+    fi
+}
+
 # function to start the web app
 start_webapp() {
     log "Starting web application..."
     cd "$ROOT_DIR/final_demo/web"
-    bun install
-    # redirect output to add [webapp] prefix and set port
-    PORT=3012 bun dev 2>&1 | sed "s/^/[WEBAPP] /" &
+    install_deps $PACKAGE_MANAGER
+    start_dev $PACKAGE_MANAGER 3012 "WEBAPP"
     cd "$ROOT_DIR"
 }
 
@@ -111,9 +153,8 @@ start_webapp() {
 start_dashboard() {
     log "Starting internal dashboard..."
     cd "$ROOT_DIR/internal-dashboard"
-    bun install
-    # redirect output to add [webadmin] prefix and set port
-    PORT=3011 bun dev 2>&1 | sed "s/^/[WEBADMIN] /" &
+    install_deps $PACKAGE_MANAGER
+    start_dev $PACKAGE_MANAGER 3011 "WEBADMIN"
     cd "$ROOT_DIR"
 }
 
@@ -121,18 +162,21 @@ start_dashboard() {
 start_pwa() {
     log "Starting PWA application..."
     cd "$ROOT_DIR/final_demo/pwa"
-    bun install
-    # redirect output to add [pwa] prefix and set port
-    PORT=3010 bun dev 2>&1 | sed "s/^/[PWA] /" &
+    install_deps $PACKAGE_MANAGER
+    start_dev $PACKAGE_MANAGER 3010 "PWA"
     cd "$ROOT_DIR"
 }
 
 # function to cleanup processes
 cleanup() {
     log "Cleaning up processes..."
-    pkill -f "bun dev" || true
+    # kill all processes running on our ports
+    for port in 3010 3011 3012; do
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+    done
+
     if [ -f /tmp/dfx.pid ]; then
-        kill $(cat /tmp/dfx.pid) || true
+        kill $(cat /tmp/dfx.pid) 2>/dev/null || true
         rm /tmp/dfx.pid
     else
         dfx stop || true
@@ -159,8 +203,9 @@ main() {
         # check environment files first
         check_env_files
 
-        # check only bun requirement
-        command -v bun >/dev/null 2>&1 || error "bun is required but not installed"
+        # select package manager for frontend projects
+        export PACKAGE_MANAGER=$(select_package_manager)
+        log "Using ${PACKAGE_MANAGER} as package manager"
 
         # start frontends
         start_webapp
@@ -175,26 +220,26 @@ main() {
 
         # keep running until ctrl-c
         log "Press Ctrl+C to stop all frontends."
-        # wait for any background process to finish
+
+        # wait for all background jobs
         while true; do
             sleep 1
-            if ! pgrep -f "bun dev" >/dev/null; then
+            if ! jobs %% >/dev/null 2>&1; then
                 break
             fi
         done
 
     elif [ -z "$1" ]; then
         # original behavior - run everything
-        # check environment files first
         check_env_files
-
-        # then check requirements
         check_requirements
+
+        # select package manager for frontend projects
+        export PACKAGE_MANAGER=$(select_package_manager)
+        log "Using ${PACKAGE_MANAGER} as package manager"
 
         # start services
         deploy_local
-
-        # start frontends
         start_webapp
         start_dashboard
         start_pwa
@@ -209,7 +254,6 @@ main() {
 
         # wait for user input to stop
         read -p "Press any key to stop all services..."
-
     else
         print_usage
         exit 1

@@ -330,6 +330,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'add_group_member' : IDL.Func([AddGroupMemberRequest], [Result], []),
     'bind_admin' : IDL.Func([BindAdminRequest], [Result], []),
+    'bind_admin_principal_only' : IDL.Func([IDL.Principal], [Result], []),
     'check_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'check_nik' : IDL.Func([CheckNikRequest], [Result_1], ['query']),
     'claim_consent' : IDL.Func(

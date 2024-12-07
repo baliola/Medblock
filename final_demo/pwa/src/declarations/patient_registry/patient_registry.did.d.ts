@@ -282,6 +282,7 @@ export interface _SERVICE {
   >,
   'add_group_member' : ActorMethod<[AddGroupMemberRequest], Result>,
   'bind_admin' : ActorMethod<[BindAdminRequest], Result>,
+  'bind_admin_principal_only' : ActorMethod<[Principal], Result>,
   'check_admin' : ActorMethod<[Principal], boolean>,
   'check_nik' : ActorMethod<[CheckNikRequest], Result_1>,
   'claim_consent' : ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>,
