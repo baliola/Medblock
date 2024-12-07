@@ -915,6 +915,7 @@ impl Metrics<Admins> for AdminMap {
     }
 }
 
+/// Admin map only cares about your principal. So you dont have to be a Patient to be an Admin. Any principal can be bound as admin.
 impl AdminMap {
     pub fn revoke(&mut self, admin: &Admin) -> AdminMapResult {
         self.0
@@ -929,6 +930,16 @@ impl AdminMap {
         }
 
         let _ = self.0.insert(admin, nik.to_stable());
+        Ok(())
+    }
+
+    /// !!! In this case, we assume that the Principal is not bound to a NIK yet. So we will be using a random NIK for the admin.
+    /// This is useful for the case where we want to add an admin without having to go through the KYC process.
+    /// TODO! NEED TO CHECK FOR EDGE CASES DUE TO THIS ASSUMPTION.
+    pub fn principal_only_bind(&mut self, admin: Admin) -> AdminMapResult {
+        let random_nik = NIK::from([0u8; 32]).to_stable();
+
+        let _ = self.0.insert(admin, random_nik);
         Ok(())
     }
 

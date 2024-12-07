@@ -89,6 +89,9 @@ check_requirements() {
 # function to start the ic replica and deploy canisters
 deploy_local() {
     log "Deploying local environment..."
+    cd "$ROOT_DIR"
+    # generate declarations first
+    bash utils.sh --generate-declarations --all || error "Failed to generate declarations"
     cd "$ROOT_DIR/canister/scripts/deployments"
     bash local.sh --background || error "Failed to deploy local environment"
     cd "$ROOT_DIR"

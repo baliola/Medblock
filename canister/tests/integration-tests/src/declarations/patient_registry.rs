@@ -499,6 +499,9 @@ impl PatientRegistry {
     pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<(Result_,)> {
         ic_cdk::call(self.0, "bind_admin", (arg0,)).await
     }
+    pub async fn bind_admin_principal_only(&self, arg0: Principal) -> Result<(Result_,)> {
+        ic_cdk::call(self.0, "bind_admin_principal_only", (arg0,)).await
+    }
     pub async fn check_admin(&self, arg0: Principal) -> Result<(bool,)> {
         ic_cdk::call(self.0, "check_admin", (arg0,)).await
     }
@@ -770,6 +773,27 @@ pub mod pocket_ic_bindings {
             };
             let payload = (arg0);
             call_pocket_ic(server, f, self.0.clone(), sender, "bind_admin", payload)
+        }
+        pub fn bind_admin_principal_only(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: Principal,
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "bind_admin_principal_only",
+                payload,
+            )
         }
         pub fn check_admin(
             &self,

@@ -991,6 +991,13 @@ fn bind_admin(req: BindAdminRequest) -> Result<(), String> {
         .map_err(|e| format!("Failed to bind admin: {:?}", e))
 }
 
+/// !!! very dangerous untested pls use with caution
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn bind_admin_principal_only(principal: Principal) -> Result<(), String> {
+    with_state_mut(|s| s.registry.admin_map.principal_only_bind(principal))
+        .map_err(|e| format!("Failed to bind admin: {:?}", e))
+}
+
 #[ic_cdk::query(guard = "only_controller")]
 fn check_admin(principal: Principal) -> bool {
     with_state(|s| s.registry.admin_map.is_valid_admin(&principal))
