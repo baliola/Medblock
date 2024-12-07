@@ -11,9 +11,7 @@ import { useParams } from "next/navigation";
 import AddMemberModal from "./add";
 import { IoIosMale, IoIosFemale } from "react-icons/io";
 import { useProfileStore } from "@/store/profile-store";
-import LeaveGroupModal from "./leave";
-import GrantAccessGroupModal from "./grant";
-import RevokeAccessGroupModal from "./revoke";
+import DetailModal from "./detail-modal";
 
 const MemberGroupList = (): ReactElement => {
   const { group_id } = useParams();
@@ -115,21 +113,21 @@ const MemberGroupList = (): ReactElement => {
                     pb={4}
                   >
                     <Grid
-                      templateColumns="repeat(5, 1fr)"
+                      templateColumns="repeat(12, 1fr)"
                       py={2}
                       px={0}
                       columnGap={3}
                       alignItems={"start"}
                     >
                       <GridItem
-                        colSpan={1}
+                        colSpan={3}
                         aspectRatio={1/1}
                         background={"rgb(217, 217, 217)"}
                         display={"block"}
                         rounded={"xl"}
                       />
                       <GridItem 
-                        colSpan={4}
+                        colSpan={8}
                         h={"full"}
                         display={"flex"}
                         flexDirection={"column"}
@@ -144,26 +142,36 @@ const MemberGroupList = (): ReactElement => {
                           {groupDetails.leader_name} (Leader) {profile.patient.V1.name === groupDetails.leader_name && '(You)'}
                         </Text>
                       </GridItem>
+                      <GridItem
+                        my={"auto"}
+                        colSpan={1}
+                        display={"flex"}
+                      >
+                        <DetailModal props={{
+                          isLeader: profile.patient.V1.name === groupDetails.leader_name,
+                          nik: ''
+                        }} />
+                      </GridItem>
                     </Grid>
                     {
                       groupDetails.group_details.map((member, index) =>
                         <Grid
                           key={index}
-                          templateColumns="repeat(5, 1fr)"
+                          templateColumns="repeat(12, 1fr)"
                           py={2}
                           px={0}
                           columnGap={3}
                           alignItems={"start"}
                         >
                           <GridItem
-                            colSpan={1}
+                            colSpan={3}
                             aspectRatio={1/1}
                             background={"rgb(217, 217, 217)"}
                             display={"block"}
                             rounded={"xl"}
                           />
                           <GridItem 
-                            colSpan={4}
+                            colSpan={8}
                             h={"full"}
                             display={"flex"}
                             flexDirection={"column"}
@@ -205,6 +213,16 @@ const MemberGroupList = (): ReactElement => {
                               </Flex>
                             </Flex>
                           </GridItem>
+                          <GridItem
+                            my={"auto"}
+                            colSpan={1}
+                            display={"flex"}
+                          >
+                            <DetailModal props={{
+                              isLeader: member.name === groupDetails.leader_name,
+                              nik: member.nik
+                            }} />
+                          </GridItem>
                         </Grid>
                       )
                     }
@@ -223,19 +241,8 @@ const MemberGroupList = (): ReactElement => {
               py={5}
               px={5}
             >
-              {
-                !isMember(profile, groupDetails.group_details)
-                  ? <AddMemberModal props={{
-                    handleGetGroupDetails
-                  }} />
-                  : <LeaveGroupModal props={{}}/>
-              }
-              {/* <LeaveGroupModal props={{}}/> */}
-              <GrantAccessGroupModal props={{
-                nik: profile.nik
-              }} />
-              <RevokeAccessGroupModal props={{
-                nik: profile.nik
+              <AddMemberModal props={{
+                handleGetGroupDetails
               }} />
             </Flex>
           </>

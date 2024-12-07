@@ -247,6 +247,7 @@ export interface UpdateKycStatusRequest {
   'kyc_status' : KycStatus,
 }
 export interface UpdateKycStatusResponse { 'patient' : Patient }
+export interface UpdatePatientInfoRequest { 'info' : V1 }
 export interface V1 {
   'kyc_date' : string,
   'name' : string,
@@ -342,6 +343,7 @@ export interface _SERVICE {
     [UpdateKycStatusRequest],
     UpdateKycStatusResponse
   >,
+  'update_patient_info' : ActorMethod<[UpdatePatientInfoRequest], undefined>,
   'update_provider_registry_principal' : ActorMethod<
     [UpdateEmrRegistryRequest],
     undefined

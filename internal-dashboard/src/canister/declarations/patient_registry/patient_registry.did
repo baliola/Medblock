@@ -220,6 +220,7 @@ type UpdateInformationRequest = record {
 type UpdateInitialPatientInfoRequest = record { info : V1 };
 type UpdateKycStatusRequest = record { nik : text; kyc_status : KycStatus };
 type UpdateKycStatusResponse = record { patient : Patient };
+type UpdatePatientInfoRequest = record { info : V1 };
 type V1 = record {
   kyc_date : text;
   name : text;
@@ -294,6 +295,7 @@ service : () -> {
   update_emr_registry_principal : (UpdateEmrRegistryRequest) -> ();
   update_initial_patient_info : (UpdateInitialPatientInfoRequest) -> ();
   update_kyc_status : (UpdateKycStatusRequest) -> (UpdateKycStatusResponse);
+  update_patient_info : (UpdatePatientInfoRequest) -> ();
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,

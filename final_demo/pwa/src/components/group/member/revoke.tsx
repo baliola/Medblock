@@ -1,21 +1,18 @@
 "use client"
 
 import { RevokeGroupAccessRequest } from "@/declarations/patient_registry/patient_registry.did";
-import { usePatientMethod } from "@/services/patients";
+import { encodeHashNIK, usePatientMethod } from "@/services/patients";
 import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text } from "@chakra-ui/react";
-import { useParams } from "next/navigation";
 import { FaExclamationTriangle } from "react-icons/fa";
-import { HiLockClosed } from "react-icons/hi2";
+import { HiOutlineLockClosed } from "react-icons/hi2";
 
 interface IRevokeAccessGroupModal {
   nik: string
 }
 
 export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccessGroupModal }) {
-  const { nik } = props
-
   const toast = useToast();
-  const { group_id } = useParams();
+  const { nik } = props
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { call: revokeGroupAccess, loading: revokeGroupAccessLoading } = usePatientMethod({
@@ -59,7 +56,7 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
   const handleRevokeGroupAccess = async () => {
     try {
       const data: RevokeGroupAccessRequest[] | any = [{
-        grantee_nik: nik
+        grantee_nik: encodeHashNIK(nik)
       }];
 
       await revokeGroupAccess(data);
@@ -76,19 +73,21 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
   return (
     <>
       <Button
-        colorScheme="danger"
-        w={"full"}
-        rounded={"2xl"}
-        fontSize={'sm'}
-        py={6}
-        gap={2}
-        mt={4}
+        type="button"
+        bg={"transparent"}
+        display={"flex"}
+        justifyContent={"items-start"}
+        columnGap={3}
+        fontWeight={400}
+        color={"danger.700"}
         leftIcon={
-          <Icon as={HiLockClosed} boxSize={5} />
+          <Icon as={HiOutlineLockClosed} boxSize={6} />
         }
         onClick={onOpen}
       >
-        Revoke EMR Access
+        <Text>
+          Revoke EMR Access
+        </Text>
       </Button>
       <Modal
         isOpen={isOpen}
@@ -135,7 +134,8 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
                 textAlign={"center"}
                 px={4}
               >
-                Continue to revoke EMR access to this group?
+                After revoke, this account would not be allowed to access your EMR&apos;s<br></br>
+                Are you sure?
               </Text>
               <Flex
                 mt={3}
@@ -151,12 +151,12 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
                   Cancel
                 </Button>
                 <Button 
-                  colorScheme="danger" 
+                  colorScheme="red" 
                   w={'full'} 
                   onClick={handleRevokeGroupAccess} 
                   isLoading={revokeGroupAccessLoading}
                 >
-                  Revoke
+                  Grant
                 </Button>
               </Flex>
             </Flex>

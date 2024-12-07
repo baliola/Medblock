@@ -296,6 +296,7 @@ export const idlFactory = ({ IDL }) => {
     'kyc_status' : KycStatus,
   });
   const UpdateKycStatusResponse = IDL.Record({ 'patient' : Patient });
+  const UpdatePatientInfoRequest = IDL.Record({ 'info' : V1 });
   const ViewGroupMemberEmrInformationRequest = IDL.Record({
     'page' : IDL.Nat64,
     'limit' : IDL.Nat64,
@@ -418,6 +419,7 @@ export const idlFactory = ({ IDL }) => {
         [UpdateKycStatusResponse],
         [],
       ),
+    'update_patient_info' : IDL.Func([UpdatePatientInfoRequest], [], []),
     'update_provider_registry_principal' : IDL.Func(
         [UpdateEmrRegistryRequest],
         [],
