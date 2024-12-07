@@ -986,8 +986,9 @@ fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
-fn bind_admin(req: BindAdminRequest) {
-    with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik)).unwrap();
+fn bind_admin(req: BindAdminRequest) -> Result<(), String> {
+    with_state_mut(|s| s.registry.admin_map.rebind(req.principal, req.nik))
+        .map_err(|e| format!("Failed to bind admin: {:?}", e))
 }
 
 #[ic_cdk::update(guard = "only_patient")]

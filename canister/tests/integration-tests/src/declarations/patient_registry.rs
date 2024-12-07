@@ -496,7 +496,7 @@ impl PatientRegistry {
     pub async fn add_group_member(&self, arg0: AddGroupMemberRequest) -> Result<(Result_,)> {
         ic_cdk::call(self.0, "add_group_member", (arg0,)).await
     }
-    pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<()> {
+    pub async fn bind_admin(&self, arg0: BindAdminRequest) -> Result<(Result_,)> {
         ic_cdk::call(self.0, "bind_admin", (arg0,)).await
     }
     pub async fn check_nik(&self, arg0: CheckNikRequest) -> Result<(Result1,)> {
@@ -760,7 +760,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: BindAdminRequest,
-        ) -> std::result::Result<(), pocket_ic::UserError> {
+        ) -> std::result::Result<Result_, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,

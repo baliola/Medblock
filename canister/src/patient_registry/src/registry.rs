@@ -224,6 +224,15 @@ pub enum PatientRegistryError {
     DuplicateNIK,
 }
 
+#[derive(
+    Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum AdminMapError {
+    #[error("user already bound")]
+    UserAlreadyBound,
+    #[error("user does not exist")]
+    UserDoesNotExist,
+}
 pub struct GroupAccessMap(ic_stable_structures::BTreeMap<GroupAccessKey, Stable<GroupId>, Memory>);
 
 type GroupAccessKey = (Stable<NIK>, Stable<NIK>);
@@ -365,6 +374,7 @@ mod test_group_access_map {
 }
 
 pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
+pub type AdminMapResult<T = ()> = Result<T, AdminMapError>;
 
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) -> PatientBindingMapResult {
@@ -906,25 +916,25 @@ impl Metrics<Admins> for AdminMap {
 }
 
 impl AdminMap {
-    pub fn revoke(&mut self, admin: &Admin) -> PatientBindingMapResult {
+    pub fn revoke(&mut self, admin: &Admin) -> AdminMapResult {
         self.0
             .remove(admin)
             .map(|_| ())
-            .ok_or(PatientRegistryError::UserDoesNotExist)
+            .ok_or(AdminMapError::UserDoesNotExist)
     }
 
-    pub fn bind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+    pub fn bind(&mut self, admin: Admin, nik: NIK) -> AdminMapResult {
         if self.get_nik(&admin).is_ok() {
-            return Err(PatientRegistryError::UserExist);
+            return Err(AdminMapError::UserAlreadyBound);
         }
 
         let _ = self.0.insert(admin, nik.to_stable());
         Ok(())
     }
 
-    pub fn rebind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+    pub fn rebind(&mut self, admin: Admin, nik: NIK) -> AdminMapResult {
         if self.get_nik(&admin).is_err() {
-            return Err(PatientRegistryError::UserDoesNotExist);
+            return Err(AdminMapError::UserDoesNotExist);
         }
 
         let _ = self.0.insert(admin, nik.to_stable());
@@ -932,10 +942,8 @@ impl AdminMap {
     }
 
     /// will return an error if owner does not exists
-    pub fn get_nik(&self, admin: &Admin) -> PatientBindingMapResult<Stable<NIK>> {
-        self.0
-            .get(admin)
-            .ok_or(PatientRegistryError::UserDoesNotExist)
+    pub fn get_nik(&self, admin: &Admin) -> AdminMapResult<Stable<NIK>> {
+        self.0.get(admin).ok_or(AdminMapError::UserDoesNotExist)
     }
 
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -961,7 +969,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.bind(admin, nik).unwrap_err(),
-            PatientRegistryError::UserExist
+            AdminMapError::UserAlreadyBound
         );
     }
 
@@ -973,7 +981,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.rebind(admin, nik.clone()).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.rebind(admin, nik.clone()).unwrap(), ());
@@ -987,7 +995,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.revoke(&admin).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.revoke(&admin).unwrap(), ());
@@ -1001,7 +1009,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.get_nik(&admin).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.get_nik(&admin).unwrap(), nik.to_stable());
