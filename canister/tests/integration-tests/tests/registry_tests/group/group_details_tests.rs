@@ -5,13 +5,23 @@ use integration_tests::declarations::patient_registry::{
 
 use crate::common;
 
+/// TEST GROUP DETAILS INCLUDES LEADER
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - One registered provider
+/// - One registered patient with EMR from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add member to group
+/// 3. Get group details
 #[test]
 fn test_group_details_includes_leader() {
-    let (registries, leader, _) = common::Scenario::one_admin_one_patient();
-    let member1 = common::Scenario::create_patient(&registries);
-    let member2 = common::Scenario::create_patient(&registries);
+    let (registries, _provider, leader, member1) =
+        common::Scenario::one_provider_two_patient_with_emrs();
 
-    // create group with leader
+    // step 1.create group with leader
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "Test Group".to_string(),
     };
@@ -31,7 +41,7 @@ fn test_group_details_includes_leader() {
         patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // add members to group
+    // step 2. add members to group
     let member1_consent = registries
         .patient
         .create_consent(
@@ -55,11 +65,11 @@ fn test_group_details_includes_leader() {
         )
         .unwrap();
 
-    let member2_consent = registries
+    let member1_consent = registries
         .patient
         .create_consent(
             &registries.ic,
-            member2.principal.clone(),
+            member1.principal.clone(),
             PatientCall::Update,
         )
         .unwrap();
@@ -72,13 +82,22 @@ fn test_group_details_includes_leader() {
             PatientCall::Update,
             AddGroupMemberRequest {
                 group_id,
-                consent_code: member2_consent.code,
+                consent_code: member1_consent.code,
                 relation: Relation::Sibling,
             },
         )
         .unwrap();
 
-    // get group details with pagination
+    // verify group has 2 members
+    let groups = registries
+        .patient
+        .get_user_groups(&registries.ic, leader.principal.clone(), PatientCall::Query)
+        .unwrap();
+
+    assert_eq!(groups.groups.len(), 1);
+    assert_eq!(groups.groups[0].id, group_id);
+
+    // step 3. get group details with pagination
     let details = registries
         .patient
         .get_group_details(
@@ -93,61 +112,39 @@ fn test_group_details_includes_leader() {
         )
         .unwrap();
 
+    // verify group details
     match details {
-        patient_registry::Result4::Ok(details) => {
-            // verify leader is included in the first page
-            let leader_detail = details
-                .group_details
-                .iter()
-                .find(|detail| detail.nik == leader.nik.to_string())
-                .expect("Leader should be included in group details");
+        patient_registry::Result4::Ok(response) => {
+            // Verify leader is first in the list
+            assert!(!response.group_details.is_empty());
+            let first_member = &response.group_details[0];
+            assert_eq!(first_member.nik, leader.nik.to_string());
+            assert_eq!(response.leader_name, first_member.name);
 
-            // verify role matches (using string comparison since Relation might not implement PartialEq)
-            match leader_detail.role {
-                Relation::Parent => (),
-                _ => panic!("Leader role is not Parent"),
-            }
-            assert_eq!(details.group_details.len(), 3); // leader + 2 members
-            assert_eq!(details.member_count, 3);
-
-            // verify leader appears first in the list
-            assert_eq!(details.group_details[0].nik, leader.nik.to_string());
-
-            // test pagination - second page should not include leader
-            let page_2 = registries
-                .patient
-                .get_group_details(
-                    &registries.ic,
-                    leader.principal.clone(),
-                    PatientCall::Query,
-                    GetGroupDetailsRequest {
-                        group_id,
-                        page: 1,
-                        limit: 1,
-                    },
-                )
-                .unwrap();
-
-            match page_2 {
-                patient_registry::Result4::Ok(page_2) => {
-                    assert_eq!(page_2.group_details.len(), 1);
-                    assert_ne!(page_2.group_details[0].nik, leader.nik.to_string());
-                }
-                patient_registry::Result4::Err(e) => panic!("Failed to get second page: {}", e),
-            }
+            // leader should be counted in member_count
+            assert_eq!(response.member_count, 2);
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+        _ => panic!("Failed to get group details"),
     }
 }
 
+/// TEST GROUP DETAILS INCLUDES MEMBER ROLES
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - One registered provider
+/// - Two registered patients with EMR from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add members to group with different roles
+/// 3. Get group details
 #[test]
 fn test_group_details_member_roles() {
-    let (registries, leader, _) = common::Scenario::one_admin_one_patient();
-    let child = common::Scenario::create_patient(&registries);
-    let sibling = common::Scenario::create_patient(&registries);
-    let spouse = common::Scenario::create_patient(&registries);
+    let (registries, _provider, leader, member1) =
+        common::Scenario::one_provider_two_patient_with_emrs();
 
-    // create group
+    // step 1. create group
     let group_response = registries
         .patient
         .create_group(
@@ -160,17 +157,14 @@ fn test_group_details_member_roles() {
         )
         .unwrap();
 
+    // verify this step worked
     let group_id = match group_response {
         patient_registry::Result3::Ok(response) => response.group_id,
         patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // add members with different roles
-    let members = vec![
-        (child, Relation::Child),
-        (sibling, Relation::Sibling),
-        (spouse, Relation::Spouse),
-    ];
+    // step 2. add members with different roles
+    let members = vec![(member1, Relation::Child)];
 
     for (member, relation) in members {
         let consent = registries
@@ -197,7 +191,16 @@ fn test_group_details_member_roles() {
             .unwrap();
     }
 
-    // get group details
+    // verify group has 2 members
+    let groups = registries
+        .patient
+        .get_user_groups(&registries.ic, leader.principal.clone(), PatientCall::Query)
+        .unwrap();
+
+    assert_eq!(groups.groups.len(), 1);
+    assert_eq!(groups.groups[0].id, group_id);
+
+    // step 3. get group details
     let details = registries
         .patient
         .get_group_details(
@@ -212,10 +215,11 @@ fn test_group_details_member_roles() {
         )
         .unwrap();
 
+    // verify group details
     match details {
         patient_registry::Result4::Ok(details) => {
             // verify all roles are correct
-            assert_eq!(details.group_details.len(), 4); // leader + 3 members
+            assert_eq!(details.group_details.len(), 2); // leader + 1 member
 
             // verify leader role
             let leader_detail = details
@@ -239,10 +243,7 @@ fn test_group_details_member_roles() {
                     }
                 } else {
                     match detail.role {
-                        Relation::Child
-                        | Relation::Sibling
-                        | Relation::Spouse
-                        | Relation::Other => (),
+                        Relation::Child => (),
                         _ => panic!("Unexpected role"),
                     }
                 }

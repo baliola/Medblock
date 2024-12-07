@@ -100,7 +100,9 @@ fn only_canister_owner() -> Result<(), String> {
 
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
-        false => Err("only canister controller can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only canister controller can call this method. You need to register as Patient Registry Canister Owner to call this method.".to_string(),
+        ),
     }
 }
 
@@ -110,7 +112,9 @@ fn only_patient() -> Result<(), String> {
 
     match with_state(|s| s.registry.owner_map.is_valid_owner(&caller)) {
         true => Ok(()),
-        false => Err("only patient can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only patient can call this method. Are you registered as patient?".to_string(),
+        ),
     }
 }
 // guard function
@@ -119,7 +123,9 @@ fn only_provider_registry() -> Result<(), String> {
 
     match with_state(|s| s.config.get().is_provider_registry(&caller)) {
         true => Ok(()),
-        false => Err("only provider registry can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only provider registry can call this method. Is your principal registered as provider?".to_string(),
+        ),
     }
 }
 
@@ -129,7 +135,9 @@ fn only_authorized_metrics_collector() -> Result<(), String> {
 
     with_state(|s| {
         if !s.config.get().is_authorized_metrics_collector(&caller) {
-            return Err("only authorized metrics collector can call this method".to_string());
+            return Err(
+                "[PATIENT_REGISTRY_LIB] Only authorized metrics collector can call this method. Is your principal registered as authorized metrics collector?".to_string(),
+            );
         }
 
         Ok(())
@@ -142,7 +150,9 @@ fn only_admin() -> Result<(), String> {
 
     match with_state(|s| s.registry.admin_map.is_valid_admin(&caller)) {
         true => Ok(()),
-        false => Err("only admin can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only admin can call this method. Are you registered as Patient Registry Admin?".to_string(),
+        ),
     }
 }
 
@@ -152,7 +162,9 @@ fn only_controller() -> Result<(), String> {
 
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
-        false => Err("only controller can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only controller can call this method. Are you registered as Patient Registry Controller?".to_string(),
+        ),
     }
 }
 
@@ -166,7 +178,9 @@ fn only_admin_or_controller() -> Result<(), String> {
     if is_admin || is_controller {
         Ok(())
     } else {
-        Err("only admin or controller can call this method".to_string())
+        Err(
+            "[PATIENT_REGISTRY_LIB] Only admin or controller can call this method. Are you registered as Patient Registry Admin or Controller?".to_string(),
+        )
     }
 }
 
@@ -182,7 +196,9 @@ fn only_admin_or_controller_or_patient() -> Result<(), String> {
     if is_admin || is_controller || is_patient {
         Ok(())
     } else {
-        Err("only admin or controller or patient can call this method".to_string())
+        Err(
+            "[PATIENT_REGISTRY_LIB] Only admin or controller or patient can call this method. Are you registered as Patient Registry Admin or Controller or Patient?".to_string(),
+        )
     }
 }
 
@@ -1009,20 +1025,20 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
     with_state_mut(|s| {
-        // Get the group first
+        // get the group first
         let group = s
             .registry
             .group_map
             .get_group(req.group_id)
             .ok_or("Group not found")?;
 
-        // Get all access pairs for this group
+        // get all access pairs for this group
         let access_pairs = s
             .registry
             .group_access_map
             .get_group_access_pairs(req.group_id);
 
-        // Revoke all access pairs involving the leaving member
+        // revoke all access pairs involving the leaving member
         for (granter, grantee) in access_pairs {
             if granter == nik || grantee == nik {
                 s.registry
@@ -1032,18 +1048,17 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             }
         }
 
-        // Check if this is the last member or if it's the leader and there's only one other member
-        let should_dissolve =
-            group.members.len() <= 1 || (group.leader == nik && group.members.len() <= 2);
+        // check if this will be the last member after leaving
+        let should_dissolve = group.members.len() == 1;
 
         if should_dissolve {
-            // If dissolving, get all access pairs again (in case they changed)
+            // if dissolving, get all access pairs again (in case they changed)
             let access_pairs = s
                 .registry
                 .group_access_map
                 .get_group_access_pairs(req.group_id);
 
-            // Revoke all remaining access pairs for this group
+            // revoke all remaining access pairs for this group
             for (granter, grantee) in access_pairs {
                 s.registry
                     .group_access_map
@@ -1051,13 +1066,30 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
                     .map_err(|e| format!("Failed to revoke access: {}", e))?;
             }
 
-            // Then dissolve the group
+            // then dissolve the group
             s.registry
                 .group_map
                 .dissolve_group(req.group_id)
                 .map_err(|e| format!("Failed to dissolve group: {}", e))?;
+        } else if group.leader == nik {
+            // Transfer leadership to another member
+            let new_leader = group
+                .members
+                .iter()
+                .find(|&member| member != &nik)
+                .ok_or("No other member to transfer leadership to")?;
+
+            s.registry
+                .group_map
+                .transfer_leadership(req.group_id, &new_leader)
+                .map_err(|e| format!("Failed to transfer leadership: {:?}", e))?;
+
+            s.registry
+                .group_map
+                .remove_member(req.group_id, &nik)
+                .map_err(|e| format!("Failed to remove member: {:?}", e))?;
         } else {
-            // Just remove the member from the group
+            // Regular member leaving
             s.registry
                 .group_map
                 .remove_member(req.group_id, &nik)
@@ -1363,6 +1395,43 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         group_name,
         leader_name,
         total_pages,
+    ))
+}
+
+#[ic_cdk::query(guard = "only_admin")]
+fn get_group_details_admin(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsResponse, String> {
+    let group =
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+
+    let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
+        .map_err(|e| format!("Failed to get leader info: {:?}", e))?
+        .name()
+        .clone();
+
+    Ok(GetGroupDetailsResponse::new(
+        group
+            .member_relations
+            .iter()
+            .map(|(nik, relation)| {
+                let patient = with_state(|s| s.registry.get_patient_info(nik.clone())).unwrap();
+                let gender = match patient {
+                    Patient::V1(ref v1) => {
+                        AsciiRecordsKey::<64>::new(v1.gender.to_string()).unwrap()
+                    }
+                };
+                GroupDetail {
+                    nik: nik.clone(),
+                    name: patient.name().clone(),
+                    gender,
+                    age: 0,
+                    role: relation.clone(),
+                }
+            })
+            .collect(),
+        group.members.len() as u64,
+        group.name,
+        leader_name,
+        (group.members.len() as u64 + req.limit - 1) / req.limit,
     ))
 }
 

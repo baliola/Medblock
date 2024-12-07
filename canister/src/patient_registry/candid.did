@@ -264,6 +264,7 @@ service : () -> {
       GetInformationResponse,
     ) query;
   get_group_details : (GetGroupDetailsRequest) -> (Result_4) query;
+  get_group_details_admin : (GetGroupDetailsRequest) -> (Result_4) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
   get_patient_info_with_consent : (FinishSessionRequest) -> (

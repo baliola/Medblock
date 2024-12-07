@@ -179,7 +179,9 @@ fn test_claim_nonexistent_consent_for_group() {
 }
 
 #[test]
-#[should_panic(expected = "only patient can call this method")]
+#[should_panic(
+    expected = "[PATIENT_REGISTRY_LIB] Only patient can call this method. Are you registered as patient?"
+)]
 fn test_claim_consent_for_group_unauthorized() {
     let (registries, _, _) = common::Scenario::one_admin_one_patient();
     let patient2 = common::Scenario::create_patient(&registries);

@@ -36,7 +36,9 @@ fn test_patient_retrieval() {
 }
 
 #[test]
-#[should_panic(expected = "Error: \"only admin or controller can call this method\"")]
+#[should_panic(
+    expected = "Error: \"[PATIENT_REGISTRY_LIB] Only admin or controller can call this method. Are you registered as Patient Registry Admin or Controller?\""
+)]
 fn test_admin_patient_list() {
     let (registries, _, _) = common::Scenario::one_admin_one_patient();
     let unauthorized_admin = common::random_identity();
@@ -80,7 +82,9 @@ fn test_search_patient_admin() {
 }
 
 #[test]
-#[should_panic(expected = "Error: \"only admin or controller can call this method\"")]
+#[should_panic(
+    expected = "Error: \"[PATIENT_REGISTRY_LIB] Only admin or controller can call this method. Are you registered as Patient Registry Admin or Controller?\""
+)]
 fn test_search_patient_admin_unauthorized() {
     let (registries, patient, _) = common::Scenario::one_admin_one_patient();
     let unauthorized_principal = common::random_identity();
@@ -133,7 +137,7 @@ fn test_nik_duplication() {
 #[test]
 fn test_multiple_nik_registration() {
     let registries = common::prepare();
-    
+
     // Create first patient using the helper
     let patient = common::Scenario::create_patient(&registries);
 

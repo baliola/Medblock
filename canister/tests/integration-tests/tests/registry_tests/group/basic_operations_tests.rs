@@ -1,11 +1,24 @@
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 use integration_tests::declarations::{
     patient_registry::pocket_ic_bindings::Call as PatientCall,
-    patient_registry::{self, Relation},
+    patient_registry::{self, GetGroupDetailsRequest, Relation},
 };
 
 use crate::common;
 
+/// TEST GROUP CREATION AND EMR ACCESS
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - One registered provider
+/// - One registered patient with EMR from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add member to group
+/// 3. Grant access
+/// 4. Revoke access
+/// 5. Remove member from group
 #[test]
 fn test_group_creation_and_emr_access() {
     let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
@@ -278,9 +291,10 @@ fn test_group_retrieval() {
 
 #[test]
 fn test_dissolve_group() {
-    let (registries, leader, _) = common::Scenario::one_admin_one_patient();
+    let (registries, leader, admin) = common::Scenario::one_admin_one_patient();
     let member1 = common::Scenario::create_patient(&registries);
 
+    // step 1. create group
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "test_group".to_string(),
     };
@@ -300,6 +314,7 @@ fn test_dissolve_group() {
         patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
+    // step 2. add member to group
     let add_member_req = patient_registry::AddGroupMemberRequest {
         group_id,
         consent_code: registries
@@ -324,7 +339,7 @@ fn test_dissolve_group() {
         )
         .unwrap();
 
-    // leader leaves group (should dissolve group)
+    // step 3. leader leaves group (group should exist and have 1 member)
     let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
 
     registries
@@ -337,27 +352,66 @@ fn test_dissolve_group() {
         )
         .unwrap();
 
-    // verify group no longer exists
-    let group_details_req = patient_registry::GetGroupDetailsRequest {
-        group_id,
-        page: 0,
-        limit: 10,
-    };
-
-    let result = registries
+    // step 4. verify group has 1 member and make him leave
+    let groups = registries
         .patient
-        .get_group_details(
+        .get_user_groups(
             &registries.ic,
             member1.principal.clone(),
             PatientCall::Query,
-            group_details_req,
         )
         .unwrap();
 
-    assert!(
-        matches!(result, patient_registry::Result4::Err(_)),
-        "group should no longer exist"
-    );
+    assert_eq!(groups.groups.len(), 1);
+
+    // step 5. make member1 leave group (should dissolve group)
+    let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
+
+    registries
+        .patient
+        .leave_group(
+            &registries.ic,
+            member1.principal.clone(),
+            PatientCall::Update,
+            leave_group_req,
+        )
+        .unwrap();
+
+    // step 6. verify group no longer exists, but since we wont have a way to check for group existence
+    // we will check for group details through a direct call to the groupmap
+    let result = registries
+        .patient
+        .get_group_details_admin(
+            &registries.ic,
+            admin,
+            PatientCall::Query,
+            GetGroupDetailsRequest {
+                group_id,
+                limit: 10,
+                page: 0,
+            },
+        )
+        .unwrap();
+
+    match result {
+        patient_registry::Result4::Ok(group_details) => {
+            assert_eq!(
+                group_details.group_details.len(),
+                0,
+                "Group details should be empty"
+            );
+            assert_eq!(group_details.total_pages, 0, "Total pages should be 0");
+            assert_eq!(group_details.member_count, 0, "Member count should be 0");
+            assert_eq!(group_details.group_name, "", "Group name should be empty");
+            assert_eq!(group_details.leader_name, "", "Leader name should be empty");
+        }
+        patient_registry::Result4::Err(e) => {
+            assert!(
+                e.contains("Group not found"),
+                "Expected group not found error"
+            );
+        }
+    }
 }
 
 #[test]

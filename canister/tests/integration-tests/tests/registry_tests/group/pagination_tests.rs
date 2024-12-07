@@ -1,6 +1,8 @@
 use integration_tests::declarations::{
     patient_registry::pocket_ic_bindings::Call as PatientCall,
     patient_registry::{self, KycStatus, Relation},
+    provider_registry::pocket_ic_bindings::Call as ProviderCall,
+    provider_registry::{self},
 };
 
 use crate::common;
@@ -338,6 +340,11 @@ fn test_get_group_details_pagination() {
 
     match first_page {
         patient_registry::Result4::Ok(response) => {
+            // Leader should always be in first page
+            assert!(!response.group_details.is_empty());
+            assert_eq!(response.group_details[0].nik, patient1.nik.to_string());
+            assert!(!response.leader_name.is_empty());
+
             assert_eq!(response.group_details.len(), 2);
             assert_eq!(response.member_count, 6); // 5 members + 1 leader
             assert_eq!(response.total_pages, 3);
@@ -385,5 +392,260 @@ fn test_get_group_details_pagination() {
             }
         }
         patient_registry::Result4::Err(e) => panic!("Failed to get first page: {}", e),
+    }
+}
+
+#[test]
+fn test_group_leader_transfer() {
+    let (registries, _provider, initial_leader, member) =
+        common::Scenario::one_provider_two_patient_with_emrs();
+
+    // step 1. create group (should have leader as first member)
+    let create_group_req = patient_registry::CreateGroupRequest {
+        name: "Test Leader Transfer".to_string(),
+    };
+
+    let group_response = registries
+        .patient
+        .create_group(
+            &registries.ic,
+            initial_leader.principal.clone(),
+            PatientCall::Update,
+            create_group_req,
+        )
+        .unwrap();
+
+    let group_id = match group_response {
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+    };
+
+    // step 2. verify initial state (only leader)
+    let initial_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            initial_leader.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match initial_details {
+        patient_registry::Result4::Ok(response) => {
+            assert_eq!(
+                response.member_count, 1,
+                "New group should only have leader"
+            );
+            assert_eq!(response.group_details.len(), 1);
+            assert_eq!(response.leader_name, response.group_details[0].name);
+        }
+        patient_registry::Result4::Err(e) => panic!("Failed to get initial details: {}", e),
+    }
+
+    // step 3. add a member
+    let consent = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            member.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    registries
+        .patient
+        .add_group_member(
+            &registries.ic,
+            initial_leader.principal.clone(),
+            PatientCall::Update,
+            patient_registry::AddGroupMemberRequest {
+                group_id,
+                consent_code: consent.code,
+                relation: Relation::Sibling,
+            },
+        )
+        .unwrap();
+
+    // step 4. leader leaves group (should transfer leadership to member)
+    registries
+        .patient
+        .leave_group(
+            &registries.ic,
+            initial_leader.principal.clone(),
+            PatientCall::Update,
+            patient_registry::LeaveGroupRequest { group_id },
+        )
+        .unwrap();
+
+    // verify leader left group by counting amount
+    let leader_left_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            member.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match leader_left_details {
+        patient_registry::Result4::Ok(response) => {
+            assert_eq!(
+                response.member_count, 1,
+                "Leader should have left the group and only 1 member should be left"
+            );
+        }
+        patient_registry::Result4::Err(e) => panic!("Failed to get leader left details: {}", e),
+    }
+
+    // step 5. new leader should now be that member
+    let new_leader_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            member.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match new_leader_details {
+        patient_registry::Result4::Ok(response) => {
+            assert_eq!(response.group_details.len(), 1);
+            assert_eq!(response.leader_name, response.group_details[0].name);
+        }
+        patient_registry::Result4::Err(e) => panic!("Failed to get new leader details: {}", e),
+    }
+
+    // step 6. new leader leaves group (should dissolve the group)
+    registries
+        .patient
+        .leave_group(
+            &registries.ic,
+            member.principal.clone(),
+            PatientCall::Update,
+            patient_registry::LeaveGroupRequest { group_id },
+        )
+        .unwrap();
+
+    // verify group is dissolved
+    let final_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            member.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match final_details {
+        patient_registry::Result4::Ok(_) => panic!("Group should be dissolved when leader leaves"),
+        patient_registry::Result4::Err(e) => {
+            assert!(
+                e.contains("Group not found") || e.contains("Group does not exist"),
+                "Expected group not found error, got: {}",
+                e
+            )
+        }
+    }
+}
+
+#[test]
+fn test_group_dissolution() {
+    let (registries, leader, _) = common::Scenario::one_admin_one_patient();
+
+    // create group
+    let create_group_req = patient_registry::CreateGroupRequest {
+        name: "Test Dissolution".to_string(),
+    };
+
+    let group_response = registries
+        .patient
+        .create_group(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Update,
+            create_group_req,
+        )
+        .unwrap();
+
+    let group_id = match group_response {
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+    };
+
+    // verify group exists
+    let initial_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match initial_details {
+        patient_registry::Result4::Ok(_) => (),
+        patient_registry::Result4::Err(e) => panic!("Failed to get initial details: {}", e),
+    }
+
+    // leader (last member) leaves group
+    registries
+        .patient
+        .leave_group(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Update,
+            patient_registry::LeaveGroupRequest { group_id },
+        )
+        .unwrap();
+
+    // verify group is dissolved (should return error)
+    let final_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    match final_details {
+        patient_registry::Result4::Ok(_) => panic!("Group should be dissolved"),
+        patient_registry::Result4::Err(e) => {
+            assert!(
+                e.contains("Group not found") || e.contains("Group does not exist"),
+                "Expected group not found error, got: {}",
+                e
+            )
+        }
     }
 }

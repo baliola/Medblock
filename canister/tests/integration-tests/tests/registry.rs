@@ -689,7 +689,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Error: \"provider is suspended\"")]
+    #[should_panic(expected = "Error: \"[PROVIDER_REGISTRY_LIB] Provider is suspended.\"")]
     fn test_suspended_provider_operations() {
         let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
         println!("DEBUG: Test setup complete with provider: {}", provider.0);

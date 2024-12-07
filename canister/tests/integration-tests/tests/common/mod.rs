@@ -431,6 +431,73 @@ impl Scenario {
         )
     }
 
+    pub fn one_provider_two_patient_with_emrs() -> (Registries, Provider, Patient, Patient) {
+        let registries = prepare();
+        let patient1 = Self::create_patient(&registries);
+        let patient2 = Self::create_patient(&registries);
+        let provider = Provider(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries
+            .provider
+            .register_new_provider(
+                &registries.ic,
+                registries.controller.clone(),
+                ProviderCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // issue EMRs for both patients
+        let emr_req1 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key1".to_string(),
+                value: "value1".to_string(),
+            }],
+            user_id: patient1.nik.clone().to_string(),
+        };
+
+        let emr_req2 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key2".to_string(),
+                value: "value2".to_string(),
+            }],
+            user_id: patient2.nik.clone().to_string(),
+        };
+
+        // issue EMRs for both patients
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req1,
+            )
+            .unwrap();
+
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req2,
+            )
+            .unwrap();
+
+        (registries, provider, patient1, patient2)
+    }
+
     pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
         let registries = prepare();
 
