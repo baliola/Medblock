@@ -12,22 +12,21 @@ root=$(git rev-parse --show-toplevel)
 cd $root/canister
 
 bash $root/canister/setup.sh
-
-# This script deploys the canister on a VPS with public access
+# This script deploys the canister locally.
 FE_PORT=4943
-PUBLIC_IP=$(curl -s ifconfig.me)
-# kill any existing process on the port
 lsof -i tcp:${FE_PORT} | awk 'NR!=1 {print $2}' | xargs kill || true
+
+# Get the public IP address
+PUBLIC_IP=$(curl -s ifconfig.me)
 
 # Check if --background flag is passed
 if [[ "$1" == "--background" ]]; then
-    echo -e "${BLUE}[INFO]${NC} Starting dfx in background mode with public access..."
-    # bind to all interfaces (0.0.0.0) to allow external connections
-    dfx start --host 0.0.0.0:${FE_PORT} --background
+    echo -e "${BLUE}[INFO]${NC} Starting dfx in background mode..."
+    dfx start --host 0.0.0.0:8000 --background
 else
-    echo -e "${BLUE}[INFO]${NC} Starting dfx in concurrent mode with public access..."
+    echo -e "${BLUE}[INFO]${NC} Starting dfx in concurrent mode..."
     # Start dfx in the background but keep output visible
-    (dfx start --host 0.0.0.0:${FE_PORT} 2>&1 | sed 's/^/[CANISTER] /') &
+    (DFX_BIND_ADDRESS=0.0.0.0:8000 dfx start 2>&1 | sed 's/^/[CANISTER] /') &
     DFX_PID=$!
     # Store the PID so we can terminate it later if needed
     echo $DFX_PID >/tmp/dfx.pid
@@ -37,7 +36,6 @@ else
     sleep 5
 fi
 
-# rest of the deployment process remains the same as local.sh
 echo -e "${GREEN}[INFO]${NC} Installing canisters..."
 dfx canister install emr_registry --wasm $root/canister/target/wasm32-unknown-unknown/release/emr_registry.wasm --mode=install -y
 
@@ -52,6 +50,7 @@ DEFAULT_IDENTITY="2vxsx-fae"
 emr_registry_id=$(dfx canister id emr_registry)
 patient_registry_id=$(dfx canister id patient_registry)
 provider_registry_id=$(dfx canister id provider_registry)
+# Binding canisters to each other through principal updates
 
 echo -e "${GREEN}[INFO]${NC} Adding anonymous principal as controllers"
 bash $root/canister/scripts/utils/add_controller.sh emr_registry "$DEFAULT_IDENTITY" local
@@ -76,16 +75,13 @@ dfx canister call --network=local provider_registry update_patient_registry_prin
 echo -e "${GREEN}[INFO]${NC} Deploying Internet Identity"
 dfx deploy internet_identity --network=local
 
-# Generate URLs for testing with public IP
+# Generate URLs for testing
 candid_ui=$(dfx canister id __Candid_UI)
-basepath="http://${PUBLIC_IP}:4943/?canisterId=$candid_ui"
+basepath="http://$PUBLIC_IP:4943/?canisterId=$candid_ui"
 emr_registry_ui="$basepath&id=$emr_registry_id"
 provider_registry_ui="$basepath&id=$provider_registry_id"
 patient_registry_ui="$basepath&id=$patient_registry_id"
 NIK="3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709"
-
-echo -e "\n${YELLOW}[SECURITY WARNING]${NC} Your canister is now accessible from the public internet at ${PUBLIC_IP}:${FE_PORT}"
-echo -e "Make sure your firewall rules are properly configured!\n"
 
 echo -e "\n${BLUE}[DEPLOYMENT INFO]${NC}"
 echo -e "Default identity: ${GREEN}$DEFAULT_IDENTITY${NC}"
@@ -93,4 +89,5 @@ echo -e "Dummy NIK: ${GREEN}$NIK${NC}"
 echo -e "\nCanister UIs:"
 echo -e "EMR Registry: ${GREEN}$emr_registry_ui${NC}"
 echo -e "Provider Registry: ${GREEN}$provider_registry_ui${NC}"
-echo -e "Patient Registry: ${GREEN}$patient_registry_ui${NC}\n"
+echo -e "Patient Registry: ${GREEN}$patient_registry_ui${NC}"
+echo -e "\n${YELLOW}[IMPORTANT]${NC} Make sure your VPS firewall allows incoming traffic on ports 4943 and 8000\n"
