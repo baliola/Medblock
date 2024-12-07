@@ -49,6 +49,7 @@ build_canister() {
     local canister_name=$1
     local wasm_path=$wasm_dir/$canister_name.wasm
     local did_path=$root/src/$canister_name/candid.did
+    local start_time=$(date +%s.%N)
 
     log_process "Building ${MAGENTA}$canister_name${NC} canister..."
     dfx build $canister_name >/dev/null 2>&1
@@ -69,7 +70,9 @@ build_canister() {
         -o "$wasm_path" \
         shrink
 
-    log_success "Successfully processed ${MAGENTA}$canister_name${NC}"
+    local end_time=$(date +%s.%N)
+    local build_time=$(echo "$end_time - $start_time" | bc)
+    log_success "Successfully processed ${MAGENTA}$canister_name${NC} in ${GREEN}$(printf "%.2f" $build_time)s${NC}"
     echo # empty line for better readability
 }
 
@@ -77,10 +80,15 @@ build_canister() {
 if [ "$canister" == "--all" ]; then
     log_info "Building all canisters..."
     echo # empty line for better readability
+    total_start_time=$(date +%s.%N)
+
     bash $root/build.sh $emr_canister
     bash $root/build.sh $provider_canister
     bash $root/build.sh $patient_canister
-    log_success "All canisters built successfully"
+
+    total_end_time=$(date +%s.%N)
+    total_time=$(echo "$total_end_time - $total_start_time" | bc)
+    log_success "All canisters built successfully in ${GREEN}$(printf "%.2f" $total_time)s${NC}"
     exit 0
 fi
 
@@ -93,10 +101,14 @@ fi
 
 cd $root
 
+total_start_time=$(date +%s.%N)
+
 # build EMR registry first since other canisters depend on it
 if [ "$canister" == "$emr_canister" ]; then
     build_canister $emr_canister
-    log_success "EMR Registry build completed"
+    total_end_time=$(date +%s.%N)
+    total_time=$(echo "$total_end_time - $total_start_time" | bc)
+    log_success "EMR Registry build completed in ${GREEN}$(printf "%.2f" $total_time)s${NC}"
     exit 0
 fi
 
@@ -107,4 +119,6 @@ build_canister $emr_canister
 log_info "Building target canister..."
 build_canister $canister
 
-log_success "Build process completed successfully ✨"
+total_end_time=$(date +%s.%N)
+total_time=$(echo "$total_end_time - $total_start_time" | bc)
+log_success "Build process completed successfully in ${GREEN}$(printf "%.2f" $total_time)s${NC} ✨"

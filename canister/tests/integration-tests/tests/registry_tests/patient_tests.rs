@@ -65,66 +65,61 @@ fn test_list_patients() {
     let (registries, provider, patient1, patient2) =
         common::Scenario::one_provider_two_patient_with_emrs();
 
-    // create a consent as one patient
-    let create_consent_response = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    // get the consent code
-    let consent_code = match create_consent_response {
-        patient_registry::ClaimConsentRequest { code } => code,
-    };
-
-    // claim the consent as the provider to establish a session
-    let consent_req = patient_registry::ClaimConsentRequest { code: consent_code };
-
-    registries
-        .patient
-        .claim_consent(
-            &registries.ic,
-            provider.0.clone(),
-            PatientCall::Update,
-            consent_req,
-        )
-        .unwrap();
-
-    // create a consent as the other patient
-    let create_consent_response = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient2.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    // get the consent code
-    let consent_code = match create_consent_response {
-        patient_registry::ClaimConsentRequest { code } => code,
-    };
-
-    // claim the consent as the provider to establish a session
-    let consent_req = patient_registry::ClaimConsentRequest { code: consent_code };
-
-    registries
-        .patient
-        .claim_consent(
-            &registries.ic,
-            provider.0.clone(),
-            PatientCall::Update,
-            consent_req,
-        )
-        .unwrap();
+    // establish sessions by claiming consents for both patients
+    common::Scenario::claim_consent_for_provider(&registries, &provider, &patient1);
+    common::Scenario::claim_consent_for_provider(&registries, &provider, &patient2);
 
     // now try to list patients with the provider's principal
     let result = registries
         .patient
         .patient_list(&registries.ic, provider.0.clone(), PatientCall::Query)
+        .unwrap();
+
+    assert_eq!(result.patients.len(), 2);
+}
+
+/// TEST LISTING PATIENTS AS ADMIN
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - Two registered patients with EMRs from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. List patients using admin privileges
+/// 2. Verify the list includes the two patients
+#[test]
+fn test_list_patients_admin() {
+    let (registries, provider, admin_principal, patient2) =
+        common::Scenario::one_provider_two_patient_with_emrs();
+
+    // establish sessions by claiming consents for both patients
+    common::Scenario::claim_consent_for_provider(&registries, &provider, &admin_principal);
+    common::Scenario::claim_consent_for_provider(&registries, &provider, &patient2);
+
+    // bind the admin_principal as admin
+    let args = patient_registry::BindAdminRequest {
+        nik: admin_principal.nik.to_string(),
+        principal: admin_principal.principal,
+    };
+
+    registries
+        .patient
+        .bind_admin(
+            &registries.ic,
+            registries.controller.clone(),
+            PatientCall::Update,
+            args,
+        )
+        .unwrap();
+
+    // now try to list patients with admin privileges
+    let result = registries
+        .patient
+        .get_patient_list_admin(
+            &registries.ic,
+            admin_principal.principal,
+            PatientCall::Query,
+        )
         .unwrap();
 
     assert_eq!(result.patients.len(), 2);

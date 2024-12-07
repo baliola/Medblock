@@ -695,4 +695,40 @@ impl Scenario {
 
         patient
     }
+
+    /// claims consent for a provider from a patient
+    /// this establishes a session between the provider and patient
+    pub fn claim_consent_for_provider(
+        registries: &Registries,
+        provider: &Provider,
+        patient: &Patient,
+    ) {
+        // create a consent as the patient
+        let create_consent_response = registries
+            .patient
+            .create_consent(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+            )
+            .unwrap();
+
+        // get the consent code
+        let consent_code = match create_consent_response {
+            patient_registry::ClaimConsentRequest { code } => code,
+        };
+
+        // claim the consent as the provider to establish a session
+        let consent_req = patient_registry::ClaimConsentRequest { code: consent_code };
+
+        registries
+            .patient
+            .claim_consent(
+                &registries.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                consent_req,
+            )
+            .unwrap();
+    }
 }
