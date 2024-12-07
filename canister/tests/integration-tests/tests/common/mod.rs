@@ -457,6 +457,10 @@ impl Scenario {
             )
             .unwrap();
 
+        // Advance time and tick to ensure provider registration is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
         // issue EMRs for both patients
         let emr_req1 = declarations::provider_registry::IssueEmrRequest {
             emr: vec![declarations::provider_registry::EmrFragment {
@@ -474,7 +478,7 @@ impl Scenario {
             user_id: patient2.nik.clone().to_string(),
         };
 
-        // issue EMRs for both patients
+        // issue EMRs for both patients and ensure they complete
         registries
             .provider
             .issue_emr(
@@ -485,6 +489,10 @@ impl Scenario {
             )
             .unwrap();
 
+        // Advance time and tick to ensure first EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
         registries
             .provider
             .issue_emr(
@@ -494,6 +502,10 @@ impl Scenario {
                 emr_req2,
             )
             .unwrap();
+
+        // Advance time and tick to ensure second EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
 
         (registries, provider, patient1, patient2)
     }

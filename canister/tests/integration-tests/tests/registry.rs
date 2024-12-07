@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use candid::Principal;
 use integration_tests::declarations::{
@@ -9,7 +9,6 @@ use integration_tests::declarations::{
 };
 
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
-use integration_tests::declarations::patient_registry::KycStatus;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
 mod common;
@@ -149,7 +148,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -202,7 +201,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -215,7 +214,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -245,7 +244,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -275,7 +274,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -332,7 +331,7 @@ mod test {
             )
             .unwrap();
 
-        let session_id = response.session_id;
+        let _session_id = response.session_id;
 
         let response = scenario
             .registries
