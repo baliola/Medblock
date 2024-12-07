@@ -16,7 +16,7 @@ use api::{
     UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest,
     ViewGroupMemberEmrInformationRequest,
 };
-use candid::{Decode, Encode};
+use candid::{Decode, Encode, Principal};
 use canister_common::{
     common::{guard::verified_caller, AsciiRecordsKey, ProviderId},
     id_generator::IdGenerator,
@@ -987,8 +987,13 @@ fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
 
 #[ic_cdk::update(guard = "only_canister_owner")]
 fn bind_admin(req: BindAdminRequest) -> Result<(), String> {
-    with_state_mut(|s| s.registry.admin_map.rebind(req.principal, req.nik))
+    with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik))
         .map_err(|e| format!("Failed to bind admin: {:?}", e))
+}
+
+#[ic_cdk::query(guard = "only_controller")]
+fn check_admin(principal: Principal) -> bool {
+    with_state(|s| s.registry.admin_map.is_valid_admin(&principal))
 }
 
 #[ic_cdk::update(guard = "only_patient")]
@@ -1399,7 +1404,7 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     ))
 }
 
-#[ic_cdk::query(guard = "only_admin")]
+#[ic_cdk::query(guard = "only_admin_or_controller")]
 fn get_group_details_admin(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsResponse, String> {
     let group =
         with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;

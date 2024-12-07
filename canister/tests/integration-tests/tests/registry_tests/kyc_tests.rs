@@ -5,6 +5,17 @@ use integration_tests::declarations::patient_registry::{
     V1,
 };
 
+/// TEST KYC STATUS TRANSITIONS
+///
+/// *PRECONDITIONS*
+/// - One admin
+/// - One patient
+///
+/// *TEST STEPS*
+/// 1. Register patient (link NIK to Principal)
+/// 2. Set initial patient info
+/// 3. Admin denies KYC
+/// 4. Update patient info after KYC denial
 #[test]
 fn test_kyc_status_transitions() {
     let (registries, patient, admin) = Scenario::one_admin_one_patient();

@@ -289,10 +289,21 @@ fn test_group_retrieval() {
     assert_eq!(groups_after.groups.len(), 0);
 }
 
+/// TEST DISOLVING GROUP
+///
+/// *PRE-REQUISITES*:
+/// - One provider
+/// - Two patients with EMRs
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add member to group
+/// 3. Leader leaves group
+/// 4. Member leaves group
 #[test]
 fn test_dissolve_group() {
-    let (registries, leader, admin) = common::Scenario::one_admin_one_patient();
-    let member1 = common::Scenario::create_patient(&registries);
+    let (registries, _provider, leader, patient1) =
+        common::Scenario::one_provider_two_patient_with_emrs();
 
     // step 1. create group
     let create_group_req = patient_registry::CreateGroupRequest {
@@ -309,6 +320,7 @@ fn test_dissolve_group() {
         )
         .unwrap();
 
+    // verify group creation is successful
     let group_id = match group_response {
         patient_registry::Result3::Ok(response) => response.group_id,
         patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
@@ -321,7 +333,7 @@ fn test_dissolve_group() {
             .patient
             .create_consent(
                 &registries.ic,
-                member1.principal.clone(),
+                patient1.principal.clone(),
                 PatientCall::Update,
             )
             .unwrap()
@@ -338,6 +350,18 @@ fn test_dissolve_group() {
             add_member_req,
         )
         .unwrap();
+
+    // verify add member is successful
+    let groups = registries
+        .patient
+        .get_user_groups(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Query,
+        )
+        .unwrap();
+
+    assert_eq!(groups.groups.len(), 1);
 
     // step 3. leader leaves group (group should exist and have 1 member)
     let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
@@ -357,7 +381,7 @@ fn test_dissolve_group() {
         .patient
         .get_user_groups(
             &registries.ic,
-            member1.principal.clone(),
+            patient1.principal.clone(),
             PatientCall::Query,
         )
         .unwrap();
@@ -371,7 +395,7 @@ fn test_dissolve_group() {
         .patient
         .leave_group(
             &registries.ic,
-            member1.principal.clone(),
+            patient1.principal.clone(),
             PatientCall::Update,
             leave_group_req,
         )
@@ -383,7 +407,7 @@ fn test_dissolve_group() {
         .patient
         .get_group_details_admin(
             &registries.ic,
-            admin,
+            registries.controller.clone(),
             PatientCall::Query,
             GetGroupDetailsRequest {
                 group_id,

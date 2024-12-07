@@ -513,7 +513,7 @@ impl Scenario {
     pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
         let registries = prepare();
 
-        // Create patient
+        // create patient
         let nik = canister_common::common::H256::from_str(
             "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
         )
@@ -524,7 +524,7 @@ impl Scenario {
             nik: nik.clone(),
         };
 
-        // Register patient
+        // register patient
         let display = String::from("pasien").to_ascii_lowercase();
         let address = String::from("jl.rumah").to_ascii_lowercase();
 
@@ -542,7 +542,7 @@ impl Scenario {
             )
             .unwrap();
 
-        // Set initial patient info
+        // set initial patient info
         let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
@@ -566,7 +566,7 @@ impl Scenario {
             )
             .unwrap();
 
-        // Create and bind admin
+        // create and bind admin
         let admin_principal = random_identity();
         let admin_nik = canister_common::common::H256::from([1u8; 32]);
 
@@ -584,6 +584,19 @@ impl Scenario {
                 bind_admin_arg,
             )
             .unwrap();
+
+        // verify that admin is bound
+        let is_admin = registries
+            .patient
+            .check_admin(
+                &registries.ic,
+                registries.controller.clone(),
+                PatientCall::Query,
+                admin_principal,
+            )
+            .unwrap();
+
+        assert!(is_admin, "Admin should be bound");
 
         (registries, patient, admin_principal)
     }

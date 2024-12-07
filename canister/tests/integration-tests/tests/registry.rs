@@ -600,11 +600,22 @@ mod test {
         );
     }
 
+    /// TEST UPDATING KYC STATUS
+    ///
+    /// *PRE-REQUISITE*:
+    /// - One admin
+    /// - One patient
+    ///
+    /// *TEST STEPS*:
+    /// 1. Update KYC status to Approved
+    /// 2. Verify updated status through get_patient_info
+    /// 3. Update KYC status to Denied
+    /// 4. Verify final status through get_patient_info
     #[test]
     fn test_update_kyc_status() {
         let (registries, patient, admin_principal) = common::Scenario::one_admin_one_patient();
 
-        // test authorized access - should succeed
+        // step 1. update kyc status to Approved
         let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
             nik: patient.nik.to_string(),
             kyc_status: patient_registry::KycStatus::Approved,
@@ -621,14 +632,14 @@ mod test {
             .unwrap();
 
         // verify response
-        if let patient_registry::Patient::V1(v1) = response.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Approved => {}
-                _ => panic!("Expected KYC status to be Approved"),
-            }
+        let patient_registry::Patient::V1(v1) = response.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Approved => {}
+            _ => panic!("Expected KYC status to be Approved"),
         }
 
-        // verify updated status through get_patient_info
+        // step 2. verify updated status through get_patient_info
         let patient_info = registries
             .patient
             .get_patient_info(
@@ -638,14 +649,14 @@ mod test {
             )
             .unwrap();
 
-        if let patient_registry::Patient::V1(v1) = patient_info.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Approved => {}
-                _ => panic!("Expected KYC status to be Approved"),
-            }
+        let patient_registry::Patient::V1(v1) = patient_info.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Approved => {}
+            _ => panic!("Expected KYC status to be Approved"),
         }
 
-        // test updating to Denied status
+        // step 3. update kyc status to Denied
         let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
             nik: patient.nik.to_string(),
             kyc_status: patient_registry::KycStatus::Denied,
@@ -662,14 +673,14 @@ mod test {
             .unwrap();
 
         // verify final response
-        if let patient_registry::Patient::V1(v1) = response.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Denied => {}
-                _ => panic!("Expected KYC status to be Denied"),
-            }
+        let patient_registry::Patient::V1(v1) = response.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Denied => {}
+            _ => panic!("Expected KYC status to be Denied"),
         }
 
-        // verify final status through get_patient_info
+        // step 4. verify final status through get_patient_info
         let patient_info = registries
             .patient
             .get_patient_info(
@@ -679,11 +690,11 @@ mod test {
             )
             .unwrap();
 
-        if let patient_registry::Patient::V1(v1) = patient_info.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Denied => {}
-                _ => panic!("Expected KYC status to be Denied"),
-            }
+        let patient_registry::Patient::V1(v1) = patient_info.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Denied => {}
+            _ => panic!("Expected KYC status to be Denied"),
         }
     }
 

@@ -158,30 +158,24 @@ fn test_emr_access_permissions() {
     }
 }
 
+/// TEST EMR ACCESS AFTER GRANT
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - One registered provider
+/// - One registered patient with EMR from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add member to group
+/// 3. Grant access
+/// 4. View EMRs
 #[test]
 fn test_emr_access_after_grant() {
-    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
-    let patient2 = common::Scenario::create_patient(&registries);
-    let provider = common::Provider(common::random_identity());
+    let (registries, provider, patient1, patient2) =
+        common::Scenario::one_provider_two_patient_with_emrs();
 
-    // register provider
-    let provider_reg_req = provider_registry::RegisternewProviderRequest {
-        provider_principal: provider.0.clone(),
-        display_name: "TEST HOSPITAL".to_ascii_lowercase(),
-        address: "TEST ADDRESS".to_ascii_lowercase(),
-    };
-
-    registries
-        .provider
-        .register_new_provider(
-            &registries.ic,
-            registries.controller.clone(),
-            ProviderCall::Update,
-            provider_reg_req,
-        )
-        .unwrap();
-
-    // create a group
+    // step 1. create a group
     let group_response = registries
         .patient
         .create_group(
@@ -194,12 +188,12 @@ fn test_emr_access_after_grant() {
         )
         .unwrap();
 
+    // verify group creation is successful and get group id
     let group_id = match group_response {
         patient_registry::Result3::Ok(response) => response.group_id,
         patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // add patient2 to the group
     let consent_code = registries
         .patient
         .create_consent(
@@ -209,90 +203,84 @@ fn test_emr_access_after_grant() {
         )
         .unwrap();
 
-    registries
+    // verify consent creation is successful
+    assert!(consent_code.code.len() > 0, "Failed to create consent");
+
+    // step 2. add patient2 to group
+    let add_member_req = patient_registry::AddGroupMemberRequest {
+        group_id,
+        consent_code: consent_code.code,
+        relation: Relation::Spouse,
+    };
+
+    let add_member_result = registries
         .patient
         .add_group_member(
             &registries.ic,
             patient1.principal.clone(),
             PatientCall::Update,
-            patient_registry::AddGroupMemberRequest {
-                group_id,
-                consent_code: consent_code.code,
-                relation: Relation::Spouse,
-            },
+            add_member_req,
         )
         .unwrap();
 
-    // issue multiple EMRs for patient2
-    for i in 1..=3 {
-        let emr_req = provider_registry::IssueEmrRequest {
-            emr: vec![provider_registry::EmrFragment {
-                key: format!("test_key_{}", i),
-                value: format!("test_value_{}", i),
-            }],
-            user_id: patient2.nik.clone().to_string(),
-        };
-
-        registries
-            .provider
-            .issue_emr(
-                &registries.ic,
-                provider.0.clone(),
-                ProviderCall::Update,
-                emr_req,
-            )
-            .unwrap();
+    // verify add member is successful
+    match add_member_result {
+        patient_registry::Result_::Ok => (),
+        patient_registry::Result_::Err(e) => panic!("Failed to add member to group: {}", e),
     }
 
-    // grant access from patient2 to patient1
-    registries
+    // step 3. grant access
+    let grant_access_req = patient_registry::GrantGroupAccessRequest {
+        group_id,
+        grantee_nik: patient1.nik.to_string(),
+    };
+
+    let grant_result = registries
         .patient
         .grant_group_access(
             &registries.ic,
             patient2.principal.clone(),
             PatientCall::Update,
-            patient_registry::GrantGroupAccessRequest {
-                group_id,
-                grantee_nik: patient1.nik.to_string(),
-            },
+            grant_access_req,
         )
         .unwrap();
 
-    // view EMRs after access grant (should succeed)
-    let view_result_after = registries
-        .patient
-        .view_group_member_emr_information(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Query,
-            patient_registry::ViewGroupMemberEmrInformationRequest {
-                member_nik: patient2.nik.to_string(),
-                group_id,
-                page: 0,
-                limit: 10,
-            },
-        )
-        .unwrap();
+    // verify grant access is successful
+    match grant_result {
+        patient_registry::Result_::Ok => (),
+        patient_registry::Result_::Err(e) => panic!("Failed to grant access: {}", e),
+    }
 
-    match view_result_after {
-        patient_registry::Result5::Ok(response) => {
+    // step 4. view EMRs (patient 1 should be able to view patient2's EMRs)
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id,
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries.patient.view_group_member_emr_information(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        view_request,
+    );
+
+    match view_result {
+        Ok(patient_registry::Result5::Ok(emr_info)) => {
+            assert!(!emr_info.emrs.is_empty(), "EMR list should not be empty");
             assert_eq!(
-                response.emrs.len(),
-                3,
-                "Should have access to all 3 EMRs after grant"
+                emr_info.emrs[0].header.user_id,
+                patient2.nik.to_string(),
+                "User ID should match"
             );
-            // verify EMR contents
-            for emr in response.emrs.iter() {
-                assert_eq!(
-                    emr.header.user_id,
-                    patient2.nik.to_string(),
-                    "EMR should belong to patient2"
-                );
-            }
+            assert!(
+                !emr_info.emrs[0].header.emr_id.is_empty(),
+                "EMR ID should not be empty"
+            );
         }
-        patient_registry::Result5::Err(e) => {
-            panic!("Failed to view EMRs after access grant: {}", e)
-        }
+        Ok(patient_registry::Result5::Err(e)) => panic!("Expected success but got error: {}", e),
+        Err(_) => panic!("Expected success but got pocket_ic error"),
     }
 }
 

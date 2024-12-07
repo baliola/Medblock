@@ -247,6 +247,7 @@ service : () -> {
   add_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   add_group_member : (AddGroupMemberRequest) -> (Result);
   bind_admin : (BindAdminRequest) -> (Result);
+  check_admin : (principal) -> (bool) query;
   check_nik : (CheckNikRequest) -> (Result_1) query;
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
   claim_consent_for_group : (ClaimConsentRequest) -> (Result_2);
