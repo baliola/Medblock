@@ -1,0 +1,18 @@
+services:
+  webapp:
+    #image: medblock/internal-dashboard:staging-latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medblock-internal-dashboard-staging
+    env_file:
+      - .env
+    ports:
+      - "4002:4002"
+    restart: unless-stopped
+    networks:
+      - medblock-staging-network
+
+networks:
+  medblock-staging-network:
+    driver: bridge
