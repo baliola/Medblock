@@ -1,11 +1,11 @@
 services:
   webapp:
-    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-pwa:staging-latest
-    container_name: medblock-pwa-staging
+    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/internal-dashboard:staging-latest
+    container_name: medblock-internal-dashboard-staging
     env_file:
       - .env
     ports:
-      - "4000:3000"
+      - "4002:4002"
     restart: unless-stopped
     networks:
       - medblock-staging-network
@@ -13,3 +13,4 @@ services:
 networks:
   medblock-staging-network:
     driver: bridge
+

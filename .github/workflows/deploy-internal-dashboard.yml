@@ -1,18 +1,18 @@
-name: Deploy Webapp to Staging
+name: Deploy Internal-Dashboard to Staging
 
 on:
   push:
     branches:
       - staging
     paths:
-      - final_demo/web/**
+      - internal-dashboard/**
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  IMAGE_NAME: ${{ secrets.WEBAPP_IMAGE_NAME }}
+  IMAGE_NAME: ${{ secrets.INT_IMAGE_NAME }}
 
 jobs:
   build-and-push:
@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock-Staging/final_demo/web/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/internal-dashboard/Dockerfile /home/ubuntu/Medblock-Staging/internal-dashboard/
 
       - name: Push Docker Image to ECR
         run: |
@@ -38,11 +38,9 @@ jobs:
     needs: build-and-push
 
     steps:
-      - name: Log in to Amazon ECR
-        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - name: Deploy to Server
         run: |
-          cd /home/ubuntu/Medblock-Staging/final_demo/web
+          cd /home/ubuntu/Medblock-Staging/internal-dashboard
           docker compose down
           docker compose pull webapp
           docker compose up -d
