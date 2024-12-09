@@ -93,11 +93,11 @@ type GetGroupDetailsRequest = record {
   group_id : nat64;
 };
 type GetGroupDetailsResponse = record {
+  group_details : vec GroupDetail;
   total_pages : nat64;
   leader_name : text;
   member_count : nat64;
   group_name : text;
-  details_of_members : vec MemberDetail;
 };
 type GetInformationRequest = record {
   status : opt StatusRequest;
@@ -141,6 +141,13 @@ type Group = record {
   leader : text;
   member_relations : vec record { text; Relation };
 };
+type GroupDetail = record {
+  age : nat8;
+  nik : text;
+  name : text;
+  role : Relation;
+  gender : text;
+};
 type HeaderStatus = record { updated_at : nat64; created_at : nat64 };
 type HourlyMetricsData = record {
   updateCalls : vec nat64;
@@ -155,7 +162,6 @@ type KycStatus = variant { Approved; Denied; Pending };
 type LeaveGroupRequest = record { group_id : nat64 };
 type LogMessageData = record { timeNanos : nat64; message : text };
 type LogResponse = record { logs : vec Activity };
-type MemberDetail = record { patient_info : PatientWithNik; role : Relation };
 type MetricsGranularity = variant { hourly; daily };
 type MetricsRequest = record { parameters : GetMetricsParameters };
 type MetricsResponse = record { metrics : opt CanisterMetrics };

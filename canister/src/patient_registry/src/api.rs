@@ -445,8 +445,11 @@ pub struct ViewGroupMemberEmrInformationRequest {
 /// - Age
 /// - Role
 #[derive(CandidType, Deserialize)]
-pub struct MemberDetail {
-    pub patient_info: PatientWithNik,
+pub struct GroupDetail {
+    pub nik: NIK,
+    pub name: AsciiRecordsKey<64>,
+    pub gender: AsciiRecordsKey<64>,
+    pub age: u8,
     pub role: Relation,
 }
 
@@ -459,7 +462,7 @@ pub struct GetGroupDetailsRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct GetGroupDetailsResponse {
-    pub details_of_members: Vec<MemberDetail>,
+    pub group_details: Vec<GroupDetail>,
     pub member_count: u64,
     pub group_name: AsciiRecordsKey<64>,
     pub leader_name: AsciiRecordsKey<64>,
@@ -468,14 +471,14 @@ pub struct GetGroupDetailsResponse {
 
 impl GetGroupDetailsResponse {
     pub fn new(
-        details_of_members: Vec<MemberDetail>,
+        group_details: Vec<GroupDetail>,
         member_count: u64,
         group_name: AsciiRecordsKey<64>,
         leader_name: AsciiRecordsKey<64>,
         total_pages: u64,
     ) -> Self {
         Self {
-            details_of_members,
+            group_details,
             member_count,
             group_name,
             leader_name,

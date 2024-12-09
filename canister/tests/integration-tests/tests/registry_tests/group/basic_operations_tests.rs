@@ -420,7 +420,7 @@ fn test_dissolve_group() {
     match result {
         patient_registry::Result4::Ok(group_details) => {
             assert_eq!(
-                group_details.details_of_members.len(),
+                group_details.group_details.len(),
                 0,
                 "Group details should be empty"
             );

@@ -319,7 +319,6 @@ pub struct Provider(pub Principal);
 pub struct Patient {
     pub principal: Principal,
     pub nik: H256,
-    pub info: patient_registry::V1,
 }
 
 impl Scenario {
@@ -335,16 +334,6 @@ impl Scenario {
         let patient = Patient {
             principal: random_identity(),
             nik: nik.clone(),
-            info: patient_registry::V1 {
-                name: "test patient".to_string(),
-                martial_status: "single".to_string(),
-                place_of_birth: "Jakarta".to_ascii_lowercase(),
-                address: "test address".to_string(),
-                gender: "male".to_ascii_lowercase(),
-                date_of_birth: "1990-01-01".to_string(),
-                kyc_status: patient_registry::KycStatus::Pending,
-                kyc_date: "2024-01-01".to_string(),
-            },
         };
 
         // prepare provider
@@ -533,16 +522,6 @@ impl Scenario {
         let patient = Patient {
             principal: random_identity(),
             nik: nik.clone(),
-            info: patient_registry::V1 {
-                name: "test patient".to_string(),
-                martial_status: "single".to_string(),
-                place_of_birth: "Jakarta".to_ascii_lowercase(),
-                address: "test address".to_string(),
-                gender: "male".to_ascii_lowercase(),
-                date_of_birth: "1990-01-01".to_string(),
-                kyc_status: patient_registry::KycStatus::Pending,
-                kyc_date: "2024-01-01".to_string(),
-            },
         };
 
         // register patient
@@ -636,16 +615,6 @@ impl Scenario {
         let patient = Patient {
             principal: random_identity(),
             nik: nik.clone(),
-            info: patient_registry::V1 {
-                name: "test patient".to_string(),
-                martial_status: "single".to_string(),
-                place_of_birth: "Jakarta".to_ascii_lowercase(),
-                address: "test address".to_string(),
-                gender: "male".to_ascii_lowercase(),
-                date_of_birth: "1990-01-01".to_string(),
-                kyc_status: patient_registry::KycStatus::Pending,
-                kyc_date: "2024-01-01".to_string(),
-            },
         };
 
         // register patient
@@ -707,16 +676,6 @@ impl Scenario {
         let patient = Patient {
             principal: random_identity(),
             nik: nik.clone(),
-            info: patient_registry::V1 {
-                name: "test patient".to_string(),
-                martial_status: "single".to_string(),
-                place_of_birth: "Jakarta".to_ascii_lowercase(),
-                address: "test address".to_string(),
-                gender: "male".to_ascii_lowercase(),
-                date_of_birth: "1990-01-01".to_string(),
-                kyc_status: patient_registry::KycStatus::Pending,
-                kyc_date: "2024-01-01".to_string(),
-            },
         };
 
         // register patient
