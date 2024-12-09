@@ -128,6 +128,13 @@ cargo test
 ### Private VPS Node
 We have setup a private VPS node to act as a psuedo-staging branch for the canisters.
 
+You must have sshpass installed first! 
+
+```bash
+sudo apt-get install sshpass # linux
+brew install sshpass # mac
+```
+
 To connect to the node instead of local or mainnet, you can use the following command:
 ```bash
 ./portforward.sh
