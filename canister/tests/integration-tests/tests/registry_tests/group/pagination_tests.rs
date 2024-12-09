@@ -71,6 +71,62 @@ fn test_get_group_details() {
         }
         patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
     }
+
+    // step 2. add a member to it
+    let consent = registries
+        .patient
+        .create_consent(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+        )
+        .unwrap();
+
+    registries
+        .patient
+        .add_group_member(
+            &registries.ic,
+            patient1.principal.clone(),
+            PatientCall::Update,
+            patient_registry::AddGroupMemberRequest {
+                group_id,
+                consent_code: consent.code,
+                relation: Relation::Sibling,
+            },
+        )
+        .unwrap();
+
+    // verify group details
+    let group_details = registries
+        .patient
+        .get_group_details(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Query,
+            patient_registry::GetGroupDetailsRequest {
+                group_id,
+                page: 0,
+                limit: 10,
+            },
+        )
+        .unwrap();
+
+    // verify
+    match group_details {
+        patient_registry::Result4::Ok(response) => {
+            assert_eq!(response.details_of_members.len(), 2);
+            // patient 1 is leader therefore needs to be first
+            assert_eq!(response.details_of_members[0].patient_info.nik, patient1.nik.to_string());
+            assert_eq!(response.details_of_members[1].patient_info.nik, patient2.nik.to_string());
+            assert_eq!(
+                response.leader_name,
+                match &response.details_of_members[0].patient_info.info {
+                    patient_registry::Patient::V1(v1) => v1.name.clone(),
+                }
+            );
+        }
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+    }
 }
 
 #[test]
