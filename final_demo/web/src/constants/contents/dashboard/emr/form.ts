@@ -10,6 +10,14 @@ export const emrForm = {
       label: "Visit Date",
       placeholder: "Visit Date"
     },
+    discharge_date: {
+      label: "Discharge Date",
+      placeholder: "Discharge Date"
+    },
+    room: {
+      label: "Room / Unit",
+      placeholder: "Room / Unit Name"
+    },
     medical_officer: {
       label: "Medical Officer",
       placeholder: "Medical Officer Name"

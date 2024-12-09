@@ -54,26 +54,28 @@ impl PatientRegistry {
 }
 
 impl PatientRegistry {
-    // sets the initial patient info for an existing nik
+    // modified update_patient_info to handle both initial and subsequent updates
     // prerequisite: nik must be bound to an owner first
-    pub fn initial_patient_info(
-        &mut self,
-        patient_principal: Principal,
-        patient: Patient,
-    ) -> PatientBindingMapResult {
-        let nik = self.owner_map.get_nik(&patient_principal)?;
-        self.info_map.set(nik.into_inner(), patient)
-    }
-
-    // actual update, nik must be bound to an owner first
-    // and patient info must already be set
     pub fn update_patient_info(
         &mut self,
         patient_principal: Principal,
         patient: Patient,
     ) -> PatientBindingMapResult {
+        // Prevent anonymous principals from updating patient info
+        if patient_principal == Principal::anonymous() {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
         let nik = self.owner_map.get_nik(&patient_principal)?;
-        self.info_map.update(nik.into_inner(), patient)
+        let nik = nik.into_inner();
+
+        // If entry doesn't exist, create it. If it exists, update it.
+        // This handles both first-time registration and updates
+        if self.info_map.0.contains_key(&nik.clone().to_stable()) {
+            self.info_map.update(nik.clone(), patient)
+        } else {
+            self.info_map.set(nik, patient)
+        }
     }
 
     pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult {
@@ -222,6 +224,15 @@ pub enum PatientRegistryError {
     DuplicateNIK,
 }
 
+#[derive(
+    Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum AdminMapError {
+    #[error("user already bound")]
+    UserAlreadyBound,
+    #[error("user does not exist")]
+    UserDoesNotExist,
+}
 pub struct GroupAccessMap(ic_stable_structures::BTreeMap<GroupAccessKey, Stable<GroupId>, Memory>);
 
 type GroupAccessKey = (Stable<NIK>, Stable<NIK>);
@@ -363,6 +374,7 @@ mod test_group_access_map {
 }
 
 pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
+pub type AdminMapResult<T = ()> = Result<T, AdminMapError>;
 
 impl OwnerMap {
     pub fn revoke(&mut self, owner: &Owner) -> PatientBindingMapResult {
@@ -903,26 +915,37 @@ impl Metrics<Admins> for AdminMap {
     }
 }
 
+/// Admin map only cares about your principal. So you dont have to be a Patient to be an Admin. Any principal can be bound as admin.
 impl AdminMap {
-    pub fn revoke(&mut self, admin: &Admin) -> PatientBindingMapResult {
+    pub fn revoke(&mut self, admin: &Admin) -> AdminMapResult {
         self.0
             .remove(admin)
             .map(|_| ())
-            .ok_or(PatientRegistryError::UserDoesNotExist)
+            .ok_or(AdminMapError::UserDoesNotExist)
     }
 
-    pub fn bind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+    pub fn bind(&mut self, admin: Admin, nik: NIK) -> AdminMapResult {
         if self.get_nik(&admin).is_ok() {
-            return Err(PatientRegistryError::UserExist);
+            return Err(AdminMapError::UserAlreadyBound);
         }
 
         let _ = self.0.insert(admin, nik.to_stable());
         Ok(())
     }
 
-    pub fn rebind(&mut self, admin: Admin, nik: NIK) -> PatientBindingMapResult {
+    /// !!! In this case, we assume that the Principal is not bound to a NIK yet. So we will be using a random NIK for the admin.
+    /// This is useful for the case where we want to add an admin without having to go through the KYC process.
+    /// TODO! NEED TO CHECK FOR EDGE CASES DUE TO THIS ASSUMPTION.
+    pub fn principal_only_bind(&mut self, admin: Admin) -> AdminMapResult {
+        let random_nik = NIK::from([0u8; 32]).to_stable();
+
+        let _ = self.0.insert(admin, random_nik);
+        Ok(())
+    }
+
+    pub fn rebind(&mut self, admin: Admin, nik: NIK) -> AdminMapResult {
         if self.get_nik(&admin).is_err() {
-            return Err(PatientRegistryError::UserDoesNotExist);
+            return Err(AdminMapError::UserDoesNotExist);
         }
 
         let _ = self.0.insert(admin, nik.to_stable());
@@ -930,10 +953,8 @@ impl AdminMap {
     }
 
     /// will return an error if owner does not exists
-    pub fn get_nik(&self, admin: &Admin) -> PatientBindingMapResult<Stable<NIK>> {
-        self.0
-            .get(admin)
-            .ok_or(PatientRegistryError::UserDoesNotExist)
+    pub fn get_nik(&self, admin: &Admin) -> AdminMapResult<Stable<NIK>> {
+        self.0.get(admin).ok_or(AdminMapError::UserDoesNotExist)
     }
 
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -959,7 +980,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.bind(admin, nik).unwrap_err(),
-            PatientRegistryError::UserExist
+            AdminMapError::UserAlreadyBound
         );
     }
 
@@ -971,7 +992,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.rebind(admin, nik.clone()).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.rebind(admin, nik.clone()).unwrap(), ());
@@ -985,7 +1006,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.revoke(&admin).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.revoke(&admin).unwrap(), ());
@@ -999,7 +1020,7 @@ mod test_admin_map {
 
         assert_eq!(
             admin_map.get_nik(&admin).unwrap_err(),
-            PatientRegistryError::UserDoesNotExist
+            AdminMapError::UserDoesNotExist
         );
         assert_eq!(admin_map.bind(admin, nik.clone()).unwrap(), ());
         assert_eq!(admin_map.get_nik(&admin).unwrap(), nik.to_stable());
@@ -1042,6 +1063,7 @@ mod test_kyc {
     }
 
     #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: UserDoesNotExist")]
     fn test_kyc_status() {
         let memory_manager = memory_manager!();
         let mut registry = PatientRegistry::init(&memory_manager);
@@ -1049,6 +1071,7 @@ mod test_kyc {
         let nik = NIK::from([0u8; 32]);
         let mut patient = Patient::V1(V1::default());
         let non_anonymous_principal = Principal::from_text("2vxsx-fae").unwrap();
+        let anonymous_principal = Principal::anonymous();
 
         // need to bind nik to owner first before we can register patient
         registry
@@ -1065,7 +1088,7 @@ mod test_kyc {
 
         // register patient info
         registry
-            .initial_patient_info(non_anonymous_principal, patient.clone())
+            .update_patient_info(non_anonymous_principal, patient.clone())
             .unwrap();
         assert!(registry.info_map.get(nik.clone()).is_ok());
 
@@ -1083,9 +1106,10 @@ mod test_kyc {
         let verified_patient = registry.get_patient_info(nik.clone()).unwrap();
         assert_eq!(verified_patient.kyc_status(), &KycStatus::Approved);
 
-        // Attempt to update with anonymous principal (should fail)
-        let result = registry.initial_patient_info(Principal::anonymous(), patient.clone());
-        assert!(result.is_err());
+        // This should panic with UserDoesNotExist
+        registry
+            .update_patient_info(anonymous_principal, patient.clone())
+            .unwrap(); // This line will panic
     }
 }
 

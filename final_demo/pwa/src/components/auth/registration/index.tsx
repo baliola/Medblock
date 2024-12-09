@@ -1,55 +1,101 @@
-"use client"
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Checkbox, FormControl, Stack, Text, useToast } from "@chakra-ui/react"
-import { Field, Form, Formik } from "formik"
-import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@chakra-ui/react";
+import { Form, Formik } from "formik";
 
-import { encodeHashNIK, usePatientMethod, usePatientUpdate } from "@/services/patients";
-import { GetPatientInfoResponse, RegisterPatientRequest, UpdateInitialPatientInfoRequest } from "@/declarations/patient_registry/patient_registry.did";
-import { PatientRegister, PatientRegistrationSchema } from "@/libs/yup/patients-registration";
+import {
+  encodeHashNIK,
+  usePatientMethod,
+  usePatientUpdate,
+} from "@/services/patients";
+import {
+  GetPatientInfoResponse,
+  RegisterPatientRequest,
+  UpdatePatientInfoRequest,
+} from "@/declarations/patient_registry/patient_registry.did";
+import {
+  PatientRegister,
+  PatientRegistrationSchema,
+} from "@/libs/yup/patients-registration";
 
-import UserRegistrationForm from "@/components/auth/registration/form"
+import UserRegistrationForm from "@/components/auth/registration/form";
 import {
   registrationFormAction,
-  registrationInitialValues
+  registrationInitialValues,
 } from "@/constants/contents/auth/registration/form";
 
-import { createKYC, KYC } from "@/libs/api/kyc";
 import UserRegistrationSubmit from "./button";
 
 export default function UserRegistration({
-  initialData
-}: { initialData: GetPatientInfoResponse | null }) {
+  initialData,
+}: {
+  initialData: GetPatientInfoResponse | null | undefined;
+}) {
   const toast = useToast();
   const router = useRouter();
 
   const [file, setFile] = useState<File | null>(null);
+  console.log(initialData);
+  const { call: updateInitialData, loading: loadingUpdateInitialData } =
+    usePatientUpdate({
+      functionName: "update_patient_info",
+      onSuccess() {
+        router.replace("/auth/unverified/waiting");
+        return;
+      },
+      onError(error) {
+        if (
+          error?.message &&
+          error.message.toLowerCase().includes("userexist")
+        ) {
+          console.log("User already exist, updating initial data");
+          return toast({
+            title: "User Already Exist",
+            description:
+              "User already exist, please check your NIK and try again.",
+            isClosable: true,
+            duration: 5000,
+            position: "top-right",
+            status: "error",
+          });
+        } else {
+          console.log("Error while registering patient", error);
+          toast({
+            title: registrationFormAction.onError.title,
+            description: registrationFormAction.onError.description,
+            isClosable: true,
+            duration: 5000,
+            position: "top-right",
+            status: "error",
+          });
+          return;
+        }
+      },
+    });
 
   const {
-    call: updateInitialData,
-    loading: loadingUpdateInitialData
+    call: updateExistingInitialData,
+    loading: loadingUpdateExistingInitialData,
   } = usePatientUpdate({
-    functionName: "update_initial_patient_info",
+    functionName: "update_patient_info",
     onSuccess() {
       router.replace("/auth/unverified/waiting");
       return;
     },
     onError(error) {
-      if (
-        error?.message &&
-        error.message.toLowerCase().includes("userexist")
-      ) {
+      if (error?.message && error.message.toLowerCase().includes("userexist")) {
         console.log("User already exist, updating initial data");
         return toast({
           title: "User Already Exist",
-          description: "User already exist, please check your NIK and try again.",
+          description:
+            "User already exist, please check your NIK and try again.",
           isClosable: true,
           duration: 5000,
           position: "top-right",
-          status: "error"
-        })
+          status: "error",
+        });
       } else {
         console.log("Error while registering patient", error);
         toast({
@@ -58,24 +104,22 @@ export default function UserRegistration({
           isClosable: true,
           duration: 5000,
           position: "top-right",
-          status: "error"
+          status: "error",
         });
         return;
       }
     },
-  })
-
-  const {
-    call: registerPatientNIK,
-    loading: loadingRegisterPatientNIK,
-  } = usePatientMethod({
-    functionName: "register_patient",
-    throwOnError: true,
   });
+
+  const { call: registerPatientNIK, loading: loadingRegisterPatientNIK } =
+    usePatientMethod({
+      functionName: "register_patient",
+      throwOnError: true,
+    });
 
   const onRegisterToCanister = async (variables: PatientRegister) => {
     const patientNIK: RegisterPatientRequest = {
-      nik: encodeHashNIK(variables.nik)
+      nik: encodeHashNIK(variables.nik),
     };
 
     const kycDate = () => {
@@ -83,10 +127,16 @@ export default function UserRegistration({
       const yyyy = now.getFullYear();
       let mm = now.getMonth() + 1;
       let dd = now.getDate();
-      return `${dd < 10 ? `0${dd}` : dd }` + '/' + `${mm < 10 ? `0${mm}` : mm }` + '/' + yyyy;
-    }
+      return (
+        `${dd < 10 ? `0${dd}` : dd}` +
+        "/" +
+        `${mm < 10 ? `0${mm}` : mm}` +
+        "/" +
+        yyyy
+      );
+    };
 
-    const initialPatientData: UpdateInitialPatientInfoRequest = {
+    const initialPatientData: UpdatePatientInfoRequest = {
       info: {
         address: variables.address,
         date_of_birth: variables.date_of_birth,
@@ -95,16 +145,24 @@ export default function UserRegistration({
         name: variables.name,
         place_of_birth: variables.place_of_birth,
         kyc_date: kycDate(),
-        kyc_status: {Pending: null} ,
-      }
+        kyc_status: { Pending: null },
+      },
     };
 
     // @ts-ignore
     await registerPatientNIK([patientNIK])
       .then(async (data) => {
-        console.log(data)
-        // @ts-ignore
-        await updateInitialData([initialPatientData]);
+        console.log("hmm", data, initialData);
+        if (initialData !== undefined && initialData !== null) {
+          console.log("update");
+          // @ts-ignore
+          await updateExistingInitialData([initialPatientData]);
+        } else {
+          console.log("initial");
+          // @ts-ignore
+          await updateInitialData([initialPatientData]);
+        }
+
         return;
       })
       .catch((error) => {
@@ -115,11 +173,11 @@ export default function UserRegistration({
           isClosable: true,
           duration: 5000,
           position: "top-right",
-          status: "error"
+          status: "error",
         });
         return;
-      })
-  }
+      });
+  };
 
   // const { mutate: sendKYC, isPending } = useMutation({
   //   mutationKey: ["sendKYC"],
@@ -160,16 +218,16 @@ export default function UserRegistration({
       initialValues={
         initialData
           ? {
-            nik: "",
-            address: initialData?.patient.V1.address,
-            name: initialData?.patient.V1.name,
-            gender: initialData?.patient.V1.gender,
-            place_of_birth: initialData?.patient.V1.place_of_birth,
-            date_of_birth: initialData?.patient.V1.date_of_birth,
-            martial_status: initialData?.patient.V1.martial_status,
-            idcard_upload: false,
-            agree: false
-          }
+              nik: "",
+              address: initialData?.patient.V1.address,
+              name: initialData?.patient.V1.name,
+              gender: initialData?.patient.V1.gender,
+              place_of_birth: initialData?.patient.V1.place_of_birth,
+              date_of_birth: initialData?.patient.V1.date_of_birth,
+              martial_status: initialData?.patient.V1.martial_status,
+              idcard_upload: false,
+              agree: false,
+            }
           : registrationInitialValues
       }
       enableReinitialize={true}
@@ -183,7 +241,7 @@ export default function UserRegistration({
             status: "error",
             isClosable: true,
             duration: 5000,
-            position: "top-right"
+            position: "top-right",
           });
         }
 
@@ -196,7 +254,7 @@ export default function UserRegistration({
           place_of_birth: values.place_of_birth,
           martial_status: values.martial_status,
           agree: true,
-          idcard_upload: true
+          idcard_upload: true,
         };
 
         onRegisterToCanister(data);
@@ -208,16 +266,13 @@ export default function UserRegistration({
           <UserRegistrationSubmit
             loading={
               loadingRegisterPatientNIK ||
-              loadingUpdateInitialData
+              loadingUpdateInitialData ||
+              loadingUpdateExistingInitialData
             }
-            disabled={
-              !isValid ||
-              !dirty ||
-              Object.keys(errors).length > 0
-            }
+            disabled={!isValid || !dirty || Object.keys(errors).length > 0}
           />
         </Form>
       )}
     </Formik>
-  )
+  );
 }

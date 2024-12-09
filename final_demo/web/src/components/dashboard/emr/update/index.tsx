@@ -114,7 +114,9 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
       <Formik
         initialValues={{
           visit_date: EMR?.body.find(e => e.key === 'visit_date')?.value || "",
+          discharge_date: EMR?.body.find(e => e.key === 'discharge_date')?.value || "",
           medical_officer: EMR?.body.find(e => e.key === 'medical_officer')?.value || "",
+          room: EMR?.body.find(e => e.key === 'room')?.value || "",
           blood_pressure: EMR?.body.find(e => e.key === 'blood_pressure')?.value || "",
           temperature: EMR?.body.find(e => e.key === 'temperature')?.value || "",
           heart_rate: EMR?.body.find(e => e.key === 'heart_rate')?.value || "",

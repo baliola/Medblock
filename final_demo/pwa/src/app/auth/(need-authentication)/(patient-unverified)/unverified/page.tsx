@@ -7,6 +7,8 @@ import { usePatientQuery } from "@/services/patients";
 import { GetPatientInfoResponse } from "@/declarations/patient_registry/patient_registry.did";
 import LoadingScreen from "@/layouts/loading";
 import { useState } from "react";
+import useMedblockAuth from "@/hooks/useAuth";
+import { ButtonNFID } from "@/constants/contents/auth/login/button";
 
 const PatientInfo = ({ data }: { data: GetPatientInfoResponse | undefined }) => {
   return (
@@ -26,6 +28,12 @@ export default function UnverifiedPage() {
   const router = useRouter();
   const onRegistration = () => router.push("/auth/unverified/registration");
   const onHome = () => router.replace("/home");
+  const { signOut } = ButtonNFID;
+
+  const {
+    authenticated,
+    onLogout
+  } = useMedblockAuth();
 
   const [patientData, setPatientData] = useState<GetPatientInfoResponse>();
 
@@ -66,6 +74,7 @@ export default function UnverifiedPage() {
           rounded={"2xl"}
           fontSize={'sm'}
           py={6}
+          mt={"auto"}
           onClick={onHome}
         >
           Go to App
@@ -78,11 +87,27 @@ export default function UnverifiedPage() {
           rounded={"2xl"}
           fontSize={'sm'}
           py={6}
+          mt={"auto"}
           onClick={onRegistration}
         >
           Verify your ID
         </Button>
       )}
+
+      {
+        authenticated &&
+        <Button
+          colorScheme="danger"
+          w={"full"}
+          rounded={"2xl"}
+          fontSize={'sm'}
+          py={6}
+          mt={3}
+          onClick={onLogout}
+        >
+          {signOut.label}
+        </Button>
+      }
     </Flex>
   )
 }

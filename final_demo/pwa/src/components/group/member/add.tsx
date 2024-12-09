@@ -1,7 +1,7 @@
 "use client"
 
 import InputPIN from "@/components/pin/input";
-import { ClaimConsentRequest, ClaimConsentResponse } from "@/declarations/patient_registry/patient_registry.did";
+import { ClaimConsentRequest, ClaimConsentResponse, Result_1 } from "@/declarations/patient_registry/patient_registry.did";
 import { usePatientMethod } from "@/services/patients";
 import { usePinStore } from "@/store/pin-store";
 import { 
@@ -39,16 +39,35 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
     functionName: "claim_consent_for_group",
     refetchOnMount: false,
     onSuccess(data) {
-      setClaimConsentData(data)
+      const result: Result_1 | undefined = data
 
-      return toast({
-        title: "Success Entered Pin",
-        description: "You can now proceed",
-        isClosable: true,
-        duration: 5000,
-        status: "success",
-        position: "top-right",
-      })
+      if (result && Object.keys(result)[0] === 'Ok') {
+        setClaimConsentData(data)
+        setShowChooseRelationModal(true)
+        onClose()
+
+        return toast({
+          title: "Success Entered Pin",
+          description: "You can now proceed",
+          isClosable: true,
+          duration: 5000,
+          status: "success",
+          position: "top-right",
+        })
+      } else if (result && Object.keys(result)[0] === 'Err') {
+        const error = result['Err'] ?? "Something went wrong!"
+
+        return toast({
+          title: "Error!",
+          description: error,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right"
+        })
+      }
+
+
     },
     onError(err) {
       if (err instanceof Error) {
@@ -82,9 +101,6 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
       }];
 
       await claimConsentForGroup(data);
-
-      setShowChooseRelationModal(true)
-      onClose()
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.log(error.message)
@@ -154,8 +170,8 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
             justifyContent={"center"}
           >
             <Image 
-              src="/assets/nurse-waiting.svg" 
-              alt="No Group Member" 
+              src="/assets/female-doctor.png" 
+              alt="Add Member" 
               width={"40%"}
               marginX={"auto"}
               marginBottom={12}

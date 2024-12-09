@@ -1,19 +1,28 @@
-#! bash
+#!/bin/bash
 
+# get project root
 root=$(git rev-parse --show-toplevel)
-out=$1
 
-if [ -z "$out" ]; then
-    echo "Usage: $0 <output_dir>"
-    exit 0
-fi
+# handle output paths
+declare -a output_paths=(
+    "$root/final_demo/pwa/src"
+    "$root/final_demo/web/src"
+    "$root/internal-dashboard/src/canister"
+)
 
-echo generating declarations
+echo "generating declarations..."
 cd $root/canister
+
+# generate declarations for all canisters
 dfx generate patient_registry
 dfx generate emr_registry
 dfx generate provider_registry
 
-echo moving declarations to $out
-rm -rf $out/declarations
-mv $root/canister/src/declarations $out/
+# copy declarations to each output path
+for out in "${output_paths[@]}"; do
+    echo "copying declarations to $out"
+    rm -rf "$out/declarations"
+    cp -r "$root/canister/src/declarations" "$out/"
+done
+
+echo "declaration generation complete!"

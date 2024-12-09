@@ -31,6 +31,13 @@ impl ReadEmrByIdRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct CheckNikRequest {
+    pub nik: H256,
+    #[serde(default)]
+    pub _type: Option<bool>,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct EmrListPatientRequest {
     pub limit: u8,
     pub page: u8,
@@ -71,8 +78,15 @@ pub struct RegisterPatientRequest {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct RegisterProviderResponse {
-    // empty for now
+pub struct RegisterPatientResponse {
+    pub result: RegisterPatientStatus,
+    pub nik: H256,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum RegisterPatientStatus {
+    Success,
+    Error(String),
 }
 
 #[derive(CandidType, Deserialize)]
@@ -194,6 +208,11 @@ pub struct UpdateInitialPatientInfoRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct UpdatePatientInfoRequest {
+    pub info: V1,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub patient: Patient,
     pub nik: NIK,
@@ -289,6 +308,8 @@ from!(ConsentListResponse: Vec<Consent> as value {
 #[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {
     pub nik: H256,
+    #[serde(default)]
+    pub _type: Option<String>,
 }
 
 #[derive(CandidType, Deserialize)]

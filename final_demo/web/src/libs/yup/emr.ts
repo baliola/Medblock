@@ -2,7 +2,10 @@ import * as Yup from 'yup';
 
 export interface EMR {
   visit_date: string;
+  discharge_date: string;
   medical_officer: string;
+  room: string;
+
   blood_pressure: string;
   temperature: string;
   heart_rate: string;
@@ -25,9 +28,21 @@ export const emrSchema = Yup.object().shape({
         return value ? value <= new Date() : false;
       }
     ),
+    discharge_date: Yup.date()
+    .required('Discharge date is required')
+    .test(
+      "discharge_date",
+      "Date is invalid, discharge date must be the same day with or after the visit date",
+      function (value) {
+        const { visit_date } = this.parent;
+        return value >= visit_date;
+      }
+    ),
   medical_officer: Yup.string()
     .matches(/^[a-zA-Z\s]*$/, 'Medical officer must be alphabetic')
     .required('Medical officer is required'),
+  room: Yup.string()
+    .required('Room is required'),
   blood_pressure: Yup.string()
     .matches(/^[0-9/]*$/, 'Blood pressure must be numeric')
     .required('Blood pressure is required'),
