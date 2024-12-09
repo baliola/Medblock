@@ -124,3 +124,13 @@ For unit tests, you can use the standard cargo test command in each canister dir
 cd canister/src/patient_registry
 cargo test
 ```
+
+### Private VPS Node
+We have setup a private VPS node to act as a psuedo-staging branch for the canisters.
+
+To connect to the node instead of local or mainnet, you can use the following command:
+```bash
+./portforward.sh
+```
+
+This will forward the port to the node hosted in the VPS and you can interact with the node as if it were local. 
