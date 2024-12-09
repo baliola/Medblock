@@ -20,7 +20,10 @@ import EMRFormRecipe from "../form/recipe";
 
 const initialValues = {
   visit_date: "",
+  discharge_date: "",
   medical_officer: "",
+  room: "",
+  
   blood_pressure: "",
   temperature: "",
   heart_rate: "",
