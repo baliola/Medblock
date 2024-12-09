@@ -269,20 +269,43 @@ pub struct GetGroupDetailsRequest {
     pub group_id: u64,
 }
 #[derive(CandidType, Deserialize)]
-pub struct GroupDetail {
-    pub age: u8,
-    pub nik: String,
+pub enum KycStatus {
+    Approved,
+    Denied,
+    Pending,
+}
+#[derive(CandidType, Deserialize)]
+pub struct V1 {
+    pub kyc_date: String,
     pub name: String,
-    pub role: Relation,
+    pub martial_status: String,
+    pub place_of_birth: String,
+    pub address: String,
     pub gender: String,
+    pub kyc_status: KycStatus,
+    pub date_of_birth: String,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Patient {
+    V1(V1),
+}
+#[derive(CandidType, Deserialize)]
+pub struct PatientWithNik {
+    pub nik: String,
+    pub info: Patient,
+}
+#[derive(CandidType, Deserialize)]
+pub struct MemberDetail {
+    pub patient_info: PatientWithNik,
+    pub role: Relation,
 }
 #[derive(CandidType, Deserialize)]
 pub struct GetGroupDetailsResponse {
-    pub group_details: Vec<GroupDetail>,
     pub total_pages: u64,
     pub leader_name: String,
     pub member_count: u64,
     pub group_name: String,
+    pub details_of_members: Vec<MemberDetail>,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Result4 {
@@ -307,35 +330,9 @@ pub struct LogResponse {
     pub logs: Vec<Activity>,
 }
 #[derive(CandidType, Deserialize)]
-pub enum KycStatus {
-    Approved,
-    Denied,
-    Pending,
-}
-#[derive(CandidType, Deserialize)]
-pub struct V1 {
-    pub kyc_date: String,
-    pub name: String,
-    pub martial_status: String,
-    pub place_of_birth: String,
-    pub address: String,
-    pub gender: String,
-    pub kyc_status: KycStatus,
-    pub date_of_birth: String,
-}
-#[derive(CandidType, Deserialize)]
-pub enum Patient {
-    V1(V1),
-}
-#[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub nik: String,
     pub patient: Patient,
-}
-#[derive(CandidType, Deserialize)]
-pub struct PatientWithNik {
-    pub nik: String,
-    pub info: Patient,
 }
 #[derive(CandidType, Deserialize)]
 pub struct PatientListAdminResponse {

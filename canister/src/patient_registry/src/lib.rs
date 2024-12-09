@@ -6,9 +6,9 @@ use api::{
     CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest,
     EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
     GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest,
-    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail,
+    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest,
     IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest,
-    LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
+    LogResponse, MemberDetail, PatientListAdminResponse, PatientListResponse, PatientWithNik,
     PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
     RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest,
     RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest,
@@ -340,6 +340,7 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("https://dev-web.medblock.id"),
         String::from("https:/-app.medblock.id"),
         String::from("http://54.255.210.149:3001"),
+        String::from("http://54.255.210.149:3002"),
         String::from("http://54.255.210.149:3000"),
         String::from("https://bwvkymxvy2stchdh.medblock.id"),
         String::from("https://bwvkymxvy2std2vi.medblock.id"),
@@ -1358,52 +1359,30 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
     let group_name = group.name.clone();
 
     // build group details for each member
-    let mut group_details = Vec::new();
+    let mut member_details = Vec::new();
     for member_nik in paginated_members {
         let member = with_state(|s| s.registry.get_patient_info(member_nik.clone()))
             .map_err(|_| format!("Failed to get member info for NIK: {}", member_nik))?;
 
-        // calculate member's role
-        let role = group
-            .member_relations
-            .iter()
-            .find(|(nik, _)| *nik == member_nik)
-            .map(|(_, relation)| relation.clone())
-            .unwrap_or(Relation::Other);
-
-        // calculate age from date_of_birth
-        let age = match member {
-            Patient::V1(ref v1) => {
-                // parse date of birth string (assuming format YYYY-MM-DD)
-                let dob = v1.date_of_birth.to_string();
-                let year = dob
-                    .get(0..4)
-                    .and_then(|y| y.parse::<u16>().ok())
-                    .unwrap_or(0);
-                let current_year = 2024; // todo: might want to get this dynamically
-                (current_year - year) as u8
-            }
+        let detail = MemberDetail {
+            patient_info: PatientWithNik {
+                nik: member_nik.clone(),
+                info: member,
+            },
+            role: group
+                .member_relations
+                .iter()
+                .find(|(nik, _)| nik == &member_nik)
+                .unwrap()
+                .1
+                .clone(),
         };
 
-        // create a new AsciiRecordsKey<64> for gender
-        let gender = match member {
-            Patient::V1(ref v1) => AsciiRecordsKey::<64>::new(v1.gender.to_string())
-                .map_err(|_| "Failed to convert gender to AsciiRecordsKey<64>".to_string())?,
-        };
-
-        let detail = GroupDetail {
-            nik: member_nik.clone(),
-            name: member.name().clone(),
-            gender,
-            age,
-            role,
-        };
-
-        group_details.push(detail);
+        member_details.push(detail);
     }
 
     Ok(GetGroupDetailsResponse::new(
-        group_details,
+        member_details,
         total_members,
         group_name,
         leader_name,
@@ -1427,16 +1406,11 @@ fn get_group_details_admin(req: GetGroupDetailsRequest) -> Result<GetGroupDetail
             .iter()
             .map(|(nik, relation)| {
                 let patient = with_state(|s| s.registry.get_patient_info(nik.clone())).unwrap();
-                let gender = match patient {
-                    Patient::V1(ref v1) => {
-                        AsciiRecordsKey::<64>::new(v1.gender.to_string()).unwrap()
-                    }
-                };
-                GroupDetail {
-                    nik: nik.clone(),
-                    name: patient.name().clone(),
-                    gender,
-                    age: 0,
+                MemberDetail {
+                    patient_info: PatientWithNik {
+                        nik: nik.clone(),
+                        info: patient,
+                    },
                     role: relation.clone(),
                 }
             })
