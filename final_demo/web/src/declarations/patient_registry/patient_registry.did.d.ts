@@ -95,11 +95,11 @@ export interface GetGroupDetailsRequest {
   'group_id' : bigint,
 }
 export interface GetGroupDetailsResponse {
-  'group_details' : Array<GroupDetail>,
   'total_pages' : bigint,
   'leader_name' : string,
   'member_count' : bigint,
   'group_name' : string,
+  'details_of_members' : Array<MemberDetail>,
 }
 export interface GetInformationRequest {
   'status' : [] | [StatusRequest],
@@ -146,13 +146,6 @@ export interface Group {
   'leader' : string,
   'member_relations' : Array<[string, Relation]>,
 }
-export interface GroupDetail {
-  'age' : number,
-  'nik' : string,
-  'name' : string,
-  'role' : Relation,
-  'gender' : string,
-}
 export interface HeaderStatus { 'updated_at' : bigint, 'created_at' : bigint }
 export interface HourlyMetricsData {
   'updateCalls' : BigUint64Array | bigint[],
@@ -172,6 +165,10 @@ export type KycStatus = { 'Approved' : null } |
 export interface LeaveGroupRequest { 'group_id' : bigint }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
 export interface LogResponse { 'logs' : Array<Activity> }
+export interface MemberDetail {
+  'patient_info' : PatientWithNik,
+  'role' : Relation,
+}
 export type MetricsGranularity = { 'hourly' : null } |
   { 'daily' : null };
 export interface MetricsRequest { 'parameters' : GetMetricsParameters }

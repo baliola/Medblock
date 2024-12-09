@@ -181,19 +181,33 @@ export const idlFactory = ({ IDL }) => {
     'limit' : IDL.Nat64,
     'group_id' : IDL.Nat64,
   });
-  const GroupDetail = IDL.Record({
-    'age' : IDL.Nat8,
-    'nik' : IDL.Text,
+  const KycStatus = IDL.Variant({
+    'Approved' : IDL.Null,
+    'Denied' : IDL.Null,
+    'Pending' : IDL.Null,
+  });
+  const V1 = IDL.Record({
+    'kyc_date' : IDL.Text,
     'name' : IDL.Text,
-    'role' : Relation,
+    'martial_status' : IDL.Text,
+    'place_of_birth' : IDL.Text,
+    'address' : IDL.Text,
     'gender' : IDL.Text,
+    'kyc_status' : KycStatus,
+    'date_of_birth' : IDL.Text,
+  });
+  const Patient = IDL.Variant({ 'V1' : V1 });
+  const PatientWithNik = IDL.Record({ 'nik' : IDL.Text, 'info' : Patient });
+  const MemberDetail = IDL.Record({
+    'patient_info' : PatientWithNik,
+    'role' : Relation,
   });
   const GetGroupDetailsResponse = IDL.Record({
-    'group_details' : IDL.Vec(GroupDetail),
     'total_pages' : IDL.Nat64,
     'leader_name' : IDL.Text,
     'member_count' : IDL.Nat64,
     'group_name' : IDL.Text,
+    'details_of_members' : IDL.Vec(MemberDetail),
   });
   const Result_4 = IDL.Variant({
     'Ok' : GetGroupDetailsResponse,
@@ -211,27 +225,10 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Nat64,
   });
   const LogResponse = IDL.Record({ 'logs' : IDL.Vec(Activity) });
-  const KycStatus = IDL.Variant({
-    'Approved' : IDL.Null,
-    'Denied' : IDL.Null,
-    'Pending' : IDL.Null,
-  });
-  const V1 = IDL.Record({
-    'kyc_date' : IDL.Text,
-    'name' : IDL.Text,
-    'martial_status' : IDL.Text,
-    'place_of_birth' : IDL.Text,
-    'address' : IDL.Text,
-    'gender' : IDL.Text,
-    'kyc_status' : KycStatus,
-    'date_of_birth' : IDL.Text,
-  });
-  const Patient = IDL.Variant({ 'V1' : V1 });
   const GetPatientInfoResponse = IDL.Record({
     'nik' : IDL.Text,
     'patient' : Patient,
   });
-  const PatientWithNik = IDL.Record({ 'nik' : IDL.Text, 'info' : Patient });
   const PatientListAdminResponse = IDL.Record({
     'patients' : IDL.Vec(PatientWithNik),
   });
