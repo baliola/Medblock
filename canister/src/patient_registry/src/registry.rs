@@ -241,6 +241,10 @@ pub enum AdminMapError {
 }
 pub struct GroupAccessMap(ic_stable_structures::BTreeMap<GroupAccessKey, Stable<GroupId>, Memory>);
 
+/// Represents a key in the group access map, which is a tuple of two NIKs:
+/// - The granter, who is granting access
+/// - The grantee, who is receiving access
+/// Granter cannot see the grantee's EMRs, but grantee can see the granter's EMRs
 type GroupAccessKey = (Stable<NIK>, Stable<NIK>);
 
 impl Get<MemoryId> for GroupAccessMap {
@@ -294,13 +298,18 @@ impl GroupAccessMap {
 
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
         let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
-        self.0.contains_key(&key)
+        let result = self.0.contains_key(&key);
+        println!("[GroupAccessMap] has_access: {:?}, result: {:?}", key, result);
+        result
     }
 
     /// gets the group ID in which the EMR access was granted
     pub fn get_access_group(&self, granter: &NIK, grantee: &NIK) -> Option<GroupId> {
         let key = (granter.clone().to_stable(), grantee.clone().to_stable());
-        self.0.get(&key).map(|group_id| group_id.into_inner())
+        self.0
+            .get(&key)
+            .map(|group_id| group_id.into_inner())
+            .inspect(|group_id| println!("[GroupAccessMap] get_access_group: {:?}, group_id: {:?}", key, group_id))
     }
 
     /// gets all access pairs for a specific group
@@ -313,23 +322,23 @@ impl GroupAccessMap {
     }
 }
 
-#[cfg(test)]
-mod test_group_access_map {
-    use super::*;
-    use canister_common::memory_manager;
+// #[cfg(test)]
+// mod test_group_access_map {
+//     use super::*;
+//     use canister_common::memory_manager;
 
-    #[test]
-    fn test_grant_and_revoke_access() {
-        // cant really test this as we need to create a group first to get its id
-        todo!()
-    }
+//     #[test]
+//     fn test_grant_and_revoke_access() {
+//         // cant really test this as we need to create a group first to get its id
+//         todo!()
+//     }
 
-    #[test]
-    fn test_access_verification() {
-        // cant really test this as we need to create a group first to get its id
-        todo!()
-    }
-}
+//     #[test]
+//     fn test_access_verification() {
+//         // cant really test this as we need to create a group first to get its id
+//         todo!()
+//     }
+// }
 
 pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
 pub type AdminMapResult<T = ()> = Result<T, AdminMapError>;
@@ -1158,6 +1167,7 @@ impl GroupMap {
 
         // log the group details to see how many members are in the group
         let group = self.get_group(group_id.clone());
+        println!("[GroupMap] add_member: {:?}, group: {:?}", group_id, group);
 
         Ok(())
     }
