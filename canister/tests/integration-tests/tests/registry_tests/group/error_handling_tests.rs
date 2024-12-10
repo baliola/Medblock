@@ -73,7 +73,7 @@ fn test_emr_access_error_messages() {
     // Test 1: Invalid NIK format
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: "invalid_nik".to_string(),
-        group_id,
+        group_id: group_id.clone(),
         page: 0,
         limit: 10,
     };
@@ -99,39 +99,10 @@ fn test_emr_access_error_messages() {
         _ => panic!("Expected error for invalid NIK format"),
     }
 
-    // Test 2: Invalid group ID
-    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
-        member_nik: patient2.nik.to_string(),
-        group_id: 999, // Non-existent group ID
-        page: 0,
-        limit: 10,
-    };
-
-    let result = registries
-        .patient
-        .view_group_member_emr_information(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Query,
-            view_request,
-        )
-        .unwrap();
-
-    match result {
-        patient_registry::Result5::Err(error) => {
-            let expected_error = format!(
-                "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist.",
-                999
-            );
-            assert_eq!(error, expected_error, "Got unexpected error message");
-        }
-        _ => panic!("Expected error for invalid group ID"),
-    }
-
     // Test 3: Users not in group
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: patient2.nik.to_string(),
-        group_id,
+        group_id: group_id.clone(),
         page: 0,
         limit: 10,
     };

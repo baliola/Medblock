@@ -81,7 +81,7 @@ fn test_emr_access_permissions() {
         .unwrap();
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: consent_code.code,
         relation: Relation::Spouse,
     };
@@ -99,7 +99,7 @@ fn test_emr_access_permissions() {
     // Test 1: Patient1 tries to view Patient2's EMR without permission (should fail)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: patient2.nik.to_string(),
-        group_id,
+        group_id: group_id.clone(),
         page: 0,
         limit: 10,
     };
@@ -123,7 +123,7 @@ fn test_emr_access_permissions() {
 
     // Test 2: Patient1 grants access to Patient2's EMR (should succeed)
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
-        group_id,
+        group_id: group_id.clone(),
         grantee_nik: patient1.nik.to_string(),
     };
 
@@ -139,7 +139,7 @@ fn test_emr_access_permissions() {
     // Test 3: Patient1 tries to view Patient2's EMR with permission (should succeed)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: patient2.nik.to_string(),
-        group_id,
+        group_id: group_id.clone(),
         page: 0,
         limit: 10,
     };
@@ -175,7 +175,7 @@ fn test_emr_access_after_grant() {
     let (registries, provider, patient1, patient2) =
         common::Scenario::one_provider_two_patient_with_emrs();
 
-    // step 1. create a group
+    // step 1. patient 1 creates a group
     let group_response = registries
         .patient
         .create_group(
@@ -206,9 +206,9 @@ fn test_emr_access_after_grant() {
     // verify consent creation is successful
     assert!(consent_code.code.len() > 0, "Failed to create consent");
 
-    // step 2. add patient2 to group
+    // step 2. patient 1 adds patient2 to group
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: consent_code.code,
         relation: Relation::Spouse,
     };
@@ -229,9 +229,9 @@ fn test_emr_access_after_grant() {
         patient_registry::Result_::Err(e) => panic!("Failed to add member to group: {}", e),
     }
 
-    // step 3. grant access
+    // step 3. patient 2 grants access to patient 1
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
-        group_id,
+        group_id: group_id.clone(),
         grantee_nik: patient1.nik.to_string(),
     };
 
@@ -254,7 +254,7 @@ fn test_emr_access_after_grant() {
     // step 4. view EMRs (patient 1 should be able to view patient2's EMRs)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: patient2.nik.to_string(),
-        group_id,
+        group_id: group_id.clone(),
         page: 0,
         limit: 10,
     };
@@ -341,7 +341,7 @@ fn test_view_group_member_emr_information() {
         .unwrap();
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: consent_code.code,
         relation: Relation::Spouse,
     };
@@ -377,7 +377,7 @@ fn test_view_group_member_emr_information() {
 
     // grant access to patient1 to view patient2's EMRs
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
-        group_id,
+        group_id: group_id.clone(),
         grantee_nik: patient1.nik.to_string(),
     };
 
@@ -400,7 +400,7 @@ fn test_view_group_member_emr_information() {
             PatientCall::Query,
             patient_registry::ViewGroupMemberEmrInformationRequest {
                 member_nik: patient2.nik.to_string(),
-                group_id,
+                group_id: group_id.clone(),
                 page: 0,
                 limit: 10,
             },
@@ -439,7 +439,7 @@ fn test_view_group_member_emr_information() {
             PatientCall::Query,
             patient_registry::ViewGroupMemberEmrInformationRequest {
                 member_nik: patient2.nik.to_string(),
-                group_id,
+                group_id: group_id.clone(),
                 page: 0,
                 limit: 10,
             },
@@ -478,6 +478,9 @@ fn test_group_specific_access() {
             },
         )
         .unwrap();
+
+    // wait for 1 second
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     let group2_response = registries
         .patient
@@ -528,7 +531,7 @@ fn test_group_specific_access() {
             patient1.principal.clone(),
             PatientCall::Update,
             patient_registry::AddGroupMemberRequest {
-                group_id: group1_id,
+                group_id: group1_id.clone(),
                 consent_code: consent_code1.code,
                 relation: Relation::Spouse,
             },
@@ -543,7 +546,7 @@ fn test_group_specific_access() {
             patient1.principal.clone(),
             PatientCall::Update,
             patient_registry::AddGroupMemberRequest {
-                group_id: group2_id,
+                group_id: group2_id.clone(),
                 consent_code: consent_code2.code,
                 relation: Relation::Spouse,
             },
@@ -593,7 +596,7 @@ fn test_group_specific_access() {
             patient2.principal.clone(),
             PatientCall::Update,
             patient_registry::GrantGroupAccessRequest {
-                group_id: group1_id,
+                group_id: group1_id.clone(),
                 grantee_nik: patient1.nik.to_string(),
             },
         )
@@ -606,7 +609,7 @@ fn test_group_specific_access() {
         PatientCall::Query,
         patient_registry::ViewGroupMemberEmrInformationRequest {
             member_nik: patient2.nik.to_string(),
-            group_id: group1_id,
+            group_id: group1_id.clone(),
             page: 0,
             limit: 10,
         },
@@ -621,7 +624,7 @@ fn test_group_specific_access() {
         PatientCall::Query,
         patient_registry::ViewGroupMemberEmrInformationRequest {
             member_nik: patient2.nik.to_string(),
-            group_id: group2_id,
+            group_id: group2_id.clone(),
             page: 0,
             limit: 10,
         },

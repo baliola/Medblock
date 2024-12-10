@@ -18,7 +18,7 @@ pub enum Relation {
 pub struct AddGroupMemberRequest {
     pub relation: Relation,
     pub consent_code: String,
-    pub group_id: u64,
+    pub group_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Result_ {
@@ -73,7 +73,7 @@ pub struct CreateGroupRequest {
 }
 #[derive(CandidType, Deserialize)]
 pub struct CreateGroupResponse {
-    pub group_id: u64,
+    pub group_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub enum Result3 {
@@ -266,7 +266,7 @@ pub struct GetInformationResponse {
 pub struct GetGroupDetailsRequest {
     pub page: u64,
     pub limit: u64,
-    pub group_id: u64,
+    pub group_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct GroupDetail {
@@ -343,7 +343,7 @@ pub struct PatientListAdminResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct Group {
-    pub id: u64,
+    pub id: String,
     pub members: Vec<String>,
     pub name: String,
     pub leader: String,
@@ -355,7 +355,7 @@ pub struct GetUserGroupsResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct GrantGroupAccessRequest {
-    pub group_id: u64,
+    pub group_id: String,
     pub grantee_nik: String,
 }
 #[derive(CandidType, Deserialize)]
@@ -365,7 +365,7 @@ pub struct IsConsentClaimedResponse {
 }
 #[derive(CandidType, Deserialize)]
 pub struct LeaveGroupRequest {
-    pub group_id: u64,
+    pub group_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct IssueRequest {
@@ -477,7 +477,7 @@ pub struct UpdatePatientInfoRequest {
 pub struct ViewGroupMemberEmrInformationRequest {
     pub page: u64,
     pub limit: u64,
-    pub group_id: u64,
+    pub group_id: String,
     pub member_nik: String,
 }
 #[derive(CandidType, Deserialize)]
@@ -555,6 +555,12 @@ impl PatientRegistry {
         arg0: GetGroupDetailsRequest,
     ) -> Result<(Result4,)> {
         ic_cdk::call(self.0, "get_group_details_admin", (arg0,)).await
+    }
+    pub async fn get_group_details_async_no_pagination(
+        &self,
+        arg0: CreateGroupResponse,
+    ) -> Result<(Result4,)> {
+        ic_cdk::call(self.0, "get_group_details_async_no_pagination", (arg0,)).await
     }
     pub async fn get_logs(&self) -> Result<(LogResponse,)> {
         ic_cdk::call(self.0, "get_logs", ()).await
@@ -1014,6 +1020,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_group_details_admin",
+                payload,
+            )
+        }
+        pub fn get_group_details_async_no_pagination(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: CreateGroupResponse,
+        ) -> std::result::Result<Result4, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "get_group_details_async_no_pagination",
                 payload,
             )
         }

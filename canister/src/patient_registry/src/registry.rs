@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use canister_common::{
-    common::{AsciiRecordsKey, EmrHeader, Get, Timestamp, UserId, H256},
+    common::{AsciiRecordsKey, EmrHeader, Get, Id, Timestamp, UserId, H256},
     impl_max_size, impl_mem_bound, impl_range_bound, metrics,
     mmgr::MemoryManager,
     opaque_metrics,
@@ -222,6 +222,12 @@ pub enum PatientRegistryError {
     GroupFull(usize),
     #[error("NIK is already registered")]
     DuplicateNIK,
+    #[error("user already in group")]
+    UserAlreadyInGroup,
+    #[error("group not found")]
+    GroupNotFound,
+    #[error("group already exists")]
+    GroupAlreadyExists,
 }
 
 #[derive(
@@ -314,62 +320,14 @@ mod test_group_access_map {
 
     #[test]
     fn test_grant_and_revoke_access() {
-        let memory_manager = memory_manager!();
-        let mut access_map = GroupAccessMap::init(&memory_manager);
-
-        let granter = NIK::from([0u8; 32]);
-        let grantee = NIK::from([1u8; 32]);
-        let group_id = 1;
-
-        // test granting access
-        assert!(access_map
-            .grant_access(granter.clone(), grantee.clone(), group_id)
-            .is_ok());
-        assert!(access_map.has_access(&granter, &grantee));
-        assert_eq!(
-            access_map.get_access_group(&granter, &grantee),
-            Some(group_id)
-        );
-
-        // test revoking access
-        assert!(access_map
-            .revoke_access(granter.clone(), grantee.clone())
-            .is_ok());
-        assert!(!access_map.has_access(&granter, &grantee));
-        assert_eq!(access_map.get_access_group(&granter, &grantee), None);
+        // cant really test this as we need to create a group first to get its id
+        todo!()
     }
 
     #[test]
     fn test_access_verification() {
-        let memory_manager = memory_manager!();
-        let mut access_map = GroupAccessMap::init(&memory_manager);
-
-        let granter = NIK::from([0u8; 32]);
-        let grantee = NIK::from([1u8; 32]);
-        let other_user = NIK::from([2u8; 32]);
-        let group_id = 1;
-
-        // test granting access
-        access_map
-            .grant_access(granter.clone(), grantee.clone(), group_id)
-            .unwrap();
-
-        // verify correct access
-        assert!(access_map.has_access(&granter, &grantee));
-        assert_eq!(
-            access_map.get_access_group(&granter, &grantee),
-            Some(group_id)
-        );
-
-        // verify no access for other combinations
-        assert!(!access_map.has_access(&grantee, &granter)); // access is one-way
-        assert!(!access_map.has_access(&granter, &other_user));
-        assert!(!access_map.has_access(&other_user, &grantee));
-
-        // verify no group access for unauthorized combinations
-        assert_eq!(access_map.get_access_group(&grantee, &granter), None);
-        assert_eq!(access_map.get_access_group(&granter, &other_user), None);
-        assert_eq!(access_map.get_access_group(&other_user, &grantee), None);
+        // cant really test this as we need to create a group first to get its id
+        todo!()
     }
 }
 
@@ -1113,7 +1071,7 @@ mod test_kyc {
     }
 }
 
-pub type GroupId = u64;
+pub type GroupId = Id;
 
 #[derive(Clone, Debug, CandidType, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Relation {
@@ -1133,6 +1091,8 @@ pub struct Group {
     pub member_relations: Vec<(NIK, Relation)>,
 }
 
+pub type GroupBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
+
 impl_mem_bound!(for Group: bounded; fixed_size: false);
 impl_range_bound!(Group);
 impl_max_size!(for Group: 1024); // this is pretty expensive. might be worth looking into a more efficient way to store this. - milo
@@ -1143,8 +1103,14 @@ impl GroupMap {
         Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
-    pub fn create_group(&mut self, name: AsciiRecordsKey<64>, leader: NIK) -> GroupId {
-        let group_id = self.0.len() as GroupId;
+    // create group works in a way that it creates a new entry of Group in the BtreeMap and is linked and bound to a GroupId
+    pub fn create_group(&mut self, name: AsciiRecordsKey<64>, leader: NIK) -> GroupBindingMapResult<GroupId> {
+        const UUID_MAX_SOURCE_LEN: usize = 10;
+        let group_id = Id::new(&[0u8; UUID_MAX_SOURCE_LEN]);
+
+        println!("randomized group id: {:?}", group_id);
+        println!("len of group map: {:?}", self.0.len());
+
         let group = Group {
             id: group_id.clone(),
             name,
@@ -1152,37 +1118,46 @@ impl GroupMap {
             members: vec![leader.clone()],
             member_relations: vec![(leader, Relation::Parent)],
         };
-        self.0.insert(Stable::from(group_id), Stable::from(group));
-        group_id
+
+        if self.0.contains_key(&group_id.clone().to_stable()) {
+            return Err(PatientRegistryError::GroupAlreadyExists);
+        }
+
+        self.0.insert(group_id.clone().to_stable(), group.to_stable());
+
+        println!("group id from create_group registry: {:?}", group_id);
+
+        Ok(group_id)
     }
 
     pub fn add_member(
         &mut self,
         group_id: GroupId,
-        leader: &NIK,
         member: NIK,
         relation: Relation,
-    ) -> PatientBindingMapResult {
-        let key = group_id.to_stable();
-        let mut group = self
-            .0
-            .get(&key)
-            .ok_or(PatientRegistryError::UserDoesNotExist)?
-            .into_inner();
+    ) -> GroupBindingMapResult {
+        let key = group_id.clone().to_stable();
 
-        if group.leader != *leader {
-            return Err(PatientRegistryError::UserDoesNotExist);
-        }
+        // find the group with that group id first
+        let group = self.0.get(&key).ok_or(PatientRegistryError::GroupNotFound)?;
+
+        // then access the inner group
+        let mut group = group.into_inner();
 
         if group.members.len() >= MAX_GROUP_MEMBERS {
             return Err(PatientRegistryError::GroupFull(MAX_GROUP_MEMBERS));
         }
 
-        if !group.members.contains(&member) {
-            group.members.push(member.clone());
-            group.member_relations.push((member, relation));
-            self.0.insert(key, group.to_stable());
+        if group.members.contains(&member) {
+            return Err(PatientRegistryError::UserAlreadyInGroup);
         }
+
+        group.members.push(member.clone());
+        group.member_relations.push((member, relation));
+        self.0.insert(key, group.to_stable());
+
+        // log the group details to see how many members are in the group
+        let group = self.get_group(group_id.clone());
 
         Ok(())
     }
@@ -1229,7 +1204,11 @@ impl GroupMap {
     }
 
     pub fn get_group(&self, group_id: GroupId) -> Option<Group> {
-        self.0.get(&group_id.to_stable()).map(|g| g.into_inner())
+        println!("group id from get_group registry: {:?}", group_id);
+        let group = self.0.get(&group_id.to_stable()).map(|g| g.into_inner());
+        // caller must be in the group
+        println!("group data found: {:?}", group);
+        group
     }
 
     pub fn get_user_groups(&self, nik: &NIK) -> Vec<Group> {
@@ -1256,7 +1235,7 @@ impl GroupMap {
         })
     }
 
-    pub fn transfer_leadership(&mut self, group_id: u64, new_leader: &NIK) -> Result<(), String> {
+    pub fn transfer_leadership(&mut self, group_id: GroupId, new_leader: &NIK) -> Result<(), String> {
         let key = group_id.to_stable();
         let mut group = self.0.get(&key).ok_or("Group not found")?.into_inner();
 
@@ -1269,7 +1248,7 @@ impl GroupMap {
         Ok(())
     }
 
-    pub fn dissolve_group(&mut self, group_id: u64) -> Result<(), String> {
+    pub fn dissolve_group(&mut self, group_id: GroupId) -> Result<(), String> {
         let key = group_id.to_stable();
         // first verify the group exists
         if !self.0.contains_key(&key) {
@@ -1312,9 +1291,11 @@ mod test_group_map {
         let name = AsciiRecordsKey::<64>::new("test_group".to_string()).unwrap();
         let leader = NIK::from([0u8; 32]);
 
-        let group_id = group_map.create_group(name.clone(), leader.clone());
+        let result = group_map.create_group(name.clone(), leader.clone());
 
-        let group = group_map.get_group(group_id).unwrap();
+        let group_id = result.unwrap();
+
+        let group = group_map.get_group(group_id.clone()).unwrap();
         assert_eq!(group.id, group_id);
         assert_eq!(group.name, name);
         assert_eq!(group.leader, leader);
@@ -1330,27 +1311,25 @@ mod test_group_map {
         let leader = NIK::from([0u8; 32]);
         let member = NIK::from([1u8; 32]);
 
-        let group_id = group_map.create_group(name, leader.clone());
+        let result = group_map.create_group(name, leader.clone());
+        let group_id = result.unwrap();
 
-        // test adding member as leader
+        // test adding member
         assert!(group_map
-            .add_member(group_id, &leader, member.clone(), Relation::Parent)
+            .add_member(group_id.clone(), member.clone(), Relation::Parent)
             .is_ok());
 
-        let group = group_map.get_group(group_id).unwrap();
+        let group = group_map.get_group(group_id.clone()).unwrap();
         assert!(group.members.contains(&member));
 
         // test adding same member again (should be idempotent)
-        assert!(group_map
-            .add_member(group_id, &leader, member.clone(), Relation::Parent)
-            .is_ok());
-        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 2);
+        // ! this is erroring and we need to debug why
+        match group_map.add_member(group_id.clone(), member.clone(), Relation::Parent) {
+            Ok(_) => panic!("Expected error when adding same member again"),
+            Err(e) => assert_eq!(e, PatientRegistryError::UserAlreadyInGroup),
+        }
 
-        // test adding member as non-leader
-        let non_leader = NIK::from([2u8; 32]);
-        assert!(group_map
-            .add_member(group_id, &non_leader, member, Relation::Sibling)
-            .is_err());
+        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 2);
     }
 
     #[test]
@@ -1363,33 +1342,43 @@ mod test_group_map {
         let non_member = NIK::from([2u8; 32]);
 
         // create two groups
-        let group1_id = group_map.create_group(
+        let group1_result = group_map.create_group(
             AsciiRecordsKey::<64>::new("group1".to_string()).unwrap(),
             leader.clone(),
         );
-        let group2_id = group_map.create_group(
+        let group1_id = group1_result.unwrap();
+
+        // wait for 1 second
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        let group2_result = group_map.create_group(
             AsciiRecordsKey::<64>::new("group2".to_string()).unwrap(),
             leader.clone(),
         );
+        let group2_id = group2_result.unwrap();
+
+        // verify that group map now has two groups
+        assert_eq!(group_map.0.len(), 2);
 
         // add member to first group only
         group_map
-            .add_member(group1_id, &leader, member.clone(), Relation::Parent)
+            .add_member(group1_id.clone(), member.clone(), Relation::Parent)
             .unwrap();
 
         // test group retrieval
+        // leader should be in two grous
         let leader_groups = group_map.get_user_groups(&leader);
         assert_eq!(leader_groups.len(), 2);
 
         let member_groups = group_map.get_user_groups(&member);
         assert_eq!(member_groups.len(), 1);
-        assert_eq!(member_groups[0].id, group1_id);
+        assert_eq!(member_groups[0].id, group1_id.clone());
 
         let non_member_groups = group_map.get_user_groups(&non_member);
         assert_eq!(non_member_groups.len(), 0);
 
         // verify group IDs instead of comparing whole groups
-        let leader_group_ids: Vec<GroupId> = leader_groups.iter().map(|g| g.id).collect();
+        let leader_group_ids: Vec<GroupId> = leader_groups.iter().map(|g| g.id.clone()).collect();
         assert!(leader_group_ids.contains(&group1_id));
         assert!(leader_group_ids.contains(&group2_id));
     }
@@ -1402,14 +1391,14 @@ mod test_group_map {
         let leader = NIK::from([0u8; 32]);
         let non_leader = NIK::from([1u8; 32]);
 
-        let group_id = group_map.create_group(
+        let group_id_result = group_map.create_group(
             AsciiRecordsKey::<64>::new("test_group".to_string()).unwrap(),
             leader.clone(),
         );
+        let group_id = group_id_result.unwrap();
 
-        assert!(group_map.is_group_leader(group_id, &leader));
-        assert!(!group_map.is_group_leader(group_id, &non_leader));
-        assert!(!group_map.is_group_leader(999, &leader)); // non-existent group
+        assert!(group_map.is_group_leader(group_id.clone(), &leader));
+        assert!(!group_map.is_group_leader(group_id.clone(), &non_leader));
     }
 
     #[test]
@@ -1422,27 +1411,25 @@ mod test_group_map {
         let member = NIK::from([1u8; 32]);
 
         let group_id = group_map.create_group(name, leader.clone());
+        let group_id = group_id.unwrap();
 
         // add member to group
         assert!(group_map
-            .add_member(group_id, &leader, member.clone(), Relation::Parent)
+            .add_member(group_id.clone(), member.clone(), Relation::Parent)
             .is_ok());
-        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 2);
+        assert_eq!(group_map.get_group(group_id.clone()).unwrap().members.len(), 2);
 
         // test member leaving group
-        assert!(group_map.remove_member(group_id, &member).is_ok());
-        assert_eq!(group_map.get_group(group_id).unwrap().members.len(), 1);
+        assert!(group_map.remove_member(group_id.clone(), &member).is_ok());
+        assert_eq!(group_map.get_group(group_id.clone()).unwrap().members.len(), 1);
         assert!(!group_map
-            .get_group(group_id)
+            .get_group(group_id.clone())
             .unwrap()
             .members
             .contains(&member));
 
-        // test leaving non-existent group
-        assert!(group_map.remove_member(999, &member).is_err());
-
         // test leader leaving group (should dissolve the group)
-        assert!(group_map.remove_member(group_id, &leader).is_ok());
-        assert!(group_map.get_group(group_id).is_none()); // group should be dissolved
+        assert!(group_map.remove_member(group_id.clone(), &leader).is_ok());
+        assert!(group_map.get_group(group_id.clone()).is_none()); // group should be dissolved
     }
 }

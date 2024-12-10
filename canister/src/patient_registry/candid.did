@@ -8,7 +8,7 @@ type ActivityType = variant { Updated; Accessed; Revoked };
 type AddGroupMemberRequest = record {
   relation : Relation;
   consent_code : text;
-  group_id : nat64;
+  group_id : text;
 };
 type AuthorizedCallerRequest = record { caller : principal };
 type BindAdminRequest = record { nik : text; "principal" : principal };
@@ -54,7 +54,7 @@ type Consent = record {
 };
 type ConsentListResponse = record { consents : vec Consent };
 type CreateGroupRequest = record { name : text };
-type CreateGroupResponse = record { group_id : nat64 };
+type CreateGroupResponse = record { group_id : text };
 type DailyMetricsData = record {
   updateCalls : nat64;
   canisterHeapMemorySize : NumericEntity;
@@ -90,7 +90,7 @@ type FinishSessionRequest = record { session_id : text };
 type GetGroupDetailsRequest = record {
   page : nat64;
   limit : nat64;
-  group_id : nat64;
+  group_id : text;
 };
 type GetGroupDetailsResponse = record {
   group_details : vec GroupDetail;
@@ -133,9 +133,9 @@ type GetMetricsParameters = record {
 };
 type GetPatientInfoResponse = record { nik : text; patient : Patient };
 type GetUserGroupsResponse = record { groups : vec Group };
-type GrantGroupAccessRequest = record { group_id : nat64; grantee_nik : text };
+type GrantGroupAccessRequest = record { group_id : text; grantee_nik : text };
 type Group = record {
-  id : nat64;
+  id : text;
   members : vec text;
   name : text;
   leader : text;
@@ -159,7 +159,7 @@ type HourlyMetricsData = record {
 type IsConsentClaimedResponse = record { info : opt Consent; claimed : bool };
 type IssueRequest = record { header : EmrHeader };
 type KycStatus = variant { Approved; Denied; Pending };
-type LeaveGroupRequest = record { group_id : nat64 };
+type LeaveGroupRequest = record { group_id : text };
 type LogMessageData = record { timeNanos : nat64; message : text };
 type LogResponse = record { logs : vec Activity };
 type MetricsGranularity = variant { hourly; daily };
@@ -240,7 +240,7 @@ type V1 = record {
 type ViewGroupMemberEmrInformationRequest = record {
   page : nat64;
   limit : nat64;
-  group_id : nat64;
+  group_id : text;
   member_nik : text;
 };
 service : () -> {
@@ -267,6 +267,9 @@ service : () -> {
     ) query;
   get_group_details : (GetGroupDetailsRequest) -> (Result_4) query;
   get_group_details_admin : (GetGroupDetailsRequest) -> (Result_4) query;
+  get_group_details_async_no_pagination : (CreateGroupResponse) -> (
+      Result_4,
+    ) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
   get_patient_info_with_consent : (FinishSessionRequest) -> (

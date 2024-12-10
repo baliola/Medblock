@@ -388,6 +388,12 @@ pub struct CreateGroupResponse {
     pub group_id: GroupId,
 }
 
+impl CreateGroupResponse {
+    pub fn new(group_id: GroupId) -> Self {
+        Self { group_id }
+    }
+}
+
 from!(CreateGroupResponse: GroupId as value {
     group_id: value
 });
@@ -485,6 +491,11 @@ impl GetGroupDetailsResponse {
             total_pages,
         }
     }
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsNoPaginatedRequest {
+    pub group_id: GroupId,
 }
 
 // End of API response and request structs for group details functionality.

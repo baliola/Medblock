@@ -1,20 +1,7 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest,
-    ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse,
-    CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest,
-    EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest,
-    GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest,
-    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail,
-    IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest,
-    LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
-    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
-    RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest,
-    RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest,
-    SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
-    UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest,
-    ViewGroupMemberEmrInformationRequest,
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
 };
 use candid::{Decode, Encode, Principal};
 use canister_common::{
@@ -1011,25 +998,33 @@ fn create_group(req: CreateGroupRequest) -> Result<CreateGroupResponse, String> 
     let name =
         AsciiRecordsKey::<64>::new(req.name).map_err(|e| format!("Invalid group name: {}", e))?;
 
-    Ok(with_state_mut(|s| s.registry.group_map.create_group(name, nik)).into())
+    Ok(with_state_mut(|s| match s.registry.group_map.create_group(name, nik) {
+        Ok(group_id) => CreateGroupResponse::new(group_id),
+        Err(e) => {
+            ic_cdk::trap(&format!("Failed to create group: {:?}", e));
+        }
+    }))
 }
 
 #[ic_cdk::update(guard = "only_patient")]
-fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
-    let caller = verified_caller().unwrap();
-    let leader_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-
+async fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
     let code = ConsentCode::from_text(&req.consent_code)
         .map_err(|e| format!("Invalid consent code: {}", e))?;
 
-    let consent = ConsentsApi::consent(&code).ok_or("Consent not found")?;
+    // check if the consent is already claimed, it needs to be claimed first before adding to group
+    let consent = ConsentsApi::consent(&code).expect("consent not found");
+    if consent.claimed {
+        return Err("Consent already claimed".to_string());
+    }
 
+    // add the member to the group
     with_state_mut(|s| {
         s.registry
             .group_map
-            .add_member(req.group_id, &leader_nik, consent.nik, req.relation)
+            .add_member(req.group_id, consent.nik, req.relation)
     })
     .map_err(|e| format!("Failed to add member: {:?}", e))
+
 }
 
 #[ic_cdk::update(guard = "only_patient")]
@@ -1042,14 +1037,14 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
         let group = s
             .registry
             .group_map
-            .get_group(req.group_id)
+            .get_group(req.group_id.clone())
             .ok_or("Group not found")?;
 
         // get all access pairs for this group
         let access_pairs = s
             .registry
             .group_access_map
-            .get_group_access_pairs(req.group_id);
+            .get_group_access_pairs(req.group_id.clone());
 
         // revoke all access pairs involving the leaving member
         for (granter, grantee) in access_pairs {
@@ -1069,7 +1064,7 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             let access_pairs = s
                 .registry
                 .group_access_map
-                .get_group_access_pairs(req.group_id);
+                .get_group_access_pairs(req.group_id.clone());
 
             // revoke all remaining access pairs for this group
             for (granter, grantee) in access_pairs {
@@ -1082,7 +1077,7 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             // then dissolve the group
             s.registry
                 .group_map
-                .dissolve_group(req.group_id)
+                .dissolve_group(req.group_id.clone())
                 .map_err(|e| format!("Failed to dissolve group: {}", e))?;
         } else if group.leader == nik {
             // Transfer leadership to another member
@@ -1094,18 +1089,18 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
 
             s.registry
                 .group_map
-                .transfer_leadership(req.group_id, &new_leader)
+                .transfer_leadership(req.group_id.clone(), &new_leader)
                 .map_err(|e| format!("Failed to transfer leadership: {:?}", e))?;
 
             s.registry
                 .group_map
-                .remove_member(req.group_id, &nik)
+                .remove_member(req.group_id.clone(), &nik)
                 .map_err(|e| format!("Failed to remove member: {:?}", e))?;
         } else {
             // Regular member leaving
             s.registry
                 .group_map
-                .remove_member(req.group_id, &nik)
+                .remove_member(req.group_id.clone(), &nik)
                 .map_err(|e| format!("Failed to remove member: {:?}", e))?;
         }
 
@@ -1132,7 +1127,7 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
 
     // Verify both users are in the same group
     let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+        with_state(|s| s.registry.group_map.get_group(req.group_id.clone())).ok_or("Group not found")?;
 
     // Check both users are in the group
     if !group.members.contains(&granter_nik) {
@@ -1146,7 +1141,7 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
     with_state_mut(|s| {
         s.registry
             .group_access_map
-            .grant_access(granter_nik, grantee_nik, req.group_id)
+            .grant_access(granter_nik, grantee_nik, req.group_id.clone())
     })
     .map_err(|e| format!("Failed to grant EMR access: {:?}", e))
 }
@@ -1180,7 +1175,7 @@ async fn view_group_member_emr_information(
         .map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string.", req.member_nik))?;
 
     // verify both users are in the same group
-    let group = with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!(
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone())).ok_or(format!(
         "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist.",
         req.group_id
     ))?;
@@ -1216,7 +1211,7 @@ async fn view_group_member_emr_information(
             && s.registry
                 .group_access_map
                 .get_access_group(&member_nik, &viewer_nik)
-                == Some(req.group_id)
+                == Some(req.group_id.clone())
     });
 
     if !has_access {
@@ -1287,6 +1282,56 @@ async fn view_group_member_emr_information(
     Ok(EmrListPatientResponse::from(emrs))
 }
 
+
+#[ic_cdk::query(guard = "only_patient")]
+async fn get_group_details_async_no_pagination(req: GetGroupDetailsNoPaginatedRequest) -> Result<GetGroupDetailsResponse, String> {
+    let caller = verified_caller().unwrap();
+
+    let caller_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+
+    // get group and verify caller is a member
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone())).ok_or("Group not found")?;
+
+    if !group.members.contains(&caller_nik) {
+        return Err("Caller is not a member of the group".to_string());
+    }
+
+    Ok(GetGroupDetailsResponse::new(
+        group.member_relations.iter().map(|(nik, relation)| {
+            let patient = with_state(|s| s.registry.get_patient_info(nik.clone())).unwrap();
+            let age = match patient.clone() {   
+                Patient::V1(v1) => {
+                    let dob = v1.date_of_birth.to_string();
+                    let year = dob
+                        .get(0..4)
+                        .and_then(|y| y.parse::<u16>().ok())
+                        .unwrap_or(0);
+                    let current_year = 2024; // todo: might want to get this dynamically
+                    (current_year - year) as u8
+                }
+            };
+
+            let gender = match patient.clone() {
+                Patient::V1(v1) => {
+                    AsciiRecordsKey::<64>::new(v1.gender.to_string()).unwrap()
+                }
+            };
+
+            GroupDetail {
+                nik: nik.clone(),
+                name: patient.name().clone(),
+                gender: gender,
+                age: age,
+                role: relation.clone(),
+            }
+        }).collect(),
+        group.members.len() as u64,
+        group.name,
+        AsciiRecordsKey::<64>::new(group.leader.to_string()).unwrap(),
+        0,
+    ))
+}
+
 /// Get Group Details
 ///
 /// Description:
@@ -1314,52 +1359,20 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         return Err("Only group members can view group details".to_string());
     }
 
-    // calculate total pages
-    let total_members = group.members.len() as u64;
-    let total_pages = (total_members + req.limit - 1) / req.limit;
-
-    // get paginated member details
-    let start = (req.page * req.limit) as usize;
-    let end = ((req.page + 1) * req.limit) as usize;
-
-    // ensure leader is always included in the first page
-    let paginated_members: Vec<NIK> = if req.page == 0 {
-        // if this is the first page, ensure leader is first in the list
-        let mut members = vec![group.leader.clone()];
-        members.extend(
-            group
-                .members
-                .iter()
-                .filter(|&m| m != &group.leader)
-                .skip(start)
-                .take(end - start - 1)
-                .cloned(),
-        );
-        members
-    } else {
-        // for other pages, just skip the leader if they would have been in page 0
-        group
-            .members
-            .iter()
-            .filter(|&m| m != &group.leader)
-            .skip(start)
-            .take(end - start)
-            .cloned()
-            .collect()
-    };
-
     // get leader name
     let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
         .map_err(|e| format!("Failed to get leader info: {:?}", e))?
         .name()
         .clone();
 
-    // get group name
+    // get group name and member count
     let group_name = group.name.clone();
+    let member_count = group.members.len() as u64;
 
     // build group details for each member
     let mut group_details = Vec::new();
-    for member_nik in paginated_members {
+    println!("group members: {:?}", group.members);
+    for member_nik in group.members {
         let member = with_state(|s| s.registry.get_patient_info(member_nik.clone()))
             .map_err(|_| format!("Failed to get member info for NIK: {}", member_nik))?;
 
@@ -1399,15 +1412,22 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
             role,
         };
 
-        group_details.push(detail);
+        // now we can paginate
+        if group_details.len() < req.limit as usize{
+            group_details.push(detail);
+        }
+
+        if group_details.len() == req.limit as usize {
+            break;
+        }
     }
 
     Ok(GetGroupDetailsResponse::new(
         group_details,
-        total_members,
+        member_count,
         group_name,
         leader_name,
-        total_pages,
+        (member_count + req.limit - 1) / req.limit,
     ))
 }
 
