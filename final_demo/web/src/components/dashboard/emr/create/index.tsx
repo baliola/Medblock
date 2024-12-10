@@ -17,23 +17,38 @@ import { Fragment } from "react";
 import { providerCanisterId } from "@/config/canisters/providers.canister";
 import { emrButton } from "@/constants/contents/dashboard/emr/button";
 import EMRFormRecipe from "../form/recipe";
+import EMRFormContent from "../form";
 
 const initialValues = {
   visit_date: "",
   discharge_date: "",
+  visit_time: "",
+  discharge_time: "",
   medical_officer: "",
   room: "",
-  
+
   blood_pressure: "",
   temperature: "",
   heart_rate: "",
   respiration: "",
   o2_saturation: "",
-  subjective: "",
-  diagnosis: "",
-  planning: "",
-  medication: "",
+
+  circuit_reason: "",
+  illness_history: "",
+
+  pyhsical_exam: "",
+  drug_allergy: "No",
+  food_allergy: "No",
+  other_allergy: "",
+
+  additional_exam: "",
+  primary_diagnosis: "",
+  secondary_diagnosis: "",
+  surgery: "",
+  procedures_and_therapies: "",
+
   recipe: "",
+  discharge_condition: "",
 }
 
 const mapValuesToEmrFragments = (values: EMR): EmrFragment[] =>
@@ -82,42 +97,25 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
       <Formik
         initialValues={initialValues}
         validationSchema={emrSchema}
+        validateOnBlur={false}
         onSubmit={(values, { resetForm }) => {
           onSubmit(values, resetForm)
         }}
       >
-        {({ handleSubmit, errors, touched }) => (
+        {({ handleSubmit, errors, touched, setFieldValue, values }) => (
           <Form onSubmit={handleSubmit}>
             <Flex w={'full'} gap={5} p={10}
               direction={{ base: 'column', lg: 'row' }}
             >
-              <Flex w={'full'} bg={"primary.100"} p={5} rounded={"xl"} direction={'column'}>
-                {header}
-                <Divider py={3} borderColor={'primary.300'} />
-                <Flex direction={'column'} gap={7}>
-                  <EMRFormInfo />
-                  <EMRFormVitalSign />
-                  <EMRFormReport />
-                </Flex>
-              </Flex>
-              <Flex w={{ lg: "lg" }} direction={'column'} gap={5}>
-                <EMRFormRecipe />
-                <Button
-                  type="submit"
-                  colorScheme="primary"
-                  bg={'primary.700'}
-                  py={5}
-                  fontSize={'xs'}
-                  rounded={'lg'}
-                  isDisabled={
-                    Object.keys(errors).length > 0 ||
-                    Object.keys(touched).length === 0
-                  }
-                  isLoading={loadingCreateEMR}
-                >
-                  {emrButton.create.label}
-                </Button>
-              </Flex>
+              <EMRFormContent props={{ 
+                header, 
+                loading: loadingCreateEMR, 
+                label: emrButton.create.label, 
+                drugAllergyValue: values.drug_allergy,
+                foodAllergyValue: values.food_allergy,
+                dischargeValue: values.discharge_condition,
+                setFieldValue 
+              }} />
             </Flex>
           </Form>
         )}
