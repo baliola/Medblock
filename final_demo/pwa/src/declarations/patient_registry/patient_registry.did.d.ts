@@ -14,7 +14,7 @@ export type ActivityType = { 'Updated' : null } |
 export interface AddGroupMemberRequest {
   'relation' : Relation,
   'consent_code' : string,
-  'group_id' : bigint,
+  'group_id' : string,
 }
 export interface AuthorizedCallerRequest { 'caller' : Principal }
 export interface BindAdminRequest { 'nik' : string, 'principal' : Principal }
@@ -53,7 +53,7 @@ export interface Consent {
 }
 export interface ConsentListResponse { 'consents' : Array<Consent> }
 export interface CreateGroupRequest { 'name' : string }
-export interface CreateGroupResponse { 'group_id' : bigint }
+export interface CreateGroupResponse { 'group_id' : string }
 export interface DailyMetricsData {
   'updateCalls' : bigint,
   'canisterHeapMemorySize' : NumericEntity,
@@ -92,14 +92,14 @@ export interface FinishSessionRequest { 'session_id' : string }
 export interface GetGroupDetailsRequest {
   'page' : bigint,
   'limit' : bigint,
-  'group_id' : bigint,
+  'group_id' : string,
 }
 export interface GetGroupDetailsResponse {
+  'group_details' : Array<GroupDetail>,
   'total_pages' : bigint,
   'leader_name' : string,
   'member_count' : bigint,
   'group_name' : string,
-  'details_of_members' : Array<MemberDetail>,
 }
 export interface GetInformationRequest {
   'status' : [] | [StatusRequest],
@@ -136,15 +136,22 @@ export interface GetMetricsParameters {
 export interface GetPatientInfoResponse { 'nik' : string, 'patient' : Patient }
 export interface GetUserGroupsResponse { 'groups' : Array<Group> }
 export interface GrantGroupAccessRequest {
-  'group_id' : bigint,
+  'group_id' : string,
   'grantee_nik' : string,
 }
 export interface Group {
-  'id' : bigint,
+  'id' : string,
   'members' : Array<string>,
   'name' : string,
   'leader' : string,
   'member_relations' : Array<[string, Relation]>,
+}
+export interface GroupDetail {
+  'age' : number,
+  'nik' : string,
+  'name' : string,
+  'role' : Relation,
+  'gender' : string,
 }
 export interface HeaderStatus { 'updated_at' : bigint, 'created_at' : bigint }
 export interface HourlyMetricsData {
@@ -162,13 +169,9 @@ export interface IssueRequest { 'header' : EmrHeader }
 export type KycStatus = { 'Approved' : null } |
   { 'Denied' : null } |
   { 'Pending' : null };
-export interface LeaveGroupRequest { 'group_id' : bigint }
+export interface LeaveGroupRequest { 'group_id' : string }
 export interface LogMessageData { 'timeNanos' : bigint, 'message' : string }
 export interface LogResponse { 'logs' : Array<Activity> }
-export interface MemberDetail {
-  'patient_info' : PatientWithNik,
-  'role' : Relation,
-}
 export type MetricsGranularity = { 'hourly' : null } |
   { 'daily' : null };
 export interface MetricsRequest { 'parameters' : GetMetricsParameters }
@@ -269,7 +272,7 @@ export interface V1 {
 export interface ViewGroupMemberEmrInformationRequest {
   'page' : bigint,
   'limit' : bigint,
-  'group_id' : bigint,
+  'group_id' : string,
   'member_nik' : string,
 }
 export interface _SERVICE {
@@ -302,6 +305,10 @@ export interface _SERVICE {
   >,
   'get_group_details' : ActorMethod<[GetGroupDetailsRequest], Result_4>,
   'get_group_details_admin' : ActorMethod<[GetGroupDetailsRequest], Result_4>,
+  'get_group_details_async_no_pagination' : ActorMethod<
+    [CreateGroupResponse],
+    Result_4
+  >,
   'get_logs' : ActorMethod<[], LogResponse>,
   'get_patient_info' : ActorMethod<[], GetPatientInfoResponse>,
   'get_patient_info_with_consent' : ActorMethod<

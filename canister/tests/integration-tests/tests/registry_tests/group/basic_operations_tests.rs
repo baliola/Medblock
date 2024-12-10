@@ -55,7 +55,7 @@ fn test_group_creation_and_emr_access() {
 
     // add member to group
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: consent_code.code,
         relation: Relation::Spouse,
     };
@@ -235,7 +235,7 @@ fn test_group_retrieval() {
 
     // update the add_member_req
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: consent_code.code,
         relation: Relation::Spouse,
     };
@@ -264,7 +264,9 @@ fn test_group_retrieval() {
     assert_eq!(groups.groups[0].id, group_id);
 
     // test leaving group
-    let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
+    let leave_group_req = patient_registry::LeaveGroupRequest {
+        group_id: group_id.clone(),
+    };
 
     registries
         .patient
@@ -328,7 +330,7 @@ fn test_dissolve_group() {
 
     // step 2. add member to group
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: registries
             .patient
             .create_consent(
@@ -364,7 +366,9 @@ fn test_dissolve_group() {
     assert_eq!(groups.groups.len(), 1);
 
     // step 3. leader leaves group (group should exist and have 1 member)
-    let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
+    let leave_group_req = patient_registry::LeaveGroupRequest {
+        group_id: group_id.clone(),
+    };
 
     registries
         .patient
@@ -389,7 +393,9 @@ fn test_dissolve_group() {
     assert_eq!(groups.groups.len(), 1);
 
     // step 5. make member1 leave group (should dissolve group)
-    let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
+    let leave_group_req = patient_registry::LeaveGroupRequest {
+        group_id: group_id.clone(),
+    };
 
     registries
         .patient
@@ -410,7 +416,7 @@ fn test_dissolve_group() {
             registries.controller.clone(),
             PatientCall::Query,
             GetGroupDetailsRequest {
-                group_id,
+                group_id: group_id.clone(),
                 limit: 10,
                 page: 0,
             },
@@ -504,7 +510,7 @@ fn test_group_access_cleanup() {
     };
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id,
+        group_id: group_id.clone(),
         consent_code: registries
             .patient
             .create_consent(
@@ -529,7 +535,7 @@ fn test_group_access_cleanup() {
 
     // patient1 grants access to patient2 (patient2 can view patient1's EMR)
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
-        group_id,
+        group_id: group_id.clone(),
         grantee_nik: patient2.nik.to_string(),
     };
 
@@ -545,7 +551,7 @@ fn test_group_access_cleanup() {
 
     // verify patient2 can view patient1's EMR (granted access)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
-        group_id,
+        group_id: group_id.clone(),
         member_nik: patient1.nik.to_string(),
         page: 0,
         limit: 10,
@@ -573,7 +579,7 @@ fn test_group_access_cleanup() {
 
     // verify patient1 cannot view patient2's EMR (no access granted)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
-        group_id,
+        group_id: group_id.clone(),
         member_nik: patient2.nik.to_string(),
         page: 0,
         limit: 10,
@@ -595,7 +601,9 @@ fn test_group_access_cleanup() {
     );
 
     // patient2 leaves group
-    let leave_group_req = patient_registry::LeaveGroupRequest { group_id };
+    let leave_group_req = patient_registry::LeaveGroupRequest {
+        group_id: group_id.clone(),
+    };
 
     registries
         .patient
@@ -609,7 +617,7 @@ fn test_group_access_cleanup() {
 
     // verify Patient2 can no longer view Patient1's EMR
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
-        group_id,
+        group_id: group_id.clone(),
         member_nik: patient1.nik.to_string(),
         page: 0,
         limit: 10,

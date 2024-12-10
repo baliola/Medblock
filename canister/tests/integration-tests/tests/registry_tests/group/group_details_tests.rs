@@ -1,9 +1,124 @@
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
 use integration_tests::declarations::patient_registry::{
-    self, AddGroupMemberRequest, CreateGroupRequest, GetGroupDetailsRequest, Relation,
+    self, AddGroupMemberRequest, CreateGroupRequest, Patient, GetGroupDetailsRequest, Relation,
 };
 
 use crate::common;
+
+/// TEST GROUP DETAILS WITHOUT PAGINATION
+///
+/// *PREREQUISITES*:
+/// - One registered admin
+/// - One registered provider
+/// - One registered patient with EMR from the provider above
+///
+/// *FLOW BEING TESTED*:
+/// 1. Create group
+/// 2. Add member to group
+/// 3. Get group details
+#[test]
+fn test_group_details_without_pagination() {
+
+    let (registries, _provider, leader, member1) = common::Scenario::one_provider_two_patient_with_emrs();
+
+    let group_response = registries
+        .patient
+        .create_group(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Update,
+            CreateGroupRequest {
+                name: "Test Group".to_string(),
+            },
+        )
+        .unwrap();
+
+    let group_id = match group_response {
+        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+    };
+
+    let request = patient_registry::CreateGroupResponse {
+        group_id: group_id.clone(),
+    };
+
+    let details = registries
+        .patient
+        .get_group_details_async_no_pagination(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Query,
+            request,
+        )
+        .unwrap();
+
+    let details = match details {
+        patient_registry::Result4::Ok(response) => response,
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+    };
+
+    // lets get the leader's patient information first from the scenario
+    let leader_details = registries.patient.get_patient_info(&registries.ic, leader.principal.clone(), PatientCall::Query).unwrap();
+
+    assert_eq!(details.group_details.len(), 1);
+    assert_eq!(details.group_details[0].name, match leader_details.patient {
+        Patient::V1(v1) => v1.name,
+    });
+    assert_eq!(details.group_details[0].age, 0);
+
+
+    // then we can add the member to the group
+    let member_consent = registries
+        .patient
+        .create_consent(&registries.ic, member1.principal.clone(), PatientCall::Update)
+        .unwrap();
+
+    registries
+        .patient
+        .add_group_member(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Update,
+            AddGroupMemberRequest {
+                group_id: group_id.clone(),
+                consent_code: member_consent.code,
+                relation: Relation::Child,
+            },
+        )
+        .unwrap();
+
+    let request = patient_registry::CreateGroupResponse {
+        group_id: group_id.clone(),
+    };
+    // now we can get the group details again
+    let details = registries
+        .patient
+        .get_group_details_async_no_pagination(
+            &registries.ic,
+            leader.principal.clone(),
+            PatientCall::Query,
+            request,
+        )
+        .unwrap();
+
+    let details = match details {
+        patient_registry::Result4::Ok(response) => response,
+        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+    };
+
+    let leader_details = registries.patient.get_patient_info(&registries.ic, leader.principal.clone(), PatientCall::Query).unwrap();
+    let member1_details = registries.patient.get_patient_info(&registries.ic, member1.principal.clone(), PatientCall::Query).unwrap();
+
+    assert_eq!(details.group_details.len(), 2);
+    assert_eq!(details.group_details[0].name, match leader_details.patient {
+        Patient::V1(v1) => v1.name,
+    });
+    assert_eq!(details.group_details[1].name, match member1_details.patient {
+        Patient::V1(v1) => v1.name,
+    });
+    assert_eq!(details.group_details[0].age, 0);
+    assert_eq!(details.group_details[1].age, 0);
+}
 
 /// TEST GROUP DETAILS INCLUDES LEADER
 ///
@@ -58,7 +173,7 @@ fn test_group_details_includes_leader() {
             leader.principal.clone(),
             PatientCall::Update,
             AddGroupMemberRequest {
-                group_id,
+                group_id: group_id.clone(),
                 consent_code: member1_consent.code,
                 relation: Relation::Child,
             },
@@ -81,7 +196,7 @@ fn test_group_details_includes_leader() {
             leader.principal.clone(),
             PatientCall::Update,
             AddGroupMemberRequest {
-                group_id,
+                group_id: group_id.clone(),
                 consent_code: member1_consent.code,
                 relation: Relation::Sibling,
             },
@@ -105,7 +220,7 @@ fn test_group_details_includes_leader() {
             leader.principal.clone(),
             PatientCall::Query,
             GetGroupDetailsRequest {
-                group_id,
+                group_id: group_id.clone(),
                 page: 0,
                 limit: 10,
             },
@@ -183,7 +298,7 @@ fn test_group_details_member_roles() {
                 leader.principal.clone(),
                 PatientCall::Update,
                 AddGroupMemberRequest {
-                    group_id,
+                    group_id: group_id.clone(),
                     consent_code: consent.code,
                     relation,
                 },
