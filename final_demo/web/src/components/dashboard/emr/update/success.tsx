@@ -21,7 +21,7 @@ export default function EMRUpdateSuccess({ isOpen }: { isOpen: boolean }) {
     return;
   }
 
-  const { title, description, button } = emrSuccessModal.create;
+  const { title, description, button } = emrSuccessModal.update;
 
   return (
     <Modal
