@@ -2,17 +2,17 @@ import { GetPatientInfoResponse } from '@/declarations/patient_registry/patient_
 import { create } from 'zustand';
 
 interface ProfileStore{
-  profile: GetPatientInfoResponse | null;
+  profile: GetPatientInfoResponse | null | undefined;
 }
 
 interface ProfileStoreActions{
-  setProfile: (profile: GetPatientInfoResponse) => void;
+  setProfile: (profile: GetPatientInfoResponse | null | undefined) => void;
 }
 
 export const useProfileStore = create<
   ProfileStore &
   ProfileStoreActions
 >((set) => ({
-  profile: null,
+  profile: undefined,
   setProfile: (profile) => set({ profile })
 }));

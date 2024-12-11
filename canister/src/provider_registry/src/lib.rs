@@ -1,7 +1,11 @@
 use std::{borrow::Borrow, cell::RefCell, time::Duration};
 
 use api::{
-    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse, GetProviderListRequest, GetProviderListResponse, IssueEmrResponse, PingResult, ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest, RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest, UpdatePatientRegistryRequest
+    AuthorizedCallerRequest, GetProviderBatchRequest, GetProviderBatchResponse,
+    GetProviderListRequest, GetProviderListResponse, IssueEmrResponse, PingResult,
+    ProviderInfoRequest, ProviderInfoResponse, RegisternewProviderRequest,
+    RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest,
+    UpdatePatientRegistryRequest,
 };
 use candid::{Decode, Encode};
 use canister_common::{
@@ -97,7 +101,9 @@ fn only_canister_owner() -> Result<(), String> {
 
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
-        false => Err("only canister controller can call this method".to_string()),
+        false => Err(
+            "[PROVIDER_REGISTRY_LIB] Only canister controller can call this method. You need to register as Provider Registry Canister Owner to call this method.".to_string(),
+        ),
     }
 }
 
@@ -110,12 +116,14 @@ fn only_provider() -> Result<(), String> {
         let caller = verified_caller()?;
 
         if !state.providers.is_valid_provider(&caller) {
-            return Err("only provider can call this method".to_string());
+            return Err(
+                "[PROVIDER_REGISTRY_LIB] Only provider can call this method. Is your principal registered as provider?".to_string(),
+            );
         }
 
         // safe to unwrap as we already check if caller is a valid provider or not
         if state.providers.is_provider_suspended(&caller).unwrap() {
-            return Err("provider is suspended".to_string());
+            return Err("[PROVIDER_REGISTRY_LIB] Provider is suspended.".to_string());
         }
 
         Ok(())
@@ -128,7 +136,10 @@ fn only_authorized_metrics_collector() -> Result<(), String> {
 
     with_state(|s| {
         if !s.config.get().is_authorized_metrics_collector(&caller) {
-            return Err("only authorized metrics collector can call this method".to_string());
+            return Err(
+                "[PROVIDER_REGISTRY_LIB] Only authorized metrics collector can call this method."
+                    .to_string(),
+            );
         }
 
         Ok(())
@@ -390,12 +401,7 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
     with_state_mut(|s| {
         s.providers
-            .register_new_provider(
-                req.provider_principal,
-                req.display_name,
-                req.address,
-                id
-            )
+            .register_new_provider(req.provider_principal, req.display_name, req.address, id)
     })
     .unwrap();
 

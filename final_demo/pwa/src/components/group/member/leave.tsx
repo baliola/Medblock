@@ -14,13 +14,13 @@ import {
   Flex,
   Text
 } from "@chakra-ui/react";
-import { FaUserPlus } from "react-icons/fa6";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { BsExclamation } from "react-icons/bs";
 import { FaExclamationTriangle } from "react-icons/fa";
+import { HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 
 interface ILeaveGroupModal {
+  isLeader: boolean
 }
 
 export default function LeaveGroupModal({ props }: { props: ILeaveGroupModal }) {
@@ -28,6 +28,7 @@ export default function LeaveGroupModal({ props }: { props: ILeaveGroupModal }) 
   const router = useRouter()
   const { group_id } = useParams();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isLeader } = props
 
   const { call: leaveGroup, loading: leaveGroupLoading } = usePatientMethod({
     functionName: "leave_group",
@@ -88,19 +89,21 @@ export default function LeaveGroupModal({ props }: { props: ILeaveGroupModal }) 
   return (
     <>
       <Button
-        colorScheme="red"
-        w={"full"}
-        rounded={"2xl"}
-        fontSize={'sm'}
-        py={6}
-        gap={2}
-        mt={4}
+        type="button"
+        bg={"transparent"}
+        display={"flex"}
+        justifyContent={"items-start"}
+        columnGap={3}
+        fontWeight={400}
+        color={"danger.700"}
         leftIcon={
-          <Icon as={FaUserPlus} boxSize={5} />
+          <Icon as={HiOutlineArrowRightOnRectangle} boxSize={6} />
         }
         onClick={onOpen}
       >
-        Leave Group
+        <Text>
+          Leave Group
+        </Text>
       </Button>
       <Modal
         isOpen={isOpen}
@@ -147,7 +150,7 @@ export default function LeaveGroupModal({ props }: { props: ILeaveGroupModal }) 
                 textAlign={"center"}
                 px={4}
               >
-                When you leave, you must be re-invited to join this group,<br></br>Are you sure?
+                When you leave, {isLeader ? 'this group is deleted and all the member will be removed' : 'you must be re-invited to join this group'},<br></br>Are you sure?
               </Text>
               <Flex
                 mt={3}

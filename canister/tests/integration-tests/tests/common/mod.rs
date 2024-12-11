@@ -379,7 +379,7 @@ impl Scenario {
             )
             .unwrap();
 
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
                 martial_status: "married".to_string(),
@@ -394,7 +394,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -431,10 +431,89 @@ impl Scenario {
         )
     }
 
+    pub fn one_provider_two_patient_with_emrs() -> (Registries, Provider, Patient, Patient) {
+        let registries = prepare();
+        let patient1 = Self::create_patient(&registries);
+        let patient2 = Self::create_patient(&registries);
+        let provider = Provider(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries
+            .provider
+            .register_new_provider(
+                &registries.ic,
+                registries.controller.clone(),
+                ProviderCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure provider registration is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        // issue EMRs for both patients
+        let emr_req1 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key1".to_string(),
+                value: "value1".to_string(),
+            }],
+            user_id: patient1.nik.clone().to_string(),
+        };
+
+        let emr_req2 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key2".to_string(),
+                value: "value2".to_string(),
+            }],
+            user_id: patient2.nik.clone().to_string(),
+        };
+
+        // issue EMRs for both patients and ensure they complete
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req1,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure first EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req2,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure second EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        (registries, provider, patient1, patient2)
+    }
+
     pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
         let registries = prepare();
 
-        // Create patient
+        // create patient
         let nik = canister_common::common::H256::from_str(
             "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
         )
@@ -445,7 +524,7 @@ impl Scenario {
             nik: nik.clone(),
         };
 
-        // Register patient
+        // register patient
         let display = String::from("pasien").to_ascii_lowercase();
         let address = String::from("jl.rumah").to_ascii_lowercase();
 
@@ -463,8 +542,8 @@ impl Scenario {
             )
             .unwrap();
 
-        // Set initial patient info
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        // set initial patient info
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
                 martial_status: "single".to_string(),
@@ -479,7 +558,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -487,7 +566,7 @@ impl Scenario {
             )
             .unwrap();
 
-        // Create and bind admin
+        // create and bind admin
         let admin_principal = random_identity();
         let admin_nik = canister_common::common::H256::from([1u8; 32]);
 
@@ -505,6 +584,19 @@ impl Scenario {
                 bind_admin_arg,
             )
             .unwrap();
+
+        // verify that admin is bound
+        let is_admin = registries
+            .patient
+            .check_admin(
+                &registries.ic,
+                registries.controller.clone(),
+                PatientCall::Query,
+                admin_principal,
+            )
+            .unwrap();
+
+        assert!(is_admin, "Admin should be bound");
 
         (registries, patient, admin_principal)
     }
@@ -541,7 +633,7 @@ impl Scenario {
             .unwrap();
 
         // set initial patient info
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: "test patient".to_string(),
                 martial_status: "single".to_string(),
@@ -556,7 +648,7 @@ impl Scenario {
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -602,11 +694,11 @@ impl Scenario {
             .unwrap();
 
         // set initial patient info with provided V1 struct
-        let arg = patient_registry::UpdateInitialPatientInfoRequest { info };
+        let arg = patient_registry::UpdatePatientInfoRequest { info };
 
         registries
             .patient
-            .update_initial_patient_info(
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
@@ -615,5 +707,41 @@ impl Scenario {
             .unwrap();
 
         patient
+    }
+
+    /// claims consent for a provider from a patient
+    /// this establishes a session between the provider and patient
+    pub fn claim_consent_for_provider(
+        registries: &Registries,
+        provider: &Provider,
+        patient: &Patient,
+    ) {
+        // create a consent as the patient
+        let create_consent_response = registries
+            .patient
+            .create_consent(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+            )
+            .unwrap();
+
+        // get the consent code
+        let consent_code = match create_consent_response {
+            patient_registry::ClaimConsentRequest { code } => code,
+        };
+
+        // claim the consent as the provider to establish a session
+        let consent_req = patient_registry::ClaimConsentRequest { code: consent_code };
+
+        registries
+            .patient
+            .claim_consent(
+                &registries.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                consent_req,
+            )
+            .unwrap();
     }
 }
