@@ -10,7 +10,9 @@ use crate::{
     consent::{Consent, ConsentCode, SessionId},
     encryption::vetkd::{HexEncodedPublicKey, HexEncodedSecretKey},
     log::Activity,
-    registry::{Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1},
+    registry::{
+        Group, GroupConsentCode, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1,
+    },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -401,7 +403,7 @@ from!(CreateGroupResponse: GroupId as value {
 #[derive(CandidType, Deserialize)]
 pub struct AddGroupMemberRequest {
     pub group_id: GroupId,
-    pub consent_code: String,
+    pub group_consent_code: GroupConsentCode,
     pub relation: Relation,
 }
 
@@ -499,3 +501,18 @@ pub struct GetGroupDetailsNoPaginatedRequest {
 }
 
 // End of API response and request structs for group details functionality.
+
+/// Request struct for creating a consent for being added to a group.
+/// For when a patient wants to be added to a group, they need to create a consent code first.
+/// This consent code acts as a proof that the patient has consented to be added to the group. Bound to their NIK.
+#[derive(CandidType, Deserialize)]
+pub struct CreateConsentForGroupRequest {
+    pub nik: NIK,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateConsentForGroupResponse {
+    pub group_consent_code: GroupConsentCode,
+}
+
+// End of API response and request structs for group consent functionality.

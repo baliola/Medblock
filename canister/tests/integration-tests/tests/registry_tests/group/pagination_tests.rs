@@ -53,29 +53,19 @@ fn test_get_group_details() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // add patient 2 to group
+    // claim the consent
     let patient_2_consent = registries
         .patient
-        .create_consent(
-            &registries.ic,
-            patient2.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    // claim the consent
-    registries
-        .patient
-        .claim_consent(
+        .create_consent_for_group(
             &registries.ic,
             provider.0.clone(),
             PatientCall::Update,
-            ClaimConsentRequest {
-                code: patient_2_consent.code.clone(),
+            patient_registry::CreateConsentForGroupRequest {
+                nik: patient2.nik.clone().to_string(),
             },
         )
         .unwrap();
@@ -83,7 +73,7 @@ fn test_get_group_details() {
     let add_member_req = patient_registry::AddGroupMemberRequest {
         relation: Relation::Sibling,
         group_id: group_id.clone(),
-        consent_code: patient_2_consent.code.clone(),
+        group_consent_code: patient_2_consent.group_consent_code,
     };
 
     registries
@@ -121,8 +111,8 @@ fn test_get_group_details() {
         .unwrap();
 
     let ok_details = match details {
-        patient_registry::Result4::Ok(response) => response,
-        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result3::Ok(response) => response,
+        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
     };
 
     let details = registries
@@ -144,13 +134,13 @@ fn test_get_group_details() {
     println!("details: {:?}", ok_details.total_pages);
 
     match details {
-        patient_registry::Result4::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             assert_eq!(response.member_count, 2);
             assert_eq!(response.total_pages, 1);
             assert_eq!(response.group_details[0].nik, patient1.nik.to_string());
             assert_eq!(response.group_details[1].nik, patient2.nik.to_string());
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get group details: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get group details: {}", e),
     }
 }
 
@@ -194,24 +184,27 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add all patients to group
     for patient in &patients {
         let consent_code = registries
             .patient
-            .create_consent(
+            .create_consent_for_group(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
+                patient_registry::CreateConsentForGroupRequest {
+                    nik: patient.nik.clone().to_string(),
+                },
             )
             .unwrap();
 
         let add_member_req = patient_registry::AddGroupMemberRequest {
             group_id: group_id.clone(),
-            consent_code: consent_code.code,
+            group_consent_code: consent_code.group_consent_code,
             relation: Relation::Other,
         };
 
@@ -244,7 +237,7 @@ fn test_get_group_details_pagination() {
         .unwrap();
 
     match first_page {
-        patient_registry::Result4::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             // Leader should always be in first page
             assert!(!response.group_details.is_empty());
             assert_eq!(response.group_details[0].nik, patient1.nik.to_string());
@@ -272,7 +265,7 @@ fn test_get_group_details_pagination() {
                 .unwrap();
 
             match second_page {
-                patient_registry::Result4::Ok(second_response) => {
+                patient_registry::Result3::Ok(second_response) => {
                     assert_eq!(second_response.group_details.len(), 2);
                     assert_eq!(second_response.member_count, 6);
                     assert_eq!(second_response.total_pages, 3);
@@ -293,10 +286,10 @@ fn test_get_group_details_pagination() {
                         .iter()
                         .all(|nik| !second_page_niks.contains(nik)));
                 }
-                patient_registry::Result4::Err(e) => panic!("Failed to get second page: {}", e),
+                patient_registry::Result3::Err(e) => panic!("Failed to get second page: {}", e),
             }
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get first page: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get first page: {}", e),
     }
 }
 
@@ -321,8 +314,8 @@ fn test_group_leader_transfer() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // step 2. verify initial state (only leader)
@@ -341,7 +334,7 @@ fn test_group_leader_transfer() {
         .unwrap();
 
     match initial_details {
-        patient_registry::Result4::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             assert_eq!(
                 response.member_count, 1,
                 "New group should only have leader"
@@ -349,16 +342,19 @@ fn test_group_leader_transfer() {
             assert_eq!(response.group_details.len(), 1);
             assert_eq!(response.leader_name, response.group_details[0].name);
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get initial details: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get initial details: {}", e),
     }
 
     // step 3. add a member
     let consent = registries
         .patient
-        .create_consent(
+        .create_consent_for_group(
             &registries.ic,
             member.principal.clone(),
             PatientCall::Update,
+            patient_registry::CreateConsentForGroupRequest {
+                nik: member.nik.clone().to_string(),
+            },
         )
         .unwrap();
 
@@ -370,7 +366,7 @@ fn test_group_leader_transfer() {
             PatientCall::Update,
             patient_registry::AddGroupMemberRequest {
                 group_id: group_id.clone(),
-                consent_code: consent.code,
+                group_consent_code: consent.group_consent_code,
                 relation: Relation::Sibling,
             },
         )
@@ -405,13 +401,13 @@ fn test_group_leader_transfer() {
         .unwrap();
 
     match leader_left_details {
-        patient_registry::Result4::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             assert_eq!(
                 response.member_count, 1,
                 "Leader should have left the group and only 1 member should be left"
             );
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get leader left details: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get leader left details: {}", e),
     }
 
     // step 5. new leader should now be that member
@@ -430,11 +426,11 @@ fn test_group_leader_transfer() {
         .unwrap();
 
     match new_leader_details {
-        patient_registry::Result4::Ok(response) => {
+        patient_registry::Result3::Ok(response) => {
             assert_eq!(response.group_details.len(), 1);
             assert_eq!(response.leader_name, response.group_details[0].name);
         }
-        patient_registry::Result4::Err(e) => panic!("Failed to get new leader details: {}", e),
+        patient_registry::Result3::Err(e) => panic!("Failed to get new leader details: {}", e),
     }
 
     // step 6. new leader leaves group (should dissolve the group)
@@ -444,7 +440,9 @@ fn test_group_leader_transfer() {
             &registries.ic,
             member.principal.clone(),
             PatientCall::Update,
-            patient_registry::LeaveGroupRequest { group_id: group_id.clone() },
+            patient_registry::LeaveGroupRequest {
+                group_id: group_id.clone(),
+            },
         )
         .unwrap();
 
@@ -464,8 +462,8 @@ fn test_group_leader_transfer() {
         .unwrap();
 
     match final_details {
-        patient_registry::Result4::Ok(_) => panic!("Group should be dissolved when leader leaves"),
-        patient_registry::Result4::Err(e) => {
+        patient_registry::Result3::Ok(_) => panic!("Group should be dissolved when leader leaves"),
+        patient_registry::Result3::Err(e) => {
             assert!(
                 e.contains("Group not found") || e.contains("Group does not exist"),
                 "Expected group not found error, got: {}",
@@ -495,8 +493,8 @@ fn test_group_dissolution() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // verify group exists
@@ -515,8 +513,8 @@ fn test_group_dissolution() {
         .unwrap();
 
     match initial_details {
-        patient_registry::Result4::Ok(_) => (),
-        patient_registry::Result4::Err(e) => panic!("Failed to get initial details: {}", e),
+        patient_registry::Result3::Ok(_) => (),
+        patient_registry::Result3::Err(e) => panic!("Failed to get initial details: {}", e),
     }
 
     // leader (last member) leaves group
@@ -526,7 +524,9 @@ fn test_group_dissolution() {
             &registries.ic,
             leader.principal.clone(),
             PatientCall::Update,
-            patient_registry::LeaveGroupRequest { group_id: group_id.clone() },
+            patient_registry::LeaveGroupRequest {
+                group_id: group_id.clone(),
+            },
         )
         .unwrap();
 
@@ -546,8 +546,8 @@ fn test_group_dissolution() {
         .unwrap();
 
     match final_details {
-        patient_registry::Result4::Ok(_) => panic!("Group should be dissolved"),
-        patient_registry::Result4::Err(e) => {
+        patient_registry::Result3::Ok(_) => panic!("Group should be dissolved"),
+        patient_registry::Result3::Err(e) => {
             assert!(
                 e.contains("Group not found") || e.contains("Group does not exist"),
                 "Expected group not found error, got: {}",

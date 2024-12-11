@@ -13,8 +13,8 @@ export type ActivityType = { 'Updated' : null } |
   { 'Revoked' : null };
 export interface AddGroupMemberRequest {
   'relation' : Relation,
-  'consent_code' : string,
   'group_id' : string,
+  'group_consent_code' : string,
 }
 export interface AuthorizedCallerRequest { 'caller' : Principal }
 export interface BindAdminRequest { 'nik' : string, 'principal' : Principal }
@@ -52,6 +52,8 @@ export interface Consent {
   'session_user' : [] | [string],
 }
 export interface ConsentListResponse { 'consents' : Array<Consent> }
+export interface CreateConsentForGroupRequest { 'nik' : string }
+export interface CreateConsentForGroupResponse { 'group_consent_code' : string }
 export interface CreateGroupRequest { 'name' : string }
 export interface CreateGroupResponse { 'group_id' : string }
 export interface DailyMetricsData {
@@ -221,13 +223,11 @@ export type Result = { 'Ok' : null } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : boolean } |
   { 'Err' : string };
-export type Result_2 = { 'Ok' : string } |
+export type Result_2 = { 'Ok' : CreateGroupResponse } |
   { 'Err' : string };
-export type Result_3 = { 'Ok' : CreateGroupResponse } |
+export type Result_3 = { 'Ok' : GetGroupDetailsResponse } |
   { 'Err' : string };
-export type Result_4 = { 'Ok' : GetGroupDetailsResponse } |
-  { 'Err' : string };
-export type Result_5 = { 'Ok' : EmrListPatientResponse } |
+export type Result_4 = { 'Ok' : EmrListPatientResponse } |
   { 'Err' : string };
 export interface RevokeConsentRequest { 'codes' : Array<string> }
 export interface RevokeGroupAccessRequest { 'grantee_nik' : string }
@@ -286,10 +286,13 @@ export interface _SERVICE {
   'check_admin' : ActorMethod<[Principal], boolean>,
   'check_nik' : ActorMethod<[CheckNikRequest], Result_1>,
   'claim_consent' : ActorMethod<[ClaimConsentRequest], ClaimConsentResponse>,
-  'claim_consent_for_group' : ActorMethod<[ClaimConsentRequest], Result_2>,
   'consent_list' : ActorMethod<[], ConsentListResponse>,
   'create_consent' : ActorMethod<[], ClaimConsentRequest>,
-  'create_group' : ActorMethod<[CreateGroupRequest], Result_3>,
+  'create_consent_for_group' : ActorMethod<
+    [CreateConsentForGroupRequest],
+    CreateConsentForGroupResponse
+  >,
+  'create_group' : ActorMethod<[CreateGroupRequest], Result_2>,
   'emr_list_patient' : ActorMethod<
     [EmrListPatientRequest],
     EmrListPatientResponse
@@ -303,11 +306,11 @@ export interface _SERVICE {
     [GetInformationRequest],
     GetInformationResponse
   >,
-  'get_group_details' : ActorMethod<[GetGroupDetailsRequest], Result_4>,
-  'get_group_details_admin' : ActorMethod<[GetGroupDetailsRequest], Result_4>,
+  'get_group_details' : ActorMethod<[GetGroupDetailsRequest], Result_3>,
+  'get_group_details_admin' : ActorMethod<[GetGroupDetailsRequest], Result_3>,
   'get_group_details_async_no_pagination' : ActorMethod<
     [CreateGroupResponse],
-    Result_4
+    Result_3
   >,
   'get_logs' : ActorMethod<[], LogResponse>,
   'get_patient_info' : ActorMethod<[], GetPatientInfoResponse>,
@@ -368,7 +371,7 @@ export interface _SERVICE {
   >,
   'view_group_member_emr_information' : ActorMethod<
     [ViewGroupMemberEmrInformationRequest],
-    Result_5
+    Result_4
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

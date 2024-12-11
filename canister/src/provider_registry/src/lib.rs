@@ -7,7 +7,7 @@ use api::{
     RegisternewProviderResponse, SuspendRequest, UnSuspendRequest, UpdateEmrRegistryRequest,
     UpdatePatientRegistryRequest,
 };
-use candid::{Decode, Encode};
+use candid::{Decode, Encode, Principal};
 use canister_common::{
     common::{freeze::FreezeThreshold, guard::verified_caller},
     id_generator::IdGenerator,
@@ -407,6 +407,14 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 
     RegisternewProviderResponse {}
 }
+
+/// is_valid_provider
+/// To check if the caller principal is a valid provider
+#[ic_cdk::query]
+fn is_valid_provider(req: Principal) -> bool {
+    with_state(|s| s.providers.is_valid_provider(&req))
+}
+
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrResponse {

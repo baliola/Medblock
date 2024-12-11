@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
 use candid::{CandidType, Principal};
 use canister_common::{
     common::{AsciiRecordsKey, EmrHeader, Get, Id, Timestamp, UserId, H256},
     impl_max_size, impl_mem_bound, impl_range_bound, metrics,
     mmgr::MemoryManager,
     opaque_metrics,
-    random::CallError,
+    random::{self, CallError, CanisterRandomSource, RandomSource},
     stable::{Candid, Memory, Stable, StableSet, ToStable},
     statistics::traits::{Metrics, OpaqueMetrics},
 };
@@ -21,6 +23,7 @@ pub struct PatientRegistry {
     pub owner_map: OwnerMap,
     pub admin_map: AdminMap,
     pub group_map: GroupMap,
+    pub group_consent_map: GroupConsentMap,
     pub emr_binding_map: EmrBindingMap,
     pub info_map: InfoMap,
     pub header_status_map: HeaderStatusMap,
@@ -150,6 +153,7 @@ impl PatientRegistry {
             owner_map: OwnerMap::init(memory_manager),
             admin_map: AdminMap::init(memory_manager),
             group_map: GroupMap::init(memory_manager),
+            group_consent_map: GroupConsentMap::init(memory_manager),
             emr_binding_map: EmrBindingMap::init(memory_manager),
             info_map: InfoMap::init(memory_manager),
             header_status_map: HeaderStatusMap::init(memory_manager),
@@ -230,6 +234,15 @@ pub enum PatientRegistryError {
     GroupAlreadyExists,
 }
 
+// !! TODO WE REALLY NEED TO MOVE GROUP CONSENT TO A DIFFERENT FILE
+#[derive(
+    Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum GroupConsentMapError {
+    #[error("group consent code not found")]
+    GroupConsentCodeNotFound,
+}
+
 #[derive(
     Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -299,7 +312,10 @@ impl GroupAccessMap {
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
         let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
         let result = self.0.contains_key(&key);
-        println!("[GroupAccessMap] has_access: {:?}, result: {:?}", key, result);
+        println!(
+            "[GroupAccessMap] has_access: {:?}, result: {:?}",
+            key, result
+        );
         result
     }
 
@@ -309,7 +325,12 @@ impl GroupAccessMap {
         self.0
             .get(&key)
             .map(|group_id| group_id.into_inner())
-            .inspect(|group_id| println!("[GroupAccessMap] get_access_group: {:?}, group_id: {:?}", key, group_id))
+            .inspect(|group_id| {
+                println!(
+                    "[GroupAccessMap] get_access_group: {:?}, group_id: {:?}",
+                    key, group_id
+                )
+            })
     }
 
     /// gets all access pairs for a specific group
@@ -1080,6 +1101,180 @@ mod test_kyc {
     }
 }
 
+pub type GroupConsentMapResult<T = ()> = Result<T, GroupConsentMapError>;
+
+pub struct InnerGroupConsentMap(
+    ic_stable_structures::BTreeMap<Stable<GroupConsentCode, Candid>, Stable<NIK, Candid>, Memory>,
+);
+
+impl InnerGroupConsentMap {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        let map = memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::new);
+
+        InnerGroupConsentMap(map)
+    }
+}
+
+pub struct GroupConsentMap {
+    inner_map: InnerGroupConsentMap,
+    rng: CanisterRandomSource,
+}
+metrics!(GroupConsentMap: GroupConsents);
+impl_mem_bound!(for GroupConsentMap: bounded; fixed_size: false);
+impl_range_bound!(GroupConsentMap);
+impl_max_size!(for GroupConsentMap: 256);
+
+impl Metrics<GroupConsents> for GroupConsentMap {
+    fn metrics_name() -> &'static str {
+        "group_consents"
+    }
+
+    fn metrics_measurements() -> &'static str {
+        "len"
+    }
+
+    fn update_measurements(&self) {
+        // no-op
+    }
+
+    fn get_measurements(&self) -> String {
+        self.inner_map.0.len().to_string()
+    }
+}
+
+impl GroupConsentMap {
+    pub fn init(memory_manager: &MemoryManager) -> Self {
+        Self {
+            inner_map: InnerGroupConsentMap::init(memory_manager),
+            rng: CanisterRandomSource::new_with_seed(123),
+        }
+    }
+
+    pub fn bind(
+        &mut self,
+        group_consent_code: GroupConsentCode,
+        nik: NIK,
+    ) -> GroupConsentMapResult {
+        self.inner_map
+            .0
+            .insert(group_consent_code.to_stable(), nik.to_stable());
+        Ok(())
+    }
+
+    pub fn get_nik(&self, group_consent_code: &GroupConsentCode) -> GroupConsentMapResult<NIK> {
+        self.inner_map
+            .0
+            .get(&group_consent_code.to_stable())
+            .map(|nik| nik.into_inner())
+            .ok_or(GroupConsentMapError::GroupConsentCodeNotFound)
+    }
+
+    pub fn is_group_consent_code_valid(
+        &self,
+        group_consent_code: &GroupConsentCode,
+    ) -> GroupConsentMapResult<bool> {
+        Ok(self
+            .inner_map
+            .0
+            .contains_key(&group_consent_code.to_stable()))
+    }
+}
+
+const ALLOWED_CHAR: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const CODE_LEN: usize = 6;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct GroupConsentCode([u8; CODE_LEN]);
+impl_max_size!(for GroupConsentCode: 14);
+impl_mem_bound!(for GroupConsentCode: bounded; fixed_size: false);
+impl_range_bound!(GroupConsentCode);
+
+impl GroupConsentCode {
+    pub fn as_str(&self) -> &str {
+        std::str::from_utf8(&self.0).unwrap()
+    }
+
+    pub fn from_text(text: &str) -> Result<Self, String> {
+        Self::from_str(text)
+    }
+
+    pub fn from_u64(u: u64) -> Self {
+        let str = u.to_string();
+        let str = &str[str.len() - CODE_LEN..];
+        let mut code = [0; CODE_LEN];
+
+        for (i, c) in str.chars().enumerate() {
+            code[i] = c as u8;
+        }
+
+        GroupConsentCode(code)
+    }
+}
+
+impl FromStr for GroupConsentCode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != CODE_LEN {
+            return Err("invalid length".to_string());
+        }
+
+        let mut code = [0; CODE_LEN];
+
+        for (i, c) in s.chars().enumerate() {
+            if !ALLOWED_CHAR.contains(&c) {
+                return Err("invalid character".to_string());
+            }
+
+            code[i] = c as u8;
+        }
+
+        Ok(GroupConsentCode(code))
+    }
+}
+
+impl<'de> Deserialize<'de> for GroupConsentCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        GroupConsentCode::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+impl CandidType for GroupConsentCode {
+    fn _ty() -> candid::types::Type {
+        candid::types::TypeInner::Text.into()
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: candid::types::Serializer,
+    {
+        self.as_str().idl_serialize(serializer)
+    }
+}
+
+impl std::fmt::Display for GroupConsentCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl std::fmt::Debug for GroupConsentCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl GroupConsentMap {
+    pub fn generate_code(&mut self) -> GroupConsentCode {
+        let random = self.rng.raw_random_u64();
+
+        GroupConsentCode::from_u64(random)
+    }
+}
+
 pub type GroupId = Id;
 
 #[derive(Clone, Debug, CandidType, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -1113,7 +1308,11 @@ impl GroupMap {
     }
 
     // create group works in a way that it creates a new entry of Group in the BtreeMap and is linked and bound to a GroupId
-    pub fn create_group(&mut self, name: AsciiRecordsKey<64>, leader: NIK) -> GroupBindingMapResult<GroupId> {
+    pub fn create_group(
+        &mut self,
+        name: AsciiRecordsKey<64>,
+        leader: NIK,
+    ) -> GroupBindingMapResult<GroupId> {
         const UUID_MAX_SOURCE_LEN: usize = 10;
         let group_id = Id::new(&[0u8; UUID_MAX_SOURCE_LEN]);
 
@@ -1132,7 +1331,8 @@ impl GroupMap {
             return Err(PatientRegistryError::GroupAlreadyExists);
         }
 
-        self.0.insert(group_id.clone().to_stable(), group.to_stable());
+        self.0
+            .insert(group_id.clone().to_stable(), group.to_stable());
 
         println!("group id from create_group registry: {:?}", group_id);
 
@@ -1148,7 +1348,10 @@ impl GroupMap {
         let key = group_id.clone().to_stable();
 
         // find the group with that group id first
-        let group = self.0.get(&key).ok_or(PatientRegistryError::GroupNotFound)?;
+        let group = self
+            .0
+            .get(&key)
+            .ok_or(PatientRegistryError::GroupNotFound)?;
 
         // then access the inner group
         let mut group = group.into_inner();
@@ -1164,10 +1367,6 @@ impl GroupMap {
         group.members.push(member.clone());
         group.member_relations.push((member, relation));
         self.0.insert(key, group.to_stable());
-
-        // log the group details to see how many members are in the group
-        let group = self.get_group(group_id.clone());
-        println!("[GroupMap] add_member: {:?}, group: {:?}", group_id, group);
 
         Ok(())
     }
@@ -1245,7 +1444,11 @@ impl GroupMap {
         })
     }
 
-    pub fn transfer_leadership(&mut self, group_id: GroupId, new_leader: &NIK) -> Result<(), String> {
+    pub fn transfer_leadership(
+        &mut self,
+        group_id: GroupId,
+        new_leader: &NIK,
+    ) -> Result<(), String> {
         let key = group_id.to_stable();
         let mut group = self.0.get(&key).ok_or("Group not found")?.into_inner();
 
@@ -1427,11 +1630,17 @@ mod test_group_map {
         assert!(group_map
             .add_member(group_id.clone(), member.clone(), Relation::Parent)
             .is_ok());
-        assert_eq!(group_map.get_group(group_id.clone()).unwrap().members.len(), 2);
+        assert_eq!(
+            group_map.get_group(group_id.clone()).unwrap().members.len(),
+            2
+        );
 
         // test member leaving group
         assert!(group_map.remove_member(group_id.clone(), &member).is_ok());
-        assert_eq!(group_map.get_group(group_id.clone()).unwrap().members.len(), 1);
+        assert_eq!(
+            group_map.get_group(group_id.clone()).unwrap().members.len(),
+            1
+        );
         assert!(!group_map
             .get_group(group_id.clone())
             .unwrap()

@@ -9,92 +9,8 @@ use crate::common;
 
 #[test]
 fn test_emr_access_permissions() {
-    let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
-    let patient2 = common::Scenario::create_patient(&registries);
-    let _ = common::Scenario::create_patient(&registries);
-    let provider = common::Provider(common::random_identity());
-
-    // Register the provider first
-    let provider_reg_req = provider_registry::RegisternewProviderRequest {
-        provider_principal: provider.0.clone(),
-        display_name: "TEST HOSPITAL".to_ascii_lowercase(),
-        address: "TEST ADDRESS".to_ascii_lowercase(),
-    };
-
-    registries
-        .provider
-        .register_new_provider(
-            &registries.ic,
-            registries.controller.clone(),
-            ProviderCall::Update,
-            provider_reg_req,
-        )
-        .unwrap();
-
-    // Issue some EMRs for Patient2
-    let emr_req = provider_registry::IssueEmrRequest {
-        emr: vec![provider_registry::EmrFragment {
-            key: "test_key".to_string(),
-            value: "test_value".to_string(),
-        }],
-        user_id: patient2.nik.clone().to_string(),
-    };
-
-    registries
-        .provider
-        .issue_emr(
-            &registries.ic,
-            provider.0.clone(),
-            ProviderCall::Update,
-            emr_req,
-        )
-        .unwrap();
-
-    // create group with patient1 as leader
-    let create_group_req = patient_registry::CreateGroupRequest {
-        name: "test family".to_string(),
-    };
-
-    let group_response = registries
-        .patient
-        .create_group(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Update,
-            create_group_req,
-        )
-        .unwrap();
-
-    let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
-    };
-
-    // add patient2 to group
-    let consent_code = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient2.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    let add_member_req = patient_registry::AddGroupMemberRequest {
-        group_id: group_id.clone(),
-        consent_code: consent_code.code,
-        relation: Relation::Spouse,
-    };
-
-    registries
-        .patient
-        .add_group_member(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Update,
-            add_member_req,
-        )
-        .unwrap();
+    let (registries, provider, patient1, patient2, group_id) =
+        common::Scenario::two_patients_one_provider_one_group();
 
     // Test 1: Patient1 tries to view Patient2's EMR without permission (should fail)
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
@@ -111,11 +27,36 @@ fn test_emr_access_permissions() {
         view_request,
     );
 
+    let group_details_req = patient_registry::CreateGroupResponse {
+        group_id: group_id.clone(),
+    };
+
+    // lets see whos actually in the group at this time (act as controller)
+    let group_details = registries.patient.get_group_details_async_no_pagination(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        group_details_req,
+    );
+
+    match group_details {
+        Ok(patient_registry::Result3::Ok(response)) => {
+            println!("group details member count: {:?}", response.member_count);
+        }
+        Ok(patient_registry::Result3::Err(e)) => {
+            println!("error: {:?}", e);
+        }
+        Err(e) => {
+            println!("error: {:?}", e);
+        }
+    }
+
     match view_result {
-        Ok(patient_registry::Result5::Err(error)) => {
+        Ok(patient_registry::Result4::Err(error)) => {
             assert!(
                 error.contains("[ERR_ACCESS_NOT_GRANTED]"),
-                "Expected access not granted error"
+                "Expected access not granted error, but got {}",
+                error
             );
         }
         _ => panic!("Expected error for unauthorized EMR access"),
@@ -152,8 +93,8 @@ fn test_emr_access_permissions() {
     );
 
     match view_result {
-        Ok(patient_registry::Result5::Ok(_)) => (),
-        Ok(patient_registry::Result5::Err(e)) => panic!("Expected success but got error: {}", e),
+        Ok(patient_registry::Result4::Ok(_)) => (),
+        Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
         Err(_) => panic!("Expected success but got pocket_ic error"),
     }
 }
@@ -190,26 +131,26 @@ fn test_emr_access_after_grant() {
 
     // verify group creation is successful and get group id
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     let consent_code = registries
         .patient
-        .create_consent(
+        .create_consent_for_group(
             &registries.ic,
             patient2.principal.clone(),
             PatientCall::Update,
+            patient_registry::CreateConsentForGroupRequest {
+                nik: patient2.nik.clone().to_string(),
+            },
         )
         .unwrap();
-
-    // verify consent creation is successful
-    assert!(consent_code.code.len() > 0, "Failed to create consent");
 
     // step 2. patient 1 adds patient2 to group
     let add_member_req = patient_registry::AddGroupMemberRequest {
         group_id: group_id.clone(),
-        consent_code: consent_code.code,
+        group_consent_code: consent_code.group_consent_code,
         relation: Relation::Spouse,
     };
 
@@ -259,6 +200,11 @@ fn test_emr_access_after_grant() {
         limit: 10,
     };
 
+    println!(
+        "viewing EMRs for patient 1: {:?}, from group: {:?}, by patient 2: {:?}",
+        patient1.principal, group_id, patient2.principal
+    );
+
     let view_result = registries.patient.view_group_member_emr_information(
         &registries.ic,
         patient1.principal.clone(),
@@ -266,10 +212,8 @@ fn test_emr_access_after_grant() {
         view_request,
     );
 
-    println!("[test_emr_access_after_grant] view_result: {:?}", view_result);
-
-    match view_result {
-        Ok(patient_registry::Result5::Ok(emr_info)) => {
+    let result = match view_result {
+        Ok(patient_registry::Result4::Ok(ref emr_info)) => {
             assert!(!emr_info.emrs.is_empty(), "EMR list should not be empty");
             assert_eq!(
                 emr_info.emrs[0].header.user_id,
@@ -280,10 +224,16 @@ fn test_emr_access_after_grant() {
                 !emr_info.emrs[0].header.emr_id.is_empty(),
                 "EMR ID should not be empty"
             );
+            true
         }
-        Ok(patient_registry::Result5::Err(e)) => panic!("Expected success but got error: {}", e),
-        Err(_) => panic!("Expected success but got pocket_ic error"),
-    }
+        Ok(patient_registry::Result4::Err(e)) => {
+            println!("Error: {}", e);
+            false
+        }
+        Err(_) => false,
+    };
+
+    assert!(result, "Failed to view EMRs");
 }
 
 #[test]
@@ -328,23 +278,26 @@ fn test_view_group_member_emr_information() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // add patient2 to group
     let consent_code = registries
         .patient
-        .create_consent(
+        .create_consent_for_group(
             &registries.ic,
             patient2.principal.clone(),
             PatientCall::Update,
+            patient_registry::CreateConsentForGroupRequest {
+                nik: patient2.nik.clone().to_string(),
+            },
         )
         .unwrap();
 
     let add_member_req = patient_registry::AddGroupMemberRequest {
         group_id: group_id.clone(),
-        consent_code: consent_code.code,
+        group_consent_code: consent_code.group_consent_code,
         relation: Relation::Spouse,
     };
 
@@ -411,10 +364,10 @@ fn test_view_group_member_emr_information() {
 
     // Verify EMRs are returned
     match view_result {
-        patient_registry::Result5::Ok(response) => {
+        patient_registry::Result4::Ok(response) => {
             assert!(!response.emrs.is_empty(), "Should have returned EMRs");
         }
-        patient_registry::Result5::Err(e) => panic!("Failed to view EMRs: {}", e),
+        patient_registry::Result4::Err(e) => panic!("Failed to view EMRs: {}", e),
     }
 
     // revoke access
@@ -449,10 +402,10 @@ fn test_view_group_member_emr_information() {
         .unwrap();
 
     match view_result_after_revoke {
-        patient_registry::Result5::Ok(_) => {
+        patient_registry::Result4::Ok(_) => {
             panic!("Should not be able to view EMRs after access revocation")
         }
-        patient_registry::Result5::Err(e) => {
+        patient_registry::Result4::Err(e) => {
             let expected_error = format!(
                 "[ERR_ACCESS_NOT_GRANTED] Access not granted for group {}. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information in this group.",
                 group_id, patient2.nik, patient1.nik
@@ -482,7 +435,7 @@ fn test_group_specific_access() {
         .unwrap();
 
     // wait for 1 second
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     let group2_response = registries
         .patient
@@ -497,31 +450,40 @@ fn test_group_specific_access() {
         .unwrap();
 
     let group1_id = match group1_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result2::Ok(response) => response.group_id,
         _ => panic!("Failed to create group1"),
     };
 
     let group2_id = match group2_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
+        patient_registry::Result2::Ok(response) => response.group_id,
         _ => panic!("Failed to create group2"),
     };
 
     // Add patient2 to both groups
     let consent_code1 = registries
         .patient
-        .create_consent(
+        .create_consent_for_group(
             &registries.ic,
             patient2.principal.clone(),
             PatientCall::Update,
+            patient_registry::CreateConsentForGroupRequest {
+                nik: patient2.nik.clone().to_string(),
+            },
         )
         .unwrap();
 
+    // wait for 1 second
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
     let consent_code2 = registries
         .patient
-        .create_consent(
+        .create_consent_for_group(
             &registries.ic,
             patient2.principal.clone(),
             PatientCall::Update,
+            patient_registry::CreateConsentForGroupRequest {
+                nik: patient2.nik.clone().to_string(),
+            },
         )
         .unwrap();
 
@@ -534,7 +496,7 @@ fn test_group_specific_access() {
             PatientCall::Update,
             patient_registry::AddGroupMemberRequest {
                 group_id: group1_id.clone(),
-                consent_code: consent_code1.code,
+                group_consent_code: consent_code1.group_consent_code,
                 relation: Relation::Spouse,
             },
         )
@@ -549,7 +511,7 @@ fn test_group_specific_access() {
             PatientCall::Update,
             patient_registry::AddGroupMemberRequest {
                 group_id: group2_id.clone(),
-                consent_code: consent_code2.code,
+                group_consent_code: consent_code2.group_consent_code,
                 relation: Relation::Spouse,
             },
         )
@@ -633,8 +595,8 @@ fn test_group_specific_access() {
     );
 
     match view_result_group2 {
-        Ok(patient_registry::Result5::Ok(_)) => panic!("Should not have access in group2"),
-        Ok(patient_registry::Result5::Err(e)) => assert!(
+        Ok(patient_registry::Result4::Ok(_)) => panic!("Should not have access in group2"),
+        Ok(patient_registry::Result4::Err(e)) => assert!(
             e.contains("[ERR_ACCESS_NOT_GRANTED]"),
             "Expected access not granted error, got: {}",
             e

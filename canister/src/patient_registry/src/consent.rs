@@ -256,7 +256,7 @@ impl ConsentsApi {
 
         // we dont have expiry for now
         // Self::remove_consent_after_expiry(code);
-        with_consent_mut(|consents| consents.add_consent(partial))
+        with_consent_mut(|consents: &mut ConsentMap| consents.add_consent(partial))
     }
 
     pub fn revoke_consent(code: &ConsentCode) {

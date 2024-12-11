@@ -7,8 +7,8 @@ type Activity = record {
 type ActivityType = variant { Updated; Accessed; Revoked };
 type AddGroupMemberRequest = record {
   relation : Relation;
-  consent_code : text;
   group_id : text;
+  group_consent_code : text;
 };
 type AuthorizedCallerRequest = record { caller : principal };
 type BindAdminRequest = record { nik : text; "principal" : principal };
@@ -53,6 +53,8 @@ type Consent = record {
   session_user : opt text;
 };
 type ConsentListResponse = record { consents : vec Consent };
+type CreateConsentForGroupRequest = record { nik : text };
+type CreateConsentForGroupResponse = record { group_consent_code : text };
 type CreateGroupRequest = record { name : text };
 type CreateGroupResponse = record { group_id : text };
 type DailyMetricsData = record {
@@ -201,10 +203,9 @@ type RegisterPatientStatus = variant { Error : text; Success };
 type Relation = variant { Parent; Sibling; Other; Child; Spouse };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : bool; Err : text };
-type Result_2 = variant { Ok : text; Err : text };
-type Result_3 = variant { Ok : CreateGroupResponse; Err : text };
-type Result_4 = variant { Ok : GetGroupDetailsResponse; Err : text };
-type Result_5 = variant { Ok : EmrListPatientResponse; Err : text };
+type Result_2 = variant { Ok : CreateGroupResponse; Err : text };
+type Result_3 = variant { Ok : GetGroupDetailsResponse; Err : text };
+type Result_4 = variant { Ok : EmrListPatientResponse; Err : text };
 type RevokeConsentRequest = record { codes : vec text };
 type RevokeGroupAccessRequest = record { grantee_nik : text };
 type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
@@ -251,10 +252,12 @@ service : () -> {
   check_admin : (principal) -> (bool) query;
   check_nik : (CheckNikRequest) -> (Result_1) query;
   claim_consent : (ClaimConsentRequest) -> (ClaimConsentResponse);
-  claim_consent_for_group : (ClaimConsentRequest) -> (Result_2);
   consent_list : () -> (ConsentListResponse) query;
   create_consent : () -> (ClaimConsentRequest);
-  create_group : (CreateGroupRequest) -> (Result_3);
+  create_consent_for_group : (CreateConsentForGroupRequest) -> (
+      CreateConsentForGroupResponse,
+    );
+  create_group : (CreateGroupRequest) -> (Result_2);
   emr_list_patient : (EmrListPatientRequest) -> (
       EmrListPatientResponse,
     ) composite_query;
@@ -265,10 +268,10 @@ service : () -> {
   getCanistergeekInformation : (GetInformationRequest) -> (
       GetInformationResponse,
     ) query;
-  get_group_details : (GetGroupDetailsRequest) -> (Result_4) query;
-  get_group_details_admin : (GetGroupDetailsRequest) -> (Result_4) query;
+  get_group_details : (GetGroupDetailsRequest) -> (Result_3) query;
+  get_group_details_admin : (GetGroupDetailsRequest) -> (Result_3) query;
   get_group_details_async_no_pagination : (CreateGroupResponse) -> (
-      Result_4,
+      Result_3,
     ) query;
   get_logs : () -> (LogResponse) query;
   get_patient_info : () -> (GetPatientInfoResponse) query;
@@ -311,5 +314,5 @@ service : () -> {
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,
-    ) -> (Result_5) query;
+    ) -> (Result_4) query;
 }

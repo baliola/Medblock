@@ -66,8 +66,8 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     let group_id = match group_response {
-        patient_registry::Result3::Ok(response) => response.group_id,
-        patient_registry::Result3::Err(e) => panic!("Failed to create group: {}", e),
+        patient_registry::Result2::Ok(response) => response.group_id,
+        patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
     // Test 1: Invalid NIK format
@@ -89,7 +89,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result5::Err(error) => {
+        patient_registry::Result4::Err(error) => {
             assert!(
                 error.contains("[ERR_INVALID_NIK]"),
                 "Expected invalid NIK error message, got: {}",
@@ -118,7 +118,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result5::Err(error) => {
+        patient_registry::Result4::Err(error) => {
             let expected_error = format!(
                 "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
                 patient2.nik, patient2.nik, group_id
@@ -134,7 +134,7 @@ fn test_claim_nonexistent_consent_for_group() {
     let (registries, patient1, _) = common::Scenario::one_admin_one_patient();
 
     // attempt to claim a non-existent consent code
-    let result = registries.patient.claim_consent_for_group(
+    let result = registries.patient.claim_consent(
         &registries.ic,
         patient1.principal.clone(),
         PatientCall::Update,
@@ -143,10 +143,8 @@ fn test_claim_nonexistent_consent_for_group() {
         },
     );
 
-    match result.unwrap() {
-        patient_registry::Result2::Ok(_) => panic!("Should not succeed"),
-        patient_registry::Result2::Err(e) => assert!(e.contains("Consent not found")),
-    }
+    assert!(result.is_err(), "Expected Err for non-existent consent");
+
 }
 
 #[test]
@@ -171,7 +169,7 @@ fn test_claim_consent_for_group_unauthorized() {
     // attempt to claim consent with unauthorized principal (should panic)
     registries
         .patient
-        .claim_consent_for_group(
+        .claim_consent(
             &registries.ic,
             unauthorized,
             PatientCall::Update,

@@ -9,8 +9,8 @@ export const idlFactory = ({ IDL }) => {
   });
   const AddGroupMemberRequest = IDL.Record({
     'relation' : Relation,
-    'consent_code' : IDL.Text,
     'group_id' : IDL.Text,
+    'group_consent_code' : IDL.Text,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const BindAdminRequest = IDL.Record({
@@ -27,7 +27,6 @@ export const idlFactory = ({ IDL }) => {
     'session_id' : IDL.Text,
     'name' : IDL.Text,
   });
-  const Result_2 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
   const Consent = IDL.Record({
     'nik' : IDL.Text,
     'group_claimer' : IDL.Opt(IDL.Principal),
@@ -37,9 +36,13 @@ export const idlFactory = ({ IDL }) => {
     'session_user' : IDL.Opt(IDL.Text),
   });
   const ConsentListResponse = IDL.Record({ 'consents' : IDL.Vec(Consent) });
+  const CreateConsentForGroupRequest = IDL.Record({ 'nik' : IDL.Text });
+  const CreateConsentForGroupResponse = IDL.Record({
+    'group_consent_code' : IDL.Text,
+  });
   const CreateGroupRequest = IDL.Record({ 'name' : IDL.Text });
   const CreateGroupResponse = IDL.Record({ 'group_id' : IDL.Text });
-  const Result_3 = IDL.Variant({
+  const Result_2 = IDL.Variant({
     'Ok' : CreateGroupResponse,
     'Err' : IDL.Text,
   });
@@ -195,7 +198,7 @@ export const idlFactory = ({ IDL }) => {
     'member_count' : IDL.Nat64,
     'group_name' : IDL.Text,
   });
-  const Result_4 = IDL.Variant({
+  const Result_3 = IDL.Variant({
     'Ok' : GetGroupDetailsResponse,
     'Err' : IDL.Text,
   });
@@ -318,7 +321,7 @@ export const idlFactory = ({ IDL }) => {
     'group_id' : IDL.Text,
     'member_nik' : IDL.Text,
   });
-  const Result_5 = IDL.Variant({
+  const Result_4 = IDL.Variant({
     'Ok' : EmrListPatientResponse,
     'Err' : IDL.Text,
   });
@@ -338,10 +341,14 @@ export const idlFactory = ({ IDL }) => {
         [ClaimConsentResponse],
         [],
       ),
-    'claim_consent_for_group' : IDL.Func([ClaimConsentRequest], [Result_2], []),
     'consent_list' : IDL.Func([], [ConsentListResponse], ['query']),
     'create_consent' : IDL.Func([], [ClaimConsentRequest], []),
-    'create_group' : IDL.Func([CreateGroupRequest], [Result_3], []),
+    'create_consent_for_group' : IDL.Func(
+        [CreateConsentForGroupRequest],
+        [CreateConsentForGroupResponse],
+        [],
+      ),
+    'create_group' : IDL.Func([CreateGroupRequest], [Result_2], []),
     'emr_list_patient' : IDL.Func(
         [EmrListPatientRequest],
         [EmrListPatientResponse],
@@ -360,17 +367,17 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_group_details' : IDL.Func(
         [GetGroupDetailsRequest],
-        [Result_4],
+        [Result_3],
         ['query'],
       ),
     'get_group_details_admin' : IDL.Func(
         [GetGroupDetailsRequest],
-        [Result_4],
+        [Result_3],
         ['query'],
       ),
     'get_group_details_async_no_pagination' : IDL.Func(
         [CreateGroupResponse],
-        [Result_4],
+        [Result_3],
         ['query'],
       ),
     'get_logs' : IDL.Func([], [LogResponse], ['query']),
@@ -454,7 +461,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'view_group_member_emr_information' : IDL.Func(
         [ViewGroupMemberEmrInformationRequest],
-        [Result_5],
+        [Result_4],
         ['query'],
       ),
   });

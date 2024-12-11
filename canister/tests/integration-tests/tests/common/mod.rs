@@ -6,7 +6,8 @@ use ic_agent::Identity;
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
 use integration_tests::declarations::{
-    self, patient_registry,
+    self,
+    patient_registry::{self, Relation},
     provider_registry::{ProviderInfoRequest, RegisternewProviderRequest},
 };
 use pocket_ic::UserError;
@@ -507,7 +508,114 @@ impl Scenario {
         registries.ic.advance_time(Duration::from_secs(1));
         registries.ic.tick();
 
+        // update patient info for patient 1
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // update patient info for patient 2
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient 2".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient2.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
         (registries, provider, patient1, patient2)
+    }
+
+    pub fn two_patients_one_provider_one_group() -> (Registries, Provider, Patient, Patient, String)
+    {
+        let (registries, provider, patient1, patient2) = Self::one_provider_two_patient_with_emrs();
+
+        let create_group_req = patient_registry::CreateGroupRequest {
+            name: "test group".to_string(),
+        };
+
+        let create_group_response = registries
+            .patient
+            .create_group(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                create_group_req,
+            )
+            .unwrap();
+
+        let group_id = match create_group_response {
+            patient_registry::Result2::Ok(response) => response.group_id.clone(),
+            patient_registry::Result2::Err(e) => {
+                panic!("Failed to create group: {}", e);
+            }
+        };
+
+        let create_consent_for_group_req = patient_registry::CreateConsentForGroupRequest {
+            nik: patient2.nik.clone().to_string(),
+        };
+
+        // member creates a consent code
+        let consent_code = registries
+            .patient
+            .create_consent_for_group(
+                &registries.ic,
+                patient2.principal.clone(),
+                PatientCall::Update,
+                create_consent_for_group_req,
+            )
+            .unwrap();
+
+        let add_member_req = patient_registry::AddGroupMemberRequest {
+            group_id: group_id.clone(),
+            group_consent_code: consent_code.group_consent_code,
+            relation: Relation::Spouse,
+        };
+
+        registries
+            .patient
+            .add_group_member(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                add_member_req,
+            )
+            .unwrap();
+
+        (registries, provider, patient1, patient2, group_id)
     }
 
     pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
