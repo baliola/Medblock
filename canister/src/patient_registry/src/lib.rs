@@ -1013,8 +1013,8 @@ async fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
 
     // check if the consent is already claimed, it needs to be claimed first before adding to group
     let consent = ConsentsApi::consent(&code).expect("consent not found");
-    if consent.claimed {
-        return Err("Consent already claimed".to_string());
+    if !consent.claimed {
+        return Err("Consent not claimed".to_string());
     }
 
     // add the member to the group

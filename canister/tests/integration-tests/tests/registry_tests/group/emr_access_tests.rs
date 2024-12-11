@@ -266,6 +266,8 @@ fn test_emr_access_after_grant() {
         view_request,
     );
 
+    println!("[test_emr_access_after_grant] view_result: {:?}", view_result);
+
     match view_result {
         Ok(patient_registry::Result5::Ok(emr_info)) => {
             assert!(!emr_info.emrs.is_empty(), "EMR list should not be empty");
