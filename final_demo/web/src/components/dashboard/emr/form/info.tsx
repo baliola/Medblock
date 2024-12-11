@@ -2,6 +2,7 @@ import { emrForm } from "@/constants/contents/dashboard/emr/form";
 import { EMR } from "@/libs/yup/emr";
 import { Flex, FormControl, FormErrorMessage, FormLabel, Input, InputProps, Text } from "@chakra-ui/react";
 import { Field, useFormikContext } from "formik";
+import { useEffect } from "react";
 
 const CustomInput = ({ ...props }: InputProps) => {
   return (
@@ -20,7 +21,7 @@ const CustomInput = ({ ...props }: InputProps) => {
 }
 
 export default function EMRFormInfo() {
-  const { errors, touched } = useFormikContext<EMR>();
+  const { values, errors, touched } = useFormikContext<EMR>();
   const { info } = emrForm;
   
   return (
@@ -50,14 +51,14 @@ export default function EMRFormInfo() {
           isInvalid={!!errors.visit_time && touched.visit_time}
         >
           <FormLabel as={Text} fontWeight={'bold'}>{info.visit_time.label}</FormLabel>
-          <Field as={CustomInput} type="time" name={info.visit_time.label} placeholder={info.visit_time.placeholder} />
+          <Field as={CustomInput} type="time" name={info.visit_time.name} placeholder={info.visit_time.placeholder} disabled={!values.visit_date || !values.discharge_date} />
           <FormErrorMessage>{errors.visit_time}</FormErrorMessage>
         </FormControl>
         <FormControl
           isInvalid={!!errors.discharge_time && touched.discharge_time}
         >
           <FormLabel as={Text} fontWeight={'bold'}>{info.discharge_time.label}</FormLabel>
-          <Field as={CustomInput} type="time" name={info.discharge_time.label} placeholder={info.discharge_time.placeholder} />
+          <Field as={CustomInput} type="time" name={info.discharge_time.name} placeholder={info.discharge_time.placeholder} disabled={!values.visit_date || !values.discharge_date}/>
           <FormErrorMessage>{errors.discharge_time}</FormErrorMessage>
         </FormControl>
       </Flex>

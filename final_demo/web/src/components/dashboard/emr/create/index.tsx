@@ -1,7 +1,7 @@
 "use client"
 import { useSearchParams } from "next/navigation";
 
-import { Button, Divider, Flex, useDisclosure } from "@chakra-ui/react";
+import { Flex, useDisclosure, useToast } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 
 import { EMR, emrSchema } from "@/libs/yup/emr";
@@ -9,14 +9,10 @@ import { ProviderActor, useProviderQuery } from "@/services/providers";
 import { EmrFragment } from "@/declarations/emr_registry/emr_registry.did";
 import { IssueEmrRequest } from "@/declarations/provider_registry/provider_registry.did";
 
-import EMRFormInfo from "@/components/dashboard/emr/form/info";
-import EMRFormVitalSign from "@/components/dashboard/emr/form/vital-sign";
-import EMRFormReport from "@/components/dashboard/emr/form/report";
 import EMRCreateSuccess from "./success";
 import { Fragment } from "react";
 import { providerCanisterId } from "@/config/canisters/providers.canister";
 import { emrButton } from "@/constants/contents/dashboard/emr/button";
-import EMRFormRecipe from "../form/recipe";
 import EMRFormContent from "../form";
 
 const initialValues = {
@@ -57,6 +53,7 @@ const mapValuesToEmrFragments = (values: EMR): EmrFragment[] =>
   }));
 
 const EMRForm = ({ header }: { header: React.ReactNode }) => {
+  const toast = useToast();
   const params = useSearchParams();
   const user = params.get('user') || null;
 
@@ -68,6 +65,32 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
   } = useProviderQuery({
     functionName: "issue_emr",
     refetchOnMount: false,
+    onSuccess(data) {
+      console.log(data)
+    },
+    onError(err) {
+      if (err instanceof Error) {
+        toast({
+          title: "Error!",
+          description: err.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right"
+        });
+      } else {
+        toast({
+          title: "Error!",
+          description: "Something went wrong!",
+          isClosable: true,
+          duration: 5000,
+          position: "top-right",
+          status: "error"
+        })
+      }
+      
+      throw err
+    }
   })
 
   const onSubmit = async (values: EMR, resetForm: () => void) => {
@@ -97,6 +120,7 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
       <Formik
         initialValues={initialValues}
         validationSchema={emrSchema}
+        validateOnChange={true}
         validateOnBlur={false}
         onSubmit={(values, { resetForm }) => {
           onSubmit(values, resetForm)

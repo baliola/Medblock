@@ -141,6 +141,7 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
           discharge_condition: EMR?.body.find(e => e.key === 'discharge_condition')?.value || "",
         }}
         enableReinitialize={true}
+        validateOnChange={true}
         validationSchema={emrSchema}
         validateOnBlur={false}
         onSubmit={(values) => { onSubmit(values) }}
