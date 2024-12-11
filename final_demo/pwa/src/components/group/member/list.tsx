@@ -21,7 +21,7 @@ const MemberGroupList = (): ReactElement => {
   const [emrGroupInformation, setEmrGroupInformation] = useState<EmrListPatientResponse | null | undefined>(undefined)
 
   const { call: getGroupDetails, loading: loadingGetGroupDetails } = usePatientQuery({
-    functionName: "get_group_details",
+    functionName: "get_group_details_async_no_pagination",
     refetchOnMount: false,
     onSuccess(data) {
       console.log(data)
@@ -37,7 +37,7 @@ const MemberGroupList = (): ReactElement => {
 
   const handleGetGroupDetails = () => {
     setGroupDetails(undefined)
-    getGroupDetails([{ page: 1, limit: 1, group_id: Number(group_id) }] as any)
+    getGroupDetails([{ group_id: group_id as string }] as any)
   }
 
   const { call: getEmrGroupInformation, loading: loadingGetEmrGroupInformation } = usePatientQuery({
@@ -75,7 +75,7 @@ const MemberGroupList = (): ReactElement => {
   
   useEffect(() => {
     if (typeof(group_id) === 'string' || profile) {
-      getGroupDetails([{ page: 1, limit: 1, group_id: Number(group_id) }] as any)
+      getGroupDetails([{ group_id: group_id }] as any)
       getEmrGroupInformation([{ page: 1, limit: 1, group_id: Number(group_id), member_nik: profile?.nik }] as any)
     }
   }, [group_id, profile])
@@ -112,47 +112,6 @@ const MemberGroupList = (): ReactElement => {
                     rowGap={2}
                     pb={4}
                   >
-                    <Grid
-                      templateColumns="repeat(12, 1fr)"
-                      py={2}
-                      px={0}
-                      columnGap={3}
-                      alignItems={"start"}
-                    >
-                      <GridItem
-                        colSpan={3}
-                        aspectRatio={1/1}
-                        background={"rgb(217, 217, 217)"}
-                        display={"block"}
-                        rounded={"xl"}
-                      />
-                      <GridItem 
-                        colSpan={8}
-                        h={"full"}
-                        display={"flex"}
-                        flexDirection={"column"}
-                        justifyContent={"center"}
-                        rowGap={1}
-                      >
-                        <Text
-                          fontWeight={600}
-                          fontSize={"lg"}
-                          textTransform={"capitalize"}
-                        >
-                          {groupDetails.leader_name} (Leader) {profile.patient.V1.name === groupDetails.leader_name && '(You)'}
-                        </Text>
-                      </GridItem>
-                      <GridItem
-                        my={"auto"}
-                        colSpan={1}
-                        display={"flex"}
-                      >
-                        <DetailModal props={{
-                          isLeader: profile.patient.V1.name === groupDetails.leader_name,
-                          nik: ''
-                        }} />
-                      </GridItem>
-                    </Grid>
                     {
                       groupDetails.group_details.map((member, index) =>
                         <Grid
@@ -187,7 +146,7 @@ const MemberGroupList = (): ReactElement => {
                                 fontSize={"lg"}
                                 textTransform={"capitalize"}
                               >
-                                {member.name} {profile.nik === member.nik && '(You)'}
+                                {member.name} {groupDetails.leader_name === member.nik && '(Leader)'} {profile.nik === member.nik && '(You)'} 
                               </Text>
                               <Flex
                                 justifyContent={"start"}

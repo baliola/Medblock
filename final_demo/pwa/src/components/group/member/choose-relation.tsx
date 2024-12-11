@@ -1,6 +1,6 @@
 "use client"
 
-import { AddGroupMemberRequest, ClaimConsentResponse, Relation } from "@/declarations/patient_registry/patient_registry.did";
+import { AddGroupMemberRequest, ClaimConsentResponse, Relation, Result } from "@/declarations/patient_registry/patient_registry.did";
 import { usePatientMethod } from "@/services/patients";
 import { usePinStore } from "@/store/pin-store";
 import { 
@@ -57,15 +57,30 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
   const { call: addGroupMember, loading: addGroupMemberLoading } = usePatientMethod({
     functionName: "add_group_member",
     refetchOnMount: false,
-    onSuccess() {
-      return toast({
-        title: "Success Add Member",
-        description: "You can now proceed",
-        isClosable: true,
-        duration: 5000,
-        status: "success",
-        position: "top-right",
-      })
+    onSuccess(data) {
+      const result: Result | undefined = data
+
+      if (result && Object.keys(result)[0] === 'Ok') {
+        return toast({
+          title: "Success Add Member",
+          description: "You can now proceed",
+          isClosable: true,
+          duration: 5000,
+          status: "success",
+          position: "top-right",
+        })
+      } else if (result && Object.keys(result)[0] === 'Err') {
+        const error = result['Err'] ?? "Something went wrong!"
+
+        return toast({
+          title: "Error!",
+          description: error,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right"
+        })
+      }
     },
     onError(err) {
       if (err instanceof Error) {
@@ -105,7 +120,7 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
       const data: AddGroupMemberRequest = {
         relation : getRelation(),
         consent_code : pin,
-        group_id : BigInt(Number(group_id)),
+        group_id : group_id as string,
       };
 
       await addGroupMember([data] as any);
