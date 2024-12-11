@@ -23,28 +23,6 @@ export const emrDetailReports = {
       title: "Vital Sign",
     }
   },
-  report: [
-    {
-      title: "Reason to visit",
-      key: "subjective",
-    },
-    {
-      title: "Diagnosis",
-      key: "diagnosis",
-    },
-    {
-      title: "Planning",
-      key: "planning",
-    },
-    {
-      title: "Medication",
-      key: "medication",
-    },
-    {
-      title: "Recipe",
-      key: "recipe",
-    },
-  ],
   vital_signs: {
     blood_pressure: {
       label: "Blood Pressure",
@@ -71,5 +49,59 @@ export const emrDetailReports = {
       unit: "%",
       icon: PiLeafFill
     }
-  }
+  },
+  history: [
+    {
+      title: "Circuit Reason",
+      key: "circuit_reason",
+    },
+    {
+      title: "Illness History",
+      key: "illness_history",
+    },
+  ],
+  allergies: [
+    {
+      title: "Physical Exam",
+      key: "pyhsical_exam",
+    },
+    {
+      title: "Drug Allergy",
+      key: "drug_allergy",
+    },
+    {
+      title: "Other Allergy",
+      key: "other_allergy",
+    },
+    {
+      title: "Food Allergy",
+      key: "food_allergy",
+    },
+  ],
+  result: [
+    {
+      title: "Additional Exam (Laboratory, Rontgen, Anatomic Pathology and Consultation)",
+      key: "additional_exam",
+    },
+    {
+      title: "Primary Diagnosis",
+      key: "primary_diagnosis",
+    },
+    {
+      title: "Secondary Diagnosis",
+      key: "secondary_diagnosis",
+    },
+    {
+      title: "Surgery",
+      key: "surgery",
+    },
+    {
+      title: "Procedures and Therapies",
+      key: "procedures_and_therapies",
+    },
+    {
+      title: "Discharge Condition",
+      key: "discharge_condition",
+    },
+  ],
 }

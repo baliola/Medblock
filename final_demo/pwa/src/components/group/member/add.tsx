@@ -66,8 +66,6 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
           position: "top-right"
         })
       }
-
-
     },
     onError(err) {
       if (err instanceof Error) {

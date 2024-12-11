@@ -1,7 +1,7 @@
 "use client"
 import { useSearchParams } from "next/navigation";
 
-import { Button, Divider, Flex, useDisclosure } from "@chakra-ui/react";
+import { Flex, useDisclosure, useToast } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 
 import { EMR, emrSchema } from "@/libs/yup/emr";
@@ -9,31 +9,42 @@ import { ProviderActor, useProviderQuery } from "@/services/providers";
 import { EmrFragment } from "@/declarations/emr_registry/emr_registry.did";
 import { IssueEmrRequest } from "@/declarations/provider_registry/provider_registry.did";
 
-import EMRFormInfo from "@/components/dashboard/emr/form/info";
-import EMRFormVitalSign from "@/components/dashboard/emr/form/vital-sign";
-import EMRFormReport from "@/components/dashboard/emr/form/report";
 import EMRCreateSuccess from "./success";
 import { Fragment } from "react";
 import { providerCanisterId } from "@/config/canisters/providers.canister";
 import { emrButton } from "@/constants/contents/dashboard/emr/button";
-import EMRFormRecipe from "../form/recipe";
+import EMRFormContent from "../form";
 
 const initialValues = {
   visit_date: "",
   discharge_date: "",
+  visit_time: "",
+  discharge_time: "",
   medical_officer: "",
   room: "",
-  
+
   blood_pressure: "",
   temperature: "",
   heart_rate: "",
   respiration: "",
   o2_saturation: "",
-  subjective: "",
-  diagnosis: "",
-  planning: "",
-  medication: "",
+
+  circuit_reason: "",
+  illness_history: "",
+
+  pyhsical_exam: "",
+  drug_allergy: "No",
+  food_allergy: "No",
+  other_allergy: "",
+
+  additional_exam: "",
+  primary_diagnosis: "",
+  secondary_diagnosis: "",
+  surgery: "",
+  procedures_and_therapies: "",
+
   recipe: "",
+  discharge_condition: "",
 }
 
 const mapValuesToEmrFragments = (values: EMR): EmrFragment[] =>
@@ -42,6 +53,7 @@ const mapValuesToEmrFragments = (values: EMR): EmrFragment[] =>
   }));
 
 const EMRForm = ({ header }: { header: React.ReactNode }) => {
+  const toast = useToast();
   const params = useSearchParams();
   const user = params.get('user') || null;
 
@@ -53,6 +65,32 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
   } = useProviderQuery({
     functionName: "issue_emr",
     refetchOnMount: false,
+    onSuccess(data) {
+      console.log(data)
+    },
+    onError(err) {
+      if (err instanceof Error) {
+        toast({
+          title: "Error!",
+          description: err.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right"
+        });
+      } else {
+        toast({
+          title: "Error!",
+          description: "Something went wrong!",
+          isClosable: true,
+          duration: 5000,
+          position: "top-right",
+          status: "error"
+        })
+      }
+      
+      throw err
+    }
   })
 
   const onSubmit = async (values: EMR, resetForm: () => void) => {
@@ -82,42 +120,26 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
       <Formik
         initialValues={initialValues}
         validationSchema={emrSchema}
+        validateOnChange={true}
+        validateOnBlur={false}
         onSubmit={(values, { resetForm }) => {
           onSubmit(values, resetForm)
         }}
       >
-        {({ handleSubmit, errors, touched }) => (
+        {({ handleSubmit, errors, touched, setFieldValue, values }) => (
           <Form onSubmit={handleSubmit}>
             <Flex w={'full'} gap={5} p={10}
               direction={{ base: 'column', lg: 'row' }}
             >
-              <Flex w={'full'} bg={"primary.100"} p={5} rounded={"xl"} direction={'column'}>
-                {header}
-                <Divider py={3} borderColor={'primary.300'} />
-                <Flex direction={'column'} gap={7}>
-                  <EMRFormInfo />
-                  <EMRFormVitalSign />
-                  <EMRFormReport />
-                </Flex>
-              </Flex>
-              <Flex w={{ lg: "lg" }} direction={'column'} gap={5}>
-                <EMRFormRecipe />
-                <Button
-                  type="submit"
-                  colorScheme="primary"
-                  bg={'primary.700'}
-                  py={5}
-                  fontSize={'xs'}
-                  rounded={'lg'}
-                  isDisabled={
-                    Object.keys(errors).length > 0 ||
-                    Object.keys(touched).length === 0
-                  }
-                  isLoading={loadingCreateEMR}
-                >
-                  {emrButton.create.label}
-                </Button>
-              </Flex>
+              <EMRFormContent props={{ 
+                header, 
+                loading: loadingCreateEMR, 
+                label: emrButton.create.label, 
+                drugAllergyValue: values.drug_allergy,
+                foodAllergyValue: values.food_allergy,
+                dischargeValue: values.discharge_condition,
+                setFieldValue 
+              }} />
             </Flex>
           </Form>
         )}

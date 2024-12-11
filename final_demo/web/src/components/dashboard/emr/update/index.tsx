@@ -16,10 +16,7 @@ import EMRUpdateSuccess from "./success";
 import { providerCanisterId } from "@/config/canisters/providers.canister";
 import { patientCanisterId } from "@/config/canisters/patient.canister";
 import { emrButton } from "@/constants/contents/dashboard/emr/button";
-import EMRFormVitalSign from "../form/vital-sign";
-import EMRFormInfo from "../form/info";
-import EMRFormReport from "../form/report";
-import EMRFormRecipe from "../form/recipe";
+import EMRFormContent from "../form";
 
 const mapValuesToEmrFragments = (values: EMR): EmrFragment[] =>
   Object.entries(values).map(([key, value]) => ({
@@ -115,52 +112,52 @@ const EMRForm = ({ header }: { header: React.ReactNode }) => {
         initialValues={{
           visit_date: EMR?.body.find(e => e.key === 'visit_date')?.value || "",
           discharge_date: EMR?.body.find(e => e.key === 'discharge_date')?.value || "",
+          visit_time: EMR?.body.find(e => e.key === 'visit_time')?.value || "",
+          discharge_time: EMR?.body.find(e => e.key === 'discharge_time')?.value || "",
           medical_officer: EMR?.body.find(e => e.key === 'medical_officer')?.value || "",
           room: EMR?.body.find(e => e.key === 'room')?.value || "",
+
           blood_pressure: EMR?.body.find(e => e.key === 'blood_pressure')?.value || "",
           temperature: EMR?.body.find(e => e.key === 'temperature')?.value || "",
           heart_rate: EMR?.body.find(e => e.key === 'heart_rate')?.value || "",
           respiration: EMR?.body.find(e => e.key === 'respiration')?.value || "",
           o2_saturation: EMR?.body.find(e => e.key === 'o2_saturation')?.value || "",
-          subjective: EMR?.body.find(e => e.key === 'subjective')?.value || "",
-          diagnosis: EMR?.body.find(e => e.key === 'diagnosis')?.value || "",
-          planning: EMR?.body.find(e => e.key === 'planning')?.value || "",
-          medication: EMR?.body.find(e => e.key === 'medication')?.value || "",
+
+          circuit_reason: EMR?.body.find(e => e.key === 'circuit_reason')?.value || "",
+          illness_history: EMR?.body.find(e => e.key === 'illness_history')?.value || "",
+
+          pyhsical_exam: EMR?.body.find(e => e.key === 'pyhsical_exam')?.value || "",
+          drug_allergy: EMR?.body.find(e => e.key === 'drug_allergy')?.value || "No",
+          food_allergy: EMR?.body.find(e => e.key === 'food_allergy')?.value || "No",
+          other_allergy: EMR?.body.find(e => e.key === 'other_allergy')?.value || "",
+
+          additional_exam: EMR?.body.find(e => e.key === 'additional_exam')?.value || "",
+          primary_diagnosis: EMR?.body.find(e => e.key === 'primary_diagnosis')?.value || "",
+          secondary_diagnosis: EMR?.body.find(e => e.key === 'secondary_diagnosis')?.value || "",
+          surgery: EMR?.body.find(e => e.key === 'surgery')?.value || "",
+          procedures_and_therapies: EMR?.body.find(e => e.key === 'procedures_and_therapies')?.value || "",
+
           recipe: EMR?.body.find(e => e.key === 'recipe')?.value || "",
+          discharge_condition: EMR?.body.find(e => e.key === 'discharge_condition')?.value || "",
         }}
         enableReinitialize={true}
+        validateOnChange={true}
         validationSchema={emrSchema}
+        validateOnBlur={false}
         onSubmit={(values) => { onSubmit(values) }}
       >
-        {({ handleSubmit, errors, touched }) => (
+        {({ handleSubmit, errors, touched, values, setFieldValue }) => (
           <Form onSubmit={handleSubmit}>
             <Flex w={'full'} gap={5} p={10}>
-              <Flex w={'full'} bg={"primary.100"} p={5} rounded={"xl"} direction={'column'}>
-                {header}
-                <Divider py={3} borderColor={'primary.300'} />
-                <Flex direction={'column'} gap={7}>
-                  <EMRFormInfo />
-                  <EMRFormVitalSign />
-                  <EMRFormReport />
-                </Flex>
-              </Flex>
-              <Flex w={"lg"} direction={'column'} gap={5}>
-                <EMRFormRecipe />
-                <Button
-                  type="submit"
-                  colorScheme="primary"
-                  bg={'primary.700'}
-                  py={6}
-                  rounded={'xl'}
-                  isDisabled={
-                    Object.keys(errors).length > 0 ||
-                    Object.keys(touched).length === 0
-                  }
-                  isLoading={loadingUpdateEMR}
-                >
-                  {emrButton.update.label}
-                </Button>
-              </Flex>
+              <EMRFormContent props={{ 
+                header, 
+                loading: loadingUpdateEMR, 
+                label: emrButton.update.label,
+                drugAllergyValue: values.drug_allergy,
+                foodAllergyValue: values.food_allergy,
+                dischargeValue: values.discharge_condition,
+                setFieldValue
+              }}/>
             </Flex>
           </Form>
         )}
