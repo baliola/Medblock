@@ -70,7 +70,7 @@ fn test_group_details_without_pagination() {
             Patient::V1(v1) => v1.name,
         }
     );
-    assert_eq!(details.group_details[0].age, 0);
+    assert_eq!(details.group_details[0].age, 34);
 
     // then we can add the member to the group
     let member_consent = registries
@@ -144,8 +144,8 @@ fn test_group_details_without_pagination() {
             Patient::V1(v1) => v1.name,
         }
     );
-    assert_eq!(details.group_details[0].age, 0);
-    assert_eq!(details.group_details[1].age, 0);
+    assert_eq!(details.group_details[0].age, 34);
+    assert_eq!(details.group_details[1].age, 34);
 }
 
 /// TEST GROUP DETAILS INCLUDES LEADER

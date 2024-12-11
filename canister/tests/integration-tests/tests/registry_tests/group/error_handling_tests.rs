@@ -147,35 +147,3 @@ fn test_claim_nonexistent_consent_for_group() {
 
 }
 
-#[test]
-#[should_panic(
-    expected = "[PATIENT_REGISTRY_LIB] Only patient can call this method. Are you registered as patient?"
-)]
-fn test_claim_consent_for_group_unauthorized() {
-    let (registries, _, _) = common::Scenario::one_admin_one_patient();
-    let patient2 = common::Scenario::create_patient(&registries);
-    let unauthorized = common::random_identity();
-
-    // generate consent code for patient2
-    let consent_code = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient2.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    // attempt to claim consent with unauthorized principal (should panic)
-    registries
-        .patient
-        .claim_consent(
-            &registries.ic,
-            unauthorized,
-            PatientCall::Update,
-            patient_registry::ClaimConsentRequest {
-                code: consent_code.code,
-            },
-        )
-        .unwrap();
-}

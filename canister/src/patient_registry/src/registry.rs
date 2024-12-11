@@ -1104,7 +1104,7 @@ mod test_kyc {
 pub type GroupConsentMapResult<T = ()> = Result<T, GroupConsentMapError>;
 
 pub struct InnerGroupConsentMap(
-    ic_stable_structures::BTreeMap<Stable<GroupConsentCode, Candid>, Stable<NIK, Candid>, Memory>,
+    ic_stable_structures::BTreeMap<Stable<GroupConsentCode, Candid>, Stable<NIK>, Memory>,
 );
 
 impl InnerGroupConsentMap {
@@ -1155,6 +1155,10 @@ impl GroupConsentMap {
         group_consent_code: GroupConsentCode,
         nik: NIK,
     ) -> GroupConsentMapResult {
+        let serialized: Stable<GroupConsentCode, Candid> = group_consent_code.to_stable();
+        println!("serialized: {:?}", serialized);
+        assert!(serialized.0.len() == 6);
+
         self.inner_map
             .0
             .insert(group_consent_code.to_stable(), nik.to_stable());
@@ -1185,7 +1189,7 @@ const CODE_LEN: usize = 6;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct GroupConsentCode([u8; CODE_LEN]);
 impl_max_size!(for GroupConsentCode: 14);
-impl_mem_bound!(for GroupConsentCode: bounded; fixed_size: false);
+impl_mem_bound!(for GroupConsentCode: bounded; fixed_size:false);
 impl_range_bound!(GroupConsentCode);
 
 impl GroupConsentCode {

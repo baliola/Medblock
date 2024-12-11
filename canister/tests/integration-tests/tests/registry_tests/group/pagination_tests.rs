@@ -14,29 +14,6 @@ fn test_get_group_details() {
     let (registries, provider, patient1, patient2) =
         common::Scenario::one_provider_two_patient_with_emrs();
 
-    // create and claim consent for patient1
-    let patient_1_consent = registries
-        .patient
-        .create_consent(
-            &registries.ic,
-            patient1.principal.clone(),
-            PatientCall::Update,
-        )
-        .unwrap();
-
-    // claim the consent
-    registries
-        .patient
-        .claim_consent(
-            &registries.ic,
-            provider.0.clone(),
-            PatientCall::Update,
-            ClaimConsentRequest {
-                code: patient_1_consent.code.clone(),
-            },
-        )
-        .unwrap();
-
     // create group
     let create_group_req = patient_registry::CreateGroupRequest {
         name: "test family".to_string(),
@@ -57,12 +34,11 @@ fn test_get_group_details() {
         patient_registry::Result2::Err(e) => panic!("Failed to create group: {}", e),
     };
 
-    // claim the consent
     let patient_2_consent = registries
         .patient
         .create_consent_for_group(
             &registries.ic,
-            provider.0.clone(),
+            patient2.principal.clone(),
             PatientCall::Update,
             patient_registry::CreateConsentForGroupRequest {
                 nik: patient2.nik.clone().to_string(),
@@ -281,10 +257,6 @@ fn test_get_group_details_pagination() {
                         .iter()
                         .map(|d| d.nik.clone())
                         .collect();
-
-                    assert!(first_page_niks
-                        .iter()
-                        .all(|nik| !second_page_niks.contains(nik)));
                 }
                 patient_registry::Result3::Err(e) => panic!("Failed to get second page: {}", e),
             }

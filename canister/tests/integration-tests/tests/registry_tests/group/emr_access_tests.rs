@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use integration_tests::declarations::{
     patient_registry::pocket_ic_bindings::Call as PatientCall,
     patient_registry::{self, Relation},
@@ -434,8 +436,12 @@ fn test_group_specific_access() {
         )
         .unwrap();
 
-    // wait for 1 second
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    // advance IC time by 2 seconds
+    registries.ic.advance_time(Duration::from_secs(2));
+    // process multiple ticks to ensure all operations are complete
+    for _ in 0..5 {
+        registries.ic.tick();
+    }
 
     let group2_response = registries
         .patient
