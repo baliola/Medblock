@@ -1220,7 +1220,7 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
     .map_err(|e| format!("Failed to revoke EMR access: {:?}", e))
 }
 
-#[ic_cdk::query(guard = "only_patient")]
+#[ic_cdk::query(composite = true, guard = "only_patient")]
 async fn view_group_member_emr_information(
     req: ViewGroupMemberEmrInformationRequest,
 ) -> Result<EmrListPatientResponse, String> {
