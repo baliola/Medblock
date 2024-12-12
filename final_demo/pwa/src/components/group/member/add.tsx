@@ -29,83 +29,12 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { handleGetGroupDetails } = props
 
-  const pin = usePinStore(state => state.pin);
-  const setPin = usePinStore(state => state.setPin);
-
   const [claimConsentData, setClaimConsentData] = useState<ClaimConsentResponse | null | undefined>()
   const [showChooseRelationModal, setShowChooseRelationModal] = useState(false)
 
-  const { call: claimConsentForGroup, loading: claimConsentForGroupLoading } = usePatientMethod({
-    functionName: "claim_consent_for_group",
-    refetchOnMount: false,
-    onSuccess(data) {
-      const result: Result_1 | undefined = data
-
-      if (result && Object.keys(result)[0] === 'Ok') {
-        setClaimConsentData(data)
-        setShowChooseRelationModal(true)
-        onClose()
-
-        return toast({
-          title: "Success Entered Pin",
-          description: "You can now proceed",
-          isClosable: true,
-          duration: 5000,
-          status: "success",
-          position: "top-right",
-        })
-      } else if (result && Object.keys(result)[0] === 'Err') {
-        const error = result['Err'] ?? "Something went wrong!"
-
-        return toast({
-          title: "Error!",
-          description: error,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-          position: "top-right"
-        })
-      }
-    },
-    onError(err) {
-      if (err instanceof Error) {
-        toast({
-          title: "Error!",
-          description: "Pin does not match",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-          position: "top-right"
-        });
-      } else {
-        toast({
-          title: "Error!",
-          description: "Something went wrong!",
-          isClosable: true,
-          duration: 5000,
-          position: "top-right",
-          status: "error"
-        })
-      }
-
-      throw err;
-    },
-  });
-
-  const handleClaimConsentForGroup = async () => {
-    try {
-      const data: ClaimConsentRequest[] | any | undefined = [{
-        code: pin,
-      }];
-
-      await claimConsentForGroup(data);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.log(error.message)
-      }
-
-      console.error(error)
-    }
+  const handleClaimConsentForGroup = () => {
+    setShowChooseRelationModal(true)
+    onClose()
   };
   
   return (
@@ -218,7 +147,6 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
                 mt={4}
                 type="button"
                 onClick={handleClaimConsentForGroup}
-                isLoading={claimConsentForGroupLoading}
               >
                 Submit
               </Button>
@@ -228,7 +156,6 @@ export default function AddMemberModal({ props }: { props: IAddMemberModal }) {
       </Modal>
       <ChooseRelationModal 
         props={{
-          data: claimConsentData,
           showChooseRelationModal,
           setShowChooseRelationModal,
           handleGetGroupDetails

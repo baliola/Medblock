@@ -1,6 +1,6 @@
 "use client"
 
-import { AddGroupMemberRequest, ClaimConsentResponse, Relation, Result } from "@/declarations/patient_registry/patient_registry.did";
+import { AddGroupMemberRequest, Relation, Result } from "@/declarations/patient_registry/patient_registry.did";
 import { usePatientMethod } from "@/services/patients";
 import { usePinStore } from "@/store/pin-store";
 import { 
@@ -15,12 +15,10 @@ import {
   useToast
 } from "@chakra-ui/react";
 import { useParams } from "next/navigation";
-import { useRouter } from "next/router";
 import { Dispatch, SetStateAction, useState } from "react";
 import { FaChevronLeft } from "react-icons/fa6";
 
 interface IChooseRelationModal {
-  data: ClaimConsentResponse | null | undefined
   showChooseRelationModal: boolean
   setShowChooseRelationModal: Dispatch<SetStateAction<boolean>>
   handleGetGroupDetails: () => void
@@ -28,7 +26,6 @@ interface IChooseRelationModal {
 
 export default function ChooseRelationModal({ props }: { props: IChooseRelationModal }) {
   const {
-    data,
     showChooseRelationModal,
     setShowChooseRelationModal,
     handleGetGroupDetails
@@ -119,7 +116,7 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
     try {
       const data: AddGroupMemberRequest = {
         relation : getRelation(),
-        consent_code : pin,
+        group_consent_code : pin,
         group_id : group_id as string,
       };
 
@@ -177,81 +174,75 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
           alignItems={"stretch"}
           justifyContent={"center"}
         >
-          {
-              data
-                ? <Flex 
-                  flexDirection={"column"}
-                  rowGap={6}
+          <Flex 
+            flexDirection={"column"}
+            rowGap={6}
+            w={"full"}
+            px={8}
+            alignItems={"center"}
+          >
+            <Text
+              fontWeight={'bold'}
+              fontSize={'lg'}
+            >
+              Your Relationship with
+            </Text>
+            <Flex
+              w={"30%"}
+              aspectRatio={1/1}
+              background={"rgb(217, 217, 217)"}
+              display={"block"}
+              rounded={"xl"}
+            />
+            <Text
+              fontSize={'xl'}
+              fontWeight={'bold'}
+              textAlign={"center"}
+              px={8}
+            >
+              this User
+            </Text>
+            <Flex
+              flexDirection={"column"}
+              w={"full"}
+              rowGap={3}
+            >
+              <Flex
+                w={"full"}
+                background={"rgba(219, 221, 247, 1)"}
+                rounded={"2xl"}
+                py={1}
+              >
+                <Select 
                   w={"full"}
-                  px={8}
-                  alignItems={"center"}
+                  value={relation}
+                  onChange={(e) => { setRelation(e.target.value as RelationKeys) }}
+                  textAlign={"center"}
+                  outline={"none"}
+                  border={0}
                 >
-                  <Text
-                    fontWeight={'bold'}
-                    fontSize={'lg'}
-                  >
-                    Your Relationship with
-                  </Text>
-                  <Flex
-                    w={"30%"}
-                    aspectRatio={1/1}
-                    background={"rgb(217, 217, 217)"}
-                    display={"block"}
-                    rounded={"xl"}
-                  />
-                  <Text
-                    fontSize={'xl'}
-                    fontWeight={'bold'}
-                    textAlign={"center"}
-                    px={8}
-                  >
-                    {data.name}
-                  </Text>
-                  <Flex
-                    flexDirection={"column"}
-                    w={"full"}
-                    rowGap={3}
-                  >
-                    <Flex
-                      w={"full"}
-                      background={"rgba(219, 221, 247, 1)"}
-                      rounded={"2xl"}
-                      py={1}
-                    >
-                      <Select 
-                        w={"full"}
-                        value={relation}
-                        onChange={(e) => { setRelation(e.target.value as RelationKeys) }}
-                        textAlign={"center"}
-                        outline={"none"}
-                        border={0}
-                      >
-                        {
-                          relationOptions.map((option, index) =>
-                            <option key={index} value={option}>{option}</option>
-                          )
-                        }
-                      </Select>
-                    </Flex>
-                    <Button
-                      colorScheme="primary"
-                      w={"full"}
-                      bg={"primary.700"}
-                      rounded={"2xl"}
-                      fontSize={'sm'}
-                      py={6}
-                      gap={2}
-                      type="button"
-                      onClick={handleAddGroupMember}
-                    >
-                      Submit
-                    </Button>
-                  </Flex>
-                </Flex>
-                : data === undefined
-                  ? <Text>Loading</Text>
-                  : <></>
-            }
+                  {
+                    relationOptions.map((option, index) =>
+                      <option key={index} value={option}>{option}</option>
+                    )
+                  }
+                </Select>
+              </Flex>
+              <Button
+                colorScheme="primary"
+                w={"full"}
+                bg={"primary.700"}
+                rounded={"2xl"}
+                fontSize={'sm'}
+                py={6}
+                gap={2}
+                type="button"
+                onClick={handleAddGroupMember}
+              >
+                Submit
+              </Button>
+            </Flex>
+          </Flex>
         </Flex>
       </ModalContent>
     </Modal>

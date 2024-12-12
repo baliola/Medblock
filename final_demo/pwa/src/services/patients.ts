@@ -21,7 +21,7 @@ export const {
 export const encodeHashNIK = (nik: string) => {
   const hashBuffer = keccak256(nik);
   const encodedHash = Buffer
-    .from(hashBuffer)
+    .from(hashBuffer.toString())
     .toString('hex');
 
   return encodedHash;
