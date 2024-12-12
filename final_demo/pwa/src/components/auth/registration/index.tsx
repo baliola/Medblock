@@ -121,7 +121,6 @@ export default function UserRegistration({
     const patientNIK: RegisterPatientRequest = {
       nik: encodeHashNIK(variables.nik),
     };
-    console.log("patient nik", patientNIK.nik);
 
     const kycDate = () => {
       const now = new Date();
