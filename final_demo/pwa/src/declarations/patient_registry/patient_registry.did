@@ -314,5 +314,5 @@ service : () -> {
   update_provider_registry_principal : (UpdateEmrRegistryRequest) -> ();
   view_group_member_emr_information : (
       ViewGroupMemberEmrInformationRequest,
-    ) -> (Result_4) query;
+    ) -> (Result_4) composite_query;
 }

@@ -462,7 +462,7 @@ export const idlFactory = ({ IDL }) => {
     'view_group_member_emr_information' : IDL.Func(
         [ViewGroupMemberEmrInformationRequest],
         [Result_4],
-        ['query'],
+        ['composite_query'],
       ),
   });
 };
