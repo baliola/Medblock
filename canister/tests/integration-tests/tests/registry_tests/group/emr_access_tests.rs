@@ -517,3 +517,58 @@ fn test_group_specific_access() {
         Err(e) => panic!("Unexpected error: {}", e),
     }
 }
+
+#[test]
+fn test_view_single_emr_through_group() {
+    let (registries, provider, patient1, patient2, group_id) =
+        common::Scenario::two_patients_one_provider_one_group();
+
+    // patient2 grants access to patient1
+    let grant_access_req = patient_registry::GrantGroupAccessRequest {
+        group_id: group_id.clone(),
+        grantee_nik: patient1.nik.to_string(),
+    };
+
+    let grant_result = registries
+        .patient
+        .grant_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            grant_access_req,
+        )
+        .unwrap();
+
+    match grant_result {
+        patient_registry::Result_::Ok => (),
+        patient_registry::Result_::Err(e) => panic!("Failed to grant access: {}", e),
+    }
+
+    // patient1 views patient2's single EMR
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id: group_id.clone(),
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries.patient.view_group_member_emr_information(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        view_request,
+    );
+
+    match view_result {
+        Ok(patient_registry::Result4::Ok(emr_info)) => {
+            assert_eq!(emr_info.emrs.len(), 1, "Should have exactly one EMR");
+            assert_eq!(
+                emr_info.emrs[0].header.user_id,
+                patient2.nik.to_string(),
+                "User ID should match"
+            );
+        }
+        Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
+        Err(_) => panic!("Expected success but got pocket_ic error"),
+    }
+}

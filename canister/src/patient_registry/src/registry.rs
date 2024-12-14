@@ -577,6 +577,12 @@ impl EmrBindingMap {
         page: u8,
         limit: u8,
     ) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
+        // first check if the user exists and has any EMRs
+        if !self.0.range_key_exists(&nik.clone().to_stable()) {
+            return Err(PatientRegistryError::UserDoesNotExist);
+        }
+
+        // get the paginated results
         self.0
             .get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64)
             .ok_or(PatientRegistryError::UserDoesNotExist)
