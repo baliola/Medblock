@@ -1,12 +1,11 @@
 "use client"
 
 import { patientCanisterId } from "@/config/canisters/patient.canister";
-import { EmrHeaderWithBody, ReadEmrByIdRequest } from "@/declarations/patient_registry/patient_registry.did";
+import { EmrHeaderWithBody, ReadGroupMembersEmrInfoRequest } from "@/declarations/patient_registry/patient_registry.did";
 import { PatientActor, usePatientQuery } from "@/services/patients";
 import { 
   Flex,
   Text,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { Principal } from "@dfinity/principal";
 import { useEffect, useState } from "react";
@@ -15,19 +14,33 @@ interface IEMRDetailProps {
   provider_id: string
   emr_id: string
   registry_id: Principal
+  nik: string
+  group_id: string
 }
 
 function EMRDetail({ props }: { props: IEMRDetailProps }) {
-  const { provider_id, emr_id, registry_id } = props
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { 
+    provider_id,
+    emr_id, 
+    registry_id,
+    nik,
+    group_id
+  } = props
 
   const [emrDetail, setEmrDetail] = useState<EmrHeaderWithBody | null | undefined>(undefined);
   
   const {
-    call: readEmrById,
-    loading: loadingReadEmrById,
+    call: readGroupMemberEmr,
+    loading: loadingReadGroupMemberEmr,
   } = usePatientQuery({
-    functionName: "read_emr_by_id",
+    functionName: "read_group_members_emr_info",
+    args: [{
+      member_nik: nik,
+      emr_id: emr_id as string,
+      provider_id: provider_id as string,
+      registry_id: Principal.fromText(registry_id.toString() as string),
+      group_id
+    } as ReadGroupMembersEmrInfoRequest] as any,
     onSuccess(data) {
       console.log(data);
       setEmrDetail(data);
@@ -37,20 +50,6 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
       console.error(error);
     },
   });
-
-  useEffect(()=>{
-    if (provider_id && emr_id && registry_id){
-     const registry = registry_id.toText()
-      const request: ReadEmrByIdRequest = {
-        emr_id: emr_id as string,
-        provider_id: provider_id as string,
-        registry_id: Principal.fromText(registry as string),
-      };
-
-      // @ts-expect-error
-      readEmrById([request])
-    }
-  }, [provider_id, emr_id, registry_id])
 
   if (emrDetail === undefined) return <Text>Please wait ...</Text>
   if (emrDetail === null) return <Text>No Data</Text>

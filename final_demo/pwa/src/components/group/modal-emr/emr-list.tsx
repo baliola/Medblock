@@ -129,7 +129,9 @@ export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
                       <EMRMemberDetail props={{
                         emr_id: emr.header.emr_id,
                         provider_id: emr.header.provider_id,
-                        registry_id: emr.header.registry_id
+                        registry_id: emr.header.registry_id,
+                        nik,
+                        group_id
                        }} />
                     </Flex>
                   )
