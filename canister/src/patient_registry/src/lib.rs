@@ -1282,10 +1282,10 @@ async fn view_group_member_emr_information(
     let emrs = with_state(|s| {
         s.registry
             .emr_binding_map
-            .emr_list(&member_nik, req.page as u8, req.limit as u8)
+            .emr_list_all(&member_nik)
     })
     .map_err(|e| match e {
-        PatientRegistryError::UserDoesNotExist => format!(
+        PatientRegistryError::UserNoEmrs => format!(
             "[ERR_NO_EMR_RECORDS] The member (NIK: {}) has not been registered in the EMR system yet. Action required: They need to visit a healthcare provider who will create their first EMR record.",
             member_nik
         ),
