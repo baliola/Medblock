@@ -207,6 +207,13 @@ export interface ReadEmrSessionRequest {
   'session_id' : string,
   'args' : ReadEmrByIdRequest,
 }
+export interface ReadGroupMembersEmrInfoRequest {
+  'provider_id' : string,
+  'emr_id' : string,
+  'group_id' : string,
+  'registry_id' : Principal,
+  'member_nik' : string,
+}
 export interface RegisterPatientRequest { 'nik' : string }
 export interface RegisterPatientResponse {
   'nik' : string,
@@ -227,7 +234,9 @@ export type Result_2 = { 'Ok' : CreateGroupResponse } |
   { 'Err' : string };
 export type Result_3 = { 'Ok' : GetGroupDetailsResponse } |
   { 'Err' : string };
-export type Result_4 = { 'Ok' : EmrListPatientResponse } |
+export type Result_4 = { 'Ok' : ReadEmrByIdResponse } |
+  { 'Err' : string };
+export type Result_5 = { 'Ok' : EmrListPatientResponse } |
   { 'Err' : string };
 export interface RevokeConsentRequest { 'codes' : Array<string> }
 export interface RevokeGroupAccessRequest { 'grantee_nik' : string }
@@ -337,6 +346,10 @@ export interface _SERVICE {
     [ReadEmrSessionRequest],
     ReadEmrByIdResponse
   >,
+  'read_group_members_emr_info' : ActorMethod<
+    [ReadGroupMembersEmrInfoRequest],
+    Result_4
+  >,
   'register_patient' : ActorMethod<
     [RegisterPatientRequest],
     RegisterPatientResponse
@@ -371,7 +384,7 @@ export interface _SERVICE {
   >,
   'view_group_member_emr_information' : ActorMethod<
     [ViewGroupMemberEmrInformationRequest],
-    Result_4
+    Result_5
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

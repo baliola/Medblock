@@ -1,25 +1,11 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest,
-    ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest,
-    CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse,
-    EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest,
-    EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest,
-    GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest,
-    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail,
-    IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest,
-    LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
-    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
-    RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest,
-    RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest,
-    SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest,
-    UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest,
-    ViewGroupMemberEmrInformationRequest,
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest, CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
 };
 use candid::{Decode, Encode, Principal};
 use canister_common::{
-    common::{guard::verified_caller, AsciiRecordsKey, ProviderId},
+    common::{guard::verified_caller, AsciiRecordsKey, EmrId, ProviderId},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -1574,6 +1560,52 @@ fn check_nik(req: CheckNikRequest) -> Result<bool, String> {
 
         Ok(true)
     })
+}
+
+#[ic_cdk::query(composite = true, guard = "only_patient")]
+async fn read_group_members_emr_info(
+    req: ReadGroupMembersEmrInfoRequest,
+) -> Result<ReadEmrByIdResponse, String> {
+    let caller = verified_caller().unwrap();
+    let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    // parse member NIK from string
+    let member_nik = NIK::from_str(&req.member_nik)
+        .map_err(|_| "[ERR_INVALID_NIK] Invalid member NIK format")?;
+
+    // verify both users are in the same group
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or("[ERR_GROUP_NOT_FOUND] Group not found")?;
+
+    // verify both users are members of the group
+    if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
+        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of the group".to_string());
+    }
+
+    // verify access has been granted for this specific group
+    let has_access = with_state(|s| {
+        s.registry.group_access_map.has_access(&member_nik, &viewer_nik)
+            && s.registry.group_access_map.get_access_group(&member_nik, &viewer_nik) == Some(req.group_id)
+    });
+
+    if !has_access {
+        return Err("[ERR_ACCESS_NOT_GRANTED] Access not granted for this group".to_string());
+    }
+
+    // get the member_niks principal from get_principal
+    let member_principal = with_state(|s| s.registry.owner_map.get_principal(&member_nik)).unwrap();
+
+    // if all checks pass, proceed with reading the EMR using the new function
+    let registry = with_state(|s| s.config.get().emr_registry());
+    let sub_args = api::ReadEmrByIdRequest {
+        provider_id: req.provider_id,
+        emr_id: req.emr_id,
+        registry_id: req.registry_id,
+    };
+    let args = with_state(|s| s.registry.construct_args_read_emr(sub_args, &member_principal))
+        .map_err(|e| format!("[ERR_CONSTRUCT_ARGS] Failed to construct EMR read args: {:?}", e))?;
+    
+    Ok(PatientRegistry::do_call_read_emr(args, registry).await)
 }
 
 ic_cdk::export_candid!();

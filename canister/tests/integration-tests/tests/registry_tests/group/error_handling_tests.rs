@@ -89,7 +89,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result4::Err(error) => {
+        patient_registry::Result5::Err(error) => {
             assert!(
                 error.contains("[ERR_INVALID_NIK]"),
                 "Expected invalid NIK error message, got: {}",
@@ -118,7 +118,7 @@ fn test_emr_access_error_messages() {
         .unwrap();
 
     match result {
-        patient_registry::Result4::Err(error) => {
+        patient_registry::Result5::Err(error) => {
             let expected_error = format!(
                 "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
                 patient2.nik, patient2.nik, group_id

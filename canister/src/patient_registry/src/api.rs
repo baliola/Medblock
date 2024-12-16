@@ -22,6 +22,15 @@ pub struct ReadEmrByIdRequest {
     pub registry_id: Principal,
 }
 
+#[derive(CandidType, Deserialize)]
+pub struct ReadGroupMembersEmrInfoRequest {
+    pub provider_id: ProviderId,
+    pub emr_id: EmrId,
+    pub registry_id: Principal,
+    pub member_nik: String,
+    pub group_id: GroupId,
+}
+
 impl ReadEmrByIdRequest {
     pub fn to_args(self, user_id: UserId) -> crate::declarations::emr_registry::ReadEmrByIdRequest {
         crate::declarations::emr_registry::ReadEmrByIdRequest {
