@@ -17,6 +17,7 @@ import RevokeAccessGroupModal from "./revoke";
 import { usePatientQuery } from "@/services/patients";
 import { EmrListPatientResponse } from "@/declarations/patient_registry/patient_registry.did";
 import { useState } from "react";
+import EMRListModal from "../modal-emr/emr-list";
 
 interface DetailModalProps {
   isLeader: boolean;
@@ -26,11 +27,14 @@ interface DetailModalProps {
 
 export default function DetailModal({ props }: { props: DetailModalProps }) {
   const { isLeader, nik, group_id } = props;
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { profile } = useProfileStore();
+
   const [emrGroupInformation, setEmrGroupInformation] = useState<
     EmrListPatientResponse | null | undefined
   >(undefined);
+
   const {
     call: getEmrGroupInformation,
     loading: loadingGetEmrGroupInformation,
@@ -73,30 +77,8 @@ export default function DetailModal({ props }: { props: DetailModalProps }) {
               </>
             )}
 
-            <Button
-              type="button"
-              bg={"transparent"}
-              display={"flex"}
-              justifyContent={"items-start"}
-              columnGap={3}
-              fontWeight={400}
-              color={"primary.700"}
-              onClick={() => {
-                const data = {};
-
-                getEmrGroupInformation([
-                  {
-                    page: BigInt(1),
-                    limit: BigInt(1),
-                    group_id: group_id,
-                    member_nik: nik,
-                  },
-                ] as any);
-              }}
-              leftIcon={<Icon as={HiOutlineEye} boxSize={6} />}
-            >
-              <Text>See Group EMRs</Text>
-            </Button>
+            <EMRListModal props={{ group_id, nik }} />
+            
             {nik === profile?.nik && <LeaveGroupModal props={{ isLeader }} />}
           </DrawerBody>
         </DrawerContent>
