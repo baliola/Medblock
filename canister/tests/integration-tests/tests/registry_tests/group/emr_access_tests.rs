@@ -54,7 +54,7 @@ fn test_emr_access_permissions() {
     }
 
     match view_result {
-        Ok(patient_registry::Result4::Err(error)) => {
+        Ok(patient_registry::Result5::Err(error)) => {
             assert!(
                 error.contains("[ERR_ACCESS_NOT_GRANTED]"),
                 "Expected access not granted error, but got {}",
@@ -95,8 +95,8 @@ fn test_emr_access_permissions() {
     );
 
     match view_result {
-        Ok(patient_registry::Result4::Ok(_)) => (),
-        Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
+        Ok(patient_registry::Result5::Ok(_)) => (),
+        Ok(patient_registry::Result5::Err(e)) => panic!("Expected success but got error: {}", e),
         Err(_) => panic!("Expected success but got pocket_ic error"),
     }
 }
@@ -215,7 +215,7 @@ fn test_emr_access_after_grant() {
     );
 
     let result = match view_result {
-        Ok(patient_registry::Result4::Ok(ref emr_info)) => {
+        Ok(patient_registry::Result5::Ok(ref emr_info)) => {
             assert!(!emr_info.emrs.is_empty(), "EMR list should not be empty");
             assert_eq!(
                 emr_info.emrs[0].header.user_id,
@@ -228,7 +228,7 @@ fn test_emr_access_after_grant() {
             );
             true
         }
-        Ok(patient_registry::Result4::Err(e)) => {
+        Ok(patient_registry::Result5::Err(e)) => {
             println!("Error: {}", e);
             false
         }
@@ -301,7 +301,7 @@ fn test_view_group_member_emr_information() {
         };
 
         match view_result {
-            Ok(patient_registry::Result4::Ok(emr_info)) => {
+            Ok(patient_registry::Result5::Ok(emr_info)) => {
                 assert!(!emr_info.emrs.is_empty(), "EMR list should not be empty");
                 assert_eq!(
                     emr_info.emrs[0].header.user_id,
@@ -319,7 +319,7 @@ fn test_view_group_member_emr_information() {
                     hospital_name
                 );
             }
-            Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
+            Ok(patient_registry::Result5::Err(e)) => panic!("Expected success but got error: {}", e),
             Err(_) => panic!("Expected success but got pocket_ic error"),
         }
 }
@@ -508,8 +508,8 @@ fn test_group_specific_access() {
     );
 
     match view_result_group2 {
-        Ok(patient_registry::Result4::Ok(_)) => panic!("Should not have access in group2"),
-        Ok(patient_registry::Result4::Err(e)) => assert!(
+        Ok(patient_registry::Result5::Ok(_)) => panic!("Should not have access in group2"),
+        Ok(patient_registry::Result5::Err(e)) => assert!(
             e.contains("[ERR_ACCESS_NOT_GRANTED]"),
             "Expected access not granted error, got: {}",
             e
@@ -596,7 +596,7 @@ fn test_view_single_emr_through_group() {
     );
 
     match view_result {
-        Ok(patient_registry::Result4::Ok(emr_info)) => {
+        Ok(patient_registry::Result5::Ok(emr_info)) => {
             println!("DEBUG test: successfully retrieved EMRs, count: {:?}", emr_info.emrs.len());
             assert_eq!(emr_info.emrs.len(), 1, "Should have exactly one EMR");
             assert_eq!(
@@ -604,8 +604,44 @@ fn test_view_single_emr_through_group() {
                 patient2.nik.to_string(),
                 "User ID should match"
             );
+            
+            // get full EMR information using the header information
+            let read_emr_request = patient_registry::ReadGroupMembersEmrInfoRequest {
+                provider_id: emr_info.emrs[0].header.provider_id.to_string(),
+                emr_id: emr_info.emrs[0].header.emr_id.to_string(),
+                registry_id: registries.emr.0,
+                group_id: group_id.clone(),
+                member_nik: patient2.nik.to_string(),
+            };
+
+            let full_emr_result = registries.patient.read_group_members_emr_info(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Query,
+                read_emr_request
+            );
+
+            match full_emr_result {
+                Ok(patient_registry::Result4::Ok(full_emr)) => {
+                    println!("DEBUG test: successfully retrieved full EMR");
+                    assert_eq!(
+                        full_emr.emr.header.emr_id,
+                        emr_info.emrs[0].header.emr_id,
+                        "EMR IDs should match"
+                    );
+                    assert!(!full_emr.emr.body.is_empty(), "EMR body should not be empty");
+                },
+                Ok(patient_registry::Result4::Err(e)) => {
+                    println!("DEBUG test: failed to retrieve full EMR with error: {:?}", e);
+                    panic!("Function returned error: {:?}", e);
+                },
+                Err(e) => {
+                    println!("DEBUG test: got RPC error: {:?}", e);
+                    panic!("RPC call failed: {:?}", e);
+                }
+            }
         }
-        Ok(patient_registry::Result4::Err(e)) => {
+        Ok(patient_registry::Result5::Err(e)) => {
             println!("DEBUG test: failed to retrieve EMRs with error: {:?}", e);
             panic!("Expected success but got error: {}", e)
         },

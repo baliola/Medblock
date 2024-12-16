@@ -604,9 +604,9 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Ok(_)),
+        matches!(result, patient_registry::Result5::Ok(_)),
         "Patient2 should be able to view Patient1's EMR initially. Got error: {:?}",
-        if let patient_registry::Result4::Err(e) = result {
+        if let patient_registry::Result5::Err(e) = result {
             e
         } else {
             "Unexpected result type".to_string()
@@ -632,7 +632,7 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Err(_)),
+        matches!(result, patient_registry::Result5::Err(_)),
         "Patient1 should not be able to view Patient2's EMR (no access granted)"
     );
 
@@ -670,7 +670,7 @@ fn test_group_access_cleanup() {
         .unwrap();
 
     assert!(
-        matches!(result, patient_registry::Result4::Err(_)),
+        matches!(result, patient_registry::Result5::Err(_)),
         "Patient2 should not be able to view Patient1's EMR after leaving"
     );
 }

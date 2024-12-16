@@ -280,6 +280,17 @@ export const idlFactory = ({ IDL }) => {
     'session_id' : IDL.Text,
     'args' : ReadEmrByIdRequest,
   });
+  const ReadGroupMembersEmrInfoRequest = IDL.Record({
+    'provider_id' : IDL.Text,
+    'emr_id' : IDL.Text,
+    'group_id' : IDL.Text,
+    'registry_id' : IDL.Principal,
+    'member_nik' : IDL.Text,
+  });
+  const Result_4 = IDL.Variant({
+    'Ok' : ReadEmrByIdResponse,
+    'Err' : IDL.Text,
+  });
   const RegisterPatientRequest = IDL.Record({ 'nik' : IDL.Text });
   const RegisterPatientStatus = IDL.Variant({
     'Error' : IDL.Text,
@@ -321,7 +332,7 @@ export const idlFactory = ({ IDL }) => {
     'group_id' : IDL.Text,
     'member_nik' : IDL.Text,
   });
-  const Result_4 = IDL.Variant({
+  const Result_5 = IDL.Variant({
     'Ok' : EmrListPatientResponse,
     'Err' : IDL.Text,
   });
@@ -416,6 +427,11 @@ export const idlFactory = ({ IDL }) => {
         [ReadEmrByIdResponse],
         ['composite_query'],
       ),
+    'read_group_members_emr_info' : IDL.Func(
+        [ReadGroupMembersEmrInfoRequest],
+        [Result_4],
+        ['composite_query'],
+      ),
     'register_patient' : IDL.Func(
         [RegisterPatientRequest],
         [RegisterPatientResponse],
@@ -461,7 +477,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'view_group_member_emr_information' : IDL.Func(
         [ViewGroupMemberEmrInformationRequest],
-        [Result_4],
+        [Result_5],
         ['composite_query'],
       ),
   });

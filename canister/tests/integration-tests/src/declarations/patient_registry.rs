@@ -414,6 +414,19 @@ pub struct ReadEmrSessionRequest {
     pub args: ReadEmrByIdRequest,
 }
 #[derive(CandidType, Deserialize)]
+pub struct ReadGroupMembersEmrInfoRequest {
+    pub provider_id: String,
+    pub emr_id: String,
+    pub group_id: String,
+    pub registry_id: Principal,
+    pub member_nik: String,
+}
+#[derive(CandidType, Deserialize)]
+pub enum Result4 {
+    Ok(ReadEmrByIdResponse),
+    Err(String),
+}
+#[derive(CandidType, Deserialize)]
 pub struct RegisterPatientRequest {
     pub nik: String,
 }
@@ -484,7 +497,7 @@ pub struct ViewGroupMemberEmrInformationRequest {
     pub member_nik: String,
 }
 #[derive(CandidType, Deserialize)]
-pub enum Result4 {
+pub enum Result5 {
     Ok(EmrListPatientResponse),
     Err(String),
 }
@@ -625,6 +638,12 @@ impl PatientRegistry {
     ) -> Result<(ReadEmrByIdResponse,)> {
         ic_cdk::call(self.0, "read_emr_with_session", (arg0,)).await
     }
+    pub async fn read_group_members_emr_info(
+        &self,
+        arg0: ReadGroupMembersEmrInfoRequest,
+    ) -> Result<(Result4,)> {
+        ic_cdk::call(self.0, "read_group_members_emr_info", (arg0,)).await
+    }
     pub async fn register_patient(
         &self,
         arg0: RegisterPatientRequest,
@@ -685,7 +704,7 @@ impl PatientRegistry {
     pub async fn view_group_member_emr_information(
         &self,
         arg0: ViewGroupMemberEmrInformationRequest,
-    ) -> Result<(Result4,)> {
+    ) -> Result<(Result5,)> {
         ic_cdk::call(self.0, "view_group_member_emr_information", (arg0,)).await
     }
 }
@@ -1322,6 +1341,27 @@ pub mod pocket_ic_bindings {
                 payload,
             )
         }
+        pub fn read_group_members_emr_info(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: ReadGroupMembersEmrInfoRequest,
+        ) -> std::result::Result<Result4, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "read_group_members_emr_info",
+                payload,
+            )
+        }
         pub fn register_patient(
             &self,
             server: &pocket_ic::PocketIc,
@@ -1545,7 +1585,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: ViewGroupMemberEmrInformationRequest,
-        ) -> std::result::Result<Result4, pocket_ic::UserError> {
+        ) -> std::result::Result<Result5, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,
