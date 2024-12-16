@@ -559,6 +559,135 @@ impl Scenario {
         (registries, provider, patient1, patient2)
     }
 
+    pub fn three_patients_one_provider_one_group() -> (Registries, Provider, Patient, Patient, Patient, String) {
+        let registries = prepare();
+        let patient1 = Self::create_patient(&registries);
+        let patient2 = Self::create_patient(&registries);
+        let patient3 = Self::create_patient(&registries);
+        let provider = Provider(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries
+            .provider
+            .register_new_provider(
+                &registries.ic,
+                registries.controller.clone(),
+                ProviderCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // issue EMRs for all three patients
+        let emr_requests = vec![
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key1".to_string(),
+                    value: "value1".to_string(),
+                }],
+                user_id: patient1.nik.clone().to_string(),
+            },
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key2".to_string(),
+                    value: "value2".to_string(),
+                }],
+                user_id: patient2.nik.clone().to_string(),
+            },
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key3".to_string(),
+                    value: "value3".to_string(),
+                }],
+                user_id: patient3.nik.clone().to_string(),
+            },
+        ];
+
+        // issue EMRs for all patients
+        for req in emr_requests {
+            registries
+                .provider
+                .issue_emr(
+                    &registries.ic,
+                    provider.0.clone(),
+                    ProviderCall::Update,
+                    req,
+                )
+                .unwrap();
+
+            registries.ic.advance_time(Duration::from_secs(1));
+            registries.ic.tick();
+        }
+
+        // create group with patient1 as owner
+        let create_group_req = patient_registry::CreateGroupRequest {
+            name: "family group".to_string(),
+        };
+
+        let create_group_response = registries
+            .patient
+            .create_group(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                create_group_req,
+            )
+            .unwrap();
+
+        let group_id = match create_group_response {
+            patient_registry::Result2::Ok(response) => response.group_id.clone(),
+            patient_registry::Result2::Err(e) => {
+                panic!("Failed to create group: {}", e);
+            }
+        };
+
+        // add patient2 and patient3 to the group
+        for patient in [&patient2, &patient3] {
+            let create_consent_req = patient_registry::CreateConsentForGroupRequest {
+                nik: patient.nik.clone().to_string(),
+            };
+
+            let consent_response = registries
+                .patient
+                .create_consent_for_group(
+                    &registries.ic,
+                    patient.principal.clone(),
+                    PatientCall::Update,
+                    create_consent_req,
+                )
+                .unwrap();
+
+            let add_member_req = patient_registry::AddGroupMemberRequest {
+                group_id: group_id.clone(),
+                group_consent_code: consent_response.group_consent_code,
+                relation: Relation::Spouse,
+            };
+
+            registries
+                .patient
+                .add_group_member(
+                    &registries.ic,
+                    patient1.principal.clone(),
+                    PatientCall::Update,
+                    add_member_req,
+                )
+                .unwrap();
+
+            registries.ic.advance_time(Duration::from_secs(1));
+            registries.ic.tick();
+        }
+
+        (registries, provider, patient1, patient2, patient3, group_id)
+    }
+
     pub fn two_patients_one_provider_one_group() -> (Registries, Provider, Patient, Patient, String)
     {
         let (registries, provider, patient1, patient2) = Self::one_provider_two_patient_with_emrs();
