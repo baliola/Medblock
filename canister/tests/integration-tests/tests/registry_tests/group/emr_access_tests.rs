@@ -544,6 +544,19 @@ fn test_view_single_emr_through_group() {
         patient_registry::Result_::Err(e) => panic!("Failed to grant access: {}", e),
     }
 
+    // check that provider has emr
+    let emr_count = registries.provider.emr_list_provider(
+        &registries.ic,
+        provider.0.clone(),
+        ProviderCall::Query,
+        provider_registry::EmrListProviderRequest {
+            page: 0,
+            limit: 10,
+        },
+    );
+
+    println!("emr count in provider: {:?}", emr_count.unwrap().ids.len());
+
     // patient1 views patient2's single EMR
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
         member_nik: patient2.nik.to_string(),

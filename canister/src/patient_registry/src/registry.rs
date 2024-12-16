@@ -232,6 +232,8 @@ pub enum PatientRegistryError {
     GroupNotFound,
     #[error("group already exists")]
     GroupAlreadyExists,
+    #[error("user has no emrs")]
+    UserNoEmrs,
 }
 
 // !! TODO WE REALLY NEED TO MOVE GROUP CONSENT TO A DIFFERENT FILE
@@ -579,13 +581,14 @@ impl EmrBindingMap {
     ) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
         // first check if the user exists and has any EMRs
         if !self.0.range_key_exists(&nik.clone().to_stable()) {
-            return Err(PatientRegistryError::UserDoesNotExist);
+            return Err(PatientRegistryError::UserNoEmrs);
         }
 
         // get the paginated results
-        self.0
-            .get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64)
-            .ok_or(PatientRegistryError::UserDoesNotExist)
+        match self.0.get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64) {
+            Some(emrs) if !emrs.is_empty() => Ok(emrs),
+            _ => Err(PatientRegistryError::UserNoEmrs)
+        }
     }
 
     pub fn issue_for(&mut self, nik: NIK, header: EmrHeader) -> PatientBindingMapResult<()> {
