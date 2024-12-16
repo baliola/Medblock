@@ -523,6 +523,29 @@ fn test_view_single_emr_through_group() {
     let (registries, provider, patient1, patient2, group_id) =
         common::Scenario::two_patients_one_provider_one_group();
 
+    // check EMRs for both patients before proceeding
+    let patient1_emrs = registries.patient.emr_list_patient(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        patient_registry::EmrListPatientRequest {
+            page: 0,
+            limit: 10,
+        },
+    );
+    println!("DEBUG test: patient1 EMR count before test: {:?}", patient1_emrs.unwrap().emrs.len());
+
+    let patient2_emrs = registries.patient.emr_list_patient(
+        &registries.ic,
+        patient2.principal.clone(),
+        PatientCall::Query,
+        patient_registry::EmrListPatientRequest {
+            page: 0,
+            limit: 10,
+        },
+    );
+    println!("DEBUG test: patient2 EMR count before test: {:?}", patient2_emrs.unwrap().emrs.len());
+
     // patient2 grants access to patient1
     let grant_access_req = patient_registry::GrantGroupAccessRequest {
         group_id: group_id.clone(),
@@ -540,7 +563,7 @@ fn test_view_single_emr_through_group() {
         .unwrap();
 
     match grant_result {
-        patient_registry::Result_::Ok => (),
+        patient_registry::Result_::Ok => println!("DEBUG test: access granted successfully"),
         patient_registry::Result_::Err(e) => panic!("Failed to grant access: {}", e),
     }
 
@@ -555,7 +578,7 @@ fn test_view_single_emr_through_group() {
         },
     );
 
-    println!("emr count in provider: {:?}", emr_count.unwrap().ids.len());
+    println!("DEBUG test: provider total EMR count: {:?}", emr_count.unwrap().ids.len());
 
     // patient1 views patient2's single EMR
     let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
@@ -574,6 +597,7 @@ fn test_view_single_emr_through_group() {
 
     match view_result {
         Ok(patient_registry::Result4::Ok(emr_info)) => {
+            println!("DEBUG test: successfully retrieved EMRs, count: {:?}", emr_info.emrs.len());
             assert_eq!(emr_info.emrs.len(), 1, "Should have exactly one EMR");
             assert_eq!(
                 emr_info.emrs[0].header.user_id,
@@ -581,7 +605,13 @@ fn test_view_single_emr_through_group() {
                 "User ID should match"
             );
         }
-        Ok(patient_registry::Result4::Err(e)) => panic!("Expected success but got error: {}", e),
-        Err(_) => panic!("Expected success but got pocket_ic error"),
+        Ok(patient_registry::Result4::Err(e)) => {
+            println!("DEBUG test: failed to retrieve EMRs with error: {:?}", e);
+            panic!("Expected success but got error: {}", e)
+        },
+        Err(e) => {
+            println!("DEBUG test: got pocket_ic error: {:?}", e);
+            panic!("Expected success but got pocket_ic error")
+        },
     }
 }

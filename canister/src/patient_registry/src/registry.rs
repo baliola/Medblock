@@ -579,15 +579,36 @@ impl EmrBindingMap {
         page: u8,
         limit: u8,
     ) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
+        println!("DEBUG emr_list: checking EMRs for NIK: {:?}, page: {}, limit: {}", nik, page, limit);
+        
         // first check if the user exists and has any EMRs
         if !self.0.range_key_exists(&nik.clone().to_stable()) {
+            println!("DEBUG emr_list: no EMRs found for NIK (range_key_exists): {:?}", nik);
             return Err(PatientRegistryError::UserNoEmrs);
         }
 
-        // get the paginated results
-        match self.0.get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64) {
-            Some(emrs) if !emrs.is_empty() => Ok(emrs),
-            _ => Err(PatientRegistryError::UserNoEmrs)
+        // get all EMRs first to verify we have them
+        let all_emrs = self.0.get_set_associated_by_key(&nik.clone().to_stable());
+        println!("DEBUG emr_list: all EMRs for NIK: {:?}", all_emrs.clone().map(|e| e.len()));
+        
+        if all_emrs.clone().unwrap().is_empty() {
+            println!("DEBUG emr_list: no EMRs found for NIK (get_set_associated_by_key): {:?}", nik);
+            return Err(PatientRegistryError::UserNoEmrs);
+        }
+
+        // now get the paginated results
+        let paginated = self.0.get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64);
+        println!("DEBUG emr_list: paginated EMRs: {:?}", paginated.clone().map(|e| e.len()));
+
+        match paginated {
+            Some(emrs) if !emrs.is_empty() => {
+                println!("DEBUG emr_list: returning {} paginated EMRs", emrs.len());
+                Ok(emrs)
+            },
+            _ => {
+                println!("DEBUG emr_list: pagination failed, returning all {} EMRs", all_emrs.clone().unwrap().len());
+                Ok(all_emrs.unwrap())
+            }
         }
     }
 
