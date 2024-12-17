@@ -5,19 +5,20 @@ import EMRPatient from "@/components/dashboard/emr";
 interface PageProps {
   params: {
     id: string;
-  },
+  };
 }
 
 export default async function EMRPage({ params }: PageProps) {
-  const id = params.id
+  const id = params.id;
+  console.log("Params Layout", id);
 
   if (!id) {
-    redirect('/dashboard/patients');
+    redirect("/dashboard/patients");
   }
 
   return (
     <Tabs variant="unstyled">
       <EMRPatient id={id} />
     </Tabs>
-  )
+  );
 }
