@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect } from "react";
 import { Flex } from "@chakra-ui/react";
 
@@ -15,12 +15,13 @@ import EMRReport from "@/components/dashboard/emr/report";
 import { patientCanisterId } from "@/config/canisters/patient.canister";
 
 const EMRDataPatient = ({ id }: { id: string }) => {
-  const params = useSearchParams();
+  const saerchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const params = useParams();
 
-  const page = params.get("page") || 0;
-  const limit = params.get("limit") || 10;
+  const page = saerchParams.get("page") || 0;
+  const limit = saerchParams.get("limit") || 10;
 
   const setUserHasEMR = useEMRStore(state => state.setUserHasEMR);
   const setEmrs = useEMRStore(state => state.setEMRS);
@@ -39,7 +40,7 @@ const EMRDataPatient = ({ id }: { id: string }) => {
       const length = datas?.emr.length;
       const latestData = datas?.emr[length - 1];
 
-      const param = new URLSearchParams(params);
+      const param = new URLSearchParams(saerchParams);
       param.set('record', latestData?.header.emr_id);
       param.set('provider', latestData?.header.provider_id);
       param.set('registry', latestData?.header.registry_id.toText());
@@ -59,16 +60,15 @@ const EMRDataPatient = ({ id }: { id: string }) => {
 
   useEffect(() => {
     const request: EmrListConsentRequest = {
-      session_id: id,
+      session_id: params.id as string,
       limit: Number(limit),
       page: Number(page)
     };
 
     // @ts-expect-error
     call([request]);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, limit, page]);
+  }, []);
 
   return <EMRPatientEmpty />
 }

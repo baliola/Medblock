@@ -16,14 +16,16 @@ import {
 import { useEffect, useState } from "react";
 import { HiOutlineEye } from "react-icons/hi2";
 import EMRMemberDetail from "./emr-detail";
+import { FaHospital } from "react-icons/fa6";
 
 interface IEMRListModalProps {
   group_id: string
   nik: string
+  name: string
 }
 
 export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
-  const { group_id, nik } = props
+  const { group_id, nik, name } = props
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [emrGroupInformation, setEmrGroupInformation] = useState<
@@ -94,38 +96,43 @@ export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
           h={"full"}
           display={"flex"}
           onClick={onClose}
-          background={"transparent"}
+          background={"white"}
         >
           <Flex 
             marginTop={"auto"}
             flexDirection={"column"}
             rowGap={6}
             h={"full"}
-            py={12}
             width={"full"}
-            background={"rgba(230, 238, 252, 1)"}
-            px={8}
+            background={"white"}
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              type="button"
-              bg={"transparent"}
-              display={"flex"}
-              justifyContent={"items-start"}
-              columnGap={3}
-              fontWeight={400}
-              color={"primary.700"}
-              onClick={onClose}
-            >
-              <Text>Close</Text>
-            </Button>
+            <Flex justifyContent={"center"} py={3}>
+              <Text textTransform={"capitalize"} fontSize={"xl"}>{name} EMR&apos;s</Text>
+              <Button
+                type="button"
+                bg={"white"}
+                display={"flex"}
+                justifyContent={"items-start"}
+                columnGap={3}
+                fontWeight={400}
+                color={"primary.700"}
+                py={3}
+                onClick={onClose}
+              >
+                <Text size={"lg"} ml={"auto"}>Close</Text>
+              </Button>
+            </Flex>
             {emrGroupInformation === undefined && <Text>Please wait ..</Text> }
             {emrGroupInformation && 
-              <Flex>
+              <Flex direction={"column"} bg={"white"}>
                 {
                   emrGroupInformation.emrs.map((emr, index) =>
-                    <Flex key={index}>
-                      <Text>{emr.hospital_name}</Text>
+                    <Flex key={index} flexDirection={"column"} px={10}>
+                      <Flex gap={4}>
+                        <Icon as={FaHospital} boxSize={6} color={"primary.700"} />
+                        <Text textTransform={"uppercase"} fontSize={"lg"}>{emr.hospital_name}</Text>
+                      </Flex>
                       <EMRMemberDetail props={{
                         emr_id: emr.header.emr_id,
                         provider_id: emr.header.provider_id,

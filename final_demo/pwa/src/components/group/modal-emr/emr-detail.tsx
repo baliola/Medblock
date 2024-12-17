@@ -1,7 +1,7 @@
 "use client"
 
 import { patientCanisterId } from "@/config/canisters/patient.canister";
-import { EmrHeaderWithBody, ReadGroupMembersEmrInfoRequest } from "@/declarations/patient_registry/patient_registry.did";
+import { EmrHeaderWithBody, ReadEmrByIdResponse, ReadGroupMembersEmrInfoRequest } from "@/declarations/patient_registry/patient_registry.did";
 import { PatientActor, usePatientQuery } from "@/services/patients";
 import { 
   Flex,
@@ -42,8 +42,9 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
       group_id
     } as ReadGroupMembersEmrInfoRequest] as any,
     onSuccess(data) {
-      console.log(data);
-      setEmrDetail(data);
+      const { Ok }: any = data;
+      if (Ok) setEmrDetail(Ok.emr);
+      else setEmrDetail(null);
     },
     onError(error) {
       setEmrDetail(null);
@@ -55,7 +56,7 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
   if (emrDetail === null) return <Text>No Data</Text>
   
   return (
-    <Flex>
+    <Flex direction={"column"}>
       {
         emrDetail.body.map((item, index) =>
           <Flex key={index}>
