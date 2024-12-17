@@ -21,6 +21,7 @@ import {
 import { Principal } from "@dfinity/principal";
 import { useState } from "react";
 import { FaHospital } from "react-icons/fa6";
+import { IoClose } from "react-icons/io5";
 
 interface IEMRDetailProps {
   emr: EmrHeaderWithStatus
@@ -141,17 +142,26 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
           w={"full"}
           h={"full"}
           display={"flex"}
-          onClick={onClose}
           background={"white"}
           p={8}
           overflowY={"auto"}
         >
           <Flex direction="column" gap={6}>
-            <Text fontSize="lg" fontWeight="bold" color="neutral.700" px={1}>
-              Report Detail
-            </Text>
+            <Flex justifyContent={"space-between"} alignItems={"center"}>
+              <Text fontSize="lg" fontWeight="bold" color="neutral.700" px={3}>
+                Report Detail
+              </Text>
+              <Button onClick={onClose}>
+                <Icon
+                  as={IoClose}
+                  boxSize={6}
+                  color={"#622E8A"}
+                  px={0}
+                />
+              </Button>
+            </Flex>
 
-            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={1} mb={4}>
+            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={3} mb={4}>
               {emrDetailHeader.report.map((section, index) => (
                 <SectionVisitSummary key={index}
                   title={section.title}
@@ -162,11 +172,11 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
 
             <EMRVitalSigns vitalSign={vitalSigns} />
 
-            <Text fontSize="lg" fontWeight="bold" color="neutral.700" px={1} mt={4}>
+            <Text fontSize="lg" fontWeight="bold" color="neutral.700" px={3} mt={4}>
               {emrDetailReports.header.report.title}
             </Text>
 
-            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={1}>
+            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={3}>
               {emrDetailReports.history.map((section, index) => (
                 <SectionVisitSummary key={index}
                   title={section.title}
@@ -175,7 +185,7 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
               ))}
             </Grid>
             
-            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={1}>
+            <Grid templateColumns="repeat(2, 1fr)" gap={6} px={3}>
               {emrDetailReports.allergies.map((section, index) => (
                 <SectionVisitSummary key={index}
                   title={section.title}
@@ -184,7 +194,7 @@ function EMRDetail({ props }: { props: IEMRDetailProps }) {
               ))}
             </Grid>
             
-            <Flex direction={"column"} px={1} gap={6}>
+            <Flex direction={"column"} px={3} gap={6}>
               {emrDetailReports.result.map((section, index) => (
                 <SectionVisitSummary key={index}
                   title={section.title}
