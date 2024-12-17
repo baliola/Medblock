@@ -96,7 +96,7 @@ export default function DetailModal({ props }: { props: DetailModalProps }) {
                 onClick={() => { router.push('/home') }}
                 leftIcon={<Icon as={HiOutlineEye} boxSize={6} />}
               >
-                <Text>See Group EMRs</Text>
+                <Text>See Member EMRs</Text>
               </Button>
             )}
 
