@@ -71,7 +71,7 @@ export default function LeaveGroupModal({ props }: { props: ILeaveGroupModal }) 
   const handleLeaveGroup = async () => {
     try {
       const data: LeaveGroupRequest[] | any = [{
-        group_id: BigInt(Number(group_id)),
+        group_id: group_id as string,
       }];
 
       await leaveGroup(data);
