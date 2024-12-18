@@ -20,7 +20,6 @@ export const {
 
 export const encodeHashNIK = (nik: string) => {
   const hashBuffer = keccak256(nik);
-  // @ts-expect-error
   const encodedHash = Buffer.from(hashBuffer).toString("hex");
   return encodedHash;
 };
