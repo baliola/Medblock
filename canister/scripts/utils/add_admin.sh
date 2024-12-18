@@ -62,7 +62,17 @@ if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ] && [ "$NETWORK" != "stagi
 fi
 
 # get the canister ID
-CANISTER_ID=$(dfx canister --network "$NETWORK" id patient_registry)
+if [ "$NETWORK" = "ic" ]; then
+    # For ic network, use the staging canister ID from canister_ids.json
+    CANISTER_ID=$(jq -r '.patient_registry.staging' canister_ids.json)
+    if [ "$CANISTER_ID" = "null" ]; then
+        log_error "Cannot find staging canister id in canister_ids.json"
+        exit 1
+    fi
+else
+    CANISTER_ID=$(dfx canister --network "$NETWORK" id patient_registry)
+fi
+
 if [ -z "$CANISTER_ID" ]; then
     log_error "Cannot find canister id for patient_registry. Please ensure the canister is deployed."
     exit 1
@@ -75,13 +85,21 @@ echo -e "Network: ${MAGENTA}$NETWORK${NC}"
 echo # empty line for better readability
 
 log_info "Executing canister call..."
-dfx canister --network "$NETWORK" call patient_registry bind_admin_principal_only "(principal \"$PRINCIPAL\")"
+if [ "$NETWORK" = "ic" ]; then
+    dfx canister --network "$NETWORK" call "$CANISTER_ID" bind_admin_principal_only "(principal \"$PRINCIPAL\")"
+else
+    dfx canister --network "$NETWORK" call patient_registry bind_admin_principal_only "(principal \"$PRINCIPAL\")"
+fi
 
 if [ $? -eq 0 ]; then
     log_success "Admin addition completed successfully ✨"
     
     log_info "Verifying admin status..."
-    ADMIN_CHECK=$(dfx canister --network "$NETWORK" call patient_registry check_admin "(principal \"$PRINCIPAL\")")
+    if [ "$NETWORK" = "ic" ]; then
+        ADMIN_CHECK=$(dfx canister --network "$NETWORK" call "$CANISTER_ID" check_admin "(principal \"$PRINCIPAL\")")
+    else
+        ADMIN_CHECK=$(dfx canister --network "$NETWORK" call patient_registry check_admin "(principal \"$PRINCIPAL\")")
+    fi
     
     if [[ "$ADMIN_CHECK" == "(true)" ]]; then
         log_success "Verification successful: Principal is now an admin ✅"
