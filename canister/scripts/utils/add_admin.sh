@@ -36,6 +36,14 @@ if ! command -v openssl &>/dev/null; then
     exit 1
 fi
 
+# check if we're in the correct directory
+CURRENT_DIR=$(basename "$PWD")
+if [ "$CURRENT_DIR" != "canister" ]; then
+    log_error "This script must be run from the 'canister' directory"
+    log_info "Please cd into the canister directory first"
+    exit 1
+fi
+
 # check if all required arguments are provided
 if [ "$#" -ne 2 ]; then
     log_error "Invalid number of arguments"
@@ -48,8 +56,8 @@ PRINCIPAL=$1
 NETWORK=$2
 
 # validate network parameter
-if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ]; then
-    log_error "Network must be either 'ic' or 'local'"
+if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ] && [ "$NETWORK" != "staging" ]; then
+    log_error "Network must be either 'ic' or 'local' or 'staging'"
     exit 1
 fi
 
@@ -71,6 +79,17 @@ dfx canister --network "$NETWORK" call patient_registry bind_admin_principal_onl
 
 if [ $? -eq 0 ]; then
     log_success "Admin addition completed successfully ✨"
+    
+    log_info "Verifying admin status..."
+    ADMIN_CHECK=$(dfx canister --network "$NETWORK" call patient_registry check_admin "(principal \"$PRINCIPAL\")")
+    
+    if [[ "$ADMIN_CHECK" == "(true)" ]]; then
+        log_success "Verification successful: Principal is now an admin ✅"
+    else
+        log_warning "Verification failed: Principal is not showing as admin ⚠️"
+        log_info "Please check the canister state manually"
+        exit 1
+    fi
 else
     log_error "Failed to add admin"
     exit 1
