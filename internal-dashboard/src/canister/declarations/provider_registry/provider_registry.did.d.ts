@@ -179,6 +179,7 @@ export interface _SERVICE {
     GetProviderListResponse
   >,
   'get_trusted_origins' : ActorMethod<[], Array<string>>,
+  'is_valid_provider' : ActorMethod<[Principal], boolean>,
   'issue_emr' : ActorMethod<[IssueEmrRequest], IssueEmrResponse>,
   'metrics' : ActorMethod<[], string>,
   'ping' : ActorMethod<[], PingResult>,

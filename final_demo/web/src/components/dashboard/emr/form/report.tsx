@@ -12,7 +12,7 @@ const CustomInput = ({ label, name, ...props }: CustomInputProps) => {
   const valueName = name as keyof EMR;
 
   return (
-    <FormControl isRequired
+    <FormControl
       isInvalid={!!errors[valueName] && touched[valueName]}
     >
       <FormLabel as={Text} fontWeight={'bold'}>
@@ -34,17 +34,20 @@ const CustomInput = ({ label, name, ...props }: CustomInputProps) => {
 
 export default function EMRFormReport() {
   const {
-    subjective,
-    diagnosis,
-    planning,
-    medication
+    additional_exam,
+    primary_diagnosis,
+    secondary_diagnosis,
+    surgery,
+    procedures_and_therapies
   } = emrForm.reports;
+  
   return (
     <Flex direction={'column'} gap={8}>
-      <CustomInput label={subjective.label} name={subjective.name} placeholder={subjective.placeholder} />
-      <CustomInput label={diagnosis.label} name={diagnosis.name} placeholder={diagnosis.placeholder} />
-      <CustomInput label={planning.label} name={planning.name} placeholder={planning.placeholder} />
-      <CustomInput label={medication.label} name={medication.name} placeholder={medication.placeholder} />
+      <CustomInput label={additional_exam.label} name={additional_exam.name} placeholder={additional_exam.placeholder} />
+      <CustomInput label={primary_diagnosis.label} name={primary_diagnosis.name} placeholder={primary_diagnosis.placeholder} />
+      <CustomInput label={secondary_diagnosis.label} name={secondary_diagnosis.name} placeholder={secondary_diagnosis.placeholder} />
+      <CustomInput label={surgery.label} name={surgery.name} placeholder={surgery.placeholder} />
+      <CustomInput label={procedures_and_therapies.label} name={procedures_and_therapies.name} placeholder={procedures_and_therapies.placeholder} />
     </Flex>
   )
 }

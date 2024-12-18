@@ -1,4 +1,4 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { Flex, Grid, Text } from "@chakra-ui/react";
 
 import VitalSigns from "@/components/dashboard/emr/report/header/vital-sign";
 import HospitalInfo from "@/components/dashboard/emr/report/header/hospital-info";
@@ -37,14 +37,14 @@ export default function HeaderEMRReport() {
           <HospitalInfo />
         </ProviderActor>
 
-        <Flex align={'center'} color={"neutral.700"}>
+        <Grid templateColumns="repeat(3, 1fr)" gap={6} color={"neutral.700"}>
           {emrDetailHeader.report.map((item, index) => (
             <VisitInfo key={index}
               title={item.title}
-              value={emrData[item.key] || "-"}
+              value={emrData[item.key] ?? "-"}
             />
           ))}
-        </Flex>
+        </Grid>
 
         <ActionButtons />
         <VitalSigns vitalSign={vitalSigns} />

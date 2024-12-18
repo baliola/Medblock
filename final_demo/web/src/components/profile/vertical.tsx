@@ -71,7 +71,7 @@ export default function VerticalProfile({
             </Text>
           </Flex>
 
-          <Text fontSize={{ base: 'sm' }} fontWeight={'bold'}>
+          <Text fontSize={{ base: 'sm' }} fontWeight={'bold'} textTransform={"capitalize"}>
             {profile.patient.V1.name}
           </Text>
 

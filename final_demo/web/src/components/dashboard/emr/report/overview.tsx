@@ -1,6 +1,6 @@
 import { emrDetailReports } from "@/constants/contents/dashboard/emr/detail/reports";
 import { useEMRDetail } from "@/store/patient-emr-detail";
-import { Divider, Flex, Stack, Text } from "@chakra-ui/react";
+import { Divider, Flex, Grid, Stack, Text } from "@chakra-ui/react";
 
 export default function EMROverview() {
   const emr = useEMRDetail(state => state.emr);
@@ -12,8 +12,8 @@ export default function EMROverview() {
   }, {} as Record<string, string>);
 
   const SectionVisit = ({ keys, title }: { keys: string; title: string }) => {
-    const value = emrData[keys] || '';
-    if (!value) return null;
+    const value = emrData[keys] ?? '-';
+    // if (!value) return null;
     return (
       <Flex direction={"column"} gap={2} color={"neutral.500"}>
         <Text color={"neutral.500"} fontSize={'sm'}>
@@ -24,7 +24,7 @@ export default function EMROverview() {
           color={"neutral.700"}
           whiteSpace={'pre-line'}
         >
-          {value ?? "-"}
+          {value === '' || !value ? "-" : value}
         </Text>
       </Flex>
     )
@@ -32,7 +32,23 @@ export default function EMROverview() {
 
   return (
     <Stack divider={<Divider />} spacing={4}>
-      {emrDetailReports.report.map((section, index) => (
+      <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+        {emrDetailReports.history.map((section, index) => (
+          <SectionVisit key={index}
+            title={section.title}
+            keys={section.key}
+          />
+        ))}
+      </Grid>
+      <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+        {emrDetailReports.allergies.map((section, index) => (
+          <SectionVisit key={index}
+            title={section.title}
+            keys={section.key}
+          />
+        ))}
+      </Grid>
+      {emrDetailReports.result.map((section, index) => (
         <SectionVisit key={index}
           title={section.title}
           keys={section.key}

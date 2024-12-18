@@ -50,7 +50,7 @@ export default function EMRVitalSigns({ vitalSign }: VitalSignProps) {
   const sign = emrDetailReports.vital_signs;
   return (
     <Flex direction={'column'} gap={4}>
-      <Text fontSize={'lg'} color={"neutral.700"} fontWeight={"bold"}>
+      <Text fontSize={'lg'} color={"neutral.700"} fontWeight={"bold"} px={3}>
         {emrDetailReports.header.vital_sign.title}
       </Text>
       <VitalSignFrame

@@ -3,15 +3,15 @@
 
 import { patientCanisterId } from "@/config/canisters/patient.canister";
 import { PatientActor, usePatientQuery } from "@/services/patients";
-import { Flex, Grid, GridItem, Image, Link, Spinner, Text } from "@chakra-ui/react";
-import { ReactElement, useEffect, useState } from "react";
+import { Flex, Grid, GridItem, Icon, Image, Link, Spinner, Text } from "@chakra-ui/react";
+import { ReactElement, useState } from "react";
 import GroupBackNavigation from "./back-navigation";
 import { GetUserGroupsResponse, Group } from "@/declarations/patient_registry/patient_registry.did";
 import AddGroupModal from "./add";
-// import { useUserPrincipal } from "@ic-reactor/react";
+import ShareConcentCodeGroup from "./share-consent";
+import { FaSignInAlt } from "react-icons/fa";
 
 const GroupList = (): ReactElement => {
-  // const principal = useUserPrincipal()
   const [userGroups, setUserGroups] = useState<Array<Group> | undefined>(undefined)
 
   const { call: getUserGroups, loading: loadingProviderList } = usePatientQuery({
@@ -115,11 +115,31 @@ const GroupList = (): ReactElement => {
           }
         </Flex>
       </Flex>
-      <AddGroupModal  
-        props={{
-          getUserGroups
-        }}
-      />
+      <Flex
+        position={"fixed"}
+        direction={"column"}
+        rowGap={3}
+        left={0}
+        bottom={20}
+        zIndex={20}
+        py={5}
+        px={5}
+        w={"full"}
+        bg={"white"}
+        borderTopWidth="2px"
+        roundedTop={"xl"}
+      >
+        <AddGroupModal  
+          props={{
+            getUserGroups
+          }}
+        />
+        <ShareConcentCodeGroup gap={2} leftIcon={
+          <Icon as={FaSignInAlt} boxSize={5} />
+        }>
+          Join Group
+        </ShareConcentCodeGroup>
+      </Flex>
     </Flex>
   )
 }

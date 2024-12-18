@@ -36,7 +36,6 @@ const InputFrame: React.FC<InputFrameProps> = ({
 
   return (
     <FormControl
-      isRequired
       isInvalid={hasError}
       p={3}
       rounded="xl"
