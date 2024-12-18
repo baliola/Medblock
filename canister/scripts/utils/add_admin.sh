@@ -31,22 +31,21 @@ log_error() {
 }
 
 # check if openssl is installed
-if ! command -v openssl &> /dev/null; then
+if ! command -v openssl &>/dev/null; then
     log_error "openssl is required but not installed"
     exit 1
 fi
 
 # check if all required arguments are provided
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 2 ]; then
     log_error "Invalid number of arguments"
-    echo -e "${YELLOW}Usage: $0 <nik> <principal> <network>${NC}"
-    echo -e "Example: $0 1234567890 \"principal_id_here\" \"ic\""
+    echo -e "${YELLOW}Usage: $0 <principal> <network>${NC}"
+    echo -e "Example: $0 \"principal_id_here\" \"local\""
     exit 1
 fi
 
-NIK=$1
-PRINCIPAL=$2
-NETWORK=$3
+PRINCIPAL=$1
+NETWORK=$2
 
 # validate network parameter
 if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ]; then
@@ -54,20 +53,25 @@ if [ "$NETWORK" != "ic" ] && [ "$NETWORK" != "local" ]; then
     exit 1
 fi
 
-# hash the NIK using SHA-256 and format it as a hex string
-HASHED_NIK=$(echo -n "$NIK" | openssl dgst -sha256 -hex | cut -d ' ' -f 2)
-
-# set the canister name based on your project
-CANISTER_NAME="patient_registry"
+# get the canister ID
+CANISTER_ID=$(dfx canister --network "$NETWORK" id patient_registry)
+if [ -z "$CANISTER_ID" ]; then
+    log_error "Cannot find canister id for patient_registry. Please ensure the canister is deployed."
+    exit 1
+fi
 
 log_process "Adding admin with the following details:"
-echo -e "NIK: ${MAGENTA}$NIK${NC}"
-echo -e "Hashed NIK: ${MAGENTA}$HASHED_NIK${NC}"
+echo -e "Canister ID: ${MAGENTA}$CANISTER_ID${NC}"
 echo -e "Principal: ${MAGENTA}$PRINCIPAL${NC}"
 echo -e "Network: ${MAGENTA}$NETWORK${NC}"
 echo # empty line for better readability
 
 log_info "Executing canister call..."
-dfx canister --network "$NETWORK" call "$CANISTER_NAME" bind_admin "(record {\"nik\" = \"$HASHED_NIK\"; \"principal\" = principal \"$PRINCIPAL\"})"
+dfx canister --network "$NETWORK" call patient_registry bind_admin_principal_only "(principal \"$PRINCIPAL\")"
 
-log_success "Admin addition completed successfully ✨" 
+if [ $? -eq 0 ]; then
+    log_success "Admin addition completed successfully ✨"
+else
+    log_error "Failed to add admin"
+    exit 1
+fi

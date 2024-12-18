@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use candid::Principal;
 use integration_tests::declarations::{
@@ -9,7 +9,6 @@ use integration_tests::declarations::{
 };
 
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
-use integration_tests::declarations::patient_registry::KycStatus;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
 mod common;
@@ -149,7 +148,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -179,6 +178,7 @@ mod test {
                 PatientCall::Query,
                 SearchPatientRequest {
                     nik: patient.nik.clone().to_string(),
+                    _type: None,
                 },
             )
             .unwrap();
@@ -201,7 +201,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -214,7 +214,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -244,7 +244,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -274,7 +274,7 @@ mod test {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry
+        let _response = registry
             .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
@@ -331,7 +331,7 @@ mod test {
             )
             .unwrap();
 
-        let session_id = response.session_id;
+        let _session_id = response.session_id;
 
         let response = scenario
             .registries
@@ -600,11 +600,22 @@ mod test {
         );
     }
 
+    /// TEST UPDATING KYC STATUS
+    ///
+    /// *PRE-REQUISITE*:
+    /// - One admin
+    /// - One patient
+    ///
+    /// *TEST STEPS*:
+    /// 1. Update KYC status to Approved
+    /// 2. Verify updated status through get_patient_info
+    /// 3. Update KYC status to Denied
+    /// 4. Verify final status through get_patient_info
     #[test]
     fn test_update_kyc_status() {
         let (registries, patient, admin_principal) = common::Scenario::one_admin_one_patient();
 
-        // test authorized access - should succeed
+        // step 1. update kyc status to Approved
         let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
             nik: patient.nik.to_string(),
             kyc_status: patient_registry::KycStatus::Approved,
@@ -621,14 +632,14 @@ mod test {
             .unwrap();
 
         // verify response
-        if let patient_registry::Patient::V1(v1) = response.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Approved => {}
-                _ => panic!("Expected KYC status to be Approved"),
-            }
+        let patient_registry::Patient::V1(v1) = response.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Approved => {}
+            _ => panic!("Expected KYC status to be Approved"),
         }
 
-        // verify updated status through get_patient_info
+        // step 2. verify updated status through get_patient_info
         let patient_info = registries
             .patient
             .get_patient_info(
@@ -638,14 +649,14 @@ mod test {
             )
             .unwrap();
 
-        if let patient_registry::Patient::V1(v1) = patient_info.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Approved => {}
-                _ => panic!("Expected KYC status to be Approved"),
-            }
+        let patient_registry::Patient::V1(v1) = patient_info.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Approved => {}
+            _ => panic!("Expected KYC status to be Approved"),
         }
 
-        // test updating to Denied status
+        // step 3. update kyc status to Denied
         let update_kyc_arg = patient_registry::UpdateKycStatusRequest {
             nik: patient.nik.to_string(),
             kyc_status: patient_registry::KycStatus::Denied,
@@ -662,14 +673,14 @@ mod test {
             .unwrap();
 
         // verify final response
-        if let patient_registry::Patient::V1(v1) = response.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Denied => {}
-                _ => panic!("Expected KYC status to be Denied"),
-            }
+        let patient_registry::Patient::V1(v1) = response.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Denied => {}
+            _ => panic!("Expected KYC status to be Denied"),
         }
 
-        // verify final status through get_patient_info
+        // step 4. verify final status through get_patient_info
         let patient_info = registries
             .patient
             .get_patient_info(
@@ -679,16 +690,16 @@ mod test {
             )
             .unwrap();
 
-        if let patient_registry::Patient::V1(v1) = patient_info.patient {
-            match v1.kyc_status {
-                patient_registry::KycStatus::Denied => {}
-                _ => panic!("Expected KYC status to be Denied"),
-            }
+        let patient_registry::Patient::V1(v1) = patient_info.patient;
+
+        match v1.kyc_status {
+            patient_registry::KycStatus::Denied => {}
+            _ => panic!("Expected KYC status to be Denied"),
         }
     }
 
     #[test]
-    #[should_panic(expected = "Error: \"provider is suspended\"")]
+    #[should_panic(expected = "Error: \"[PROVIDER_REGISTRY_LIB] Provider is suspended.\"")]
     fn test_suspended_provider_operations() {
         let (registry, provider, patient) = common::Scenario::one_provider_one_patient();
         println!("DEBUG: Test setup complete with provider: {}", provider.0);

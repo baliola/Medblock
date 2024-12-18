@@ -166,6 +166,7 @@ service : () -> {
       GetProviderListResponse,
     ) query;
   get_trusted_origins : () -> (vec text);
+  is_valid_provider : (principal) -> (bool) query;
   issue_emr : (IssueEmrRequest) -> (IssueEmrResponse);
   metrics : () -> (text) query;
   ping : () -> (PingResult) composite_query;

@@ -93,3 +93,51 @@ For integration testing, follow these steps:
    cd canister/tests/integration-tests
    cargo test --release
    ```
+
+## Testing
+
+### Integration Tests
+To run the integration tests for the canister:
+```bash
+# Run all integration tests in release mode
+cargo integration-test
+
+# Run specific test file
+cargo integration-test --test group_tests
+
+# Run specific test
+cargo integration-test --test group_tests test_group_creation_and_emr_access
+
+# Show println output
+cargo integration-test -- --nocapture
+```
+
+The integration tests are located in `canister/tests/integration-tests/` and test the full functionality of the canisters including:
+- Group management
+- EMR access control
+- Patient registration
+- Provider interactions
+
+### Unit Tests
+For unit tests, you can use the standard cargo test command in each canister directory:
+```bash
+cd canister/src/patient_registry
+cargo test
+```
+
+### Private VPS Node
+We have setup a private VPS node to act as a psuedo-staging branch for the canisters.
+
+You must have sshpass installed first! 
+
+```bash
+sudo apt-get install sshpass # linux
+brew install sshpass # mac
+```
+
+To connect to the node instead of local or mainnet, you can use the following command:
+```bash
+./portforward.sh
+```
+
+This will forward the port to the node hosted in the VPS and you can interact with the node as if it were local. 

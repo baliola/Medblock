@@ -1,6 +1,6 @@
 "use client"
 
-import { AddGroupMemberRequest, ClaimConsentResponse, Relation } from "@/declarations/patient_registry/patient_registry.did";
+import { AddGroupMemberRequest, Relation, Result } from "@/declarations/patient_registry/patient_registry.did";
 import { usePatientMethod } from "@/services/patients";
 import { usePinStore } from "@/store/pin-store";
 import { 
@@ -15,12 +15,10 @@ import {
   useToast
 } from "@chakra-ui/react";
 import { useParams } from "next/navigation";
-import { useRouter } from "next/router";
 import { Dispatch, SetStateAction, useState } from "react";
 import { FaChevronLeft } from "react-icons/fa6";
 
 interface IChooseRelationModal {
-  data: ClaimConsentResponse | null | undefined
   showChooseRelationModal: boolean
   setShowChooseRelationModal: Dispatch<SetStateAction<boolean>>
   handleGetGroupDetails: () => void
@@ -28,7 +26,6 @@ interface IChooseRelationModal {
 
 export default function ChooseRelationModal({ props }: { props: IChooseRelationModal }) {
   const {
-    data,
     showChooseRelationModal,
     setShowChooseRelationModal,
     handleGetGroupDetails
@@ -57,15 +54,30 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
   const { call: addGroupMember, loading: addGroupMemberLoading } = usePatientMethod({
     functionName: "add_group_member",
     refetchOnMount: false,
-    onSuccess() {
-      return toast({
-        title: "Success Add Member",
-        description: "You can now proceed",
-        isClosable: true,
-        duration: 5000,
-        status: "success",
-        position: "top-right",
-      })
+    onSuccess(data) {
+      const result: Result | undefined = data
+
+      if (result && Object.keys(result)[0] === 'Ok') {
+        return toast({
+          title: "Success Add Member",
+          description: "You can now proceed",
+          isClosable: true,
+          duration: 5000,
+          status: "success",
+          position: "top-right",
+        })
+      } else if (result && Object.keys(result)[0] === 'Err') {
+        const error = result['Err'] ?? "Something went wrong!"
+
+        return toast({
+          title: "Error!",
+          description: error,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right"
+        })
+      }
     },
     onError(err) {
       if (err instanceof Error) {
@@ -104,8 +116,8 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
     try {
       const data: AddGroupMemberRequest = {
         relation : getRelation(),
-        consent_code : pin,
-        group_id : BigInt(Number(group_id)),
+        group_consent_code : pin,
+        group_id : group_id as string,
       };
 
       await addGroupMember([data] as any);
@@ -162,81 +174,75 @@ export default function ChooseRelationModal({ props }: { props: IChooseRelationM
           alignItems={"stretch"}
           justifyContent={"center"}
         >
-          {
-              data
-                ? <Flex 
-                  flexDirection={"column"}
-                  rowGap={6}
+          <Flex 
+            flexDirection={"column"}
+            rowGap={6}
+            w={"full"}
+            px={8}
+            alignItems={"center"}
+          >
+            <Text
+              fontWeight={'bold'}
+              fontSize={'lg'}
+            >
+              Your Relationship with
+            </Text>
+            <Flex
+              w={"30%"}
+              aspectRatio={1/1}
+              background={"rgb(217, 217, 217)"}
+              display={"block"}
+              rounded={"xl"}
+            />
+            <Text
+              fontSize={'xl'}
+              fontWeight={'bold'}
+              textAlign={"center"}
+              px={8}
+            >
+              this User
+            </Text>
+            <Flex
+              flexDirection={"column"}
+              w={"full"}
+              rowGap={3}
+            >
+              <Flex
+                w={"full"}
+                background={"rgba(219, 221, 247, 1)"}
+                rounded={"2xl"}
+                py={1}
+              >
+                <Select 
                   w={"full"}
-                  px={8}
-                  alignItems={"center"}
+                  value={relation}
+                  onChange={(e) => { setRelation(e.target.value as RelationKeys) }}
+                  textAlign={"center"}
+                  outline={"none"}
+                  border={0}
                 >
-                  <Text
-                    fontWeight={'bold'}
-                    fontSize={'lg'}
-                  >
-                    Your Relationship with
-                  </Text>
-                  <Flex
-                    w={"30%"}
-                    aspectRatio={1/1}
-                    background={"rgb(217, 217, 217)"}
-                    display={"block"}
-                    rounded={"xl"}
-                  />
-                  <Text
-                    fontSize={'xl'}
-                    fontWeight={'bold'}
-                    textAlign={"center"}
-                    px={8}
-                  >
-                    {data.name}
-                  </Text>
-                  <Flex
-                    flexDirection={"column"}
-                    w={"full"}
-                    rowGap={3}
-                  >
-                    <Flex
-                      w={"full"}
-                      background={"rgba(219, 221, 247, 1)"}
-                      rounded={"2xl"}
-                      py={1}
-                    >
-                      <Select 
-                        w={"full"}
-                        value={relation}
-                        onChange={(e) => { setRelation(e.target.value as RelationKeys) }}
-                        textAlign={"center"}
-                        outline={"none"}
-                        border={0}
-                      >
-                        {
-                          relationOptions.map((option, index) =>
-                            <option key={index} value={option}>{option}</option>
-                          )
-                        }
-                      </Select>
-                    </Flex>
-                    <Button
-                      colorScheme="primary"
-                      w={"full"}
-                      bg={"primary.700"}
-                      rounded={"2xl"}
-                      fontSize={'sm'}
-                      py={6}
-                      gap={2}
-                      type="button"
-                      onClick={handleAddGroupMember}
-                    >
-                      Submit
-                    </Button>
-                  </Flex>
-                </Flex>
-                : data === undefined
-                  ? <Text>Loading</Text>
-                  : <></>
-            }
+                  {
+                    relationOptions.map((option, index) =>
+                      <option key={index} value={option}>{option}</option>
+                    )
+                  }
+                </Select>
+              </Flex>
+              <Button
+                colorScheme="primary"
+                w={"full"}
+                bg={"primary.700"}
+                rounded={"2xl"}
+                fontSize={'sm'}
+                py={6}
+                gap={2}
+                type="button"
+                onClick={handleAddGroupMember}
+              >
+                Submit
+              </Button>
+            </Flex>
+          </Flex>
         </Flex>
       </ModalContent>
     </Modal>

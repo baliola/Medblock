@@ -1,4 +1,4 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { Flex, Grid, Text } from "@chakra-ui/react";
 import EMRVitalSigns from "@/components/emr/vital-sign";
 import { useEMRStore } from "@/store/emr-store";
 import { emrDetailReports } from "@/constants/contents/emr/detail/reports";
@@ -22,12 +22,12 @@ export default function EMRReport() {
 
   const SectionVisitSummary = ({ keys, title }: { keys: string; title: string }) => {
     const value = emrData[keys] || '';
-    if (!value) return null;
+    // if (!value) return null;
     return (
       <Flex direction="column" gap={2}>
         <Text color="neutral.500">{title}</Text>
         <Text color="neutral.700" whiteSpace={'pre-line'}>
-          {value ?? "-"}
+          {value === '' || !value ? "-" : value}
         </Text>
       </Flex>
     );
@@ -41,7 +41,23 @@ export default function EMRReport() {
         {emrDetailReports.header.report.title}
       </Text>
 
-      {emrDetailReports.report.map((section, index) => (
+      <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+        {emrDetailReports.history.map((section, index) => (
+          <SectionVisitSummary key={index}
+            title={section.title}
+            keys={section.key}
+          />
+        ))}
+      </Grid>
+      <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+        {emrDetailReports.allergies.map((section, index) => (
+          <SectionVisitSummary key={index}
+            title={section.title}
+            keys={section.key}
+          />
+        ))}
+      </Grid>
+      {emrDetailReports.result.map((section, index) => (
         <SectionVisitSummary key={index}
           title={section.title}
           keys={section.key}

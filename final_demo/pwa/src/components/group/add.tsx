@@ -91,34 +91,21 @@ export default function AddGroupModal ({ props }: { props: IAddGroupModalProps }
   
   return (
     <>
-      <Flex
-        position={"fixed"}
-        left={0}
-        bottom={20}
-        zIndex={20}
-        py={5}
-        px={5}
+      <Button
+        colorScheme="primary"
         w={"full"}
-        bg={"white"}
-        borderTopWidth="2px"
-        roundedTop={"xl"}
+        bg={"primary.700"}
+        rounded={"xl"}
+        fontSize={'sm'}
+        py={6}
+        gap={2}
+        leftIcon={
+          <Icon as={FaUserPlus} boxSize={4} />
+        }
+        onClick={onOpen}
       >
-        <Button
-          colorScheme="primary"
-          w={"full"}
-          bg={"primary.700"}
-          rounded={"xl"}
-          fontSize={'sm'}
-          py={6}
-          gap={2}
-          leftIcon={
-            <Icon as={FaUserPlus} boxSize={4} />
-          }
-          onClick={onOpen}
-        >
-          Create Group
-        </Button>
-      </Flex>
+        Create Group
+      </Button>
       <Modal
         isOpen={isOpen}
         onClose={onClose}

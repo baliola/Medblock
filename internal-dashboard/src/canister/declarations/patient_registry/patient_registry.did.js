@@ -9,20 +9,24 @@ export const idlFactory = ({ IDL }) => {
   });
   const AddGroupMemberRequest = IDL.Record({
     'relation' : Relation,
-    'consent_code' : IDL.Text,
-    'group_id' : IDL.Nat64,
+    'group_id' : IDL.Text,
+    'group_consent_code' : IDL.Text,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const BindAdminRequest = IDL.Record({
     'nik' : IDL.Text,
     'principal' : IDL.Principal,
   });
+  const CheckNikRequest = IDL.Record({
+    '_type' : IDL.Opt(IDL.Bool),
+    'nik' : IDL.Text,
+  });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
   const ClaimConsentRequest = IDL.Record({ 'code' : IDL.Text });
   const ClaimConsentResponse = IDL.Record({
     'session_id' : IDL.Text,
     'name' : IDL.Text,
   });
-  const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
   const Consent = IDL.Record({
     'nik' : IDL.Text,
     'group_claimer' : IDL.Opt(IDL.Principal),
@@ -32,8 +36,12 @@ export const idlFactory = ({ IDL }) => {
     'session_user' : IDL.Opt(IDL.Text),
   });
   const ConsentListResponse = IDL.Record({ 'consents' : IDL.Vec(Consent) });
+  const CreateConsentForGroupRequest = IDL.Record({ 'nik' : IDL.Text });
+  const CreateConsentForGroupResponse = IDL.Record({
+    'group_consent_code' : IDL.Text,
+  });
   const CreateGroupRequest = IDL.Record({ 'name' : IDL.Text });
-  const CreateGroupResponse = IDL.Record({ 'group_id' : IDL.Nat64 });
+  const CreateGroupResponse = IDL.Record({ 'group_id' : IDL.Text });
   const Result_2 = IDL.Variant({
     'Ok' : CreateGroupResponse,
     'Err' : IDL.Text,
@@ -174,7 +182,7 @@ export const idlFactory = ({ IDL }) => {
   const GetGroupDetailsRequest = IDL.Record({
     'page' : IDL.Nat64,
     'limit' : IDL.Nat64,
-    'group_id' : IDL.Nat64,
+    'group_id' : IDL.Text,
   });
   const GroupDetail = IDL.Record({
     'age' : IDL.Nat8,
@@ -231,7 +239,7 @@ export const idlFactory = ({ IDL }) => {
     'patients' : IDL.Vec(PatientWithNik),
   });
   const Group = IDL.Record({
-    'id' : IDL.Nat64,
+    'id' : IDL.Text,
     'members' : IDL.Vec(IDL.Text),
     'name' : IDL.Text,
     'leader' : IDL.Text,
@@ -239,14 +247,14 @@ export const idlFactory = ({ IDL }) => {
   });
   const GetUserGroupsResponse = IDL.Record({ 'groups' : IDL.Vec(Group) });
   const GrantGroupAccessRequest = IDL.Record({
-    'group_id' : IDL.Nat64,
+    'group_id' : IDL.Text,
     'grantee_nik' : IDL.Text,
   });
   const IsConsentClaimedResponse = IDL.Record({
     'info' : IDL.Opt(Consent),
     'claimed' : IDL.Bool,
   });
-  const LeaveGroupRequest = IDL.Record({ 'group_id' : IDL.Nat64 });
+  const LeaveGroupRequest = IDL.Record({ 'group_id' : IDL.Text });
   const IssueRequest = IDL.Record({ 'header' : EmrHeader });
   const PatientWithNikAndSession = IDL.Record({
     'nik' : IDL.Text,
@@ -272,10 +280,32 @@ export const idlFactory = ({ IDL }) => {
     'session_id' : IDL.Text,
     'args' : ReadEmrByIdRequest,
   });
+  const ReadGroupMembersEmrInfoRequest = IDL.Record({
+    'provider_id' : IDL.Text,
+    'emr_id' : IDL.Text,
+    'group_id' : IDL.Text,
+    'registry_id' : IDL.Principal,
+    'member_nik' : IDL.Text,
+  });
+  const Result_4 = IDL.Variant({
+    'Ok' : ReadEmrByIdResponse,
+    'Err' : IDL.Text,
+  });
   const RegisterPatientRequest = IDL.Record({ 'nik' : IDL.Text });
+  const RegisterPatientStatus = IDL.Variant({
+    'Error' : IDL.Text,
+    'Success' : IDL.Null,
+  });
+  const RegisterPatientResponse = IDL.Record({
+    'nik' : IDL.Text,
+    'result' : RegisterPatientStatus,
+  });
   const RevokeConsentRequest = IDL.Record({ 'codes' : IDL.Vec(IDL.Text) });
   const RevokeGroupAccessRequest = IDL.Record({ 'grantee_nik' : IDL.Text });
-  const SearchPatientRequest = IDL.Record({ 'nik' : IDL.Text });
+  const SearchPatientRequest = IDL.Record({
+    '_type' : IDL.Opt(IDL.Text),
+    'nik' : IDL.Text,
+  });
   const SearchPatientResponse = IDL.Record({
     'patient_info' : PatientWithNikAndSession,
   });
@@ -290,19 +320,19 @@ export const idlFactory = ({ IDL }) => {
     'metrics' : IDL.Opt(CollectMetricsRequestType),
   });
   const UpdateEmrRegistryRequest = IDL.Record({ 'principal' : IDL.Principal });
-  const UpdateInitialPatientInfoRequest = IDL.Record({ 'info' : V1 });
   const UpdateKycStatusRequest = IDL.Record({
     'nik' : IDL.Text,
     'kyc_status' : KycStatus,
   });
   const UpdateKycStatusResponse = IDL.Record({ 'patient' : Patient });
+  const UpdatePatientInfoRequest = IDL.Record({ 'info' : V1 });
   const ViewGroupMemberEmrInformationRequest = IDL.Record({
     'page' : IDL.Nat64,
     'limit' : IDL.Nat64,
-    'group_id' : IDL.Nat64,
+    'group_id' : IDL.Text,
     'member_nik' : IDL.Text,
   });
-  const Result_4 = IDL.Variant({
+  const Result_5 = IDL.Variant({
     'Ok' : EmrListPatientResponse,
     'Err' : IDL.Text,
   });
@@ -313,15 +343,22 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'add_group_member' : IDL.Func([AddGroupMemberRequest], [Result], []),
-    'bind_admin' : IDL.Func([BindAdminRequest], [], []),
+    'bind_admin' : IDL.Func([BindAdminRequest], [Result], []),
+    'bind_admin_principal_only' : IDL.Func([IDL.Principal], [Result], []),
+    'check_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
+    'check_nik' : IDL.Func([CheckNikRequest], [Result_1], ['query']),
     'claim_consent' : IDL.Func(
         [ClaimConsentRequest],
         [ClaimConsentResponse],
         [],
       ),
-    'claim_consent_for_group' : IDL.Func([ClaimConsentRequest], [Result_1], []),
     'consent_list' : IDL.Func([], [ConsentListResponse], ['query']),
     'create_consent' : IDL.Func([], [ClaimConsentRequest], []),
+    'create_consent_for_group' : IDL.Func(
+        [CreateConsentForGroupRequest],
+        [CreateConsentForGroupResponse],
+        [],
+      ),
     'create_group' : IDL.Func([CreateGroupRequest], [Result_2], []),
     'emr_list_patient' : IDL.Func(
         [EmrListPatientRequest],
@@ -341,6 +378,16 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_group_details' : IDL.Func(
         [GetGroupDetailsRequest],
+        [Result_3],
+        ['query'],
+      ),
+    'get_group_details_admin' : IDL.Func(
+        [GetGroupDetailsRequest],
+        [Result_3],
+        ['query'],
+      ),
+    'get_group_details_async_no_pagination' : IDL.Func(
+        [CreateGroupResponse],
         [Result_3],
         ['query'],
       ),
@@ -380,7 +427,16 @@ export const idlFactory = ({ IDL }) => {
         [ReadEmrByIdResponse],
         ['composite_query'],
       ),
-    'register_patient' : IDL.Func([RegisterPatientRequest], [], []),
+    'read_group_members_emr_info' : IDL.Func(
+        [ReadGroupMembersEmrInfoRequest],
+        [Result_4],
+        ['composite_query'],
+      ),
+    'register_patient' : IDL.Func(
+        [RegisterPatientRequest],
+        [RegisterPatientResponse],
+        [],
+      ),
     'remove_authorized_metrics_collector' : IDL.Func(
         [AuthorizedCallerRequest],
         [],
@@ -408,16 +464,12 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'update_initial_patient_info' : IDL.Func(
-        [UpdateInitialPatientInfoRequest],
-        [],
-        [],
-      ),
     'update_kyc_status' : IDL.Func(
         [UpdateKycStatusRequest],
         [UpdateKycStatusResponse],
         [],
       ),
+    'update_patient_info' : IDL.Func([UpdatePatientInfoRequest], [], []),
     'update_provider_registry_principal' : IDL.Func(
         [UpdateEmrRegistryRequest],
         [],
@@ -425,8 +477,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'view_group_member_emr_information' : IDL.Func(
         [ViewGroupMemberEmrInformationRequest],
-        [Result_4],
-        ['query'],
+        [Result_5],
+        ['composite_query'],
       ),
   });
 };

@@ -10,7 +10,9 @@ use crate::{
     consent::{Consent, ConsentCode, SessionId},
     encryption::vetkd::{HexEncodedPublicKey, HexEncodedSecretKey},
     log::Activity,
-    registry::{Group, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1},
+    registry::{
+        Group, GroupConsentCode, GroupId, HeaderStatus, KycStatus, Patient, Relation, NIK, V1,
+    },
 };
 
 #[derive(CandidType, Deserialize)]
@@ -18,6 +20,15 @@ pub struct ReadEmrByIdRequest {
     pub provider_id: ProviderId,
     pub emr_id: EmrId,
     pub registry_id: Principal,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct ReadGroupMembersEmrInfoRequest {
+    pub provider_id: ProviderId,
+    pub emr_id: EmrId,
+    pub registry_id: Principal,
+    pub member_nik: String,
+    pub group_id: GroupId,
 }
 
 impl ReadEmrByIdRequest {
@@ -28,6 +39,13 @@ impl ReadEmrByIdRequest {
             user_id: user_id.to_string(),
         }
     }
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CheckNikRequest {
+    pub nik: H256,
+    #[serde(default)]
+    pub _type: Option<bool>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -71,8 +89,15 @@ pub struct RegisterPatientRequest {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct RegisterProviderResponse {
-    // empty for now
+pub struct RegisterPatientResponse {
+    pub result: RegisterPatientStatus,
+    pub nik: H256,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum RegisterPatientStatus {
+    Success,
+    Error(String),
 }
 
 #[derive(CandidType, Deserialize)]
@@ -194,6 +219,11 @@ pub struct UpdateInitialPatientInfoRequest {
 }
 
 #[derive(CandidType, Deserialize)]
+pub struct UpdatePatientInfoRequest {
+    pub info: V1,
+}
+
+#[derive(CandidType, Deserialize)]
 pub struct GetPatientInfoResponse {
     pub patient: Patient,
     pub nik: NIK,
@@ -289,6 +319,8 @@ from!(ConsentListResponse: Vec<Consent> as value {
 #[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {
     pub nik: H256,
+    #[serde(default)]
+    pub _type: Option<String>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -367,6 +399,12 @@ pub struct CreateGroupResponse {
     pub group_id: GroupId,
 }
 
+impl CreateGroupResponse {
+    pub fn new(group_id: GroupId) -> Self {
+        Self { group_id }
+    }
+}
+
 from!(CreateGroupResponse: GroupId as value {
     group_id: value
 });
@@ -374,7 +412,7 @@ from!(CreateGroupResponse: GroupId as value {
 #[derive(CandidType, Deserialize)]
 pub struct AddGroupMemberRequest {
     pub group_id: GroupId,
-    pub consent_code: String,
+    pub group_consent_code: GroupConsentCode,
     pub relation: Relation,
 }
 
@@ -466,4 +504,24 @@ impl GetGroupDetailsResponse {
     }
 }
 
+#[derive(CandidType, Deserialize)]
+pub struct GetGroupDetailsNoPaginatedRequest {
+    pub group_id: GroupId,
+}
+
 // End of API response and request structs for group details functionality.
+
+/// Request struct for creating a consent for being added to a group.
+/// For when a patient wants to be added to a group, they need to create a consent code first.
+/// This consent code acts as a proof that the patient has consented to be added to the group. Bound to their NIK.
+#[derive(CandidType, Deserialize)]
+pub struct CreateConsentForGroupRequest {
+    pub nik: NIK,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct CreateConsentForGroupResponse {
+    pub group_consent_code: GroupConsentCode,
+}
+
+// End of API response and request structs for group consent functionality.

@@ -1,23 +1,11 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, ClaimConsentRequest,
-    ClaimConsentResponse, ConsentListResponse, CreateConsentResponse, CreateGroupRequest,
-    CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse,
-    EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsRequest,
-    GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse,
-    GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest,
-    IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse,
-    PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession,
-    PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, RegisterPatientRequest,
-    RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse,
-    SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest,
-    UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse,
-    UpdateRequest, ViewGroupMemberEmrInformationRequest,
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest, CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
 };
-use candid::{Decode, Encode};
+use candid::{Decode, Encode, Principal};
 use canister_common::{
-    common::{guard::verified_caller, AsciiRecordsKey, ProviderId},
+    common::{guard::verified_caller, AsciiRecordsKey, EmrId, ProviderId},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
@@ -33,11 +21,11 @@ use declarations::{emr_registry::ReadEmrByIdResponse, provider_registry::GetProv
 use ic_stable_structures::Cell;
 use log::PatientLog;
 use memory::UpgradeMemory;
-use registry::{Group, GroupId, Patient, PatientRegistry, Relation, NIK};
+use registry::{Group, GroupConsentCode, GroupId, Patient, PatientRegistry, Relation, NIK};
 
-use crate::consent::ConsentsApi;
 use crate::consent::ConsentCode;
-use crate::registry::PatientRegistryError;
+use crate::consent::ConsentsApi;
+use crate::registry::{KycStatus, PatientRegistryError, V1};
 
 mod api;
 mod config;
@@ -99,7 +87,9 @@ fn only_canister_owner() -> Result<(), String> {
 
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
-        false => Err("only canister controller can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only canister controller can call this method. You need to register as Patient Registry Canister Owner to call this method.".to_string(),
+        ),
     }
 }
 
@@ -109,7 +99,9 @@ fn only_patient() -> Result<(), String> {
 
     match with_state(|s| s.registry.owner_map.is_valid_owner(&caller)) {
         true => Ok(()),
-        false => Err("only patient can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only patient can call this method. Are you registered as patient?".to_string(),
+        ),
     }
 }
 // guard function
@@ -118,7 +110,9 @@ fn only_provider_registry() -> Result<(), String> {
 
     match with_state(|s| s.config.get().is_provider_registry(&caller)) {
         true => Ok(()),
-        false => Err("only provider registry can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only provider registry can call this method. Is your principal registered as provider?".to_string(),
+        ),
     }
 }
 
@@ -128,7 +122,9 @@ fn only_authorized_metrics_collector() -> Result<(), String> {
 
     with_state(|s| {
         if !s.config.get().is_authorized_metrics_collector(&caller) {
-            return Err("only authorized metrics collector can call this method".to_string());
+            return Err(
+                "[PATIENT_REGISTRY_LIB] Only authorized metrics collector can call this method. Is your principal registered as authorized metrics collector?".to_string(),
+            );
         }
 
         Ok(())
@@ -141,7 +137,9 @@ fn only_admin() -> Result<(), String> {
 
     match with_state(|s| s.registry.admin_map.is_valid_admin(&caller)) {
         true => Ok(()),
-        false => Err("only admin can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only admin can call this method. Are you registered as Patient Registry Admin?".to_string(),
+        ),
     }
 }
 
@@ -151,7 +149,9 @@ fn only_controller() -> Result<(), String> {
 
     match ic_cdk::api::is_controller(&caller) {
         true => Ok(()),
-        false => Err("only controller can call this method".to_string()),
+        false => Err(
+            "[PATIENT_REGISTRY_LIB] Only controller can call this method. Are you registered as Patient Registry Controller?".to_string(),
+        ),
     }
 }
 
@@ -165,7 +165,9 @@ fn only_admin_or_controller() -> Result<(), String> {
     if is_admin || is_controller {
         Ok(())
     } else {
-        Err("only admin or controller can call this method".to_string())
+        Err(
+            "[PATIENT_REGISTRY_LIB] Only admin or controller can call this method. Are you registered as Patient Registry Admin or Controller?".to_string(),
+        )
     }
 }
 
@@ -181,9 +183,26 @@ fn only_admin_or_controller_or_patient() -> Result<(), String> {
     if is_admin || is_controller || is_patient {
         Ok(())
     } else {
-        Err("only admin or controller or patient can call this method".to_string())
+        Err(
+            "[PATIENT_REGISTRY_LIB] Only admin or controller or patient can call this method. Are you registered as Patient Registry Admin or Controller or Patient?".to_string(),
+        )
     }
 }
+
+// guard functionn for only providers access (just check with providers registry and the principals existence)
+// todo! awaiting declarations from providers registry for the is_valid_provider function
+// fn only_providers() -> Result<(), String> {
+//     let caller = verified_caller()?;
+
+//     let provider_registry = with_state(|s| s.config.get().provider_registry());
+//     let is_provider = provider_registry.is_valid_provider(&caller);
+
+//     if is_provider {
+//         Ok(())
+//     } else {
+//         Err("[PATIENT_REGISTRY_LIB] Only providers can call this method.".to_string())
+//     }
+// }
 
 fn init_state() -> State {
     let memory_manager = MemoryManager::init();
@@ -442,16 +461,65 @@ fn notify_updated(req: UpdateRequest) {
 // TODO : unsafe, anybody can register as a patient and bind to any NIK, should discuss how do we gate this properly.
 // probably best to only allow this be called from the frontend canister(todo)
 #[ic_cdk::update]
-fn register_patient(req: RegisterPatientRequest) {
-    let owner = verified_caller().unwrap();
+fn register_patient(req: RegisterPatientRequest) -> RegisterPatientResponse {
+    let caller = verified_caller().unwrap();
+    let nik = NIK::from_str(&req.nik.to_string()).unwrap();
 
-    // Check if NIK is already in use before binding
-    let nik_in_use = with_state(|s| s.registry.owner_map.is_nik_in_use(&req.nik));
-    if nik_in_use {
-        ic_cdk::trap("NIK is already registered");
-    }
+    // check if the NIK exists
+    with_state_mut(|s| {
+        if let Ok(existing_owner) = s.registry.owner_map.get_principal(&nik) {
+            // if the NIK exists but belongs to a different owner, return error
+            if existing_owner != caller {
+                return RegisterPatientResponse {
+                    result: RegisterPatientStatus::Error(
+                        "[REGISTER_PATIENT] This NIK is already registered to another user. Each NIK can only be registered to one user account. If you believe this is an error, please contact support.".to_string(),
+                    ),
+                    nik: nik.clone(),
+                };
+            }
 
-    with_state_mut(|s| s.registry.owner_map.bind(owner, req.nik)).unwrap()
+            // if the NIK belongs to the same owner, check KYC status
+            // this is the case when the user wants to resubmit their form for kyc
+            if let Ok(patient) = s.registry.info_map.get(nik.clone()) {
+                match patient.clone() {
+                    Patient::V1(v1) => {
+                        // allow re-registration only if KYC status is denied
+                        if matches!(v1.kyc_status, KycStatus::Denied) {
+                            s.registry.owner_map.rebind(caller, nik.clone()).unwrap();
+                            return RegisterPatientResponse {
+                                result: RegisterPatientStatus::Success,
+                                nik: nik.clone(),
+                            };
+                        }
+                    }
+                }
+            }
+            return RegisterPatientResponse {
+                result: RegisterPatientStatus::Error(
+                    "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance.".to_string(),
+                ),
+                nik: nik.clone(),
+            };
+        }
+
+        // if the owner already has a different NIK, return error
+        if s.registry.owner_map.get_nik(&caller).is_ok() {
+            return RegisterPatientResponse {
+                result: RegisterPatientStatus::Error(
+                    "[REGISTER_PATIENT] You already have a registered NIK associated with your account. Each user can only register one NIK. Please contact support if you need to change your registered NIK.".to_string(),
+                ),
+                nik: nik.clone(),
+            };
+        }
+
+        // reaching this part its safe to register the NIK as a new user
+        s.registry.owner_map.bind(caller, nik.clone()).unwrap();
+
+        RegisterPatientResponse {
+            result: RegisterPatientStatus::Success,
+            nik,
+        }
+    })
 }
 
 // TODO : optimize this, this is a very expensive operation
@@ -637,6 +705,18 @@ async fn create_consent() -> CreateConsentResponse {
     ConsentsApi::generate_consent(owner).into()
 }
 
+#[ic_cdk::update(guard = "only_patient")]
+fn create_consent_for_group(req: CreateConsentForGroupRequest) -> CreateConsentForGroupResponse {
+    let code = with_state_mut(|s| s.registry.group_consent_map.generate_code());
+
+    // bind it to a nik
+    with_state_mut(|s| s.registry.group_consent_map.bind(code, req.nik)).unwrap();
+
+    CreateConsentForGroupResponse {
+        group_consent_code: code,
+    }
+}
+
 #[ic_cdk::query(composite = true)]
 async fn read_emr_with_session(
     req: ReadEmrSessionRequest,
@@ -779,10 +859,9 @@ fn update_provider_registry_principal(req: UpdateEmrRegistryRequest) {
 }
 
 #[ic_cdk::update(guard = "only_patient")]
-fn update_initial_patient_info(req: UpdateInitialPatientInfoRequest) {
+fn update_patient_info(req: UpdatePatientInfoRequest) {
     let caller = verified_caller().unwrap();
-
-    with_state_mut(|s| s.registry.initial_patient_info(caller, req.info.into())).unwrap()
+    with_state_mut(|s| s.registry.update_patient_info(caller, req.info.into())).unwrap()
 }
 
 #[ic_cdk::query(composite = true)]
@@ -862,6 +941,7 @@ async fn finish_session(req: FinishSessionRequest) {
 }
 
 // TODO : move this into provider registry
+// #[ic_cdk::update(guard = "only_provider")] // see the implementation for this up there for notes
 #[ic_cdk::update]
 async fn claim_consent(req: ClaimConsentRequest) -> ClaimConsentResponse {
     let caller = verified_caller().unwrap();
@@ -921,8 +1001,21 @@ fn update_kyc_status(req: UpdateKycStatusRequest) -> UpdateKycStatusResponse {
 }
 
 #[ic_cdk::update(guard = "only_canister_owner")]
-fn bind_admin(req: BindAdminRequest) {
-    with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik)).unwrap();
+fn bind_admin(req: BindAdminRequest) -> Result<(), String> {
+    with_state_mut(|s| s.registry.admin_map.bind(req.principal, req.nik))
+        .map_err(|e| format!("Failed to bind admin: {:?}", e))
+}
+
+/// !!! very dangerous untested pls use with caution
+#[ic_cdk::update(guard = "only_canister_owner")]
+fn bind_admin_principal_only(principal: Principal) -> Result<(), String> {
+    with_state_mut(|s| s.registry.admin_map.principal_only_bind(principal))
+        .map_err(|e| format!("Failed to bind admin: {:?}", e))
+}
+
+#[ic_cdk::query(guard = "only_controller")]
+fn check_admin(principal: Principal) -> bool {
+    with_state(|s| s.registry.admin_map.is_valid_admin(&principal))
 }
 
 #[ic_cdk::update(guard = "only_patient")]
@@ -933,23 +1026,45 @@ fn create_group(req: CreateGroupRequest) -> Result<CreateGroupResponse, String> 
     let name =
         AsciiRecordsKey::<64>::new(req.name).map_err(|e| format!("Invalid group name: {}", e))?;
 
-    Ok(with_state_mut(|s| s.registry.group_map.create_group(name, nik)).into())
+    Ok(with_state_mut(|s| {
+        match s.registry.group_map.create_group(name, nik) {
+            Ok(group_id) => CreateGroupResponse::new(group_id),
+            Err(e) => {
+                ic_cdk::trap(&format!("Failed to create group: {:?}", e));
+            }
+        }
+    }))
 }
 
 #[ic_cdk::update(guard = "only_patient")]
-fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
-    let caller = verified_caller().unwrap();
-    let leader_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+async fn add_group_member(req: AddGroupMemberRequest) -> Result<(), String> {
+    // validate that the group consent code exists
+    let is_group_consent_code_valid = with_state(|s| {
+        s.registry
+            .group_consent_map
+            .is_group_consent_code_valid(&req.group_consent_code)
+    })
+    .unwrap();
 
-    let code = ConsentCode::from_text(&req.consent_code)
-        .map_err(|e| format!("Invalid consent code: {}", e))?;
+    if !is_group_consent_code_valid {
+        return Err(
+            "[ERR_GROUP_CONSENT_CODE_NOT_FOUND] Group consent code not found. Did you create one using the create_group_consent function?".to_string(),
+        );
+    }
 
-    let consent = ConsentsApi::consent(&code).ok_or("Consent not found")?;
+    // get the nik from the group consent code
+    let nik_from_group_consent = with_state(|s| {
+        s.registry
+            .group_consent_map
+            .get_nik(&req.group_consent_code)
+    })
+    .unwrap();
 
+    // add the member to the group
     with_state_mut(|s| {
         s.registry
             .group_map
-            .add_member(req.group_id, &leader_nik, consent.nik, req.relation)
+            .add_member(req.group_id, nik_from_group_consent, req.relation)
     })
     .map_err(|e| format!("Failed to add member: {:?}", e))
 }
@@ -960,20 +1075,20 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
     let nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
     with_state_mut(|s| {
-        // Get the group first
+        // get the group first
         let group = s
             .registry
             .group_map
-            .get_group(req.group_id)
+            .get_group(req.group_id.clone())
             .ok_or("Group not found")?;
 
-        // Get all access pairs for this group
+        // get all access pairs for this group
         let access_pairs = s
             .registry
             .group_access_map
-            .get_group_access_pairs(req.group_id);
+            .get_group_access_pairs(req.group_id.clone());
 
-        // Revoke all access pairs involving the leaving member
+        // revoke all access pairs involving the leaving member
         for (granter, grantee) in access_pairs {
             if granter == nik || grantee == nik {
                 s.registry
@@ -983,18 +1098,17 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             }
         }
 
-        // Check if this is the last member or if it's the leader and there's only one other member
-        let should_dissolve =
-            group.members.len() <= 1 || (group.leader == nik && group.members.len() <= 2);
+        // check if this will be the last member after leaving
+        let should_dissolve = group.members.len() == 1;
 
         if should_dissolve {
-            // If dissolving, get all access pairs again (in case they changed)
+            // if dissolving, get all access pairs again (in case they changed)
             let access_pairs = s
                 .registry
                 .group_access_map
-                .get_group_access_pairs(req.group_id);
+                .get_group_access_pairs(req.group_id.clone());
 
-            // Revoke all remaining access pairs for this group
+            // revoke all remaining access pairs for this group
             for (granter, grantee) in access_pairs {
                 s.registry
                     .group_access_map
@@ -1002,16 +1116,33 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
                     .map_err(|e| format!("Failed to revoke access: {}", e))?;
             }
 
-            // Then dissolve the group
+            // then dissolve the group
             s.registry
                 .group_map
-                .dissolve_group(req.group_id)
+                .dissolve_group(req.group_id.clone())
                 .map_err(|e| format!("Failed to dissolve group: {}", e))?;
-        } else {
-            // Just remove the member from the group
+        } else if group.leader == nik {
+            // Transfer leadership to another member
+            let new_leader = group
+                .members
+                .iter()
+                .find(|&member| member != &nik)
+                .ok_or("No other member to transfer leadership to")?;
+
             s.registry
                 .group_map
-                .remove_member(req.group_id, &nik)
+                .transfer_leadership(req.group_id.clone(), &new_leader)
+                .map_err(|e| format!("Failed to transfer leadership: {:?}", e))?;
+
+            s.registry
+                .group_map
+                .remove_member(req.group_id.clone(), &nik)
+                .map_err(|e| format!("Failed to remove member: {:?}", e))?;
+        } else {
+            // Regular member leaving
+            s.registry
+                .group_map
+                .remove_member(req.group_id.clone(), &nik)
                 .map_err(|e| format!("Failed to remove member: {:?}", e))?;
         }
 
@@ -1037,8 +1168,8 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
         .map_err(|_| "Invalid grantee NIK format".to_string())?;
 
     // Verify both users are in the same group
-    let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or("Group not found")?;
 
     // Check both users are in the group
     if !group.members.contains(&granter_nik) {
@@ -1052,7 +1183,7 @@ fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
     with_state_mut(|s| {
         s.registry
             .group_access_map
-            .grant_access(granter_nik, grantee_nik, req.group_id)
+            .grant_access(granter_nik, grantee_nik, req.group_id.clone())
     })
     .map_err(|e| format!("Failed to grant EMR access: {:?}", e))
 }
@@ -1075,26 +1206,28 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
     .map_err(|e| format!("Failed to revoke EMR access: {:?}", e))
 }
 
-#[ic_cdk::query(guard = "only_patient")]
+#[ic_cdk::query(composite = true, guard = "only_patient")]
 async fn view_group_member_emr_information(
     req: ViewGroupMemberEmrInformationRequest,
 ) -> Result<EmrListPatientResponse, String> {
-    // get caller's NIK (viewer/grantee)
     let caller = verified_caller().unwrap();
     let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
-    // parse target member's NIK (member/granter) from string
-    let member_nik =
-        NIK::from_str(&req.member_nik).map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string. Please ensure you are using the correct NIK format.", req.member_nik))?;
+    let member_nik = NIK::from_str(&req.member_nik)
+        .map_err(|_| format!("[ERR_INVALID_NIK] Invalid member NIK format: {}. The NIK should be a valid hex string.", req.member_nik))?;
 
     // verify both users are in the same group
     let group =
-        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or(format!("[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist in the system. Please verify the group ID or create a new group if needed.", req.group_id))?;
+        with_state(|s| s.registry.group_map.get_group(req.group_id.clone())).ok_or(format!(
+            "[ERR_GROUP_NOT_FOUND] Group with ID {} does not exist.",
+            req.group_id
+        ))?;
 
+    // verify group membership
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
         let viewer_in_group = group.members.contains(&viewer_nik);
         let member_in_group = group.members.contains(&member_nik);
-        
+
         if !viewer_in_group && !member_in_group {
             return Err(format!(
                 "[ERR_NOT_GROUP_MEMBERS] Neither you (NIK: {}) nor the member (NIK: {}) are members of group {}. Action required: Both users must join the group first. The group leader can add members using the add_group_member function.",
@@ -1102,28 +1235,32 @@ async fn view_group_member_emr_information(
             ));
         } else if !viewer_in_group {
             return Err(format!(
-                "[ERR_VIEWER_NOT_IN_GROUP] You (NIK: {}) are not a member of group {}. Action required: Please ask the group leader to add you using the add_group_member function.",
+                "[ERR_VIEWER_NOT_IN_GROUP] You (NIK: {}) are not a member of group {}. Action required: Please ask a group member to add you using the add_group_member function.",
                 viewer_nik, req.group_id
             ));
         } else {
             return Err(format!(
-                "[ERR_MEMBER_NOT_IN_GROUP] The member (NIK: {}) is not in group {}. Action required: The group leader needs to add them using the add_group_member function before you can view their EMR.",
+                "[ERR_MEMBER_NOT_IN_GROUP] The member (NIK: {}) is not in group {}. Action required: A group member needs to add them using the add_group_member function before you can view their EMR.",
                 member_nik, req.group_id
             ));
         }
     }
 
-    // verify access has been granted by the member to the viewer
+    // verify access has been granted for this specific group
     let has_access = with_state(|s| {
         s.registry
             .group_access_map
-            .has_access(&member_nik, &viewer_nik) // member (granter) -> viewer (grantee)
+            .has_access(&member_nik, &viewer_nik)
+            && s.registry
+                .group_access_map
+                .get_access_group(&member_nik, &viewer_nik)
+                == Some(req.group_id.clone())
     });
 
     if !has_access {
         return Err(format!(
-            "[ERR_ACCESS_NOT_GRANTED] Access not granted. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information. Action required: The EMR owner must use the grant_group_access function to give you permission.",
-            member_nik, viewer_nik
+            "[ERR_ACCESS_NOT_GRANTED] Access not granted for group {}. The EMR owner (NIK: {}) has not granted you (NIK: {}) access to view their EMR information in this group.",
+            req.group_id, member_nik, viewer_nik
         ));
     }
 
@@ -1131,10 +1268,10 @@ async fn view_group_member_emr_information(
     let emrs = with_state(|s| {
         s.registry
             .emr_binding_map
-            .emr_list(&member_nik, req.page as u8, req.limit as u8)
+            .emr_list_all(&member_nik)
     })
     .map_err(|e| match e {
-        PatientRegistryError::UserDoesNotExist => format!(
+        PatientRegistryError::UserNoEmrs => format!(
             "[ERR_NO_EMR_RECORDS] The member (NIK: {}) has not been registered in the EMR system yet. Action required: They need to visit a healthcare provider who will create their first EMR record.",
             member_nik
         ),
@@ -1188,6 +1325,65 @@ async fn view_group_member_emr_information(
     Ok(EmrListPatientResponse::from(emrs))
 }
 
+#[ic_cdk::query(guard = "only_patient")]
+async fn get_group_details_async_no_pagination(
+    req: GetGroupDetailsNoPaginatedRequest,
+) -> Result<GetGroupDetailsResponse, String> {
+    let caller = verified_caller().unwrap();
+
+    let caller_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+
+    // get group and verify caller is a member
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or("Group not found")?;
+
+    if !group.members.contains(&caller_nik) {
+        return Err("Caller is not a member of the group".to_string());
+    }
+
+    let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
+        .map_err(|e| format!("Failed to get leader info: {:?}", e))?
+        .name()
+        .clone();
+
+    Ok(GetGroupDetailsResponse::new(
+        group
+            .member_relations
+            .iter()
+            .map(|(nik, relation)| {
+                let patient = with_state(|s| s.registry.get_patient_info(nik.clone())).unwrap();
+                let age = match patient.clone() {
+                    Patient::V1(v1) => {
+                        let dob = v1.date_of_birth.to_string();
+                        let year = dob
+                            .get(0..4)
+                            .and_then(|y| y.parse::<u16>().ok())
+                            .unwrap_or(0);
+                        let current_year = 2024; // todo: might want to get this dynamically
+                        (current_year - year) as u8
+                    }
+                };
+
+                let gender = match patient.clone() {
+                    Patient::V1(v1) => AsciiRecordsKey::<64>::new(v1.gender.to_string()).unwrap(),
+                };
+
+                GroupDetail {
+                    nik: nik.clone(),
+                    name: patient.name().clone(),
+                    gender,
+                    age,
+                    role: relation.clone(),
+                }
+            })
+            .collect(),
+        group.members.len() as u64,
+        group.name,
+        leader_name,
+        0,
+    ))
+}
+
 /// Get Group Details
 ///
 /// Description:
@@ -1215,28 +1411,20 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         return Err("Only group members can view group details".to_string());
     }
 
-    // calculate total pages
-    let total_members = group.members.len() as u64;
-    let total_pages = (total_members + req.limit - 1) / req.limit;
-
-    // get paginated member details
-    let start = (req.page * req.limit) as usize;
-    let end = ((req.page + 1) * req.limit) as usize;
-
-    let paginated_members = group.members.iter().skip(start).take(end - start);
-
     // get leader name
     let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
         .map_err(|e| format!("Failed to get leader info: {:?}", e))?
         .name()
         .clone();
 
-    // get group name
+    // get group name and member count
     let group_name = group.name.clone();
+    let member_count = group.members.len() as u64;
 
     // build group details for each member
     let mut group_details = Vec::new();
-    for member_nik in paginated_members {
+    println!("group members: {:?}", group.members);
+    for member_nik in group.members {
         let member = with_state(|s| s.registry.get_patient_info(member_nik.clone()))
             .map_err(|_| format!("Failed to get member info for NIK: {}", member_nik))?;
 
@@ -1244,7 +1432,7 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
         let role = group
             .member_relations
             .iter()
-            .find(|(nik, _)| nik == member_nik)
+            .find(|(nik, _)| *nik == member_nik)
             .map(|(_, relation)| relation.clone())
             .unwrap_or(Relation::Other);
 
@@ -1276,15 +1464,59 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
             role,
         };
 
-        group_details.push(detail);
+        // now we can paginate
+        if group_details.len() < req.limit as usize {
+            group_details.push(detail);
+        }
+
+        if group_details.len() == req.limit as usize {
+            break;
+        }
     }
 
     Ok(GetGroupDetailsResponse::new(
         group_details,
-        total_members,
+        member_count,
         group_name,
         leader_name,
-        total_pages,
+        (member_count + req.limit - 1) / req.limit,
+    ))
+}
+
+#[ic_cdk::query(guard = "only_admin_or_controller")]
+fn get_group_details_admin(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsResponse, String> {
+    let group =
+        with_state(|s| s.registry.group_map.get_group(req.group_id)).ok_or("Group not found")?;
+
+    let leader_name = with_state(|s| s.registry.get_patient_info(group.leader.clone()))
+        .map_err(|e| format!("Failed to get leader info: {:?}", e))?
+        .name()
+        .clone();
+
+    Ok(GetGroupDetailsResponse::new(
+        group
+            .member_relations
+            .iter()
+            .map(|(nik, relation)| {
+                let patient = with_state(|s| s.registry.get_patient_info(nik.clone())).unwrap();
+                let gender = match patient {
+                    Patient::V1(ref v1) => {
+                        AsciiRecordsKey::<64>::new(v1.gender.to_string()).unwrap()
+                    }
+                };
+                GroupDetail {
+                    nik: nik.clone(),
+                    name: patient.name().clone(),
+                    gender,
+                    age: 0,
+                    role: relation.clone(),
+                }
+            })
+            .collect(),
+        group.members.len() as u64,
+        group.name,
+        leader_name,
+        (group.members.len() as u64 + req.limit - 1) / req.limit,
     ))
 }
 
@@ -1300,21 +1532,80 @@ fn get_group_details(req: GetGroupDetailsRequest) -> Result<GetGroupDetailsRespo
 /// Returns:
 /// - NIK of the consenting patient if successful
 /// - Error if consent is invalid or already claimed
-#[ic_cdk::update(guard = "only_patient")]
-fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
-    let consent = ConsentsApi::consent(&req.code).ok_or("Consent not found")?;
+/// !!! DEPRECATED - claiming consent can only be done by provider from now on.
+// #[ic_cdk::update(guard = "only_patient")]
+// fn claim_consent_for_group(req: ClaimConsentRequest) -> Result<String, String> {
+//     let consent = ConsentsApi::consent(&req.code).ok_or("Consent not found")?;
 
-    if consent.claimed {
-        return Err("Consent already claimed".to_string());
+//     if consent.claimed {
+//         return Err("Consent already claimed".to_string());
+//     }
+
+//     let caller = verified_caller().unwrap();
+
+//     // mark the consent as claimed using the caller's principal
+//     ConsentsApi::claim_consent_for_group(&req.code, &caller);
+
+//     // return the NIK of the consenting patient
+//     Ok(consent.nik.to_string())
+// }
+
+#[ic_cdk::query]
+fn check_nik(req: CheckNikRequest) -> Result<bool, String> {
+    with_state(|s| {
+        // check if NIK exists in owner_map
+        if s.registry.owner_map.is_nik_in_use(&req.nik) {
+            return Err("NIK already registered".to_string());
+        }
+
+        Ok(true)
+    })
+}
+
+#[ic_cdk::query(composite = true, guard = "only_patient")]
+async fn read_group_members_emr_info(
+    req: ReadGroupMembersEmrInfoRequest,
+) -> Result<ReadEmrByIdResponse, String> {
+    let caller = verified_caller().unwrap();
+    let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    
+    // parse member NIK from string
+    let member_nik = NIK::from_str(&req.member_nik)
+        .map_err(|_| "[ERR_INVALID_NIK] Invalid member NIK format")?;
+
+    // verify both users are in the same group
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or("[ERR_GROUP_NOT_FOUND] Group not found")?;
+
+    // verify both users are members of the group
+    if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
+        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of the group".to_string());
     }
 
-    let caller = verified_caller().unwrap();
+    // verify access has been granted for this specific group
+    let has_access = with_state(|s| {
+        s.registry.group_access_map.has_access(&member_nik, &viewer_nik)
+            && s.registry.group_access_map.get_access_group(&member_nik, &viewer_nik) == Some(req.group_id)
+    });
 
-    // mark the consent as claimed using the caller's principal
-    ConsentsApi::claim_consent_for_group(&req.code, &caller);
+    if !has_access {
+        return Err("[ERR_ACCESS_NOT_GRANTED] Access not granted for this group".to_string());
+    }
 
-    // return the NIK of the consenting patient
-    Ok(consent.nik.to_string())
+    // get the member_niks principal from get_principal
+    let member_principal = with_state(|s| s.registry.owner_map.get_principal(&member_nik)).unwrap();
+
+    // if all checks pass, proceed with reading the EMR using the new function
+    let registry = with_state(|s| s.config.get().emr_registry());
+    let sub_args = api::ReadEmrByIdRequest {
+        provider_id: req.provider_id,
+        emr_id: req.emr_id,
+        registry_id: req.registry_id,
+    };
+    let args = with_state(|s| s.registry.construct_args_read_emr(sub_args, &member_principal))
+        .map_err(|e| format!("[ERR_CONSTRUCT_ARGS] Failed to construct EMR read args: {:?}", e))?;
+    
+    Ok(PatientRegistry::do_call_read_emr(args, registry).await)
 }
 
 ic_cdk::export_candid!();
