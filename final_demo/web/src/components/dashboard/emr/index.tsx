@@ -29,7 +29,7 @@ const EMRDataPatient = ({ id }: { id: string }) => {
   const setEmrs = useEMRStore((state) => state.setEMRS);
   const setLoading = useEMRStore((state) => state.setLoading);
 
-  const { call } = usePatientQuery({
+  const { call, loading } = usePatientQuery({
     functionName: "emr_list_with_session",
     refetchOnMount: true,
     onSuccess(data) {
@@ -75,6 +75,7 @@ const EMRDataPatient = ({ id }: { id: string }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  loading && <></>
   return <EMRPatientEmpty />;
 };
 
