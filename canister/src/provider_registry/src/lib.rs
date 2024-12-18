@@ -93,6 +93,7 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("https://app.medblock.id"),
         String::from("https://webadmin.medblock.id/"),
         String::from("https://d2viywrtiw4k.medblock.id"),
+        String::from("https://staging.d1f976xml8qycj.amplifyapp.com/"),
     ]
 }
 
@@ -415,7 +416,6 @@ async fn register_new_provider(req: RegisternewProviderRequest) -> RegisternewPr
 fn is_valid_provider(req: Principal) -> bool {
     with_state(|s| s.providers.is_valid_provider(&req))
 }
-
 
 #[ic_cdk::update(guard = "only_provider")]
 async fn update_emr(req: crate::api::UpdateEmrRequest) -> crate::api::UpdateEmrResponse {
