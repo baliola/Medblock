@@ -11,19 +11,24 @@ import {
   Modal,
   ModalContent,
   ModalOverlay,
-  Image
+  Image,
+  useToast
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { HiOutlineEye } from "react-icons/hi2";
+import { HiOutlineChevronLeft, HiOutlineEye } from "react-icons/hi2";
 import EMRMemberDetail from "./emr-detail";
+import { FaChevronLeft, FaHospital } from "react-icons/fa6";
+import { BiChevronLeft } from "react-icons/bi";
 
 interface IEMRListModalProps {
   group_id: string
   nik: string
+  name: string
 }
 
 export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
-  const { group_id, nik } = props
+  const toast = useToast()
+  const { group_id, nik, name } = props
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [emrGroupInformation, setEmrGroupInformation] = useState<
@@ -38,9 +43,12 @@ export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
     refetchOnMount: false,
     onSuccess(data) {
       console.log(data);
-      const { Ok }: any = data;
-      if (Ok) setEmrGroupInformation(Ok);
-      else setEmrGroupInformation(null);
+      const { Ok, Err }: any = data;
+      if (Ok) {
+        setEmrGroupInformation(Ok);
+      } else if (Err) {
+        setEmrGroupInformation(null);
+      }
     },
     onError(error) {
       setEmrGroupInformation(null);
@@ -74,7 +82,7 @@ export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
         onClick={onOpen}
         leftIcon={<Icon as={HiOutlineEye} boxSize={6} />}
       >
-        <Text>See Group EMRs</Text>
+        <Text>See Member EMRs</Text>
       </Button>
       <Modal
         isOpen={isOpen}
@@ -94,46 +102,57 @@ export default function EMRListModal({ props }: { props: IEMRListModalProps }) {
           h={"full"}
           display={"flex"}
           onClick={onClose}
-          background={"transparent"}
+          background={"white"}
         >
           <Flex 
             marginTop={"auto"}
             flexDirection={"column"}
             rowGap={6}
             h={"full"}
-            py={12}
             width={"full"}
-            background={"rgba(230, 238, 252, 1)"}
-            px={8}
+            background={"white"}
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              type="button"
-              bg={"transparent"}
-              display={"flex"}
-              justifyContent={"items-start"}
-              columnGap={3}
-              fontWeight={400}
-              color={"primary.700"}
-              onClick={onClose}
+            <Flex 
+              pt={6}
+              w={"full"}
+              alignItems={"center"}
+              px={6}
+              gap={3}
             >
-              <Text>Close</Text>
-            </Button>
-            {emrGroupInformation === undefined && <Text>Please wait ..</Text> }
+              <Button
+                type="button"
+                bg={"white"}
+                columnGap={3}
+                fontWeight={400}
+                color={"gray.500"}
+                display={"flex"}
+                justifyContent={"center"}
+                w={"fit-content"}
+                leftIcon={<Icon as={HiOutlineChevronLeft} boxSize={10} />}
+                onClick={onClose}
+                width={10}
+                height={10}
+              />
+              <Text 
+                textTransform={"capitalize"} 
+                fontSize={"2xl"}
+                fontWeight={"700"}
+              >
+                {name} EMR&apos;s
+              </Text>
+            </Flex>
+            {emrGroupInformation === undefined && <Text px={8} fontSize={"xl"}>Please wait ..</Text> }
+            {emrGroupInformation === null && <Text px={8} fontSize={"xl"}>Unable to access this user EMR</Text> }
             {emrGroupInformation && 
-              <Flex>
+              <Flex direction={'column'} gap={4} bg={'white'} flex={1} px={8}>
                 {
                   emrGroupInformation.emrs.map((emr, index) =>
-                    <Flex key={index}>
-                      <Text>{emr.hospital_name}</Text>
-                      <EMRMemberDetail props={{
-                        emr_id: emr.header.emr_id,
-                        provider_id: emr.header.provider_id,
-                        registry_id: emr.header.registry_id,
-                        nik,
-                        group_id
-                       }} />
-                    </Flex>
+                    <EMRMemberDetail props={{
+                      emr,
+                      nik,
+                      group_id
+                    }} key={index} />
                   )
                 }
               </Flex>

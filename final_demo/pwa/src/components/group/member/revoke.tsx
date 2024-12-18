@@ -156,7 +156,7 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
                   onClick={handleRevokeGroupAccess} 
                   isLoading={revokeGroupAccessLoading}
                 >
-                  Grant
+                  Revoke
                 </Button>
               </Flex>
             </Flex>

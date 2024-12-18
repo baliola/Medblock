@@ -198,6 +198,7 @@ const MemberGroupList = (): ReactElement => {
                             isLeader: member.name === groupDetails.leader_name,
                             nik: member.nik,
                             group_id: group_id as string,
+                            name: member.name
                           }}
                         />
                       </GridItem>

@@ -18,15 +18,18 @@ import { usePatientQuery } from "@/services/patients";
 import { EmrListPatientResponse } from "@/declarations/patient_registry/patient_registry.did";
 import { useState } from "react";
 import EMRListModal from "../modal-emr/emr-list";
+import { useRouter } from "next/navigation";
 
 interface DetailModalProps {
   isLeader: boolean;
   nik: string;
   group_id: string;
+  name: string
 }
 
 export default function DetailModal({ props }: { props: DetailModalProps }) {
-  const { isLeader, nik, group_id } = props;
+  const { isLeader, nik, group_id, name } = props;
+  const router = useRouter()
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { profile } = useProfileStore();
@@ -77,8 +80,26 @@ export default function DetailModal({ props }: { props: DetailModalProps }) {
               </>
             )}
 
-            <EMRListModal props={{ group_id, nik }} />
-            
+            {nik !== profile?.nik ? (
+              <>
+                <EMRListModal props={{ group_id, nik, name }} />
+              </>
+            ) : (
+              <Button
+                type="button"
+                bg={"transparent"}
+                display={"flex"}
+                justifyContent={"items-start"}
+                columnGap={3}
+                fontWeight={400}
+                color={"primary.700"}
+                onClick={() => { router.push('/home') }}
+                leftIcon={<Icon as={HiOutlineEye} boxSize={6} />}
+              >
+                <Text>See Member EMRs</Text>
+              </Button>
+            )}
+
             {nik === profile?.nik && <LeaveGroupModal props={{ isLeader }} />}
           </DrawerBody>
         </DrawerContent>

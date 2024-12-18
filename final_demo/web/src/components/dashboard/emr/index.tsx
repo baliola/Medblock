@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect } from "react";
 import { Flex } from "@chakra-ui/react";
 
@@ -21,8 +21,6 @@ const EMRDataPatient = ({ id }: { id: string }) => {
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-
-  console.log("ID PARAMS emr data", id);
 
   const page = params.get("page") || 0;
   const limit = params.get("limit") || 10;
@@ -71,11 +69,9 @@ const EMRDataPatient = ({ id }: { id: string }) => {
       limit: Number(limit),
       page: Number(page),
     };
-    console.log("id par in use effect", id);
 
     // @ts-expect-error
     call([request]);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
