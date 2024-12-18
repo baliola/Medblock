@@ -311,13 +311,33 @@ impl GroupAccessMap {
         Ok(())
     }
 
+    pub fn revoke_access_for_group(&mut self, granter: NIK, revokee: NIK, group_id: GroupId) -> Result<(), String> {
+        let key = (Stable::from(granter), Stable::from(revokee));
+        
+        // First check if access exists at all
+        if !self.0.contains_key(&key) {
+            return Err("[ERR_NO_ACCESS] No access exists between these users.".to_string());
+        }
+
+        // Then check if it's for the correct group
+        let current_group = self.0.get(&key).unwrap();
+        if current_group.as_ref() != &group_id {
+            return Err(format!(
+                "[ERR_WRONG_GROUP] Access exists but for a different group. Expected group: {}, actual group: {}",
+                group_id,
+                current_group.as_ref()
+            ));
+        }
+
+        // If we get here, we can safely revoke 
+        self.0.remove(&key);
+        Ok(())
+    }
+
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
         let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
         let result = self.0.contains_key(&key);
-        println!(
-            "[GroupAccessMap] has_access: {:?}, result: {:?}",
-            key, result
-        );
+        
         result
     }
 

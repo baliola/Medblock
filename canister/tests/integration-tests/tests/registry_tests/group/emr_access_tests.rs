@@ -932,6 +932,81 @@ fn test_typical_emr_access_flow() {
     }
 
     println!("\nDEBUG test: ✓ All test steps completed successfully");
+
+    // Test revocation
+    println!("\nDEBUG test: Step 6 - Patient2 revoking access from Patient1");
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: group_id.clone(),
+    };
+
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Ok => println!("DEBUG test: ✓ Access revoked successfully"),
+        patient_registry::Result_::Err(e) => panic!("Failed to revoke access: {}", e),
+    }
+
+    // Verify Patient1 can no longer access Patient2's EMR
+    println!("\nDEBUG test: Step 7 - Verifying Patient1 can no longer access Patient2's EMR");
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id: group_id.clone(),
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries.patient.view_group_member_emr_information(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        view_request,
+    );
+
+    match view_result {
+        Ok(patient_registry::Result5::Err(e)) => {
+            println!("DEBUG test: ✓ Correctly denied access to Patient2's EMR after revocation");
+            println!("DEBUG test: - Error message: {}", e);
+            assert!(
+                e.contains("[ERR_ACCESS_NOT_GRANTED]"),
+                "Expected access not granted error after revocation, got: {}",
+                e
+            );
+        }
+        _ => panic!("Expected error for revoked EMR access to Patient2"),
+    }
+
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: group_id.clone(),
+    };
+
+    // Test revoking again (should succeed silently)
+    println!("\nDEBUG test: Step 8 - Testing double revocation (should succeed)");
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Ok => println!("DEBUG test: ✓ Second revocation succeeded silently"),
+        patient_registry::Result_::Err(e) => panic!("Second revocation should succeed: {}", e),
+    }
+
+    println!("\nDEBUG test: ✓ All test steps completed successfully");
 }
 
 #[test]
@@ -1222,6 +1297,10 @@ fn test_typical_emr_access_flow_with_new_patient() {
 
     match view_result {
         Ok(patient_registry::Result5::Ok(emr_info)) => {
+            println!("DEBUG test: ✓ Successfully viewed patient4's EMR information:");
+            println!("DEBUG test: - EMR ID: {}", emr_info.emrs[0].header.emr_id);
+            println!("DEBUG test: - Provider ID: {}", emr_info.emrs[0].header.provider_id);
+            println!("DEBUG test: - User ID: {}", emr_info.emrs[0].header.user_id);
             assert_eq!(emr_info.emrs.len(), 1, "Should see exactly one EMR from Patient4");
             assert_eq!(
                 emr_info.emrs[0].header.user_id,
@@ -1232,5 +1311,188 @@ fn test_typical_emr_access_flow_with_new_patient() {
         _ => panic!("Expected access to Patient4's EMR"),
     }
 
-    println!("\nDEBUG test: ✓ All test steps completed successfully");
+    println!("\nDEBUG test: ✓ All test steps completed successfully, including revocation testing");
+
+    // Test revocation for both Patient2 and Patient4
+    println!("\nDEBUG test: Step 12 - Patient2 and Patient4 revoking access from Patient1");
+    
+    // Patient2 revokes access
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: group_id.clone(),
+    };
+
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Ok => println!("DEBUG test: ✓ Access revoked successfully by Patient2"),
+        patient_registry::Result_::Err(e) => panic!("Failed to revoke access by Patient2: {}", e),
+    }
+
+    // Patient4 revokes access
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: group_id.clone(),
+    };
+
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient4.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Ok => println!("DEBUG test: ✓ Access revoked successfully by Patient4"),
+        patient_registry::Result_::Err(e) => panic!("Failed to revoke access by Patient4: {}", e),
+    }
+
+    // Verify Patient1 can no longer access Patient2's EMR
+    println!("\nDEBUG test: Step 13 - Verifying Patient1 can no longer access Patient2's EMR");
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient2.nik.to_string(),
+        group_id: group_id.clone(),
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries.patient.view_group_member_emr_information(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        view_request,
+    );
+
+    match view_result {
+        Ok(patient_registry::Result5::Err(e)) => {
+            println!("DEBUG test: ✓ Correctly denied access to Patient2's EMR after revocation");
+            println!("DEBUG test: - Error message: {}", e);
+            assert!(
+                e.contains("[ERR_ACCESS_NOT_GRANTED]"),
+                "Expected access not granted error after revocation, got: {}",
+                e
+            );
+        }
+        _ => panic!("Expected error for revoked EMR access to Patient2"),
+    }
+
+    // Verify Patient1 can no longer access Patient4's EMR
+    println!("\nDEBUG test: Step 14 - Verifying Patient1 can no longer access Patient4's EMR");
+    let view_request = patient_registry::ViewGroupMemberEmrInformationRequest {
+        member_nik: patient4.nik.to_string(),
+        group_id: group_id.clone(),
+        page: 0,
+        limit: 10,
+    };
+
+    let view_result = registries.patient.view_group_member_emr_information(
+        &registries.ic,
+        patient1.principal.clone(),
+        PatientCall::Query,
+        view_request,
+    );
+
+    match view_result {
+        Ok(patient_registry::Result5::Err(e)) => {
+            println!("DEBUG test: ✓ Correctly denied access to Patient4's EMR after revocation");
+            println!("DEBUG test: - Error message: {}", e);
+            assert!(
+                e.contains("[ERR_ACCESS_NOT_GRANTED]"),
+                "Expected access not granted error after revocation, got: {}",
+                e
+            );
+        }
+        _ => panic!("Expected error for revoked EMR access to Patient4"),
+    }
+
+    println!("\nDEBUG test: ✓ All test steps completed successfully, including revocation testing");
+
+    // Test error cases for revoke_group_access
+    println!("\nDEBUG test: Step 15 - Testing error cases for revoke_group_access");
+
+
+    // Test case 1: Create a new group and attempt to revoke access between users in different groups
+    println!("\nDEBUG test: Testing revocation between users in different groups");
+    
+    // Create a new group
+    let new_group_response = registries
+        .patient
+        .create_group(
+            &registries.ic,
+            patient3.principal.clone(),
+            PatientCall::Update,
+            patient_registry::CreateGroupRequest {
+                name: "different_group".to_string(),
+            },
+        )
+        .unwrap();
+
+    let different_group_id = match new_group_response {
+        patient_registry::Result2::Ok(response) => response.group_id,
+        _ => panic!("Failed to create different group"),
+    };
+
+    // Attempt to revoke access using the different group
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: different_group_id.clone(),
+    };
+
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Err(e) => {
+            println!("DEBUG test: ✓ Correctly failed with users in different groups");
+            println!("DEBUG test: - Error message: {}", e);
+            assert!(
+                e.contains("[ERR_NOT_GROUP_MEMBERS]"),
+                "Expected not group members error, got: {}",
+                e
+            );
+        }
+        _ => panic!("Expected error for users in different groups"),
+    }
+
+    // Test case 2: Attempt to revoke access twice
+    println!("\nDEBUG test: Testing revocation twice");
+    let revoke_access_req = patient_registry::RevokeGroupAccessRequest {
+        revokee_nik: patient1.nik.to_string(),
+        group_id: group_id.clone(),
+    };
+
+    let revoke_result = registries
+        .patient
+        .revoke_group_access(
+            &registries.ic,
+            patient2.principal.clone(),
+            PatientCall::Update,
+            revoke_access_req,
+        )
+        .unwrap();
+
+    match revoke_result {
+        patient_registry::Result_::Ok => println!("DEBUG test: ✓ Access revoked successfully"),
+        patient_registry::Result_::Err(e) => panic!("Failed to revoke access: {}", e),
+    }
+
+    println!("\nDEBUG test: ✓ All error case tests completed successfully");
 }
