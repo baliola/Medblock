@@ -349,6 +349,7 @@ async fn get_trusted_origins() -> Vec<String> {
         String::from("https://app.medblock.id"),
         String::from("https://webadmin.medblock.id/"),
         String::from("https://d2viywrtiw4k.medblock.id"),
+        String::from("https://d2viywrtiw4k.medblock.id/"),
         String::from("https://staging.d1f976xml8qycj.amplifyapp.com/"),
         String::from("https://staging.d1cbmngfhpp9l5.amplifyapp.com/"),
     ]
