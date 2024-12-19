@@ -38,6 +38,8 @@ export default function DetailModal({ props }: { props: DetailModalProps }) {
     EmrListPatientResponse | null | undefined
   >(undefined);
 
+  const grantedList = JSON.parse(localStorage.getItem('grantedList') ?? '')
+
   const {
     call: getEmrGroupInformation,
     loading: loadingGetEmrGroupInformation,
@@ -75,8 +77,13 @@ export default function DetailModal({ props }: { props: DetailModalProps }) {
           >
             {nik !== profile?.nik && (
               <>
-                <GrantAccessGroupModal props={{ nik }} />
-                <RevokeAccessGroupModal props={{ nik }} />
+                {
+                  grantedList.list.includes(nik) 
+                    ? <>
+                      <RevokeAccessGroupModal props={{ nik, onCloseModalDetail: onClose }} /> 
+                    </>
+                    : <GrantAccessGroupModal props={{ nik, onCloseModalDetail: onClose }} />
+                }
               </>
             )}
 
