@@ -20,6 +20,7 @@ import { HiOutlineLockOpen } from "react-icons/hi2";
 
 interface IGrantAccessGroupModal {
   nik: string;
+  onCloseModalDetail: () => void
 }
 
 export default function GrantAccessGroupModal({
@@ -27,7 +28,7 @@ export default function GrantAccessGroupModal({
 }: {
   props: IGrantAccessGroupModal;
 }) {
-  const { nik } = props;
+  const { nik, onCloseModalDetail } = props;
   const toast = useToast();
   const { group_id } = useParams();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -83,7 +84,13 @@ export default function GrantAccessGroupModal({
       console.log("access data group emr", data);
 
       await grantGroupAccess(data);
+
+      const grantedList = JSON.parse(localStorage.getItem('grantedList') ?? '')
+      grantedList.list.push(nik)
+      localStorage.setItem('grantedList', JSON.stringify(grantedList))
+
       onClose();
+      onCloseModalDetail();
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.log(error.message);

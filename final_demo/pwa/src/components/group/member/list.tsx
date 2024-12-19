@@ -44,8 +44,16 @@ const MemberGroupList = (): ReactElement => {
       onSuccess(data) {
         console.log(data);
         const { Ok }: any = data;
-        if (Ok) setGroupDetails(Ok);
-        else setGroupDetails(null);
+        if (Ok) {
+          setGroupDetails(Ok);
+
+          // const grantedList = Ok.group_details.filter((item: GroupDetail) => item.nik !== profile?.nik).map((item: GroupDetail) => item.nik)
+          localStorage.setItem('grantedList', JSON.stringify({
+            group_id,
+            owner: profile?.nik,
+            list: []
+          }))
+        } else setGroupDetails(null);
       },
       onError(error) {
         setGroupDetails(null);
@@ -56,47 +64,6 @@ const MemberGroupList = (): ReactElement => {
   const handleGetGroupDetails = () => {
     setGroupDetails(undefined);
     getGroupDetails([{ group_id: group_id as string }] as any);
-  };
-
-  const {
-    call: getEmrGroupInformation,
-    loading: loadingGetEmrGroupInformation,
-  } = usePatientQuery({
-    functionName: "view_group_member_emr_information",
-    refetchOnMount: false,
-    onSuccess(data) {
-      console.log(data);
-      const { Ok }: any = data;
-      if (Ok) setEmrGroupInformation(Ok);
-      else setEmrGroupInformation(null);
-    },
-    onError(error) {
-      setEmrGroupInformation(null);
-      console.error(error);
-    },
-  });
-
-  const handleGetEmrGroupInformation = () => {
-    setEmrGroupInformation(undefined);
-    getEmrGroupInformation([
-      {
-        page: BigInt(1),
-        limit: BigInt(1),
-        group_id: group_id,
-        member_nik: profile?.nik,
-      },
-    ] as any);
-  };
-
-  const isMember = (
-    patientInfo: GetPatientInfoResponse,
-    groupDetails: Array<GroupDetail>
-  ): boolean => {
-    for (let index = 0; index < groupDetails.length; index++) {
-      if (groupDetails[index].nik === patientInfo.nik) return true;
-    }
-
-    return false;
   };
 
   useEffect(() => {

@@ -446,7 +446,8 @@ pub struct RevokeConsentRequest {
 }
 #[derive(CandidType, Deserialize)]
 pub struct RevokeGroupAccessRequest {
-    pub grantee_nik: String,
+    pub revokee_nik: String,
+    pub group_id: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct SearchPatientRequest {

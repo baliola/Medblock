@@ -301,7 +301,10 @@ export const idlFactory = ({ IDL }) => {
     'result' : RegisterPatientStatus,
   });
   const RevokeConsentRequest = IDL.Record({ 'codes' : IDL.Vec(IDL.Text) });
-  const RevokeGroupAccessRequest = IDL.Record({ 'grantee_nik' : IDL.Text });
+  const RevokeGroupAccessRequest = IDL.Record({
+    'revokee_nik' : IDL.Text,
+    'group_id' : IDL.Text,
+  });
   const SearchPatientRequest = IDL.Record({
     '_type' : IDL.Opt(IDL.Text),
     'nik' : IDL.Text,

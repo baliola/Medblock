@@ -1198,16 +1198,39 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
     let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
 
     // parse grantee NIK from string
-    let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
-        .map_err(|_| "Invalid grantee NIK format".to_string())?;
+    let revokee_nik = NIK::from_str(&req.revokee_nik.to_string())
+        .map_err(|_| "Invalid revokee NIK format".to_string())?;
 
-    // revoke EMR access from grantee
+    // verify both users are in the same group
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or_else(|| format!("[ERR_GROUP_NOT_FOUND] Group {} does not exist", req.group_id))?;
+
+    // verify both users are members of the group
+    if !group.members.contains(&granter_nik) || !group.members.contains(&revokee_nik) {
+        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group".to_string());
+    }
+
+    // Check if access exists before trying to revoke
+    let access_exists = with_state(|s| {
+        s.registry
+            .group_access_map
+            .has_access(&granter_nik, &revokee_nik)
+    });
+
+    if !access_exists {
+        // If no access exists, consider it a success since the end state is what was desired
+        log!("No access existed to revoke between granter {} and revokee {} in group {}", 
+            granter_nik, revokee_nik, req.group_id);
+        return Ok(());
+    }
+
+    // revoke EMR access from grantee for specific group
     with_state_mut(|s| {
         s.registry
             .group_access_map
-            .revoke_access(granter_nik, grantee_nik)
+            .revoke_access_for_group(granter_nik, revokee_nik, req.group_id)
     })
-    .map_err(|e| format!("Failed to revoke EMR access: {:?}", e))
+    .map_err(|e| format!("[ERR_REVOKE_FAILED] Failed to revoke EMR access: {}", e))
 }
 
 #[ic_cdk::query(composite = true, guard = "only_patient")]

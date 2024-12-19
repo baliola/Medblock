@@ -41,9 +41,9 @@ PUBLIC_IP=$(curl -s ifconfig.me)
 
 # generate URLs for verification
 candid_ui=$(dfx canister id __Candid_UI)
-emr_registry_ui="http://$PUBLIC_IP:8000/?canisterId=$candid_ui&id=$emr_registry_id"
-provider_registry_ui="http://$PUBLIC_IP:8000/?canisterId=$candid_ui&id=$provider_registry_id"
-patient_registry_ui="http://$PUBLIC_IP:8000/?canisterId=$candid_ui&id=$patient_registry_id"
+emr_registry_ui="http://$PUBLIC_IP:4943/?canisterId=$candid_ui&id=$emr_registry_id"
+provider_registry_ui="http://$PUBLIC_IP:4943/?canisterId=$candid_ui&id=$provider_registry_id"
+patient_registry_ui="http://$PUBLIC_IP:4943/?canisterId=$candid_ui&id=$patient_registry_id"
 
 echo -e "\n${BLUE}[UPGRADE COMPLETE]${NC}"
 echo -e "Verify canisters at:"

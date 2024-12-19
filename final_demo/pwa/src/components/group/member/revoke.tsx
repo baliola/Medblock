@@ -3,16 +3,19 @@
 import { RevokeGroupAccessRequest } from "@/declarations/patient_registry/patient_registry.did";
 import { encodeHashNIK, usePatientMethod } from "@/services/patients";
 import { useToast, useDisclosure, Button, Icon, Modal, ModalOverlay, ModalContent, ModalBody, Flex, Text } from "@chakra-ui/react";
+import { useParams } from "next/navigation";
 import { FaExclamationTriangle } from "react-icons/fa";
 import { HiOutlineLockClosed } from "react-icons/hi2";
 
 interface IRevokeAccessGroupModal {
   nik: string
+  onCloseModalDetail: () => void
 }
 
 export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccessGroupModal }) {
   const toast = useToast();
-  const { nik } = props
+  const { nik, onCloseModalDetail } = props
+  const { group_id } = useParams();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { call: revokeGroupAccess, loading: revokeGroupAccessLoading } = usePatientMethod({
@@ -32,7 +35,7 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
       if (err instanceof Error) {
         toast({
           title: "Error!",
-          description: "Failed to leave group",
+          description: "Failed to revoke access",
           status: "error",
           duration: 5000,
           isClosable: true,
@@ -56,11 +59,17 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
   const handleRevokeGroupAccess = async () => {
     try {
       const data: RevokeGroupAccessRequest[] | any = [{
-        grantee_nik: encodeHashNIK(nik)
+        revokee_nik: encodeHashNIK(nik),
+        group_id
       }];
 
       await revokeGroupAccess(data);
+      const grantedList = JSON.parse(localStorage.getItem('grantedList') ?? '')
+      const newGrantedList = grantedList.list.filter((item: string) => item !== nik)
+      localStorage.setItem('grantedList', JSON.stringify({ ...grantedList, list: newGrantedList }))
+
       onClose()
+      onCloseModalDetail()
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.log(error.message)
