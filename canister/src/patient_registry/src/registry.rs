@@ -293,44 +293,9 @@ impl GroupAccessMap {
         Self(memory_manager.get_memory::<_, Self>(ic_stable_structures::BTreeMap::init))
     }
 
-    /// grants EMR access from granter to grantee within a specific group context
-    pub fn grant_access(
-        &mut self,
-        granter: NIK,
-        grantee: NIK,
-        group_id: GroupId,
-    ) -> Result<(), String> {
+    pub fn grant_access_for_group(&mut self, granter: NIK, grantee: NIK, group_id: GroupId) -> Result<(), String> {
         let key = (Stable::from(granter), Stable::from(grantee));
         self.0.insert(key, Stable::from(group_id));
-        Ok(())
-    }
-
-    pub fn revoke_access(&mut self, granter: NIK, grantee: NIK) -> Result<(), String> {
-        let key = (Stable::from(granter), Stable::from(grantee));
-        self.0.remove(&key);
-        Ok(())
-    }
-
-    pub fn revoke_access_for_group(&mut self, granter: NIK, revokee: NIK, group_id: GroupId) -> Result<(), String> {
-        let key = (Stable::from(granter), Stable::from(revokee));
-        
-        // First check if access exists at all
-        if !self.0.contains_key(&key) {
-            return Err("[ERR_NO_ACCESS] No access exists between these users.".to_string());
-        }
-
-        // Then check if it's for the correct group
-        let current_group = self.0.get(&key).unwrap();
-        if current_group.as_ref() != &group_id {
-            return Err(format!(
-                "[ERR_WRONG_GROUP] Access exists but for a different group. Expected group: {}, actual group: {}",
-                group_id,
-                current_group.as_ref()
-            ));
-        }
-
-        // If we get here, we can safely revoke 
-        self.0.remove(&key);
         Ok(())
     }
 
@@ -339,6 +304,14 @@ impl GroupAccessMap {
         let result = self.0.contains_key(&key);
         
         result
+    }
+
+    pub fn has_access_in_group(&self, granter: &NIK, grantee: &NIK, group_id: GroupId) -> bool {
+        let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
+        match self.0.get(&key) {
+            Some(access_group_id) => access_group_id.as_ref() == &group_id,
+            None => false,
+        }
     }
 
     /// gets the group ID in which the EMR access was granted
@@ -363,25 +336,30 @@ impl GroupAccessMap {
             .map(|(key, _)| (key.0.into_inner(), key.1.into_inner()))
             .collect()
     }
+
+    pub fn revoke_access_for_group(&mut self, granter: NIK, revokee: NIK, group_id: GroupId) -> Result<(), String> {
+        let key = (Stable::from(granter), Stable::from(revokee));
+        
+        // First check if access exists at all
+        if !self.0.contains_key(&key) {
+            return Err("[ERR_NO_ACCESS] No access exists between these users.".to_string());
+        }
+
+        // Then check if it's for the correct group
+        let current_group = self.0.get(&key).unwrap();
+        if current_group.as_ref() != &group_id {
+            return Err(format!(
+                "[ERR_WRONG_GROUP] Access exists but for a different group. Expected group: {}, actual group: {}",
+                group_id,
+                current_group.as_ref()
+            ));
+        }
+
+        // If we get here, we can safely revoke
+        self.0.remove(&key);
+        Ok(())
+    }
 }
-
-// #[cfg(test)]
-// mod test_group_access_map {
-//     use super::*;
-//     use canister_common::memory_manager;
-
-//     #[test]
-//     fn test_grant_and_revoke_access() {
-//         // cant really test this as we need to create a group first to get its id
-//         todo!()
-//     }
-
-//     #[test]
-//     fn test_access_verification() {
-//         // cant really test this as we need to create a group first to get its id
-//         todo!()
-//     }
-// }
 
 pub type PatientBindingMapResult<T = ()> = Result<T, PatientRegistryError>;
 pub type AdminMapResult<T = ()> = Result<T, AdminMapError>;

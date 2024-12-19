@@ -1097,7 +1097,7 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             if granter == nik || grantee == nik {
                 s.registry
                     .group_access_map
-                    .revoke_access(granter, grantee)
+                    .revoke_access_for_group(granter, grantee, req.group_id.clone())
                     .map_err(|e| format!("Failed to revoke access: {}", e))?;
             }
         }
@@ -1116,7 +1116,7 @@ fn leave_group(req: LeaveGroupRequest) -> Result<(), String> {
             for (granter, grantee) in access_pairs {
                 s.registry
                     .group_access_map
-                    .revoke_access(granter, grantee)
+                    .revoke_access_for_group(granter, grantee, req.group_id.clone())
                     .map_err(|e| format!("Failed to revoke access: {}", e))?;
             }
 
@@ -1163,65 +1163,34 @@ fn get_user_groups() -> GetUserGroupsResponse {
 }
 
 #[ic_cdk::update(guard = "only_patient")]
-fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
+async fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
     let caller = verified_caller().unwrap();
-    let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-
-    // Parse grantee NIK from string
-    let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
-        .map_err(|_| "Invalid grantee NIK format".to_string())?;
-
-    // Verify both users are in the same group
-    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
-        .ok_or("Group not found")?;
-
-    // Check both users are in the group
-    if !group.members.contains(&granter_nik) {
-        return Err("Granter is not a member of the group".to_string());
-    }
-    if !group.members.contains(&grantee_nik) {
-        return Err("Grantee is not a member of the group".to_string());
-    }
-
-    // Grant EMR access to grantee
-    with_state_mut(|s| {
-        s.registry
-            .group_access_map
-            .grant_access(granter_nik, grantee_nik, req.group_id.clone())
-    })
-    .map_err(|e| format!("Failed to grant EMR access: {:?}", e))
-}
-
-#[ic_cdk::update(guard = "only_patient")]
-fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
-    let caller = verified_caller().unwrap();
-    let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
+    let granter_nik = with_state(|s| s.registry.owner_map.get_nik(&caller))
+        .map_err(|e| format!("[ERR_CALLER_NOT_FOUND] Caller not registered: {}", e))?
+        .into_inner();
 
     // parse grantee NIK from string
     let revokee_nik = NIK::from_str(&req.revokee_nik.to_string())
         .map_err(|_| "Invalid revokee NIK format".to_string())?;
 
+    // Check if access exists in the requested group
+    let access_in_requested_group = with_state(|s| {
+        s.registry
+            .group_access_map
+            .has_access_in_group(&granter_nik, &revokee_nik, req.group_id.clone())
+    });
+
+    if !access_in_requested_group {
+        return Err("[ERR_ACCESS_INVALID] No valid access exists between these users in this group.".to_string());
+    }
+
     // verify both users are in the same group
     let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
-        .ok_or_else(|| format!("[ERR_GROUP_NOT_FOUND] Group {} does not exist", req.group_id))?;
+        .ok_or(format!("[ERR_GROUP_NOT_FOUND] Group {} does not exist", req.group_id))?;
 
     // verify both users are members of the group
     if !group.members.contains(&granter_nik) || !group.members.contains(&revokee_nik) {
-        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group".to_string());
-    }
-
-    // Check if access exists before trying to revoke
-    let access_exists = with_state(|s| {
-        s.registry
-            .group_access_map
-            .has_access(&granter_nik, &revokee_nik)
-    });
-
-    if !access_exists {
-        // If no access exists, consider it a success since the end state is what was desired
-        log!("No access existed to revoke between granter {} and revokee {} in group {}", 
-            granter_nik, revokee_nik, req.group_id);
-        return Ok(());
+        return Err(format!("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group: {:?}, {:?}", granter_nik, revokee_nik));
     }
 
     // revoke EMR access from grantee for specific group
@@ -1231,6 +1200,35 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
             .revoke_access_for_group(granter_nik, revokee_nik, req.group_id)
     })
     .map_err(|e| format!("[ERR_REVOKE_FAILED] Failed to revoke EMR access: {}", e))
+}
+
+#[ic_cdk::update(guard = "only_patient")]
+async fn grant_group_access(req: GrantGroupAccessRequest) -> Result<(), String> {
+    let caller = verified_caller().unwrap();
+    let caller_nik = with_state(|s| s.registry.owner_map.get_nik(&caller))
+        .map_err(|e| format!("[ERR_CALLER_NOT_FOUND] Caller not registered: {}", e))?
+        .into_inner();
+
+    // parse grantee NIK from string
+    let grantee_nik = NIK::from_str(&req.grantee_nik.to_string())
+        .map_err(|_| "Invalid grantee NIK format".to_string())?;
+
+    // verify both users are in the same group
+    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
+        .ok_or_else(|| format!("[ERR_GROUP_NOT_FOUND] Group {} does not exist", req.group_id))?;
+
+    // verify both users are members of the group
+    if !group.members.contains(&caller_nik) || !group.members.contains(&grantee_nik) {
+        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group".to_string());
+    }
+
+    // grant EMR access to grantee
+    with_state_mut(|s| {
+        s.registry
+            .group_access_map
+            .grant_access_for_group(caller_nik, grantee_nik, req.group_id)
+    })
+    .map_err(|e| format!("[ERR_GRANT_FAILED] Failed to grant EMR access: {}", e))
 }
 
 #[ic_cdk::query(composite = true, guard = "only_patient")]

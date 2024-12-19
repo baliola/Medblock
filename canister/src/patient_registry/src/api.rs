@@ -438,8 +438,10 @@ pub struct GrantGroupAccessRequest {
 
 #[derive(CandidType, Deserialize)]
 pub struct RevokeGroupAccessRequest {
-    pub revokee_nik: NIK,
     pub group_id: GroupId,
+    pub revokee_nik: NIK,
+    #[serde(default)]
+    pub _type: Option<String>,
 }
 
 #[derive(CandidType, Deserialize, Clone)]
