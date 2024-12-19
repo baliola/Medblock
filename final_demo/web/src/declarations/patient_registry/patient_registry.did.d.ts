@@ -239,7 +239,10 @@ export type Result_4 = { 'Ok' : ReadEmrByIdResponse } |
 export type Result_5 = { 'Ok' : EmrListPatientResponse } |
   { 'Err' : string };
 export interface RevokeConsentRequest { 'codes' : Array<string> }
-export interface RevokeGroupAccessRequest { 'grantee_nik' : string }
+export interface RevokeGroupAccessRequest {
+  'revokee_nik' : string,
+  'group_id' : string,
+}
 export interface SearchPatientAdminResponse { 'patient_info' : PatientWithNik }
 export interface SearchPatientRequest {
   '_type' : [] | [string],
