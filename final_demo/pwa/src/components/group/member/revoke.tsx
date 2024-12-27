@@ -59,7 +59,7 @@ export default function RevokeAccessGroupModal({ props }: { props: IRevokeAccess
   const handleRevokeGroupAccess = async () => {
     try {
       const data: RevokeGroupAccessRequest[] | any = [{
-        revokee_nik: encodeHashNIK(nik),
+        revokee_nik: nik,
         group_id
       }];
 
