@@ -6,6 +6,6 @@ export const kycWaiting = {
   image: assets.illustration_female_doctor,
   button: {
     label: "Back",
-    redirect: "/auth/unverified"
+    redirect: "/home"
   }
 };

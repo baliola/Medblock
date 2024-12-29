@@ -18,7 +18,6 @@ export default function LoginPage() {
       w={'full'}
       gap={5}
     >
-      <Text>Ini Text Tesiting</Text>
       <AuthHeader size="lg" />
       <NFIDButtonLogin />
       <AuthOtherLoginOptions />
