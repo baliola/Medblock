@@ -14,7 +14,7 @@ export default function WaitingPage() {
       direction={"column"}
       justify={'space-between'}
       align={'center'}
-      gap={9}
+      gap={2}
       h={'full'}
     >
       <Stack align={'center'} pt={5} my={"auto"}>
@@ -28,16 +28,28 @@ export default function WaitingPage() {
           </Text>
         </Stack>
       </Stack>
-      <Button type="submit"
+      <Button type="button"
+        fontSize={'sm'}
+        w={'full'}
+        py={6}
+        rounded={"xl"}
+        colorScheme="gray"
+        color={'primary.700'}
+        size={'sm'}
+        onClick={(() => router.replace(button.refresh.redirect))}
+      >
+        {button.refresh.label}
+      </Button>
+      <Button type="button"
         colorScheme="primary"
         bg={"primary.700"}
         fontSize={'sm'}
         w={'full'}
         py={6}
         rounded={"xl"}
-        onClick={() => router.replace(button.redirect)}
+        onClick={() => router.replace(button.back.redirect)}
       >
-        {button.label}
+        {button.back.label}
       </Button>
     </Flex>
   )
