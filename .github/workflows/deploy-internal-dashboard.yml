@@ -1,9 +1,9 @@
-name: Deploy Internal-Dashboard to Staging
+name: Deploy Internal-Dashboard to Production
 
 on:
   push:
     branches:
-      - staging
+      - main
     paths:
       - internal-dashboard/**
 
@@ -16,12 +16,12 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: [self-hosted, staging]
+    runs-on: [self-hosted, production]
 
     steps:
       - name: Pull code
         run: |
-          cd /home/ubuntu/Medblock-Staging
+          cd /home/ubuntu/Medblock
           git pull
    
       - name: Log in to Amazon ECR
@@ -29,20 +29,20 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/internal-dashboard/Dockerfile /home/ubuntu/Medblock-Staging/internal-dashboard/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/internal-dashboard/Dockerfile /home/ubuntu/Medblock/internal-dashboard/
 
       - name: Push Docker Image to ECR
         run: |
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
 
   deploy:
-    runs-on: [self-hosted, staging]
+    runs-on: [self-hosted, production]
     needs: build-and-push
 
     steps:
       - name: Deploy to Server
         run: |
-          cd /home/ubuntu/Medblock-Staging/internal-dashboard
+          cd /home/ubuntu/Medblock/internal-dashboard
           docker compose down
           docker compose pull webapp
           docker compose up -d

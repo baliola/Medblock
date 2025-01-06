@@ -1,13 +1,13 @@
 services:
   webapp:
-    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-webapp:staging-latest
-    container_name: medblock-webapp-staging
+    image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-webapp:latest
+    container_name: medblock-webapp
     ports:
-      - "4001:3001"
+      - "3001:3001"
     restart: unless-stopped
     networks:
-      - medblock-staging-network
+      - medblock-network
 
 networks:
-  medblock-staging-network:
+  medblock-network:
     driver: bridge

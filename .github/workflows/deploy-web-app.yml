@@ -1,9 +1,9 @@
-name: Deploy Webapp to Staging
+name: Deploy Webapp to Prod
 
 on:
   push:
     branches:
-      - staging
+      - main
     paths:
       - final_demo/web/**
 
@@ -16,12 +16,12 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: [self-hosted, staging]
+    runs-on: [self-hosted, production]
 
     steps:
       - name: Pull code
         run: |
-          cd /home/ubuntu/Medblock-Staging
+          cd /home/ubuntu/Medblock
           git pull
    
       - name: Log in to Amazon ECR
@@ -29,14 +29,14 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock-Staging/final_demo/web/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock/final_demo/web/
 
       - name: Push Docker Image to ECR
         run: |
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
 
   deploy:
-    runs-on: [self-hosted, staging]
+    runs-on: [self-hosted, production]
     needs: build-and-push
 
     steps:
@@ -44,7 +44,7 @@ jobs:
         run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - name: Deploy to Server
         run: |
-          cd /home/ubuntu/Medblock-Staging/final_demo/web
+          cd /home/ubuntu/Medblock/final_demo/web
           docker compose down
           docker compose pull webapp
           docker compose up -d
