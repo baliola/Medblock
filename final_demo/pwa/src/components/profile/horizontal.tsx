@@ -39,7 +39,7 @@ const UserProfile = ({
       />
 
       <Flex direction={'column'} color={"neutral.700"}>
-        <Text fontSize={'lg'} fontWeight={'bold'}>
+        <Text fontSize={'lg'} fontWeight={'bold'} textTransform={"capitalize"}>
           {profile?.patient.V1.name}
         </Text>
 

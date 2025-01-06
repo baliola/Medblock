@@ -1,0 +1,48 @@
+name: Deploy Internal-Dashboard to Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - internal-dashboard/**
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  IMAGE_NAME: ${{ secrets.INT_IMAGE_NAME }}
+
+jobs:
+  build-and-push:
+    runs-on: [self-hosted, staging]
+
+    steps:
+      - name: Pull code
+        run: |
+          cd /home/ubuntu/Medblock-Staging
+          git pull
+   
+      - name: Log in to Amazon ECR
+        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest -f /home/ubuntu/Medblock-Staging/internal-dashboard/Dockerfile /home/ubuntu/Medblock-Staging/internal-dashboard/
+
+      - name: Push Docker Image to ECR
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:staging-latest
+
+  deploy:
+    runs-on: [self-hosted, staging]
+    needs: build-and-push
+
+    steps:
+      - name: Deploy to Server
+        run: |
+          cd /home/ubuntu/Medblock-Staging/internal-dashboard
+          docker compose down
+          docker compose pull webapp
+          docker compose up -d

@@ -5,6 +5,8 @@ members = [
     "src/provider_registry",
     "src/emr_registry",
     "src/patient_registry",
+    # "tests/integration-tests",
+    # // this is currently disabled because the pocket-ic does not have a compatible ic-cdk version with the rest of the project, and the fact that ``cargo test`` will run the integration tests first before building the canisters wasm files, giving a ``No such file or directory error``
 ]
 # exclude because currently the pocket-ic does not have a compatible ic-cdk version with the rest of the project
 exclude = ["tests/integration-tests", "tests/pocket-ic-bindgen"]

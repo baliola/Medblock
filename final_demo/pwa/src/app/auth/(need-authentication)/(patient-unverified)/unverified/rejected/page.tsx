@@ -1,30 +1,20 @@
 "use client"
 
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button, Flex, Image, Stack, Text } from "@chakra-ui/react";
-import { useQuery } from "@tanstack/react-query";
-import LoadingScreen from "@/layouts/loading";
-import { getKYCStatus } from "@/libs/api/kyc";
-import { useProfileStore } from "@/store/profile-store";
 import { kycRejected } from "@/constants/contents/auth/registration/reject";
+import useMedblockAuth from "@/hooks/useAuth";
+import { ButtonNFID } from "@/constants/contents/auth/login/button";
 
 export default function RejectedPage() {
-  redirect("/home");
-
   const router = useRouter();
-  const patientData = useProfileStore((state) => state.profile);
+  const { title, description, image, button } = kycRejected;
+  const { signOut } = ButtonNFID;
 
-  const { title, image, button } = kycRejected;
-
-  const { data: status, isLoading } = useQuery({
-    queryKey: ['registration-status'],
-    queryFn: () => getKYCStatus(patientData?.nik as string),
-    enabled: !!patientData,
-  });
-
-  if (isLoading) {
-    return <LoadingScreen />
-  }
+  const {
+    authenticated,
+    onLogout
+  } = useMedblockAuth();
 
   return (
     <Flex
@@ -32,17 +22,17 @@ export default function RejectedPage() {
       direction={"column"}
       justify={'space-between'}
       align={'center'}
-      gap={9}
+      gap={0}
       h={'full'}
     >
-      <Stack align={'center'} pt={5}>
+      <Stack align={'center'} pt={8} my={"auto"}>
         <Image src={image} alt={title} w={40} />
-        <Stack spacing={3} align={'center'} textAlign={'center'}>
+        <Stack spacing={0} align={'center'} textAlign={'center'}>
           <Text fontSize={'xl'} fontWeight={'bold'}>
             {title}
           </Text>
           <Text fontSize={'md'}>
-            {status?.verificationHistory[0].message}
+            {description}
           </Text>
         </Stack>
       </Stack>
@@ -57,6 +47,21 @@ export default function RejectedPage() {
       >
         {button.label}
       </Button>
+
+      {
+        authenticated &&
+        <Button
+          colorScheme="danger"
+          w={"full"}
+          rounded={"2xl"}
+          fontSize={'sm'}
+          py={6}
+          mt={2}
+          onClick={onLogout}
+        >
+          {signOut.label}
+        </Button>
+      }
     </Flex>
   )
 }

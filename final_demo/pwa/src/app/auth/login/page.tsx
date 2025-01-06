@@ -1,6 +1,6 @@
 "use client"
 import dynamic from "next/dynamic";
-import { Flex } from "@chakra-ui/react";
+import { Flex, Text } from "@chakra-ui/react";
 
 import { AuthHeader } from "@/components/auth/header";
 import AuthOtherLoginOptions from "@/components/auth/login/other-login";

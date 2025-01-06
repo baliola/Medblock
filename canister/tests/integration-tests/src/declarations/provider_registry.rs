@@ -306,6 +306,9 @@ impl ProviderRegistry {
     pub async fn get_trusted_origins(&self) -> Result<(Vec<String>,)> {
         ic_cdk::call(self.0, "get_trusted_origins", ()).await
     }
+    pub async fn is_valid_provider(&self, arg0: Principal) -> Result<(bool,)> {
+        ic_cdk::call(self.0, "is_valid_provider", (arg0,)).await
+    }
     pub async fn issue_emr(&self, arg0: IssueEmrRequest) -> Result<(IssueEmrResponse,)> {
         ic_cdk::call(self.0, "issue_emr", (arg0,)).await
     }
@@ -533,6 +536,27 @@ pub mod pocket_ic_bindings {
                 self.0.clone(),
                 sender,
                 "get_trusted_origins",
+                payload,
+            )
+        }
+        pub fn is_valid_provider(
+            &self,
+            server: &pocket_ic::PocketIc,
+            sender: ic_principal::Principal,
+            call_type: Call,
+            arg0: Principal,
+        ) -> std::result::Result<bool, pocket_ic::UserError> {
+            let f = match call_type {
+                Call::Query => pocket_ic::PocketIc::query_call,
+                Call::Update => pocket_ic::PocketIc::update_call,
+            };
+            let payload = (arg0);
+            call_pocket_ic(
+                server,
+                f,
+                self.0.clone(),
+                sender,
+                "is_valid_provider",
                 payload,
             )
         }

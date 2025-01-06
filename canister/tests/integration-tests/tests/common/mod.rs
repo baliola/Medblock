@@ -1,29 +1,26 @@
-use std::{ path::Path, process::Command, str::FromStr, time::Duration };
+use std::{path::Path, process::Command, str::FromStr, time::Duration};
 
-use candid::{ CandidType, Encode };
+use candid::{CandidType, Encode};
 use canister_common::common::H256;
 use ic_agent::Identity;
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_principal::Principal;
 use integration_tests::declarations::{
     self,
-    patient_registry,
-    provider_registry::{ ProviderInfoRequest, RegisternewProviderRequest },
+    patient_registry::{self, Relation},
+    provider_registry::{ProviderInfoRequest, RegisternewProviderRequest},
 };
 use pocket_ic::UserError;
 
 use integration_tests::declarations::patient_registry::pocket_ic_bindings::Call as PatientCall;
 use integration_tests::declarations::provider_registry::pocket_ic_bindings::Call as ProviderCall;
 
-const PROVIDER_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm"
-);
-const PATIENT_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/patient_registry.wasm"
-);
-const EMR_REGISTRY_WASM: &[u8] = include_bytes!(
-    "../../../../target/wasm32-unknown-unknown/release/emr_registry.wasm"
-);
+const PROVIDER_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/provider_registry.wasm");
+const PATIENT_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/patient_registry.wasm");
+const EMR_REGISTRY_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/emr_registry.wasm");
 
 const POCKET_IC_PATH: Option<&'static str> = std::option_env!("POCKET_IC_BIN");
 
@@ -34,7 +31,7 @@ fn create_canister(
     server: &pocket_ic::PocketIc,
     bytes: &'static [u8],
     arg: Vec<u8>,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = server.create_canister_with_settings(
         Some(controller.clone()),
@@ -43,7 +40,7 @@ fn create_canister(
             compute_allocation: None,
             memory_allocation: None,
             freezing_threshold: None,
-        })
+        }),
     );
 
     server.add_cycles(id.clone(), CYCLE);
@@ -54,7 +51,7 @@ fn create_canister(
 
 fn setup_emr_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, EMR_REGISTRY_WASM, Vec::new(), controller);
     id
@@ -65,7 +62,7 @@ fn bind_emr_registry(
     id: Principal,
     controller: Principal,
     provider: Principal,
-    patient: Principal
+    patient: Principal,
 ) {
     let args = declarations::emr_registry::AuthorizedCallerRequest {
         caller: patient.clone(),
@@ -75,7 +72,7 @@ fn bind_emr_registry(
         id.clone(),
         controller.clone(),
         "add_authorized_caller",
-        Encode!(&args).unwrap()
+        Encode!(&args).unwrap(),
     );
 
     let args = declarations::emr_registry::AuthorizedCallerRequest {
@@ -86,13 +83,13 @@ fn bind_emr_registry(
         id.clone(),
         controller.clone(),
         "add_authorized_caller",
-        Encode!(&args).unwrap()
+        Encode!(&args).unwrap(),
     );
 }
 
 fn setup_provider_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, PROVIDER_REGISTRY_WASM, Vec::new(), controller);
     id
@@ -103,14 +100,14 @@ fn bind_provider_registry(
     id: Principal,
     controller: Principal,
     emr: Principal,
-    patient: Principal
+    patient: Principal,
 ) {
     let args = declarations::provider_registry::AuthorizedCallerRequest {
         caller: emr.clone(),
     };
     let registry =
         integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
-            id.clone()
+            id.clone(),
         );
 
     registry.update_emr_registry_principal(
@@ -119,7 +116,7 @@ fn bind_provider_registry(
         ProviderCall::Update,
         declarations::provider_registry::SuspendRequest {
             principal: emr.clone(),
-        }
+        },
     );
 
     registry.update_patient_registry_principal(
@@ -128,13 +125,13 @@ fn bind_provider_registry(
         ProviderCall::Update,
         declarations::provider_registry::SuspendRequest {
             principal: patient.clone(),
-        }
+        },
     );
 }
 
 fn setup_patient_registry(
     server: &pocket_ic::PocketIc,
-    controller: Principal
+    controller: Principal,
 ) -> ic_cdk::api::management_canister::provisional::CanisterId {
     let id = create_canister(server, PATIENT_REGISTRY_WASM, Vec::new(), controller);
 
@@ -146,14 +143,14 @@ fn bind_patient_registry(
     id: Principal,
     controller: Principal,
     emr: Principal,
-    provider: Principal
+    provider: Principal,
 ) {
     let args = declarations::patient_registry::AuthorizedCallerRequest {
         caller: emr.clone(),
     };
     let registry =
         integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
-            id.clone()
+            id.clone(),
         );
 
     registry.update_emr_registry_principal(
@@ -162,7 +159,7 @@ fn bind_patient_registry(
         PatientCall::Update,
         declarations::patient_registry::UpdateEmrRegistryRequest {
             principal: emr.clone(),
-        }
+        },
     );
 
     // bind the patient registry to the provider registry
@@ -176,7 +173,7 @@ fn bind_patient_registry(
         PatientCall::Update,
         declarations::patient_registry::UpdateEmrRegistryRequest {
             principal: provider.clone(),
-        }
+        },
     );
 }
 
@@ -186,7 +183,8 @@ fn resolve_pocket_ic_path() {
         let path = Command::new("which")
             .arg("pocket-ic")
             .output()
-            .expect("pocket-ic not found").stdout;
+            .expect("pocket-ic not found")
+            .stdout;
 
         let path = std::str::from_utf8(&path).unwrap().trim();
         let path = Path::new(path);
@@ -201,37 +199,47 @@ fn bind_canisters(
     provider: Principal,
     patient: Principal,
     emr: Principal,
-    controller: Principal
+    controller: Principal,
 ) {
-    bind_emr_registry(server, emr.clone(), controller.clone(), provider.clone(), patient.clone());
+    bind_emr_registry(
+        server,
+        emr.clone(),
+        controller.clone(),
+        provider.clone(),
+        patient.clone(),
+    );
     bind_patient_registry(
         server,
         patient.clone(),
         controller.clone(),
         emr.clone(),
-        provider.clone()
+        provider.clone(),
     );
     bind_provider_registry(
         server,
         provider.clone(),
         controller.clone(),
         emr.clone(),
-        patient.clone()
+        patient.clone(),
     );
 }
 
 pub struct Registries {
     pub ic: pocket_ic::PocketIc,
     pub emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry,
-    pub patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry,
-    pub provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry,
+    pub patient:
+        integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry,
+    pub provider:
+        integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry,
     pub controller: Principal,
 }
 
 pub fn prepare() -> Registries {
     resolve_pocket_ic_path();
 
-    let server = pocket_ic::PocketIcBuilder::new().with_application_subnet().build();
+    let server = pocket_ic::PocketIcBuilder::new()
+        .with_application_subnet()
+        .build();
     let controller = Principal::from_text("rrkah-fqaaa-aaaaa-aaaaq-cai").unwrap();
 
     let id = Principal::anonymous();
@@ -240,7 +248,13 @@ pub fn prepare() -> Registries {
     let patient = setup_patient_registry(&server, controller.clone());
     let emr = setup_emr_registry(&server, controller.clone());
 
-    bind_canisters(&server, provider.clone(), patient.clone(), emr.clone(), controller.clone());
+    bind_canisters(
+        &server,
+        provider.clone(),
+        patient.clone(),
+        emr.clone(),
+        controller.clone(),
+    );
 
     // to fully initialize the canisters
     server.advance_time(Duration::from_secs(1000));
@@ -251,12 +265,14 @@ pub fn prepare() -> Registries {
     Registries {
         ic: server,
         emr: integration_tests::declarations::emr_registry::pocket_ic_bindings::EmrRegistry(emr),
-        patient: integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
-            patient
-        ),
-        provider: integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
-            provider
-        ),
+        patient:
+            integration_tests::declarations::patient_registry::pocket_ic_bindings::PatientRegistry(
+                patient,
+            ),
+        provider:
+            integration_tests::declarations::provider_registry::pocket_ic_bindings::ProviderRegistry(
+                provider,
+            ),
         controller,
     }
 }
@@ -291,7 +307,12 @@ pub mod ext {
 
 impl<Ext> ScenarioResult<Ext> {
     pub fn new(registries: Registries, provider: Provider, patient: Patient, ext: Ext) -> Self {
-        Self { registries, provider, patient, ext }
+        Self {
+            registries,
+            provider,
+            patient,
+            ext,
+        }
     }
 }
 
@@ -306,11 +327,15 @@ impl Scenario {
         let registries = prepare();
 
         let provider = Provider(random_identity());
-        let nik = canister_common::common::H256
-            ::from_str("3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709")
-            .unwrap();
+        let nik = canister_common::common::H256::from_str(
+            "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
+        )
+        .unwrap();
 
-        let patient = Patient { principal: random_identity(), nik: nik.clone() };
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
 
         // prepare provider
         let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
@@ -322,12 +347,13 @@ impl Scenario {
             address: address.clone(),
         };
 
-        registries.provider
+        registries
+            .provider
             .register_new_provider(
                 &registries.ic,
                 registries.controller.clone(),
                 ProviderCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -344,11 +370,17 @@ impl Scenario {
             nik: nik.to_string(),
         };
 
-        registries.patient
-            .register_patient(&registries.ic, patient.principal.clone(), PatientCall::Update, arg)
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
             .unwrap();
 
-        let arg = patient_registry::UpdateInitialPatientInfoRequest {
+        let arg = patient_registry::UpdatePatientInfoRequest {
             info: patient_registry::V1 {
                 name: display.clone(),
                 martial_status: "married".to_string(),
@@ -356,15 +388,18 @@ impl Scenario {
                 address,
                 gender: "men".to_ascii_lowercase(),
                 date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
             },
         };
 
-        registries.patient
-            .update_initial_patient_info(
+        registries
+            .patient
+            .update_patient_info(
                 &registries.ic,
                 patient.principal.clone(),
                 PatientCall::Update,
-                arg
+                arg,
             )
             .unwrap();
 
@@ -382,12 +417,568 @@ impl Scenario {
             user_id: patient.nik.clone().to_string(),
         };
 
-        let response = registry.provider
+        let response = registry
+            .provider
             .issue_emr(&registry.ic, provider.0.clone(), ProviderCall::Update, arg)
             .unwrap();
 
-        ScenarioResult::new(registry, provider, patient, EmrExt {
-            emr_header: response.emr_header,
-        })
+        ScenarioResult::new(
+            registry,
+            provider,
+            patient,
+            EmrExt {
+                emr_header: response.emr_header,
+            },
+        )
+    }
+
+    pub fn one_provider_two_patient_with_emrs() -> (Registries, Provider, Patient, Patient) {
+        let registries = prepare();
+        let patient1 = Self::create_patient(&registries);
+        let patient2 = Self::create_patient(&registries);
+        let provider = Provider(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries
+            .provider
+            .register_new_provider(
+                &registries.ic,
+                registries.controller.clone(),
+                ProviderCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure provider registration is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        // issue EMRs for both patients
+        let emr_req1 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key1".to_string(),
+                value: "value1".to_string(),
+            }],
+            user_id: patient1.nik.clone().to_string(),
+        };
+
+        let emr_req2 = declarations::provider_registry::IssueEmrRequest {
+            emr: vec![declarations::provider_registry::EmrFragment {
+                key: "key2".to_string(),
+                value: "value2".to_string(),
+            }],
+            user_id: patient2.nik.clone().to_string(),
+        };
+
+        // issue EMRs for both patients and ensure they complete
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req1,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure first EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        registries
+            .provider
+            .issue_emr(
+                &registries.ic,
+                provider.0.clone(),
+                ProviderCall::Update,
+                emr_req2,
+            )
+            .unwrap();
+
+        // Advance time and tick to ensure second EMR issuance is complete
+        registries.ic.advance_time(Duration::from_secs(1));
+        registries.ic.tick();
+
+        // update patient info for patient 1
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // update patient info for patient 2
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient 2".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient2.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        (registries, provider, patient1, patient2)
+    }
+
+    pub fn three_patients_one_provider_one_group() -> (Registries, Provider, Patient, Patient, Patient, String) {
+        let registries = prepare();
+        let patient1 = Self::create_patient(&registries);
+        let patient2 = Self::create_patient(&registries);
+        let patient3 = Self::create_patient(&registries);
+        let provider = Provider(random_identity());
+
+        // prepare provider
+        let display = String::from("PT RUMAH SAKIT").to_ascii_lowercase();
+        let address = String::from("JL.STREET").to_ascii_lowercase();
+
+        let arg = RegisternewProviderRequest {
+            provider_principal: provider.0.clone(),
+            display_name: display.clone(),
+            address: address.clone(),
+        };
+
+        registries
+            .provider
+            .register_new_provider(
+                &registries.ic,
+                registries.controller.clone(),
+                ProviderCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // issue EMRs for all three patients
+        let emr_requests = vec![
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key1".to_string(),
+                    value: "value1".to_string(),
+                }],
+                user_id: patient1.nik.clone().to_string(),
+            },
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key2".to_string(),
+                    value: "value2".to_string(),
+                }],
+                user_id: patient2.nik.clone().to_string(),
+            },
+            declarations::provider_registry::IssueEmrRequest {
+                emr: vec![declarations::provider_registry::EmrFragment {
+                    key: "key3".to_string(),
+                    value: "value3".to_string(),
+                }],
+                user_id: patient3.nik.clone().to_string(),
+            },
+        ];
+
+        // issue EMRs for all patients
+        for req in emr_requests {
+            registries
+                .provider
+                .issue_emr(
+                    &registries.ic,
+                    provider.0.clone(),
+                    ProviderCall::Update,
+                    req,
+                )
+                .unwrap();
+
+            registries.ic.advance_time(Duration::from_secs(1));
+            registries.ic.tick();
+        }
+
+        // create group with patient1 as owner
+        let create_group_req = patient_registry::CreateGroupRequest {
+            name: "family group".to_string(),
+        };
+
+        let create_group_response = registries
+            .patient
+            .create_group(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                create_group_req,
+            )
+            .unwrap();
+
+        let group_id = match create_group_response {
+            patient_registry::Result2::Ok(response) => response.group_id.clone(),
+            patient_registry::Result2::Err(e) => {
+                panic!("Failed to create group: {}", e);
+            }
+        };
+
+        // add patient2 and patient3 to the group
+        for patient in [&patient2, &patient3] {
+            let create_consent_req = patient_registry::CreateConsentForGroupRequest {
+                nik: patient.nik.clone().to_string(),
+            };
+
+            let consent_response = registries
+                .patient
+                .create_consent_for_group(
+                    &registries.ic,
+                    patient.principal.clone(),
+                    PatientCall::Update,
+                    create_consent_req,
+                )
+                .unwrap();
+
+            let add_member_req = patient_registry::AddGroupMemberRequest {
+                group_id: group_id.clone(),
+                group_consent_code: consent_response.group_consent_code,
+                relation: Relation::Spouse,
+            };
+
+            registries
+                .patient
+                .add_group_member(
+                    &registries.ic,
+                    patient1.principal.clone(),
+                    PatientCall::Update,
+                    add_member_req,
+                )
+                .unwrap();
+
+            registries.ic.advance_time(Duration::from_secs(1));
+            registries.ic.tick();
+        }
+
+        (registries, provider, patient1, patient2, patient3, group_id)
+    }
+
+    pub fn two_patients_one_provider_one_group() -> (Registries, Provider, Patient, Patient, String)
+    {
+        let (registries, provider, patient1, patient2) = Self::one_provider_two_patient_with_emrs();
+
+        let create_group_req = patient_registry::CreateGroupRequest {
+            name: "test group".to_string(),
+        };
+
+        let create_group_response = registries
+            .patient
+            .create_group(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                create_group_req,
+            )
+            .unwrap();
+
+        let group_id = match create_group_response {
+            patient_registry::Result2::Ok(response) => response.group_id.clone(),
+            patient_registry::Result2::Err(e) => {
+                panic!("Failed to create group: {}", e);
+            }
+        };
+
+        let create_consent_for_group_req = patient_registry::CreateConsentForGroupRequest {
+            nik: patient2.nik.clone().to_string(),
+        };
+
+        // member creates a consent code
+        let consent_code = registries
+            .patient
+            .create_consent_for_group(
+                &registries.ic,
+                patient2.principal.clone(),
+                PatientCall::Update,
+                create_consent_for_group_req,
+            )
+            .unwrap();
+
+        let add_member_req = patient_registry::AddGroupMemberRequest {
+            group_id: group_id.clone(),
+            group_consent_code: consent_code.group_consent_code,
+            relation: Relation::Spouse,
+        };
+
+        registries
+            .patient
+            .add_group_member(
+                &registries.ic,
+                patient1.principal.clone(),
+                PatientCall::Update,
+                add_member_req,
+            )
+            .unwrap();
+
+        (registries, provider, patient1, patient2, group_id)
+    }
+
+    pub fn one_admin_one_patient() -> (Registries, Patient, Principal) {
+        let registries = prepare();
+
+        // create patient
+        let nik = canister_common::common::H256::from_str(
+            "3fe93da886732fd563ba71f136f10dffc6a8955f911b36064b9e01b32f8af709",
+        )
+        .unwrap();
+
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
+
+        // register patient
+        let display = String::from("pasien").to_ascii_lowercase();
+        let address = String::from("jl.rumah").to_ascii_lowercase();
+
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // set initial patient info
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: display.clone(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address,
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // create and bind admin
+        let admin_principal = random_identity();
+        let admin_nik = canister_common::common::H256::from([1u8; 32]);
+
+        let bind_admin_arg = patient_registry::BindAdminRequest {
+            principal: admin_principal.clone(),
+            nik: admin_nik.to_string(),
+        };
+
+        registries
+            .patient
+            .bind_admin(
+                &registries.ic,
+                registries.controller.clone(),
+                PatientCall::Update,
+                bind_admin_arg,
+            )
+            .unwrap();
+
+        // verify that admin is bound
+        let is_admin = registries
+            .patient
+            .check_admin(
+                &registries.ic,
+                registries.controller.clone(),
+                PatientCall::Query,
+                admin_principal,
+            )
+            .unwrap();
+
+        assert!(is_admin, "Admin should be bound");
+
+        (registries, patient, admin_principal)
+    }
+
+    pub fn create_patient(registries: &Registries) -> Patient {
+        // generate a random NIK using timestamp to ensure uniqueness
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        let mut nik_bytes = [0u8; 32];
+        nik_bytes[..16].copy_from_slice(&timestamp.to_be_bytes());
+        let nik = canister_common::common::H256::from(nik_bytes);
+
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
+
+        // register patient
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // set initial patient info
+        let arg = patient_registry::UpdatePatientInfoRequest {
+            info: patient_registry::V1 {
+                name: "test patient".to_string(),
+                martial_status: "single".to_string(),
+                place_of_birth: "Jakarta".to_ascii_lowercase(),
+                address: "test address".to_string(),
+                gender: "male".to_ascii_lowercase(),
+                date_of_birth: "1990-01-01".to_string(),
+                kyc_status: patient_registry::KycStatus::Pending,
+                kyc_date: "2024-01-01".to_string(),
+            },
+        };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        patient
+    }
+
+    pub fn create_patient_with_info(
+        registries: &Registries,
+        info: patient_registry::V1,
+    ) -> Patient {
+        // generate a random NIK using timestamp to ensure uniqueness
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        let mut nik_bytes = [0u8; 32];
+        nik_bytes[..16].copy_from_slice(&timestamp.to_be_bytes());
+        let nik = canister_common::common::H256::from(nik_bytes);
+
+        let patient = Patient {
+            principal: random_identity(),
+            nik: nik.clone(),
+        };
+
+        // register patient
+        let arg = patient_registry::RegisterPatientRequest {
+            nik: nik.to_string(),
+        };
+
+        registries
+            .patient
+            .register_patient(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        // set initial patient info with provided V1 struct
+        let arg = patient_registry::UpdatePatientInfoRequest { info };
+
+        registries
+            .patient
+            .update_patient_info(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+                arg,
+            )
+            .unwrap();
+
+        patient
+    }
+
+    /// claims consent for a provider from a patient
+    /// this establishes a session between the provider and patient
+    pub fn claim_consent_for_provider(
+        registries: &Registries,
+        provider: &Provider,
+        patient: &Patient,
+    ) {
+        // create a consent as the patient
+        let create_consent_response = registries
+            .patient
+            .create_consent(
+                &registries.ic,
+                patient.principal.clone(),
+                PatientCall::Update,
+            )
+            .unwrap();
+
+        // get the consent code
+        let consent_code = match create_consent_response {
+            patient_registry::ClaimConsentRequest { code } => code,
+        };
+
+        // claim the consent as the provider to establish a session
+        let consent_req = patient_registry::ClaimConsentRequest { code: consent_code };
+
+        registries
+            .patient
+            .claim_consent(
+                &registries.ic,
+                provider.0.clone(),
+                PatientCall::Update,
+                consent_req,
+            )
+            .unwrap();
     }
 }

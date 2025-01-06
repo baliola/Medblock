@@ -1,6 +1,6 @@
 "use client"
 
-import { Divider, Flex, Icon, Text } from "@chakra-ui/react";
+import { Divider, Flex, Grid, Icon, Text } from "@chakra-ui/react";
 import { FaHospital } from "react-icons/fa6";
 import { MdMonetizationOn } from "react-icons/md";
 import EMRHospitalInfo from "./hospital-info";
@@ -21,7 +21,7 @@ export default function EMRHeader() {
     if (!value) return null;
     return (
       <Flex flex={1} direction={'column'}>
-        <Text fontSize={'xs'}>{title}</Text>
+        <Text fontSize={'sm'}>{title}</Text>
         <Text fontSize={'md'} fontWeight={'bold'}>
           {value ?? "-"}
         </Text>
@@ -31,14 +31,14 @@ export default function EMRHeader() {
 
   return (
     <Flex direction={'column'} gap={5}>
-      <Flex w={'full'} color={'neutral.700'}>
+      <Grid templateColumns="repeat(3, 1fr)" gap={6} color={"neutral.700"}>
         {emrDetailHeader.report.map((item, index) => (
           <HeaderSection key={index}
             title={item.title}
             keys={item.key}
           />
         ))}
-      </Flex>
+      </Grid>
       <Divider />
       <EMRHospitalInfo />
       {emrDetailHeader.information.map((info, index) => (

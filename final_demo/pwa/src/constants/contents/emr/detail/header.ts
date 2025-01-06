@@ -18,9 +18,25 @@ export const emrDetailHeader = {
       key: "visit_date"
     },
     {
+      title: "Discharge Date",
+      key: "discharge_date"
+    },
+    {
       title: "Medical Officer",
       key: "medical_officer"
-    }
+    },
+    {
+      title: "Visit Time",
+      key: "visit_time"
+    },
+    {
+      title: "Discharge Time",
+      key: "discharge_time"
+    },
+    {
+      title: "Room",
+      key: "room"
+    },
   ],
   information: [
     {

@@ -38,7 +38,7 @@ export default function HorizontalProfile({
       />
 
       <Flex direction={'column'} gap={1} color={"neutral.700"} w={"full"}>
-        <Text fontSize={{ base: 'sm' }} fontWeight={'bold'}>
+        <Text fontSize={{ base: 'sm' }} fontWeight={'bold'} textTransform={"capitalize"}>
           {profile.patient.V1.name}
         </Text>
 

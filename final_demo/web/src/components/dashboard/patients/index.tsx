@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { Flex, Text } from "@chakra-ui/react";
 
 import { PatientActor, usePatientQuery } from "@/services/patients";
@@ -9,15 +9,17 @@ import { PatientsLoading } from "./loading";
 import TableOverview from "./table";
 import { patientCanisterId } from "@/config/canisters/patient.canister";
 import { useEffect } from "react";
+import { useEMRStore } from "@/store/patient-emr";
 
 const PatientList = () => {
-  const setPatient = usePatientStore(state => state.setPatient)
-  const patientData = usePatientStore(state => state.patients);
+  const setPatient = usePatientStore((state) => state.setPatient);
+  const patientData = usePatientStore((state) => state.patients);
+  const setHasEmr = useEMRStore((state) => state.setUserHasEMR);
 
   const {
     loading,
     error,
-    call: fetchPatientList
+    call: fetchPatientList,
   } = usePatientQuery({
     functionName: "patient_list",
     refetchOnMount: false,
@@ -27,55 +29,54 @@ const PatientList = () => {
       const { patients } = data as PatientListResponse;
 
       if (patientData.length < 1) {
-        const transformedPatients = patients.map(patient => ({
+        const transformedPatients = patients.map((patient) => ({
           session_id: patient.session_id,
-          name: patient.info.V1.name
+          name: patient.info.V1.name,
         }));
 
-        setPatient(transformedPatients)
+        setPatient(transformedPatients);
       }
     },
     onError(error) {
-      console.log(error)
+      console.log(error);
     },
   });
 
   useEffect(() => {
-    fetchPatientList()
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    setHasEmr(false);
+
+    fetchPatientList();
 
     // eslint-disable-next-line
   }, []);
 
   if (loading) {
-    return <PatientsLoading />
+    return <PatientsLoading />;
   }
 
   if (error) {
     return (
-      <Flex w={'full'} justify={'center'} align={'center'}>
-        <Text>
-          No Patient List Here, please kindly add patient!
-        </Text>
+      <Flex w={"full"} justify={"center"} align={"center"}>
+        <Text>No Patient List Here, please kindly add patient!</Text>
       </Flex>
-    )
+    );
   }
 
   return (
-    <Flex w={'full'} direction={'column'} gap={8}>
+    <Flex w={"full"} direction={"column"} gap={8}>
       <TableOverview />
-      <Text fontSize={'sm'}>
+      <Text fontSize={"sm"}>
         Total Patient: <b>{patientData.length}</b>
       </Text>
     </Flex>
-  )
-}
+  );
+};
 
 export default function Patients() {
   return (
-    <PatientActor
-      canisterId={patientCanisterId}
-    >
+    <PatientActor canisterId={patientCanisterId}>
       <PatientList />
     </PatientActor>
-  )
+  );
 }

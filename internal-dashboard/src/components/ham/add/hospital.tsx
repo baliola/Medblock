@@ -87,7 +87,7 @@ const AddHospitalModal = (): ReactElement => {
                       <FormLabel htmlFor="name">Name</FormLabel>
                       <Field
                         as={TextInput}
-                        type="name"
+                        type="text"
                         name="name"
                         placeholder=""
                       />
@@ -100,7 +100,7 @@ const AddHospitalModal = (): ReactElement => {
                       <FormLabel htmlFor="address">Address</FormLabel>
                       <Field
                         as={TextInput}
-                        type="address"
+                        type="text"
                         name="address"
                         placeholder=""
                       />
@@ -113,7 +113,7 @@ const AddHospitalModal = (): ReactElement => {
                       <FormLabel htmlFor="principal">Principal</FormLabel>
                       <Field
                         as={TextInput}
-                        type="principal"
+                        type="text"
                         name="principal"
                         placeholder=""
                       />
@@ -136,7 +136,7 @@ const AddHospitalModal = (): ReactElement => {
                         bg={"primary.700"}
                         w={"full"}
                         isLoading={isSubmitting || registerHospitalLoading}
-                        isDisabled={!values.name || !values.address}
+                        isDisabled={!values.name || !values.address || !values.principal}
                       >
                         Submit
                       </Button>

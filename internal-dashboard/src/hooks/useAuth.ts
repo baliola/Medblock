@@ -53,8 +53,6 @@ export default function useMedblockAuth() {
     },
   });
 
-  // console.log('PRINCIPAL', identity?.getPrincipal().toText())
-
   const onLogin = async () => {
     await login({
       identityProvider: loginHost,
@@ -105,7 +103,6 @@ export default function useMedblockAuth() {
     });
 
     const isAuthenticated = await authClient.isAuthenticated();
-    // console.log('data -----...', authClient.getIdentity());
 
     if (isAuthenticated) {
       setAuthenticated(true);

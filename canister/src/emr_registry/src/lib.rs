@@ -1,46 +1,36 @@
 use api::{
-    AuthorizedCallerRequest,
-    CreateEmrRequest,
-    CreateEmrResponse,
-    ReadEmrByIdRequest,
-    ReadEmrByIdResponse,
-    RemoveEmrRequest,
-    RemoveEmrResponse,
-    UpdateEmrRequest,
-    UpdateEmrResponse,
+    AuthorizedCallerRequest, CreateEmrRequest, CreateEmrResponse, ReadEmrByIdRequest,
+    ReadEmrByIdResponse, RemoveEmrRequest, RemoveEmrResponse, UpdateEmrRequest, UpdateEmrResponse,
 };
-use candid::{ Decode, Encode };
+use candid::{Decode, Encode};
 use canister_common::{
-    common::{ self, guard::verified_caller, Get },
+    common::{self, guard::verified_caller},
     id_generator::IdGenerator,
     log,
     mmgr::MemoryManager,
     opaque_metrics,
     random::CanisterRandomSource,
     register_log,
-    stable::{ Candid, Memory, Stable },
-    statistics::{ self, traits::OpaqueMetrics },
+    stable::{Candid, Memory, Stable},
+    statistics::{self, traits::OpaqueMetrics},
 };
-use canistergeek_ic_rust::{ api_type::UpdateInformationRequest, monitor::data_type::DayData };
+use canistergeek_ic_rust::{api_type::UpdateInformationRequest, monitor::data_type::DayData};
 use config::CanisterConfig;
-use ic_cdk::{ init, query, update };
-use ic_stable_structures::{ Cell };
-use memory::UpgradeMemory;
-use std::{ cell::RefCell, io::Write };
 use core::time::Duration;
+use ic_cdk::{init, query, update};
+use ic_stable_structures::Cell;
+use memory::UpgradeMemory;
+use std::cell::RefCell;
 
-mod key;
-mod registry;
 pub mod api;
-pub mod header;
-mod memory;
 mod config;
+pub mod header;
+mod key;
+mod memory;
+mod registry;
 
-type State = common::State<
-    registry::CoreEmrRegistry,
-    Cell<Stable<CanisterConfig, Candid>, Memory>,
-    ()
->;
+type State =
+    common::State<registry::CoreEmrRegistry, Cell<Stable<CanisterConfig, Candid>, Memory>, ()>;
 register_log!("emr");
 
 thread_local! {
@@ -63,7 +53,12 @@ pub fn with_state<R>(f: impl FnOnce(&State) -> R) -> R {
 ///
 /// Precondition: the id generator is already initialized.
 pub fn with_id_generator_mut<R>(f: impl FnOnce(&mut IdGenerator<CanisterRandomSource>) -> R) -> R {
-    ID_GENERATOR.with(|cell| f(cell.borrow_mut().as_mut().expect("id generator not initialized")))
+    ID_GENERATOR.with(|cell| {
+        f(cell
+            .borrow_mut()
+            .as_mut()
+            .expect("id generator not initialized"))
+    })
 }
 
 /// A helper method to mutate the state.
@@ -96,7 +91,7 @@ fn init_state() -> self::State {
         registry::CoreEmrRegistry::init(&memory_manager),
         CanisterConfig::init(&memory_manager),
         (),
-        memory_manager
+        memory_manager,
     )
 }
 
@@ -164,11 +159,17 @@ fn serialize_canister_metrics() {
     let write = writer.write(&encoded_len.to_le_bytes());
     match write {
         Ok(_) => {
-            log!("encoded canister metrics length written successfully : {} bytes", encoded_len);
+            log!(
+                "encoded canister metrics length written successfully : {} bytes",
+                encoded_len
+            );
         }
 
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics length {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics length {:?}",
+                e
+            );
         }
     }
 
@@ -178,7 +179,10 @@ fn serialize_canister_metrics() {
             log!("encoded canister metrics written");
         }
         Err(e) => {
-            log!("OOM ERROR: failed to write encoded canister metrics {:?}", e);
+            log!(
+                "OOM ERROR: failed to write encoded canister metrics {:?}",
+                e
+            );
         }
     }
 }
@@ -206,25 +210,38 @@ fn deserialize_canister_metrics() {
 
     let mut state_buf = vec![0; u32::from_le_bytes(len_buf) as usize];
     let read_len = reader.read(&mut state_buf).unwrap();
-    log!("readed encoded canister metrics length: {:?} bytes", read_len);
+    log!(
+        "readed encoded canister metrics length: {:?} bytes",
+        read_len
+    );
 
-    let (monitor_stable_data, logger_stable_data) =
-        Decode!(&state_buf, (u8, std::collections::BTreeMap<u32, DayData>), (u8, canistergeek_ic_rust::logger::LogMessageStorage)).unwrap();
+    let (monitor_stable_data, logger_stable_data) = Decode!(
+        &state_buf,
+        (u8, std::collections::BTreeMap<u32, DayData>),
+        (u8, canistergeek_ic_rust::logger::LogMessageStorage)
+    )
+    .unwrap();
 
     canistergeek_ic_rust::monitor::post_upgrade_stable_data(monitor_stable_data);
     canistergeek_ic_rust::logger::post_upgrade_stable_data(logger_stable_data);
 }
 
-#[query(guard = "only_authorized_metrics_collector", name = "getCanistergeekInformation")]
+#[query(
+    guard = "only_authorized_metrics_collector",
+    name = "getCanistergeekInformation"
+)]
 pub async fn canister_geek_metrics(
-    request: canistergeek_ic_rust::api_type::GetInformationRequest
+    request: canistergeek_ic_rust::api_type::GetInformationRequest,
 ) -> canistergeek_ic_rust::api_type::GetInformationResponse<'static> {
     canistergeek_ic_rust::get_information(request)
 }
 
-#[update(guard = "only_authorized_metrics_collector", name = "updateCanistergeekInformation")]
+#[update(
+    guard = "only_authorized_metrics_collector",
+    name = "updateCanistergeekInformation"
+)]
 pub async fn update_canistergeek_information(
-    request: canistergeek_ic_rust::api_type::UpdateInformationRequest
+    request: canistergeek_ic_rust::api_type::UpdateInformationRequest,
 ) {
     canistergeek_ic_rust::update_information(request);
 }
@@ -297,7 +314,7 @@ fn remove_authorized_metrics_collector(req: AuthorizedCallerRequest) {
 // TODO : add init state
 #[ic_cdk::query(guard = "only_authorized_caller")]
 fn read_emr_by_id(req: ReadEmrByIdRequest) -> ReadEmrByIdResponse {
-    with_state(|s| { s.registry.read_by_id(req.to_read_key()).unwrap().into() })
+    with_state(|s| s.registry.read_by_id(req.to_read_key()).unwrap().into())
 }
 
 #[ic_cdk::update(guard = "only_authorized_caller")]
@@ -305,26 +322,27 @@ fn create_emr(req: CreateEmrRequest) -> CreateEmrResponse {
     let (key, emr) = req.to_args();
     log!("creating emr");
 
-    with_state_mut(|s| s.registry.add(key, emr))
-        .unwrap()
-        .into()
+    with_state_mut(|s| s.registry.add(key, emr)).unwrap().into()
 }
 
 #[ic_cdk::update(guard = "only_authorized_caller")]
 fn update_emr(req: UpdateEmrRequest) -> UpdateEmrResponse {
-    with_state_mut(|s|
-        s.registry.update_batch(req.header.to_partial_update_key(), req.fields).unwrap().into()
-    )
+    with_state_mut(|s| {
+        s.registry
+            .update_batch(req.header.to_partial_update_key(), req.fields)
+            .unwrap()
+            .into()
+    })
 }
 
 #[ic_cdk::update(guard = "only_authorized_caller")]
 fn remove_emr(req: RemoveEmrRequest) -> RemoveEmrResponse {
-    with_state_mut(|s|
+    with_state_mut(|s| {
         s.registry
             .remove_record(req.header.to_emr_key())
             .map(|_| RemoveEmrResponse::new(true))
             .unwrap()
-    )
+    })
 }
 
 // this will serve as an synchronization function in the future, for now it's only for testing inter-canister calls successfully
@@ -341,7 +359,8 @@ fn metrics() -> String {
             statistics::canister::BlockchainMetrics::measure(),
             statistics::canister::MemoryStatistics::measure(),
             OpaqueMetrics::measure(s.config.get().as_ref()),
-        ].join("\n")
+        ]
+        .join("\n")
     })
 }
 
