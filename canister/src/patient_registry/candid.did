@@ -201,13 +201,10 @@ type ReadGroupMembersEmrInfoRequest = record {
   registry_id : principal;
   member_nik : text;
 };
+type RegisterPatientData = record { nik : text };
 type RegisterPatientRequest = record { nik : text };
-type RegisterPatientResponse = record {
-  nik : text;
-  result : RegisterPatientStatus;
-};
-type RegisterPatientStatus = variant { Error : text; Success };
 type Relation = variant { Parent; Sibling; Other; Child; Spouse };
+type ResponseStatus = variant { error : text; success };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : bool; Err : text };
 type Result_2 = variant { Ok : CreateGroupResponse; Err : text };
@@ -219,6 +216,13 @@ type RevokeGroupAccessRequest = record { revokee_nik : text; group_id : text };
 type SearchPatientAdminResponse = record { patient_info : PatientWithNik };
 type SearchPatientRequest = record { _type : opt text; nik : text };
 type SearchPatientResponse = record { patient_info : PatientWithNikAndSession };
+type StandardResponse = record {
+  status : ResponseStatus;
+  data : opt RegisterPatientData;
+  message : opt text;
+  timestamp : nat64;
+  tx_hash : text;
+};
 type StatusRequest = record {
   memory_size : bool;
   cycles : bool;
@@ -308,7 +312,7 @@ service : () -> {
   read_group_members_emr_info : (ReadGroupMembersEmrInfoRequest) -> (
       Result_4,
     ) composite_query;
-  register_patient : (RegisterPatientRequest) -> (RegisterPatientResponse);
+  register_patient : (RegisterPatientRequest) -> (StandardResponse);
   remove_authorized_metrics_collector : (AuthorizedCallerRequest) -> ();
   revoke_consent : (RevokeConsentRequest) -> ();
   revoke_group_access : (RevokeGroupAccessRequest) -> (Result);

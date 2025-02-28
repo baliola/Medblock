@@ -431,14 +431,23 @@ pub struct RegisterPatientRequest {
     pub nik: String,
 }
 #[derive(CandidType, Deserialize)]
-pub enum RegisterPatientStatus {
+pub enum ResponseStatus {
+    #[serde(rename = "error")]
     Error(String),
+    #[serde(rename = "success")]
     Success,
 }
 #[derive(CandidType, Deserialize)]
-pub struct RegisterPatientResponse {
+pub struct RegisterPatientData {
     pub nik: String,
-    pub result: RegisterPatientStatus,
+}
+#[derive(CandidType, Deserialize)]
+pub struct StandardResponse {
+    pub status: ResponseStatus,
+    pub data: Option<RegisterPatientData>,
+    pub message: Option<String>,
+    pub timestamp: u64,
+    pub tx_hash: String,
 }
 #[derive(CandidType, Deserialize)]
 pub struct RevokeConsentRequest {
@@ -648,7 +657,7 @@ impl PatientRegistry {
     pub async fn register_patient(
         &self,
         arg0: RegisterPatientRequest,
-    ) -> Result<(RegisterPatientResponse,)> {
+    ) -> Result<(StandardResponse,)> {
         ic_cdk::call(self.0, "register_patient", (arg0,)).await
     }
     pub async fn remove_authorized_metrics_collector(
@@ -1369,7 +1378,7 @@ pub mod pocket_ic_bindings {
             sender: ic_principal::Principal,
             call_type: Call,
             arg0: RegisterPatientRequest,
-        ) -> std::result::Result<RegisterPatientResponse, pocket_ic::UserError> {
+        ) -> std::result::Result<StandardResponse, pocket_ic::UserError> {
             let f = match call_type {
                 Call::Query => pocket_ic::PocketIc::query_call,
                 Call::Update => pocket_ic::PocketIc::update_call,

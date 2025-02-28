@@ -11,7 +11,7 @@ ic-stable-structures = { workspace = true }
 parity-scale-codec = { workspace = true, default-features = false, features = [
     "derive",
 ] }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 candid = { workspace = true }
 uuid = { workspace = true, default-features = false, features = ["serde"] }
 thiserror = { workspace = true }
@@ -22,6 +22,8 @@ ic-cdk-timers = { workspace = true }
 tiny-keccak = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
+sha2 = "0.10.8"
+serde_cbor = "0.11.2"
 
 [features]
 default = []

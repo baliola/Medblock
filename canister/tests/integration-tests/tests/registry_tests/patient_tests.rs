@@ -1,6 +1,6 @@
 use crate::common;
 use integration_tests::declarations::{
-    patient_registry::{self, pocket_ic_bindings::Call as PatientCall, KycStatus},
+    patient_registry::{self, pocket_ic_bindings::Call as PatientCall, KycStatus, ResponseStatus},
     provider_registry::{self, pocket_ic_bindings::Call as ProviderCall, GetProviderListRequest},
 };
 
@@ -201,11 +201,22 @@ fn test_nik_duplication() {
         )
         .unwrap();
 
-    match result.result {
-        patient_registry::RegisterPatientStatus::Error(err) => {
+    println!("DEBUG NIK generated: {}", existing_patient.nik.to_string());
+    println!("DEBUG Patient Principal: {}", new_patient_principal);
+
+    println!("DEBUG Response status: {}", match &result.status {
+        ResponseStatus::Success => "Success",
+        ResponseStatus::Error(e) => e
+    });
+    println!("DEBUG Response data: {}", if result.data.is_some() { "Some(Data)" } else { "None" });
+    println!("DEBUG Response timestamp: {}", result.timestamp);
+    println!("DEBUG Response tx_hash: {}", result.tx_hash);
+
+    match result.status {
+        ResponseStatus::Error(err) => {
             assert_eq!(err, "[REGISTER_PATIENT] This NIK is already registered to another user. Each NIK can only be registered to one user account. If you believe this is an error, please contact support.");
         }
-        _ => panic!("Expected error but got success"),
+        ResponseStatus::Success => panic!("Expected error but got success"),
     }
 }
 
@@ -241,11 +252,22 @@ fn test_multiple_nik_registration() {
         )
         .unwrap();
 
-    match result.result {
-        patient_registry::RegisterPatientStatus::Error(err) => {
+    println!("DEBUG NIK generated: {}", second_nik.to_string());
+    println!("DEBUG Patient Principal: {}", patient.principal);
+
+    println!("DEBUG Response status: {}", match &result.status {
+        ResponseStatus::Success => "Success",
+        ResponseStatus::Error(e) => e
+    });
+    println!("DEBUG Response data: {}", if result.data.is_some() { "Some(Data)" } else { "None" });
+    println!("DEBUG Response timestamp: {}", result.timestamp);
+    println!("DEBUG Response tx_hash: {}", result.tx_hash);
+
+    match result.status {
+        ResponseStatus::Error(err) => {
             assert_eq!(err, "[REGISTER_PATIENT] You already have a registered NIK associated with your account. Each user can only register one NIK. Please contact support if you need to change your registered NIK.");
         }
-        _ => panic!("Expected error but got success"),
+        ResponseStatus::Success => panic!("Expected error but got success"),
     }
 }
 
@@ -284,11 +306,22 @@ fn test_reregister_verified_kyc() {
         )
         .unwrap();
 
-    match result.result {
-        patient_registry::RegisterPatientStatus::Error(err) => {
+    println!("DEBUG NIK generated: {}", patient.nik.to_string());
+    println!("DEBUG Patient Principal: {}", patient.principal);
+
+    println!("DEBUG Response status: {}", match &result.status {
+        ResponseStatus::Success => "Success",
+        ResponseStatus::Error(e) => e
+    });
+    println!("DEBUG Response data: {}", if result.data.is_some() { "Some(Data)" } else { "None" });
+    println!("DEBUG Response timestamp: {}", result.timestamp);
+    println!("DEBUG Response tx_hash: {}", result.tx_hash);
+
+    match result.status {
+        ResponseStatus::Error(err) => {
             assert_eq!(err, "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance.");
         }
-        _ => panic!("Expected error but got success"),
+        ResponseStatus::Success => panic!("Expected error but got success"),
     }
 }
 
@@ -372,5 +405,134 @@ fn test_kyc_resubmission() {
                 _ => panic!("KYC status is not pending"),
             }
         }
+    }
+}
+
+#[test]
+fn test_standard_response_wrapper() {
+    let registries = common::prepare();
+
+    // create patient with fixed NIK for testing
+    let nik = canister_common::common::H256::from([0u8; 32]);
+    let patient = common::Patient {
+        principal: common::random_identity(),
+        nik: nik.clone(),
+    };
+
+    // Step 1: Register patient and capture response
+    let reg_arg = patient_registry::RegisterPatientRequest {
+        nik: nik.to_string(),
+    };
+
+    let register_result = registries
+        .patient
+        .register_patient(
+            &registries.ic,
+            patient.principal.clone(),
+            PatientCall::Update,
+            reg_arg,
+        )
+        .unwrap();
+
+    // verify register response structure
+    match register_result.status {
+        ResponseStatus::Success => {
+            assert!(register_result.data.is_some(), "Expected data to be Some for success case");
+            assert!(register_result.timestamp > 0, "Expected non-zero timestamp");
+            assert!(!register_result.tx_hash.is_empty(), "Expected non-empty transaction hash");
+        }
+        ResponseStatus::Error(e) => panic!("Expected success but got error: {}", e),
+    }
+
+    // Step 2: Update patient info
+    let patient_info = patient_registry::V1 {
+        name: "john doe".to_string(),
+        martial_status: "single".to_string(),
+        place_of_birth: "jakarta".to_string(),
+        address: "123 main st".to_string(),
+        gender: "men".to_string(),
+        date_of_birth: "1990-01-01".to_string(),
+        kyc_status: KycStatus::Pending,
+        kyc_date: "2024-01-01".to_string(),
+    };
+
+    let update_info_req = patient_registry::UpdatePatientInfoRequest {
+        info: patient_info,
+    };
+
+    registries
+        .patient
+        .update_patient_info(
+            &registries.ic,
+            patient.principal.clone(),
+            PatientCall::Update,
+            update_info_req,
+        )
+        .unwrap();
+
+    // verify info was updated correctly
+    let info_result = registries
+        .patient
+        .get_patient_info(
+            &registries.ic,
+            patient.principal.clone(),
+            PatientCall::Query,
+        )
+        .unwrap();
+
+        let patient_info = patient_registry::V1 {
+            name: "john doe".to_string(),
+            martial_status: "single".to_string(),
+            place_of_birth: "jakarta".to_string(),
+            address: "123 main st".to_string(),
+            gender: "men".to_string(),
+            date_of_birth: "1990-01-01".to_string(),
+            kyc_status: KycStatus::Pending,
+            kyc_date: "2024-01-01".to_string(),
+        };
+
+    match info_result.patient {
+        patient_registry::Patient::V1(v1) => {
+            assert_eq!(v1.name, patient_info.name);
+            assert_eq!(v1.martial_status, patient_info.martial_status);
+            assert_eq!(v1.place_of_birth, patient_info.place_of_birth);
+            assert_eq!(v1.address, patient_info.address);
+            assert_eq!(v1.gender, patient_info.gender);
+            assert_eq!(v1.date_of_birth, patient_info.date_of_birth);
+            assert!(matches!(v1.kyc_status, KycStatus::Pending));
+        }
+    }
+
+    // Step 3: Try to register same patient again to test error response
+    let reg_arg = patient_registry::RegisterPatientRequest {
+        nik: nik.to_string(),
+    };
+    let result = registries
+        .patient
+        .register_patient(
+            &registries.ic,
+            patient.principal.clone(),
+            PatientCall::Update,
+            reg_arg,
+        )
+        .unwrap();
+
+    println!("DEBUG Response status: {}", match &result.status {
+        ResponseStatus::Success => "Success",
+        ResponseStatus::Error(e) => e
+    });
+    println!("DEBUG Response data: {}", if result.data.is_some() { "Some(Data)" } else { "None" });
+    println!("DEBUG Response timestamp: {}", result.timestamp);
+    println!("DEBUG Response tx_hash: {}", result.tx_hash);
+
+    // verify error response structure
+    match result.status {
+        ResponseStatus::Error(err) => {
+            assert_eq!(err, "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance.");
+            assert!(result.data.is_none(), "Expected data to be None for error case");
+            assert!(result.timestamp > 0, "Expected non-zero timestamp");
+            assert!(!result.tx_hash.is_empty(), "Expected non-empty transaction hash");
+        }
+        ResponseStatus::Success => panic!("Expected error but got success - patient should already be registered"),
     }
 }

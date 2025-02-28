@@ -14,7 +14,7 @@ canister-common = { path = "../canister-common" }
 ic-cdk = { workspace = true }
 candid = { workspace = true }
 ic-cdk-timers = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 parity-scale-codec = { workspace = true, default-features = false, features = [
     "derive",
 ] }

@@ -3,8 +3,9 @@ use canister_common::{
     common::{AsciiRecordsKey, EmrHeader, EmrId, ProviderId, UserId, H256},
     from,
     stable::{EncodingMarker, Stable},
+    response::StandardResponse,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     consent::{Consent, ConsentCode, SessionId},
@@ -88,17 +89,12 @@ pub struct RegisterPatientRequest {
     pub nik: H256,
 }
 
-#[derive(CandidType, Deserialize)]
-pub struct RegisterPatientResponse {
-    pub result: RegisterPatientStatus,
+#[derive(CandidType, Deserialize, Serialize)]
+pub struct RegisterPatientData {
     pub nik: H256,
 }
 
-#[derive(CandidType, Deserialize)]
-pub enum RegisterPatientStatus {
-    Success,
-    Error(String),
-}
+pub type RegisterPatientResponse = StandardResponse<RegisterPatientData>;
 
 #[derive(CandidType, Deserialize)]
 pub struct PingResult {

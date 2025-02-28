@@ -632,6 +632,16 @@ deref!(H256: [u8; HASH_LEN]);
 impl_range_bound!(H256);
 from!(H256: [u8; HASH_LEN]);
 
+impl serde::Serialize for H256 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Serialize H256 as a hex string
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum H256Error {
     #[error(transparent)] HexError(#[from] hex::FromHexError),
@@ -639,6 +649,7 @@ pub enum H256Error {
     #[error("invalid nik hash length")]
     InvalidLength,
 }
+
 impl FromStr for H256 {
     type Err = H256Error;
 

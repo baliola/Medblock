@@ -1,7 +1,7 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest, CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest, CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientData, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
 };
 use candid::{Decode, Encode, Principal};
 use canister_common::{
@@ -26,6 +26,8 @@ use registry::{Group, GroupConsentCode, GroupId, Patient, PatientRegistry, Relat
 use crate::consent::ConsentCode;
 use crate::consent::ConsentsApi;
 use crate::registry::{KycStatus, PatientRegistryError, V1};
+use canister_common::response::StandardResponse;
+use ic_cdk::api::call::CallResult;
 
 mod api;
 mod config;
@@ -466,20 +468,24 @@ fn notify_updated(req: UpdateRequest) {
 // probably best to only allow this be called from the frontend canister(todo)
 #[ic_cdk::update]
 fn register_patient(req: RegisterPatientRequest) -> RegisterPatientResponse {
-    let caller = verified_caller().unwrap();
-    let nik = NIK::from_str(&req.nik.to_string()).unwrap();
+    let caller = match verified_caller() {
+        Ok(caller) => caller,
+        Err(e) => return StandardResponse::error(e.to_string())
+    };
+
+    let nik = match NIK::from_str(&req.nik.to_string()) {
+        Ok(nik) => nik,
+        Err(e) => return StandardResponse::error(format!("Invalid NIK format: {}", e))
+    };
 
     // check if the NIK exists
     with_state_mut(|s| {
         if let Ok(existing_owner) = s.registry.owner_map.get_principal(&nik) {
             // if the NIK exists but belongs to a different owner, return error
             if existing_owner != caller {
-                return RegisterPatientResponse {
-                    result: RegisterPatientStatus::Error(
-                        "[REGISTER_PATIENT] This NIK is already registered to another user. Each NIK can only be registered to one user account. If you believe this is an error, please contact support.".to_string(),
-                    ),
-                    nik: nik.clone(),
-                };
+                return StandardResponse::error(
+                    "[REGISTER_PATIENT] This NIK is already registered to another user. Each NIK can only be registered to one user account. If you believe this is an error, please contact support."
+                );
             }
 
             // if the NIK belongs to the same owner, check KYC status
@@ -490,38 +496,27 @@ fn register_patient(req: RegisterPatientRequest) -> RegisterPatientResponse {
                         // allow re-registration only if KYC status is denied
                         if matches!(v1.kyc_status, KycStatus::Denied) {
                             s.registry.owner_map.rebind(caller, nik.clone()).unwrap();
-                            return RegisterPatientResponse {
-                                result: RegisterPatientStatus::Success,
-                                nik: nik.clone(),
-                            };
+                            return StandardResponse::success(RegisterPatientData { nik: nik.clone() });
                         }
                     }
                 }
             }
-            return RegisterPatientResponse {
-                result: RegisterPatientStatus::Error(
-                    "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance.".to_string(),
-                ),
-                nik: nik.clone(),
-            };
+            return StandardResponse::error(
+                "[REGISTER_PATIENT] This NIK is already registered and verified. Re-registration is only allowed for denied KYC applications. Please contact support if you need assistance."
+            );
         }
 
         // if the owner already has a different NIK, return error
         if s.registry.owner_map.get_nik(&caller).is_ok() {
-            return RegisterPatientResponse {
-                result: RegisterPatientStatus::Error(
-                    "[REGISTER_PATIENT] You already have a registered NIK associated with your account. Each user can only register one NIK. Please contact support if you need to change your registered NIK.".to_string(),
-                ),
-                nik: nik.clone(),
-            };
+            return StandardResponse::error(
+                "[REGISTER_PATIENT] You already have a registered NIK associated with your account. Each user can only register one NIK. Please contact support if you need to change your registered NIK."
+            );
         }
 
         // reaching this part its safe to register the NIK as a new user
-        s.registry.owner_map.bind(caller, nik.clone()).unwrap();
-
-        RegisterPatientResponse {
-            result: RegisterPatientStatus::Success,
-            nik,
+        match s.registry.owner_map.bind(caller, nik.clone()) {
+            Ok(_) => StandardResponse::success(RegisterPatientData { nik }),
+            Err(e) => StandardResponse::error(format!("Failed to register NIK: {}", e))
         }
     })
 }
