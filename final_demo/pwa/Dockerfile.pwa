@@ -21,3 +21,5 @@ EXPOSE 3000
 
 # Jalankan aplikasi
 CMD ["yarn", "start"]
+
+
