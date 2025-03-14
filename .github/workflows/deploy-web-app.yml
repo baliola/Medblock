@@ -1,4 +1,4 @@
-name: Deploy Webapp to Prod
+name: Deploy final_demo/web to Production
 
 on:
   push:
@@ -12,39 +12,57 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  IMAGE_NAME: ${{ secrets.WEBAPP_IMAGE_NAME }}
+  IMAGE_NAME: ${{ secrets.INT_IMAGE_NAME }}
 
 jobs:
   build-and-push:
-    runs-on: [self-hosted, production]
+    runs-on: arm64
 
     steps:
-      - name: Pull code
-        run: |
-          cd /home/ubuntu/Medblock
-          git pull
-   
+      - name: Checkout application repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
       - name: Log in to Amazon ECR
-        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get commit hash
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f /home/ubuntu/Medblock/final_demo/web/Dockerfile.webapp /home/ubuntu/Medblock/final_demo/web/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f final_demo/web/Dockerfile final_demo/web/
 
       - name: Push Docker Image to ECR
         run: |
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
-
-  deploy:
-    runs-on: [self-hosted, production]
-    needs: build-and-push
-
-    steps:
-      - name: Log in to Amazon ECR
-        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      - name: Deploy to Server
+      - name: Setup SSH Key
         run: |
-          cd /home/ubuntu/Medblock/final_demo/web
-          docker compose down
-          docker compose pull webapp
-          docker compose up -d
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
+      - name: Checkout ArgoCD Repo
+        run: git clone git@github.com:baliola/devops.git
+
+      - name: Update image tag in deployment manifest
+        run: |
+          cd devops
+          sed -i 's|image: $AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:.*|image: $AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:'"$IMAGE_TAG"'|' production/medblock/final_demo/web/deployment.yaml
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add production/medblock/final_demo/web/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Skipping commit and push."
+            exit 0
+          fi
+          git commit -m "Update $IMAGE_NAME image to $IMAGE_TAG"
+          git push origin main
