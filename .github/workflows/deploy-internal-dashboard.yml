@@ -59,6 +59,6 @@ jobs:
           sed -i 's|image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:.*|image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:'"$IMAGE_TAG"'|' production/medblock/internal-dashboard/deployment.yaml
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git add production/medblock-internal-dashboard/deployment.yaml
+          git add production/medblock/internal-dashboard/deployment.yaml
           git commit -m "Update $IMAGE_NAME image to $IMAGE_TAG"
           git push origin main
