@@ -60,5 +60,9 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add production/medblock/internal-dashboard/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Skipping commit and push."
+            exit 0
+          fi
           git commit -m "Update $IMAGE_NAME image to $IMAGE_TAG"
           git push origin main
