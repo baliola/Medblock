@@ -38,7 +38,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f final_demo/pwa/Dockerfile final_demo/pwa/
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f final_demo/pwa/Dockerfile.pwa final_demo/pwa/
 
       - name: Push Docker Image to ECR
         run: |
