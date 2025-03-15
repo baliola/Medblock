@@ -21,4 +21,3 @@ EXPOSE 4002
 
 # Jalankan aplikasi
 CMD ["yarn", "start", "--port", "4002"]
-
