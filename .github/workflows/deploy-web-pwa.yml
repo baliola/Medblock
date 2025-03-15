@@ -56,7 +56,7 @@ jobs:
       - name: Update image tag in deployment manifest
         run: |
           cd devops
-          sed -i 's|image: $AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:.*|image: $AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/$IMAGE_NAME:'"$IMAGE_TAG"'|' production/medblock/pwa/deployment.yaml
+          sed -i 's|image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-pwa:.*|image: 075179376767.dkr.ecr.ap-southeast-1.amazonaws.com/medblock/web-pwa:'"$IMAGE_TAG"'|' production/medblock/pwa/deployment.yaml
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add production/medblock/pwa/deployment.yaml
