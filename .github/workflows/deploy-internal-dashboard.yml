@@ -36,13 +36,13 @@ jobs:
       - name: Get commit hash
         run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      # - name: Build Docker Image
-      #   run: |
-      #     docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:$IMAGE_TAG -f internal-dashboard/Dockerfile internal-dashboard/
+      - name: Build Docker Image
+        run: |
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:$IMAGE_TAG -f internal-dashboard/Dockerfile internal-dashboard/
 
-      # - name: Push Docker Image to ECR
-      #   run: |
-      #     docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:$IMAGE_TAG
+      - name: Push Docker Image to ECR
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:$IMAGE_TAG
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
