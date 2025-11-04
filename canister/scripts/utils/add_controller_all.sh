@@ -1,4 +1,4 @@
-#! bash
+#!/bin/bash
 root=$(git rev-parse --show-toplevel)
 cd $root/canister
 controller=$1

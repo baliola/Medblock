@@ -1,4 +1,4 @@
-#! bash
+#!/bin/bash
 root=$(git rev-parse --show-toplevel)
 
 bash $root/canister/build.sh provider_registry
