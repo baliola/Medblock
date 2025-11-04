@@ -1,6 +1,4 @@
-# ensure shell scripts always use LF line endings
+# ensure shell scripts always use LF line endings (WSL compatible)
 *.sh text eol=lf
-
-# ensure other text files use LF as well
 *.bash text eol=lf
 
