@@ -20,6 +20,40 @@ if [ -n "$pids" ]; then
     echo "$pids" | xargs kill 2>/dev/null || true
 fi
 
+# check if PocketIC is installed (needed for integration tests)
+check_pocketic() {
+    if command -v pocket-ic &>/dev/null; then
+        echo -e "${GREEN}[INFO]${NC} PocketIC found: $(which pocket-ic)"
+        return 0
+    else
+        echo -e "${YELLOW}[WARNING]${NC} PocketIC not found in PATH"
+        echo -e "${YELLOW}[INFO]${NC} PocketIC is optional for local development but required for integration tests"
+        echo -e "${YELLOW}[INFO]${NC} Install from: https://github.com/dfinity/pocketic"
+        return 1
+    fi
+}
+
+# cleanup any existing PocketIC processes (cross-platform compatible)
+cleanup_pocketic() {
+    # find and kill any running pocket-ic processes
+    if command -v pgrep &>/dev/null; then
+        # use pgrep if available (Linux/WSL)
+        pocketic_pids=$(pgrep -f "pocket-ic" 2>/dev/null)
+    else
+        # fallback for macOS (no pgrep)
+        pocketic_pids=$(ps aux | grep -i "[p]ocket-ic" | awk '{print $2}' 2>/dev/null)
+    fi
+    
+    if [ -n "$pocketic_pids" ]; then
+        echo -e "${BLUE}[INFO]${NC} Cleaning up existing PocketIC processes..."
+        echo "$pocketic_pids" | xargs kill 2>/dev/null || true
+        sleep 1
+    fi
+}
+
+check_pocketic
+cleanup_pocketic
+
 # wait for dfx to be ready (cross-platform polling)
 wait_for_dfx() {
     echo -e "${YELLOW}[WAIT]${NC} Waiting for dfx to start..."
@@ -44,6 +78,7 @@ if [[ "$1" == "--background" ]]; then
 else
     echo -e "${BLUE}[INFO]${NC} Starting dfx in concurrent mode..."
     # Start dfx in the background but keep output visible
+    # show all output including PocketIC errors for debugging
     (dfx start 2>&1 | sed 's/^/[CANISTER] /') &
     DFX_PID=$!
     # Store the PID so we can terminate it later if needed
