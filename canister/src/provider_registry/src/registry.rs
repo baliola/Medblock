@@ -1,42 +1,40 @@
-use std::ops::{ Add, Bound };
+use std::ops::{Add, Bound};
 
-use candid::{ CandidType };
+use candid::CandidType;
 
+use canister_common::common::{self, EmrId, PrincipalBytes};
 use canister_common::random::CallError;
 use canister_common::stable::Candid;
-use canister_common::statistics::traits::{ Metrics };
-use canister_common::common::{ self, EmrId, PrincipalBytes };
+use canister_common::statistics::traits::Metrics;
 use ic_principal::Principal;
-use ic_stable_structures::{ BTreeMap };
-use parity_scale_codec::{ Decode, Encode };
-use serde::{ Deserialize, Serialize };
+use ic_stable_structures::BTreeMap;
+use parity_scale_codec::{Decode, Encode};
 use provider::attr::*;
+use serde::{Deserialize, Serialize};
 
 use canister_common::{
-    deref,
-    impl_max_size,
-    impl_mem_bound,
-    impl_range_bound,
-    metrics,
-    opaque_metrics,
-};
-use canister_common::{
-    common::{ AsciiRecordsKey, Id, Timestamp },
-    stable::{ Memory, Stable, StableSet, ToStable },
+    common::{AsciiRecordsKey, Id, Timestamp},
     mmgr::MemoryManager,
+    stable::{Memory, Stable, StableSet, ToStable},
+};
+use canister_common::{
+    deref, impl_max_size, impl_mem_bound, impl_range_bound, metrics, opaque_metrics,
 };
 
-use crate::api::{ IssueEmrRequest, GetProviderListResponse };
-use crate::declarations::emr_registry::{ CreateEmrRequest, CreateEmrResponse };
+use crate::api::{GetProviderListResponse, IssueEmrRequest};
+use crate::declarations::emr_registry::{CreateEmrRequest, CreateEmrResponse};
 use crate::declarations::patient_registry::IssueRequest;
 
-use self::provider::{ Provider, V1 };
+use self::provider::{Provider, V1};
 
 #[derive(thiserror::Error, Debug, CandidType)]
 pub enum RegistryError {
-    #[error(transparent)] IssueMapError(#[from] IssueMapError),
-    #[error(transparent)] ProviderBindingMapError(#[from] ProviderBindingMapError),
-    #[error("{0}")] ExternalCallError(#[from] CallError),
+    #[error(transparent)]
+    IssueMapError(#[from] IssueMapError),
+    #[error(transparent)]
+    ProviderBindingMapError(#[from] ProviderBindingMapError),
+    #[error("{0}")]
+    ExternalCallError(#[from] CallError),
 }
 
 pub type ProviderRegistryResult<T = ()> = Result<T, RegistryError>;
@@ -48,11 +46,19 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
-    pub fn get_all_providers(&self, page: u64, limit: u64) -> ProviderRegistryResult<GetProviderListResponse> {
+    pub fn get_all_providers(
+        &self,
+        page: u64,
+        limit: u64,
+    ) -> ProviderRegistryResult<GetProviderListResponse> {
         let paginated = self.providers.get_all_providers_paginated(page, limit);
-        
+
         Ok(GetProviderListResponse {
-            providers: paginated.providers.into_iter().map(|p| p.into_inner()).collect(),
+            providers: paginated
+                .providers
+                .into_iter()
+                .map(|p| p.into_inner())
+                .collect(),
             total_pages: paginated.total_pages,
             total_provider_count: paginated.total_provider_count,
         })
@@ -60,36 +66,30 @@ impl ProviderRegistry {
 
     pub fn provider_info_with_principal(
         &self,
-        principal: &Principal
+        principal: &Principal,
     ) -> ProviderRegistryResult<Provider> {
         let internal_id = self.providers_bindings.get_internal_id(principal)?;
 
-        Ok(
-            self.providers
-                .get_provider(internal_id.into_inner())
-                .ok_or(
-                    RegistryError::ProviderBindingMapError(
-                        ProviderBindingMapError::ProviderDoesNotExist
-                    )
-                )?
-                .into_inner()
-        )
+        Ok(self
+            .providers
+            .get_provider(internal_id.into_inner())
+            .ok_or(RegistryError::ProviderBindingMapError(
+                ProviderBindingMapError::ProviderDoesNotExist,
+            ))?
+            .into_inner())
     }
 
     pub fn provider_info_with_internal_id(
         &self,
-        internal_id: &InternalProviderId
+        internal_id: &InternalProviderId,
     ) -> ProviderRegistryResult<Provider> {
-        Ok(
-            self.providers
-                .get_provider(internal_id.clone())
-                .ok_or(
-                    RegistryError::ProviderBindingMapError(
-                        ProviderBindingMapError::ProviderDoesNotExist
-                    )
-                )?
-                .into_inner()
-        )
+        Ok(self
+            .providers
+            .get_provider(internal_id.clone())
+            .ok_or(RegistryError::ProviderBindingMapError(
+                ProviderBindingMapError::ProviderDoesNotExist,
+            ))?
+            .into_inner())
     }
 }
 
@@ -98,7 +98,7 @@ impl ProviderRegistry {
     pub async fn do_call_update_emr(
         req: crate::api::UpdateEmrRequest,
         emr_registry: crate::declarations::emr_registry::EmrRegistry,
-        patient_registry: crate::declarations::patient_registry::PatientRegistry
+        patient_registry: crate::declarations::patient_registry::PatientRegistry,
     ) {
         ic_cdk::spawn(async move {
             let header = req.header.clone();
@@ -119,7 +119,10 @@ impl ProviderRegistry {
             }
 
             let args = IssueRequest { header };
-            let result = patient_registry.notify_updated(args).await.map_err(CallError::from);
+            let result = patient_registry
+                .notify_updated(args)
+                .await
+                .map_err(CallError::from);
 
             match result {
                 Ok(_) => (),
@@ -134,18 +137,20 @@ impl ProviderRegistry {
     pub fn build_args_call_emr_canister(
         &self,
         req: IssueEmrRequest,
-        emr_id: EmrId
+        emr_id: EmrId,
     ) -> ProviderRegistryResult<CreateEmrRequest> {
         // safe to unwrap since the public api calling this api should have already verified the caller using guard functions
         let provider_principal = common::guard::verified_caller().unwrap();
-        let provider = self.providers_bindings.get_internal_id(&provider_principal)?;
+        let provider = self
+            .providers_bindings
+            .get_internal_id(&provider_principal)?;
 
         // assemble args and call emr canister to issue emr
         Ok(req.to_args(provider.into_inner(), emr_id))
     }
 
     fn to_issue_request(
-        req: &CreateEmrResponse
+        req: &CreateEmrResponse,
     ) -> crate::declarations::patient_registry::IssueRequest {
         let provider_id = req.header.provider_id.to_owned();
         let user_id = req.header.user_id.to_owned();
@@ -165,7 +170,7 @@ impl ProviderRegistry {
     pub async fn do_call_create_emr(
         args: CreateEmrRequest,
         emr_registry: crate::declarations::emr_registry::EmrRegistry,
-        patient_registry: crate::declarations::patient_registry::PatientRegistry
+        patient_registry: crate::declarations::patient_registry::PatientRegistry,
     ) -> CreateEmrResponse {
         let create_emr_response = emr_registry.create_emr(args).await.map_err(CallError::from);
 
@@ -176,10 +181,15 @@ impl ProviderRegistry {
             Ok((response,)) => {
                 let issue_request = Self::to_issue_request(&response);
 
-                match patient_registry.notify_issued(issue_request).await.map_err(CallError::from) {
+                match patient_registry
+                    .notify_issued(issue_request)
+                    .await
+                    .map_err(CallError::from)
+                {
                     Ok(_) => response,
-                    Err(e) =>
-                        ic_cdk::trap(&format!("ERROR: error calling patient canister : {}", e)),
+                    Err(e) => {
+                        ic_cdk::trap(&format!("ERROR: error calling patient canister : {}", e))
+                    }
                 }
             }
             Err(e) => ic_cdk::trap(&format!("ERROR: error calling emr canister : {}", e)),
@@ -207,7 +217,8 @@ impl Metrics<RegistryMetrics> for ProviderRegistry {
             opaque_metrics!(self.providers),
             opaque_metrics!(self.providers_bindings),
             opaque_metrics!(self.issued),
-        ].join("\n")
+        ]
+        .join("\n")
     }
 }
 
@@ -217,7 +228,11 @@ impl ProviderRegistry {
         let providers_bindings = ProvidersBindings::init(memory_manager);
         let issued = Issued::init(memory_manager);
 
-        Self { providers, providers_bindings, issued }
+        Self {
+            providers,
+            providers_bindings,
+            issued,
+        }
     }
 
     /// check a given emr id is validly issued by some provider principal, this function uses internal provider id to resolve the given provider.
@@ -226,31 +241,32 @@ impl ProviderRegistry {
         &self,
         provider: &ProviderPrincipal,
         emr_id: Id,
-        canister_id: Principal
+        canister_id: Principal,
     ) -> bool {
         let Ok(id) = self.providers_bindings.get_internal_id(provider) else {
             return false;
         };
 
-        self.issued.is_issued_by(id.into_inner(), emr_id, canister_id)
+        self.issued
+            .is_issued_by(id.into_inner(), emr_id, canister_id)
     }
 
     fn populate_issue_map(
         &mut self,
         provider: &Principal,
         emr_id: Id,
-        canister_id: Principal
+        canister_id: Principal,
     ) -> ProviderRegistryResult<()> {
         match self.providers_bindings.get(provider) {
-            Some(id) => {
-                self.providers.try_mutate(
-                    id.into_inner(),
-                    |provider| -> ProviderRegistryResult<()> {
-                        provider.increment_session();
-                        Ok(self.issued.issue_emr(provider.internal_id(), emr_id, canister_id)?)
-                    }
-                )?
-            }
+            Some(id) => self.providers.try_mutate(
+                id.into_inner(),
+                |provider| -> ProviderRegistryResult<()> {
+                    provider.increment_session();
+                    Ok(self
+                        .issued
+                        .issue_emr(provider.internal_id(), emr_id, canister_id)?)
+                },
+            )?,
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
         }
     }
@@ -259,13 +275,13 @@ impl ProviderRegistry {
     pub fn issue_emr(
         &mut self,
         emr_id: EmrId,
-        provider_principal: &Principal
+        provider_principal: &Principal,
     ) -> ProviderRegistryResult<()> {
         // TODO : handle if we're using multiple emr canister
         self.populate_issue_map(
             provider_principal,
             emr_id,
-            crate::declarations::emr_registry::CANISTER_ID
+            crate::declarations::emr_registry::CANISTER_ID,
         )?;
 
         Ok(())
@@ -282,7 +298,7 @@ impl ProviderRegistry {
         provider_principal: ProviderPrincipal,
         display_name: AsciiRecordsKey<64>,
         address: AsciiRecordsKey<64>,
-        id: Id
+        id: Id,
     ) -> ProviderRegistryResult<()> {
         // IMPORTANT: dont forget to change to newer version if updating provider version.
 
@@ -290,7 +306,8 @@ impl ProviderRegistry {
         let provider = V1::new(display_name, address, id, provider_principal).to_provider();
 
         // bind the principal to the internal id
-        self.providers_bindings.bind(provider_principal, provider.internal_id().clone())?;
+        self.providers_bindings
+            .bind(provider_principal, provider.internal_id().clone())?;
 
         // add the provider to the provider map
         self.providers.add_provider(provider)?;
@@ -302,16 +319,12 @@ impl ProviderRegistry {
     /// suspended provider can't do things such as issuing, and reading emr
     pub fn suspend_provider(
         &mut self,
-        provider_principal: ProviderPrincipal
+        provider_principal: ProviderPrincipal,
     ) -> ProviderRegistryResult<()> {
         match self.providers_bindings.get(&provider_principal) {
-            Some(id) => {
-                Ok(
-                    self.providers.try_mutate(id.into_inner(), |provider| {
-                        provider.suspend();
-                    })?
-                )
-            }
+            Some(id) => Ok(self.providers.try_mutate(id.into_inner(), |provider| {
+                provider.suspend();
+            })?),
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
         }
     }
@@ -319,16 +332,12 @@ impl ProviderRegistry {
     /// unsuspend a provider
     pub fn unsuspend_provider(
         &mut self,
-        provider: &ProviderPrincipal
+        provider: &ProviderPrincipal,
     ) -> ProviderRegistryResult<()> {
         match self.providers_bindings.get(provider) {
-            Some(id) => {
-                Ok(
-                    self.providers.try_mutate(id.into_inner(), |provider| {
-                        provider.unsuspend();
-                    })?
-                )
-            }
+            Some(id) => Ok(self.providers.try_mutate(id.into_inner(), |provider| {
+                provider.unsuspend();
+            })?),
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
         }
     }
@@ -336,14 +345,11 @@ impl ProviderRegistry {
     /// check if a provider is suspended
     pub fn is_provider_suspended(&self, provider: &Principal) -> ProviderRegistryResult<bool> {
         match self.providers_bindings.get(provider) {
-            Some(id) => {
-                Ok(
-                    self.providers
-                        .get_provider(id.into_inner())
-                        .map(|provider| provider.activation_status().is_suspended())
-                        .ok_or(ProviderBindingMapError::ProviderDoesNotExist)?
-                )
-            }
+            Some(id) => Ok(self
+                .providers
+                .get_provider(id.into_inner())
+                .map(|provider| provider.activation_status().is_suspended())
+                .ok_or(ProviderBindingMapError::ProviderDoesNotExist)?),
             None => Err(ProviderBindingMapError::ProviderDoesNotExist)?,
         }
     }
@@ -361,25 +367,27 @@ impl ProviderRegistry {
         &self,
         provider: &ProviderPrincipal,
         page: u64,
-        limit: u64
+        limit: u64,
     ) -> ProviderRegistryResult<Vec<EmrId>> {
         let internal_id = self.providers_bindings.get_internal_id(provider)?;
 
-        Ok(
-            self.issued.get_issued(internal_id.into_inner(), page, limit).map(|ids|
-                ids
-                    .into_iter()
+        Ok(self
+            .issued
+            .get_issued(internal_id.into_inner(), page, limit)
+            .map(|ids| {
+                ids.into_iter()
                     .map(|ids| ids.into_inner())
                     .collect::<Vec<_>>()
-            )?
-        )
+            })?)
     }
 }
 
 pub type InternalProviderId = Id;
 pub type ProviderPrincipal = Principal;
 
-#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum IssueMapError {
     #[error("provider not found")]
     ProviderNotFound,
@@ -391,17 +399,7 @@ pub enum IssueMapError {
     EmrNotFound,
 }
 #[derive(
-    Debug,
-    Clone,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    CandidType,
-    Deserialize,
-    Default
+    Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, CandidType, Deserialize, Default,
 )]
 pub struct Emr {
     canister_id: PrincipalBytes,
@@ -448,13 +446,14 @@ impl Issued {
         &self,
         provider: InternalProviderId,
         emr_id: Id,
-        canister_id: Principal
+        canister_id: Principal,
     ) -> bool {
         let key = provider.to_stable();
         let value = (Emr {
             canister_id: PrincipalBytes::from(canister_id),
             id: emr_id,
-        }).to_stable();
+        })
+        .to_stable();
         self.0.contains_key(key, value)
     }
 
@@ -462,7 +461,7 @@ impl Issued {
         &mut self,
         provider: &InternalProviderId,
         emr_id: Id,
-        canister_id: Principal
+        canister_id: Principal,
     ) -> IssueMapResult<()> {
         if self.is_issued_by(provider.clone(), emr_id.clone(), canister_id) {
             return Err(IssueMapError::AlreadyIssued);
@@ -470,7 +469,8 @@ impl Issued {
         let emr = (Emr {
             canister_id: PrincipalBytes::from(canister_id),
             id: emr_id,
-        }).to_stable();
+        })
+        .to_stable();
 
         self.0.insert(provider.clone().to_stable(), emr);
         Ok(())
@@ -480,20 +480,17 @@ impl Issued {
         &self,
         provider: InternalProviderId,
         page: u64,
-        limit: u64
+        limit: u64,
     ) -> IssueMapResult<Vec<Stable<EmrId>>> {
         if !self.provider_exists(provider.clone()) {
             return Err(IssueMapError::ProviderNotFound);
         }
 
         match self.get_set_associated_by_key_paged(&provider.to_stable(), page, limit) {
-            Some(emrs) =>
-                Ok(
-                    emrs
-                        .into_iter()
-                        .map(|emr| emr.into_inner().id.to_stable())
-                        .collect()
-                ),
+            Some(emrs) => Ok(emrs
+                .into_iter()
+                .map(|emr| emr.into_inner().id.to_stable())
+                .collect()),
             None => Err(IssueMapError::EmrNotFound),
         }
     }
@@ -503,7 +500,9 @@ impl Issued {
 /// this is used to track healthcare providers using their principal. this is needed because we want to be able to change the principal without costly update. we can just update the principal here.
 pub struct ProvidersBindings(BTreeMap<ProviderPrincipal, Stable<InternalProviderId>, Memory>);
 deref!(mut ProvidersBindings: BTreeMap<ProviderPrincipal, Stable<InternalProviderId>, Memory>);
-#[derive(Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug, thiserror::Error, CandidType, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum ProviderBindingMapError {
     #[error("operation not permitted, provider exists")]
     ProviderExist,
@@ -543,7 +542,7 @@ impl ProvidersBindings {
     pub fn bind(
         &mut self,
         provider: ProviderPrincipal,
-        internal_id: InternalProviderId
+        internal_id: InternalProviderId,
     ) -> ProviderBindingMapResult {
         if self.get_internal_id(&provider).is_ok() {
             return Err(ProviderBindingMapError::ProviderExist);
@@ -556,7 +555,7 @@ impl ProvidersBindings {
     pub fn rebind(
         &mut self,
         provider: ProviderPrincipal,
-        internal_id: InternalProviderId
+        internal_id: InternalProviderId,
     ) -> ProviderBindingMapResult {
         if self.get_internal_id(&provider).is_err() {
             return Err(ProviderBindingMapError::ProviderDoesNotExist);
@@ -569,9 +568,11 @@ impl ProvidersBindings {
     /// will return an error if owner does not exists
     pub fn get_internal_id(
         &self,
-        provider: &ProviderPrincipal
+        provider: &ProviderPrincipal,
     ) -> ProviderBindingMapResult<Stable<InternalProviderId>> {
-        self.0.get(provider).ok_or(ProviderBindingMapError::ProviderDoesNotExist)
+        self.0
+            .get(provider)
+            .ok_or(ProviderBindingMapError::ProviderDoesNotExist)
     }
 
     pub fn init(memory_manager: &MemoryManager) -> Self {
@@ -591,7 +592,8 @@ metrics!(Providers: LengthMetrics);
 
 impl std::fmt::Debug for Providers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let provider = self.map
+        let provider = self
+            .map
             .iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect::<Vec<_>>();
@@ -617,23 +619,26 @@ impl Metrics<LengthMetrics> for Providers {
         self.map.len().to_string()
     }
 }
-    #[derive(Debug)]
-    pub struct PaginatedProviders {
-        pub providers: Vec<Stable<Provider, Candid>>,
-        pub total_pages: u64,
-        pub total_provider_count: u64,
-    }
+#[derive(Debug)]
+pub struct PaginatedProviders {
+    pub providers: Vec<Stable<Provider, Candid>>,
+    pub total_pages: u64,
+    pub total_provider_count: u64,
+}
 impl Providers {
     pub fn add_provider(&mut self, provider: Provider) -> ProviderBindingMapResult<()> {
         match self.is_exist(provider.internal_id().clone()) {
             true => Err(ProviderBindingMapError::ProviderExist),
             false => {
-                let _bytes_allocated_approx =
-                    std::mem::size_of_val(&provider.internal_id()) +
-                    std::mem::size_of_val(&provider);
+                let _bytes_allocated_approx = std::mem::size_of_val(&provider.internal_id())
+                    + std::mem::size_of_val(&provider);
 
-                let result = self.map
-                    .insert(provider.internal_id().clone().to_stable(), provider.to_stable())
+                let result = self
+                    .map
+                    .insert(
+                        provider.internal_id().clone().to_stable(),
+                        provider.to_stable(),
+                    )
                     .map(|_| ());
 
                 assert!(result.is_none(), "provider does not exist, this is a bug");
@@ -644,14 +649,16 @@ impl Providers {
     }
 
     fn update_unchecked(&mut self, provider: Stable<Provider, Candid>) {
-        let _ = self.map.insert(provider.internal_id().clone().to_stable(), provider);
+        let _ = self
+            .map
+            .insert(provider.internal_id().clone().to_stable(), provider);
     }
 
     /// try mutate a provider, will return [ProviderBindingMapError::ProviderDoesNotExist] if the provider does not exist
     pub fn try_mutate<T>(
         &mut self,
         provider: InternalProviderId,
-        f: impl FnOnce(&mut Stable<Provider, Candid>) -> T
+        f: impl FnOnce(&mut Stable<Provider, Candid>) -> T,
     ) -> ProviderBindingMapResult<T> {
         let raw = self.map.get(&provider.to_stable());
 
@@ -681,37 +688,37 @@ impl Providers {
         self.map.get(&provider.to_stable())
     }
 
-  
     pub fn get_all_providers_paginated(&self, page: u64, limit: u64) -> PaginatedProviders {
         let total_provider_count = self.map.len() as u64;
-        
-            // Calculate total pages (ceiling division)
-            let total_pages = (total_provider_count + limit - 1) / limit;
-            
-            let skip_count = (page * limit) as usize;
-            
-            let remaining_items = if skip_count < total_provider_count as usize {
-                total_provider_count as usize - skip_count
-            } else {
-                0
-            };
-            
-            let items_to_take = std::cmp::min(limit as usize, remaining_items);
-            
-            let providers = self.map.iter()
-                .skip(skip_count)
-                .take(items_to_take)
-                .map(|(_, v)| v.clone())
-                .collect::<Vec<_>>();
-            
-            PaginatedProviders {
-                providers,
-                total_pages,
-                total_provider_count,
-            }
+
+        // Calculate total pages (ceiling division)
+        let total_pages = (total_provider_count + limit - 1) / limit;
+
+        let skip_count = (page * limit) as usize;
+
+        let remaining_items = if skip_count < total_provider_count as usize {
+            total_provider_count as usize - skip_count
+        } else {
+            0
+        };
+
+        let items_to_take = std::cmp::min(limit as usize, remaining_items);
+
+        let providers = self
+            .map
+            .iter()
+            .skip(skip_count)
+            .take(items_to_take)
+            .map(|(_, v)| v.clone())
+            .collect::<Vec<_>>();
+
+        PaginatedProviders {
+            providers,
+            total_pages,
+            total_provider_count,
         }
     }
-
+}
 
 #[cfg(test)]
 mod provider_test {
@@ -735,8 +742,9 @@ mod provider_test {
             AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
             AsciiRecordsKey::<64>::new(name).unwrap(),
             internal_id.clone(),
-            provider_principal.clone()
-        ).to_provider();
+            provider_principal.clone(),
+        )
+        .to_provider();
 
         let _encoded_provider_size = Encode!(&provider).unwrap();
         println!("{:?}", _encoded_provider_size.len());
@@ -761,8 +769,9 @@ mod provider_test {
             AsciiRecordsKey::<64>::new("test").unwrap(),
             AsciiRecordsKey::<64>::new("test").unwrap(),
             internal_id.clone(),
-            provider_principal
-        ).to_provider();
+            provider_principal,
+        )
+        .to_provider();
 
         let _bytes_allocated_approx =
             std::mem::size_of_val(&internal_id) + std::mem::size_of_val(&provider);
@@ -800,7 +809,7 @@ mod provider_test {
             "h5aet-waaaa-aaaab-qaamq-cai",
             "rrkah-fqaaa-aaaaa-aaaaq-cai",
             "aaaaa-aa",
-            "qoctq-giaaa-aaaaa-aaaea-cai"
+            "qoctq-giaaa-aaaaa-aaaea-cai",
         ];
 
         // add 5 providers
@@ -813,8 +822,9 @@ mod provider_test {
                 AsciiRecordsKey::<64>::new(name.clone()).unwrap(),
                 AsciiRecordsKey::<64>::new(name).unwrap(),
                 internal_id.clone(),
-                provider_principal
-            ).to_provider();
+                provider_principal,
+            )
+            .to_provider();
 
             providers.add_provider(provider).unwrap();
         }
@@ -826,9 +836,16 @@ mod provider_test {
 
         // test first page
         let page1 = providers.get_all_providers_paginated(0, page_size);
-        assert_eq!(page1.providers.len(), 2, "First page should have 2 providers");
+        assert_eq!(
+            page1.providers.len(),
+            2,
+            "First page should have 2 providers"
+        );
         assert_eq!(page1.total_pages, 3, "Should have 3 pages total");
-        assert_eq!(page1.total_provider_count, 5, "Should have 5 providers total");
+        assert_eq!(
+            page1.total_provider_count, 5,
+            "Should have 5 providers total"
+        );
 
         // verify first page providers
         let first_provider = page1.providers[0].internal_id().clone();
@@ -838,9 +855,16 @@ mod provider_test {
 
         // test second page
         let page2 = providers.get_all_providers_paginated(1, page_size);
-        assert_eq!(page2.providers.len(), 2, "Second page should have 2 providers");
+        assert_eq!(
+            page2.providers.len(),
+            2,
+            "Second page should have 2 providers"
+        );
         assert_eq!(page2.total_pages, 3, "Should have 3 pages total");
-        assert_eq!(page2.total_provider_count, 5, "Should have 5 providers total");
+        assert_eq!(
+            page2.total_provider_count, 5,
+            "Should have 5 providers total"
+        );
 
         // verify second page providers
         let third_provider = page2.providers[0].internal_id().clone();
@@ -852,7 +876,10 @@ mod provider_test {
         let page3 = providers.get_all_providers_paginated(2, page_size);
         assert_eq!(page3.providers.len(), 1, "Last page should have 1 provider");
         assert_eq!(page3.total_pages, 3, "Should have 3 pages total");
-        assert_eq!(page3.total_provider_count, 5, "Should have 5 providers total");
+        assert_eq!(
+            page3.total_provider_count, 5,
+            "Should have 5 providers total"
+        );
 
         // verify last page provider
         let fifth_provider = page3.providers[0].internal_id().clone();
@@ -869,7 +896,9 @@ pub mod provider {
     pub mod attr {
         use super::super::*;
 
-        #[derive(CandidType, Deserialize, Debug, Serialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
+        #[derive(
+            CandidType, Deserialize, Debug, Serialize, Clone, PartialEq, PartialOrd, Eq, Ord,
+        )]
         pub enum Status {
             Active,
             Suspended,
@@ -916,21 +945,15 @@ pub mod provider {
 
         /// Provider session, 1 session is equal to 1 emr issued by a provider. used to bill the provider.
         #[derive(
-            Deserialize,
-            CandidType,
-            Debug,
-            Default,
-            Clone,
-            Copy,
-            PartialEq,
-            Eq,
-            PartialOrd,
-            Ord
+            Deserialize, CandidType, Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
         )]
         pub struct Session(u64);
 
         // blanket impl for session
-        impl<T> From<T> for Session where T: Into<u64> {
+        impl<T> From<T> for Session
+        where
+            T: Into<u64>,
+        {
             fn from(session: T) -> Self {
                 Self(session.into())
             }
@@ -992,13 +1015,14 @@ pub mod provider {
             fn to_provider(self) -> super::Provider;
         }
 
-        pub trait BasicProvider: Billable +
-            ActivationSatus +
-            BasicProviderAttributes +
-            ToProvider {}
-        impl<P> BasicProvider
-            for P
-            where P: Billable + ActivationSatus + BasicProviderAttributes + ToProvider {}
+        pub trait BasicProvider:
+            Billable + ActivationSatus + BasicProviderAttributes + ToProvider
+        {
+        }
+        impl<P> BasicProvider for P where
+            P: Billable + ActivationSatus + BasicProviderAttributes + ToProvider
+        {
+        }
     }
     // END ------------------------------ SESSION ------------------------------ END
 
@@ -1162,7 +1186,7 @@ pub mod provider {
 
         #[test]
         fn test_len_encoded() {
-            use candid::{ Encode, Decode };
+            use candid::{Decode, Encode};
 
             let name = AsciiRecordsKey::<64>::new("a".repeat(64)).unwrap();
             let provider_principal = ProviderPrincipal::from_text("aaaaa-aa").unwrap();
@@ -1170,8 +1194,9 @@ pub mod provider {
                 name.clone(),
                 name,
                 id!("12a1bd26-4954-4cf4-87ac-57b4f9585987"),
-                provider_principal
-            ).to_provider();
+                provider_principal,
+            )
+            .to_provider();
             let encoded = Encode!(&s).unwrap();
 
             println!("encoded len: {}", encoded.len());
@@ -1245,7 +1270,3 @@ pub mod provider {
         }
     }
 }
-
-
-
-

@@ -1,10 +1,8 @@
-use candid::{ CandidType, Principal };
+use candid::{CandidType, Principal};
 use canister_common::{
-    impl_max_size,
-    impl_mem_bound,
-    metrics,
+    impl_max_size, impl_mem_bound, metrics,
     mmgr::MemoryManager,
-    stable::{ Candid, Memory, Stable, ToStable },
+    stable::{Candid, Memory, Stable, ToStable},
     statistics::traits::Metrics,
 };
 use ic_stable_structures::Cell;
@@ -153,7 +151,8 @@ impl CanisterConfig {
     }
 
     pub fn remove_authorized_metrics_collector(&mut self, collector: Principal) {
-        self.authorized_metrics_collectors.retain(|c| c != &collector);
+        self.authorized_metrics_collectors
+            .retain(|c| c != &collector);
     }
 
     pub fn is_authorized_metrics_collector(&self, collector: &Principal) -> bool {

@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# ensure script is run with bash (cross-platform compatible)
+if [ -z "$BASH_VERSION" ]; then
+    echo "Error: This script must be run with bash, not sh"
+    echo "Usage: bash $0"
+    exit 1
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -14,16 +21,25 @@ cd $root/canister
 bash $root/canister/setup.sh
 # This script deploys the canister locally.
 FE_PORT=4943
+
+# stop dfx first to ensure clean state (cross-platform compatible)
+echo -e "${BLUE}[INFO]${NC} Stopping any existing dfx instances..."
+dfx stop >/dev/null 2>&1 || true
+
 # kill any existing processes on FE_PORT (cross-platform compatible)
 pids=$(lsof -i tcp:${FE_PORT} 2>/dev/null | awk 'NR!=1 {print $2}')
 if [ -n "$pids" ]; then
     echo "$pids" | xargs kill 2>/dev/null || true
+    sleep 2
 fi
 
 # check if PocketIC is installed (needed for integration tests)
 check_pocketic() {
-    if command -v pocket-ic &>/dev/null; then
-        echo -e "${GREEN}[INFO]${NC} PocketIC found: $(which pocket-ic)"
+    local pocketic_path
+    # use which to find exact path, ensuring it's actually pocket-ic binary
+    pocketic_path=$(which pocket-ic 2>/dev/null)
+    if [ -n "$pocketic_path" ] && [ -x "$pocketic_path" ] && [ "$(basename "$pocketic_path")" = "pocket-ic" ]; then
+        echo -e "${GREEN}[INFO]${NC} PocketIC found: $pocketic_path"
         return 0
     else
         echo -e "${YELLOW}[WARNING]${NC} PocketIC not found in PATH"
@@ -49,6 +65,14 @@ cleanup_pocketic() {
         echo "$pocketic_pids" | xargs kill 2>/dev/null || true
         sleep 1
     fi
+}
+
+# ensure canisters exist before installing (cross-platform compatible)
+ensure_canisters_exist() {
+    echo -e "${BLUE}[INFO]${NC} Ensuring canisters are created..."
+    dfx canister create emr_registry 2>/dev/null || true
+    dfx canister create patient_registry 2>/dev/null || true
+    dfx canister create provider_registry 2>/dev/null || true
 }
 
 check_pocketic
@@ -78,14 +102,17 @@ if [[ "$1" == "--background" ]]; then
 else
     echo -e "${BLUE}[INFO]${NC} Starting dfx in concurrent mode..."
     # Start dfx in the background but keep output visible
-    # show all output including PocketIC errors for debugging
-    (dfx start 2>&1 | sed 's/^/[CANISTER] /') &
+    # filter out harmless PocketIC panic messages (cross-platform compatible)
+    (dfx start 2>&1 | grep -v -E "(panicked at|SendError|Error from launcher process.*exited due to signal)" | sed 's/^/[CANISTER] /') &
     DFX_PID=$!
     # Store the PID so we can terminate it later if needed
     echo $DFX_PID > /tmp/dfx.pid
     
     wait_for_dfx || exit 1
 fi
+
+# ensure canisters exist before installing
+ensure_canisters_exist
 
 echo -e "${GREEN}[INFO]${NC} Installing canisters..."
 dfx canister install emr_registry --wasm $root/canister/target/wasm32-unknown-unknown/release/emr_registry.wasm --mode=install -y

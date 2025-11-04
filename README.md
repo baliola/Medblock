@@ -4,6 +4,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Healthcare-red.svg?style=flat)](http://medblock.id/)
 
 ## 📘 Overview
+
 Medblock is an Electronic Medical Record (EMR) registry system that leverages the power of the Internet Computer to provide secure and efficient healthcare solutions. The project is organized into three main canisters, each designed to fulfill specific responsibilities:
 
 1. **Patient Registry**: Manages comprehensive patient information and records, ensuring easy access by authorized users.
@@ -11,12 +12,16 @@ Medblock is an Electronic Medical Record (EMR) registry system that leverages th
 3. **Provider Registry**: Handles essential information related to healthcare providers, including their credentials and specialties.
 
 ## 🏗️ Architecture Diagram
+
 The architectural diagram below provides a visual representation of how the Medblock project is structured and how its components interact. This illustration assists in understanding the relationships and data flow between the Mobile App, various canisters, and the dashboards.
 ![](final_demo/pwa/public/arsitektur.png)
 
 ## 📋 Getting Started
+
 ### Prerequisites
+
 Ensure you have the following tools installed to work with the Medblock a project:
+
 - **Rust `1.27.0`**: A systems programming language focused on safety and performance.
 - **Next.js `14.2.6`**: A React framework for building server-rendered applications.
 - **Tailwind CSS `3.4.1`**: A utility-first CSS framework for styling.
@@ -41,7 +46,8 @@ Before diving into development, install the essential tools on your system:
    ```
 
 ### Initial Setup
-To set up the environment, execute the `setup.sh` script. This script automates the following tasks:
+
+To set up the environment, execute the `./canister/setup.sh` script. This script automates the following tasks:
 
 - Verifies the installation of the required tools.
 - Creates unique canister IDs for each registry.
@@ -51,9 +57,11 @@ To set up the environment, execute the `setup.sh` script. This script automates 
 > **Note**: The setup may take a few minutes depending on your system specifications.
 
 ### Development Workflow
+
 When developing a feature for a canister, use the build.sh script. This script automatically regenerates the candid interface for the canister you're working on and recompiles the EMR registry canister, as the other two canisters depend on it. If you've already run the setup script, this step should be quick. Use the --all flag with the script to rebuild all canisters simultaneously.
 
 ### Deploy Locally
+
 To deploy the canisters locally, navigate to the `scripts/deployments` directory and run the `local.sh` script:
 
 ```bash
@@ -72,6 +80,7 @@ The `local.sh` script performs the following actions:
 ### Running Tests
 
 #### Unit Tests
+
 To run unit tests, compile and execute them using the --release flag to ensure optimal performance:
 
 ```bash
@@ -80,10 +89,12 @@ cargo test --release
 ```
 
 #### Integration Tests
+
 For integration testing, follow these steps:
 
 1. Install **Pocket-IC** and follow the installation guidelines.
 2. Build all canisters with the `--all` flag:
+
    ```bash
    ./build.sh --all
    ```
@@ -97,7 +108,9 @@ For integration testing, follow these steps:
 ## Testing
 
 ### Integration Tests
+
 To run the integration tests for the canister:
+
 ```bash
 # Run all integration tests in release mode
 cargo integration-test
@@ -113,22 +126,26 @@ cargo integration-test -- --nocapture
 ```
 
 The integration tests are located in `canister/tests/integration-tests/` and test the full functionality of the canisters including:
+
 - Group management
 - EMR access control
 - Patient registration
 - Provider interactions
 
 ### Unit Tests
+
 For unit tests, you can use the standard cargo test command in each canister directory:
+
 ```bash
 cd canister/src/patient_registry
 cargo test
 ```
 
 ### Private VPS Node
+
 We have setup a private VPS node to act as a psuedo-staging branch for the canisters.
 
-You must have sshpass installed first! 
+You must have sshpass installed first!
 
 ```bash
 sudo apt-get install sshpass # linux
@@ -136,8 +153,9 @@ brew install sshpass # mac
 ```
 
 To connect to the node instead of local or mainnet, you can use the following command:
+
 ```bash
 ./portforward.sh
 ```
 
-This will forward the port to the node hosted in the VPS and you can interact with the node as if it were local. 
+This will forward the port to the node hosted in the VPS and you can interact with the node as if it were local.
