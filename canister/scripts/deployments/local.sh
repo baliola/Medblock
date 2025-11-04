@@ -14,12 +14,33 @@ cd $root/canister
 bash $root/canister/setup.sh
 # This script deploys the canister locally.
 FE_PORT=4943
-lsof -i tcp:${FE_PORT} | awk 'NR!=1 {print $2}' | xargs kill || true
+# kill any existing processes on FE_PORT (cross-platform compatible)
+pids=$(lsof -i tcp:${FE_PORT} 2>/dev/null | awk 'NR!=1 {print $2}')
+if [ -n "$pids" ]; then
+    echo "$pids" | xargs kill 2>/dev/null || true
+fi
+
+# wait for dfx to be ready (cross-platform polling)
+wait_for_dfx() {
+    echo -e "${YELLOW}[WAIT]${NC} Waiting for dfx to start..."
+    max_attempts=60
+    attempt=0
+    while [ $attempt -lt $max_attempts ]; do
+        if dfx ping >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    echo -e "${RED}[ERROR]${NC} dfx failed to start within $max_attempts seconds"
+    return 1
+}
 
 # Check if --background flag is passed
 if [[ "$1" == "--background" ]]; then
     echo -e "${BLUE}[INFO]${NC} Starting dfx in background mode..."
     dfx start --background
+    wait_for_dfx || exit 1
 else
     echo -e "${BLUE}[INFO]${NC} Starting dfx in concurrent mode..."
     # Start dfx in the background but keep output visible
@@ -28,9 +49,7 @@ else
     # Store the PID so we can terminate it later if needed
     echo $DFX_PID > /tmp/dfx.pid
     
-    # Wait for dfx to initialize
-    echo -e "${YELLOW}[WAIT]${NC} Waiting for dfx to start..."
-    sleep 5
+    wait_for_dfx || exit 1
 fi
 
 echo -e "${GREEN}[INFO]${NC} Installing canisters..."
