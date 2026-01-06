@@ -5,9 +5,9 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "id.medblock.bwvkymxvy2stchdh.twa",
+      "package_name": "com.amplifyapp.d1s9kosx9z4apf.main.twa",
       "sha256_cert_fingerprints": [
-        "84:18:8F:2B:43:DC:B8:C9:B8:EE:2D:29:8B:36:AC:78:5C:27:C2:8B:F1:88:8F:37:DB:F0:FC:87:6D:E4:F1:E7"
+        "DF:5D:E6:DD:3B:9E:31:E0:3D:86:82:18:7C:CD:D2:A8:29:86:5F:6F:C5:5F:2A:61:A3:98:28:FD:76:86:49:83"
       ]
     }
   }
