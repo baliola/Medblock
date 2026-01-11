@@ -1,6 +1,9 @@
-#! bash
+#!/bin/bash
 
 ROOT=$(git rev-parse --show-toplevel)/canister
+
+# change to canister directory for dfx commands (cross-platform compatible)
+cd $ROOT
 
 echo "checking required dependencies"
 
@@ -29,13 +32,16 @@ dfx canister create patient_registry
 dfx canister create emr_registry
 
 echo "building canisters for the first time"
+echo "note: build order: emr_registry -> patient_registry -> provider_registry"
 
 echo "building emr registry"
-bash $ROOT/build.sh emr_registry
+bash $ROOT/build.sh emr_registry || exit 1
+
 echo "building patient registry"
-bash $ROOT/build.sh patient_registry
+bash $ROOT/build.sh patient_registry || exit 1
+
 echo "building provider registry"
-bash $ROOT/build.sh provider_registry
+bash $ROOT/build.sh provider_registry || exit 1
 
 echo "stopping ic replica"
 dfx stop

@@ -1,10 +1,9 @@
-use ic_cdk_bindgen::{ Builder, Config };
-use std::{ panic::catch_unwind, path::PathBuf };
+use ic_cdk_bindgen::{Builder, Config};
+use std::{panic::catch_unwind, path::PathBuf};
 
 fn get_workspace_root() -> PathBuf {
-    let manifest_dir = PathBuf::from(
-        std::env::var("CARGO_MANIFEST_DIR").expect("Cannot find manifest dir")
-    );
+    let manifest_dir =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("Cannot find manifest dir"));
 
     for anc in manifest_dir.ancestors() {
         if anc.file_name().unwrap() == "canister" {
@@ -17,13 +16,19 @@ fn get_workspace_root() -> PathBuf {
 
 // workaround for setting provider registry candid path because we run into circular issues.
 fn hardcode_set_provider_registry_candid_path() {
-    std::env::set_var("CANISTER_CANDID_PATH_PROVIDER_REGISTRY", "src/provider_registry/candid.did");
+    std::env::set_var(
+        "CANISTER_CANDID_PATH_PROVIDER_REGISTRY",
+        "src/provider_registry/candid.did",
+    );
 }
 
 fn main() {
     println!("cargo:rerun-if-changed=NULL");
 
-    let link_flag = std::env::var("LINK").unwrap_or("true".to_string()).parse::<bool>().unwrap();
+    let link_flag = std::env::var("LINK")
+        .unwrap_or("true".to_string())
+        .parse::<bool>()
+        .unwrap();
     // workaround to determine if this is invoked by dfx as dfx automatically inject this env var
     let candid_path_env = std::env::var("CANISTER_CANDID_PATH_EMR_REGISTRY").is_ok();
 
@@ -62,5 +67,7 @@ fn build_declaration() {
         builder.add(config);
     }
 
-    builder.build(Some(get_workspace_root().join("src/patient_registry/src/declarations")));
+    builder.build(Some(
+        get_workspace_root().join("src/patient_registry/src/declarations"),
+    ));
 }

@@ -1,5 +1,5 @@
+#!/bin/bash
 # TODO
-#! bash
 root=$(git rev-parse --show-toplevel)
 cd $root/canister
 caller=$1

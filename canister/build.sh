@@ -52,23 +52,49 @@ build_canister() {
     local start_time=$(date +%s.%N)
 
     log_process "Building ${MAGENTA}$canister_name${NC} canister..."
-    dfx build $canister_name >/dev/null 2>&1
+    # ensure we're in the canister directory (cross-platform compatible)
+    cd "$root" || {
+        echo -e "${RED}[ERROR]${NC} Failed to change to directory: $root"
+        return 1
+    }
+    
+    # show build output on failure, hide on success
+    if ! dfx build $canister_name 2>&1; then
+        echo -e "${RED}[ERROR]${NC} Failed to build ${MAGENTA}$canister_name${NC} canister"
+        echo -e "${YELLOW}[INFO]${NC} Make sure you're running from the canister directory and dfx is running"
+        return 1
+    fi
+
+    # check if wasm file exists before proceeding
+    if [ ! -f "$wasm_path" ]; then
+        echo -e "${RED}[ERROR]${NC} WASM file not found: $wasm_path"
+        echo -e "${YELLOW}[INFO]${NC} Build may have failed. Check dfx build output above."
+        return 1
+    fi
 
     log_info "Inserting placeholder candid..."
     echo "$dummy_did" >$did_path
 
     log_process "Extracting candid from wasm..."
-    candid-extractor $wasm_path >$did_path
+    if ! candid-extractor $wasm_path >$did_path 2>/dev/null; then
+        echo -e "${RED}[ERROR]${NC} Failed to extract candid from $wasm_path"
+        return 1
+    fi
 
     # add candid metadata and shrink wasm
     log_process "Processing WASM file..."
-    ic-wasm "$wasm_path" \
+    if ! ic-wasm "$wasm_path" \
         -o "$wasm_path" \
-        metadata candid:service -v public -f $did_path
+        metadata candid:service -v public -f $did_path 2>/dev/null; then
+        echo -e "${RED}[ERROR]${NC} Failed to add candid metadata to WASM"
+        return 1
+    fi
 
-    ic-wasm "$wasm_path" \
+    if ! ic-wasm "$wasm_path" \
         -o "$wasm_path" \
-        shrink
+        shrink 2>/dev/null; then
+        echo -e "${YELLOW}[WARNING]${NC} Failed to shrink WASM (non-fatal)"
+    fi
 
     local end_time=$(date +%s.%N)
     local build_time=$(echo "$end_time - $start_time" | bc)
@@ -99,13 +125,17 @@ if [ -z "$canister" ]; then
     exit 0
 fi
 
-cd $root
+# ensure we're in the canister directory from the start
+cd "$root" || {
+    echo -e "${RED}[ERROR]${NC} Failed to change to directory: $root"
+    exit 1
+}
 
 total_start_time=$(date +%s.%N)
 
 # build EMR registry first since other canisters depend on it
 if [ "$canister" == "$emr_canister" ]; then
-    build_canister $emr_canister
+    build_canister $emr_canister || exit 1
     total_end_time=$(date +%s.%N)
     total_time=$(echo "$total_end_time - $total_start_time" | bc)
     log_success "EMR Registry build completed in ${GREEN}$(printf "%.2f" $total_time)s${NC}"
@@ -114,10 +144,10 @@ fi
 
 # for other canisters, build EMR registry first then build target canister
 log_warning "EMR Registry is a dependency, building it first..."
-build_canister $emr_canister
+build_canister $emr_canister || exit 1
 
 log_info "Building target canister..."
-build_canister $canister
+build_canister $canister || exit 1
 
 total_end_time=$(date +%s.%N)
 total_time=$(echo "$total_end_time - $total_start_time" | bc)

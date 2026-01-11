@@ -1,7 +1,22 @@
 use std::{borrow::BorrowMut, cell::RefCell, str::FromStr, time::Duration};
 
 use api::{
-    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest, ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest, CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse, EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest, EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest, GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest, GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail, IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest, LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik, PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest, ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse, RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest, SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse, UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest, UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest, ViewGroupMemberEmrInformationRequest
+    AddGroupMemberRequest, AuthorizedCallerRequest, BindAdminRequest, CheckNikRequest,
+    ClaimConsentRequest, ClaimConsentResponse, ConsentListResponse, CreateConsentForGroupRequest,
+    CreateConsentForGroupResponse, CreateConsentResponse, CreateGroupRequest, CreateGroupResponse,
+    EmrHeaderWithStatus, EmrListConsentRequest, EmrListConsentResponse, EmrListPatientRequest,
+    EmrListPatientResponse, FinishSessionRequest, GetGroupDetailsNoPaginatedRequest,
+    GetGroupDetailsRequest, GetGroupDetailsResponse, GetPatientInfoBySessionRequest,
+    GetPatientInfoResponse, GetUserGroupsResponse, GrantGroupAccessRequest, GroupDetail,
+    IsConsentClaimedRequest, IsConsentClaimedResponse, IssueRequest, LeaveGroupRequest,
+    LogResponse, PatientListAdminResponse, PatientListResponse, PatientWithNik,
+    PatientWithNikAndSession, PingResult, ReadEmrByIdRequest, ReadEmrSessionRequest,
+    ReadGroupMembersEmrInfoRequest, RegisterPatientRequest, RegisterPatientResponse,
+    RegisterPatientStatus, RevokeConsentRequest, RevokeGroupAccessRequest,
+    SearchPatientAdminResponse, SearchPatientRequest, SearchPatientResponse,
+    UpdateEmrRegistryRequest, UpdateInitialPatientInfoRequest, UpdateKycStatusRequest,
+    UpdateKycStatusResponse, UpdatePatientInfoRequest, UpdateRequest,
+    ViewGroupMemberEmrInformationRequest,
 };
 use candid::{Decode, Encode, Principal};
 use canister_common::{
@@ -1202,12 +1217,19 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
         .map_err(|_| "Invalid revokee NIK format".to_string())?;
 
     // verify both users are in the same group
-    let group = with_state(|s| s.registry.group_map.get_group(req.group_id.clone()))
-        .ok_or_else(|| format!("[ERR_GROUP_NOT_FOUND] Group {} does not exist", req.group_id))?;
+    let group =
+        with_state(|s| s.registry.group_map.get_group(req.group_id.clone())).ok_or_else(|| {
+            format!(
+                "[ERR_GROUP_NOT_FOUND] Group {} does not exist",
+                req.group_id
+            )
+        })?;
 
     // verify both users are members of the group
     if !group.members.contains(&granter_nik) || !group.members.contains(&revokee_nik) {
-        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group".to_string());
+        return Err(
+            "[ERR_NOT_GROUP_MEMBERS] One or both users are not members of this group".to_string(),
+        );
     }
 
     // Check if access exists before trying to revoke
@@ -1219,8 +1241,12 @@ fn revoke_group_access(req: RevokeGroupAccessRequest) -> Result<(), String> {
 
     if !access_exists {
         // If no access exists, consider it a success since the end state is what was desired
-        log!("No access existed to revoke between granter {} and revokee {} in group {}", 
-            granter_nik, revokee_nik, req.group_id);
+        log!(
+            "No access existed to revoke between granter {} and revokee {} in group {}",
+            granter_nik,
+            revokee_nik,
+            req.group_id
+        );
         return Ok(());
     }
 
@@ -1595,7 +1621,7 @@ async fn read_group_members_emr_info(
 ) -> Result<ReadEmrByIdResponse, String> {
     let caller = verified_caller().unwrap();
     let viewer_nik = with_state(|s| s.registry.owner_map.get_nik(&caller).unwrap()).into_inner();
-    
+
     // parse member NIK from string
     let member_nik = NIK::from_str(&req.member_nik)
         .map_err(|_| "[ERR_INVALID_NIK] Invalid member NIK format")?;
@@ -1606,13 +1632,20 @@ async fn read_group_members_emr_info(
 
     // verify both users are members of the group
     if !group.members.contains(&viewer_nik) || !group.members.contains(&member_nik) {
-        return Err("[ERR_NOT_GROUP_MEMBERS] One or both users are not members of the group".to_string());
+        return Err(
+            "[ERR_NOT_GROUP_MEMBERS] One or both users are not members of the group".to_string(),
+        );
     }
 
     // verify access has been granted for this specific group
     let has_access = with_state(|s| {
-        s.registry.group_access_map.has_access(&member_nik, &viewer_nik)
-            && s.registry.group_access_map.get_access_group(&member_nik, &viewer_nik) == Some(req.group_id)
+        s.registry
+            .group_access_map
+            .has_access(&member_nik, &viewer_nik)
+            && s.registry
+                .group_access_map
+                .get_access_group(&member_nik, &viewer_nik)
+                == Some(req.group_id)
     });
 
     if !has_access {
@@ -1629,9 +1662,17 @@ async fn read_group_members_emr_info(
         emr_id: req.emr_id,
         registry_id: req.registry_id,
     };
-    let args = with_state(|s| s.registry.construct_args_read_emr(sub_args, &member_principal))
-        .map_err(|e| format!("[ERR_CONSTRUCT_ARGS] Failed to construct EMR read args: {:?}", e))?;
-    
+    let args = with_state(|s| {
+        s.registry
+            .construct_args_read_emr(sub_args, &member_principal)
+    })
+    .map_err(|e| {
+        format!(
+            "[ERR_CONSTRUCT_ARGS] Failed to construct EMR read args: {:?}",
+            e
+        )
+    })?;
+
     Ok(PatientRegistry::do_call_read_emr(args, registry).await)
 }
 

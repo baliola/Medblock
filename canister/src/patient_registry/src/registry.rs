@@ -311,9 +311,14 @@ impl GroupAccessMap {
         Ok(())
     }
 
-    pub fn revoke_access_for_group(&mut self, granter: NIK, revokee: NIK, group_id: GroupId) -> Result<(), String> {
+    pub fn revoke_access_for_group(
+        &mut self,
+        granter: NIK,
+        revokee: NIK,
+        group_id: GroupId,
+    ) -> Result<(), String> {
         let key = (Stable::from(granter), Stable::from(revokee));
-        
+
         // First check if access exists at all
         if !self.0.contains_key(&key) {
             return Err("[ERR_NO_ACCESS] No access exists between these users.".to_string());
@@ -329,7 +334,7 @@ impl GroupAccessMap {
             ));
         }
 
-        // If we get here, we can safely revoke 
+        // If we get here, we can safely revoke
         self.0.remove(&key);
         Ok(())
     }
@@ -337,7 +342,7 @@ impl GroupAccessMap {
     pub fn has_access(&self, granter: &NIK, grantee: &NIK) -> bool {
         let key = (Stable::from(granter.clone()), Stable::from(grantee.clone()));
         let result = self.0.contains_key(&key);
-        
+
         result
     }
 
@@ -595,22 +600,28 @@ impl EmrBindingMap {
 
     pub fn emr_list_all(&self, nik: &NIK) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
         println!("DEBUG emr_list_all: checking EMRs for NIK: {:?}", nik);
-        
+
         // check if the user exists and has any EMRs
         if !self.0.range_key_exists(&nik.clone().to_stable()) {
-            println!("DEBUG emr_list_all: no EMRs found for NIK (range_key_exists): {:?}", nik);
+            println!(
+                "DEBUG emr_list_all: no EMRs found for NIK (range_key_exists): {:?}",
+                nik
+            );
             return Err(PatientRegistryError::UserNoEmrs);
         }
 
         // get all EMRs
         let all_emrs = self.0.get_set_associated_by_key(&nik.clone().to_stable());
-        println!("DEBUG emr_list_all: found EMRs count: {:?}", all_emrs.clone().map(|e| e.len()));
-        
+        println!(
+            "DEBUG emr_list_all: found EMRs count: {:?}",
+            all_emrs.clone().map(|e| e.len())
+        );
+
         match all_emrs {
             Some(emrs) if !emrs.is_empty() => {
                 println!("DEBUG emr_list_all: returning {} EMRs", emrs.len());
                 Ok(emrs)
-            },
+            }
             _ => {
                 println!("DEBUG emr_list_all: no EMRs found for NIK: {:?}", nik);
                 Err(PatientRegistryError::UserNoEmrs)
@@ -624,7 +635,6 @@ impl EmrBindingMap {
         page: u8,
         limit: u8,
     ) -> PatientBindingMapResult<Vec<Stable<EmrHeader>>> {
-        
         // first check if the user exists and has any EMRs
         if !self.0.range_key_exists(&nik.clone().to_stable()) {
             return Err(PatientRegistryError::UserNoEmrs);
@@ -632,21 +642,21 @@ impl EmrBindingMap {
 
         // get all EMRs first to verify we have them
         let all_emrs = self.0.get_set_associated_by_key(&nik.clone().to_stable());
-        
+
         if all_emrs.clone().unwrap().is_empty() {
             return Err(PatientRegistryError::UserNoEmrs);
         }
 
         // now get the paginated results
-        let paginated = self.0.get_set_associated_by_key_paged(&nik.clone().to_stable(), page as u64, limit as u64);
+        let paginated = self.0.get_set_associated_by_key_paged(
+            &nik.clone().to_stable(),
+            page as u64,
+            limit as u64,
+        );
 
         match paginated {
-            Some(emrs) if !emrs.is_empty() => {
-                Ok(emrs)
-            },
-            _ => {
-                Ok(all_emrs.unwrap())
-            }
+            Some(emrs) if !emrs.is_empty() => Ok(emrs),
+            _ => Ok(all_emrs.unwrap()),
         }
     }
 

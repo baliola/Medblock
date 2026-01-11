@@ -13,8 +13,21 @@ VPS_PORT="4943"
 SSH_USER="guest"
 SSH_PASSWORD="pw"
 
-# Function to check if running on Windows
+# Function to check if running on Windows (excluding WSL)
 is_windows() {
+    # check if running in WSL - if so, treat as Unix/Linux
+    if [[ -f /proc/version ]] && grep -q Microsoft /proc/version; then
+        return 1
+    fi
+    # check if running in WSL2
+    if [[ -f /proc/version ]] && grep -q WSL /proc/version; then
+        return 1
+    fi
+    # check for WSL environment variable
+    if [[ -n "$WSL_DISTRO_NAME" ]] || [[ -n "$WSL_INTEROP" ]]; then
+        return 1
+    fi
+    # check for native Windows environments
     [[ "$(uname)" =~ "MINGW"|"MSYS"|"CYGWIN" ]] || [[ -n "$WINDIR" ]]
 }
 

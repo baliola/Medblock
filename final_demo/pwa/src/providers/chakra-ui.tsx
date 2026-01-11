@@ -1,35 +1,34 @@
-'use client'
+"use client";
 
-import { ChakraProvider, extendTheme } from '@chakra-ui/react'
-
+import { ChakraProvider, extendTheme } from "@chakra-ui/react";
 
 const themes = extendTheme({
   colors: {
     primary: {
-      950: "#090B2A",
-      900: "#0C0F38",
-      800: "#151A62",
-      700: "#242DA8",
-      600: "#3E48D6",
-      500: "#7178E1",
-      400: "#9CA2EA",
-      300: "#C0C3F2",
-      200: "#DBDDF7",
-      100: "#EFF0FC",
-      50: "#FBFBFE",
+      950: "#0F3B36",
+      900: "#124F47",
+      800: "#166458",
+      700: "#1C7A6B",
+      600: "#52A295",
+      500: "#A3D0C9",
+      400: "#D1E8E4",
+      300: "#E3F1EF",
+      200: "#F0F8F6",
+      100: "#F9FBFA",
+      50: "#FCFEFD",
     },
     accent: {
-      950: "#31020D",
-      900: "#430212",
-      800: "#790420",
-      700: "#D40837",
-      600: "#F72859",
-      500: "#F96185",
-      400: "#FB91AA",
-      300: "#FCB9C9",
-      200: "#FED8E0",
-      100: "#FEEDF1",
-      50: "#FFFBFC",
+      950: "#1E4E1E",
+      900: "#3E923F",
+      800: "#57A757",
+      700: "#70BC6F",
+      600: "#8AD187",
+      500: "#A3E6A0",
+      400: "#B5F4B0",
+      300: "#C8F8C4",
+      200: "#DCFBDC",
+      100: "#EEFDEF",
+      50: "#FAFEFA",
     },
     success: {
       950: "#0A2A09",
@@ -96,17 +95,9 @@ const themes = extendTheme({
       100: "#F2F2F2",
       50: "#FCFCFC",
     },
-  }
-})
+  },
+});
 
-export function ChakraUIProvider({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <ChakraProvider theme={themes}>
-      {children}
-    </ChakraProvider>
-  )
+export function ChakraUIProvider({ children }: { children: React.ReactNode }) {
+  return <ChakraProvider theme={themes}>{children}</ChakraProvider>;
 }

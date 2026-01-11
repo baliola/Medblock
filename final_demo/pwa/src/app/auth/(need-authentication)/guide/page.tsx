@@ -5,37 +5,37 @@ import AuthGuideHeader from "@/components/auth/guide/header";
 export default function AuthGuidePage() {
   return (
     <Flex
-      w={'full'}
+      w={"full"}
       direction={"column"}
-      justify={'space-between'}
-      align={'center'}
+      justify={"space-between"}
+      align={"center"}
       gap={9}
-      h={'full'}
+      h={"full"}
     >
-      <Flex direction={'column'} w={'full'} pt={8} gap={3}>
+      <Flex direction={"column"} w={"full"} pt={8} gap={3}>
         <AuthGuideHeader />
         <Box className="custom-pagination" />
       </Flex>
 
-      <Flex direction={"column"} gap={4} w={'full'}
-        align={'center'}>
-        <Text as="desc"
-          textAlign={'center'}
+      <Flex direction={"column"} gap={4} w={"full"} align={"center"}>
+        <Text
+          as="desc"
+          textAlign={"center"}
           w={"xs"}
           lineHeight={1.5}
-          fontSize={'sm'}
+          fontSize={"sm"}
         >
-          By using Medblock pasport, you agree to the {" "}
-          <Text as="span" color={"blue.200"}>
+          By using Medisa pasport, you agree to the{"  "}
+          <Text as="span" color={"green.400"}>
             terms
-          </Text>
-          {""} and {" "}
-          <Text as="span" color={"blue.200"}>
+          </Text>{" "}
+          and{"  "}
+          <Text as="span" color={"green.400"}>
             privacy policy
           </Text>
         </Text>
         <AuthGuideButton />
       </Flex>
     </Flex>
-  )
+  );
 }
